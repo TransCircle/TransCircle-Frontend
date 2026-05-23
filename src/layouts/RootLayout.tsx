@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar'
 import LicenseFooter from '../components/LicenseFooter'
 import styles from '../App.module.css'
 
-const App = () => {
+const Rootlayout = () => {
   return (
     <div className={styles.appContainer}>
       <Navbar />
@@ -18,4 +18,4 @@ const App = () => {
   )
 }
 
-export default App
+export default Rootlayout
