@@ -1,6 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 
-import App from '../App'
+import RootLayout from '../layouts/RootLayout'
 
 import Submit from '../pages/Submit'
 import Admin from '../pages/Admin'
@@ -9,7 +9,7 @@ import NotFound from '../pages/NotFound'
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <App />,
+    element: <RootLayout />,
     children: [
       {
         index: true,
