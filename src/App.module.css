@@ -1,0 +1,248 @@
+.appContainer {
+  width: 100%;
+  min-height: 100vh;
+  background-color: var(--bg-color);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Main content ─────────────────────────────── */
+
+.mainContent {
+  flex: 1;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 2.5rem 4rem;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.contentHeader {
+  margin-bottom: 1.5rem;
+}
+
+.mainTitle {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0 0 0.2rem 0;
+  letter-spacing: -0.02em;
+}
+
+.subTitle {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin: 0;
+  font-weight: 400;
+}
+
+/* ── About section ────────────────────────────── */
+
+.introSection {
+  scroll-margin-top: 4.5rem;
+}
+
+.greeting {
+  font-size: 0.95rem;
+  margin: 0 0 0.9rem 0;
+  color: var(--text-body);
+  line-height: 1.6;
+}
+
+.readmeContent {
+  color: var(--text-secondary);
+  line-height: 1.75;
+  font-size: 0.92rem;
+}
+
+.readmeContent p {
+  margin: 0 0 0.7rem 0;
+}
+
+.readmeContent p:last-child {
+  margin-bottom: 0;
+}
+
+.emphasis {
+  font-weight: 600;
+  color: var(--text-main);
+  border-left: 3px solid var(--primary-pink);
+  padding-left: 1rem;
+  margin: 1.4rem 0 0 0;
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+/* ── Shared section chrome ────────────────────── */
+
+.actionSection,
+.followSection {
+  margin-top: 2rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--divider-color);
+  scroll-margin-top: 4.5rem;
+}
+
+.sectionHeading {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin: 0 0 0.9rem 0;
+}
+
+/* ── CTA buttons ──────────────────────────────── */
+
+.ctaRow {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.ctaPrimary {
+  display: inline-block;
+  background-color: var(--accent-pink);
+  color: white;
+  padding: 0.5rem 1.2rem;
+  border-radius: 50px;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(240, 98, 146, 0.25);
+  transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ctaPrimary:hover {
+  background-color: #cc537c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(240, 98, 146, 0.4);
+}
+
+@supports (background-color: color-mix(in srgb, red 85%, black)) {
+  .ctaPrimary:hover {
+    background-color: color-mix(in srgb, var(--accent-pink) 85%, black);
+  }
+}
+
+.ctaSecondary {
+  display: inline-block;
+  border: 1.5px solid var(--primary-pink);
+  color: var(--primary-pink);
+  padding: 0.5rem 1.2rem;
+  border-radius: 50px;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.ctaSecondary:hover {
+  background-color: var(--hover-bg);
+  color: var(--accent-pink);
+  border-color: var(--accent-pink);
+}
+
+@supports (background-color: color-mix(in srgb, red 15%, white)) {
+  .ctaSecondary:hover {
+    background-color: var(--hover-bg-mix);
+  }
+}
+
+/* ── Social links ─────────────────────────────── */
+
+.socialList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.socialLink {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.6rem;
+  margin: 0 -0.6rem;
+  border-radius: 7px;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.socialLink:hover {
+  background-color: var(--hover-bg);
+}
+
+@supports (background-color: color-mix(in srgb, red 15%, white)) {
+  .socialLink:hover {
+    background-color: var(--hover-bg-mix);
+  }
+}
+
+.socialIcon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  width: 16px;
+}
+
+.socialName {
+  color: var(--text-main);
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.socialHandle {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Reduced motion ───────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .ctaPrimary,
+  .ctaSecondary,
+  .socialLink {
+    transition: none;
+  }
+}
+
+/* ── Responsive: tablet ───────────────────────── */
+
+@media (max-width: 1024px) {
+  .mainContent {
+    padding: 2rem 2.5rem;
+  }
+}
+
+/* ── Responsive: mobile ───────────────────────── */
+
+@media (max-width: 768px) {
+  .mainContent {
+    padding: 1.5rem;
+    max-width: 100%;
+  }
+
+  .ctaRow {
+    flex-direction: column;
+  }
+
+  .ctaPrimary,
+  .ctaSecondary {
+    text-align: center;
+  }
+
+  .socialHandle {
+    display: none;
+  }
+}

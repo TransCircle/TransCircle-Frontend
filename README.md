@@ -1,74 +1,101 @@
-本仓库代码目前未部署，测试请在本地进行
-# React + TypeScript + Vite
+# TransCircle Web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+TransCircle Web 是 TransCircle 项目的前端应用仓库。
 
-Currently, two official plugins are available:
+该仓库代码目前尚未部署，请在本地进行测试。
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+该仓库用于承载：
 
-## React Compiler
+- 故事投稿页
+- 审核后台
+- 后续社区功能页面
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+主导航站（Landing Page）位于独立仓库中，本仓库专注于 Web App 功能开发。
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Tech Stack
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- React 19
+- TypeScript
+- Vite
+- React Router DOM
+- CSS Modules
+- md-editor-rt
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+---
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Development
+
+安装依赖：
+
+```bash
+pnpm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+启动开发服务器：
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+pnpm dev
 ```
+
+构建项目：
+
+```bash
+pnpm build
+```
+
+预览生产构建：
+
+```bash
+pnpm preview
+```
+
+---
+
+## Project Structure
+
+```text
+src/
+├── components/     # Reusable UI components
+├── context/        # Theme system and global contexts
+├── layouts/        # Root layout
+├── pages/          # Route pages
+├── router/         # React Router config
+├── styles/         # Shared styles
+└── assets/         # Static assets
+```
+
+---
+
+## Theme System
+
+项目支持：
+
+- Light mode
+- Dark mode
+- High contrast mode
+
+主题通过 CSS Variables 实现。
+
+详细规范见：
+
+- DESIGN.md
+
+---
+
+## Accessibility
+
+TransCircle 优先考虑可访问性：
+
+- Keyboard navigation
+- Focus-visible styles
+- ARIA support
+- Reduced motion support
+- High contrast mode
+
+---
+
+## License
+
+This project is part of the TransCircle Project.

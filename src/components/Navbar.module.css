@@ -1,0 +1,288 @@
+.navbar {
+  width: 100%;
+  /* Fallback for browsers without backdrop-filter support (Safari < 9, older Android) */
+  background-color: var(--bg-color);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 0.75rem 3rem;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  border-bottom: 1px solid var(--divider-color);
+  box-shadow: 0 1px 2px var(--shadow-color);
+}
+
+/* When backdrop-filter is supported, use the translucent nav background */
+@supports (backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px)) {
+  .navbar {
+    background-color: var(--nav-bg);
+  }
+}
+
+.container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.rightSection {
+  display: flex;
+  align-items: center;
+}
+
+.mobileThemeToggle {
+  display: none;
+}
+
+.leftSection {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 24px;
+  height: 18px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  z-index: 1001;
+}
+
+.bar {
+  width: 100%;
+  height: 2px;
+  background-color: var(--text-main);
+  transition: all 0.3s ease;
+}
+
+.logo {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-main);
+  letter-spacing: -0.02em;
+}
+
+.navLinks {
+  list-style: none;
+  display: flex;
+  gap: 2rem;
+  margin: 0;
+  padding: 0;
+  flex-wrap: nowrap;
+}
+
+.navLinks li a {
+  text-decoration: none;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.navLinks li a:hover {
+  color: var(--text-main);
+  background-color: var(--hover-bg);
+}
+
+@supports (background-color: color-mix(in srgb, red 15%, white)) {
+  .navLinks li a:hover {
+    background-color: var(--hover-bg-mix);
+  }
+}
+
+.mobileDivider {
+  display: none;
+}
+
+.mobileOnly {
+  display: none;
+}
+
+.mobileLinkLabel {
+  display: block;
+  padding: 0.55rem 2rem 0.1rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+@media (max-width: 1280px) {
+  .navbar {
+    padding: 0.75rem 2rem;
+  }
+
+  .navLinks {
+    gap: 1rem;
+  }
+
+  .navLinks li a {
+    font-size: 0.85rem;
+    padding: 0.45rem 0.7rem;
+  }
+}
+
+@media (max-width: 1200px) {
+  .navbar {
+    padding: 1rem 1.5rem;
+  }
+
+  .rightSection {
+    display: none;
+  }
+
+  .mobileDivider {
+    display: block;
+    height: 1px;
+    background-color: var(--divider-color);
+    width: calc(100% - 3rem);
+    margin: 0.2rem auto;
+    opacity: 0.5;
+  }
+
+  .mobileOnly {
+    display: block;
+  }
+
+  .hamburger {
+    display: flex;
+  }
+
+  .navLinks {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100vh;
+    background-color: var(--bg-color);
+    flex-direction: column;
+    padding: 4rem 0 1rem 0;
+    gap: 0;
+    border-right: 1px solid var(--divider-color);
+    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
+    transform: translateX(-100%);
+    visibility: hidden;
+    pointer-events: none;
+    transition: transform 0.3s ease-in-out, visibility 0s linear 0.3s;
+    z-index: 1000;
+  }
+
+  .navLinks.active {
+    transform: translateX(0);
+    visibility: visible;
+    pointer-events: auto;
+    transition: transform 0.3s ease-in-out, visibility 0s linear 0s;
+  }
+
+  .navLinks li {
+    width: 100%;
+  }
+
+  .navLinks li a {
+    display: block;
+    padding: 0.8rem 2rem;
+    font-size: 1rem;
+    width: 100%;
+    color: var(--text-main);
+  }
+
+  .navLinks li a:hover {
+    margin: 0 3px;
+    width: calc(100% - 6px);
+  }
+
+  .mobileOnly a {
+    display: block;
+    padding: 0.8rem 2rem;
+    text-decoration: none;
+    color: var(--text-main);
+    font-size: 1rem;
+  }
+
+  .mobileTOCGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.2rem 0 0.6rem;
+  }
+
+  .navLinks .mobileTOCItem a {
+    padding: 0.3rem 2rem;
+    font-size: 0.9rem;
+    border-radius: 10px;
+  }
+
+  @supports (background-color: color-mix(in srgb, red 15%, white)) {
+    .mobileTOCItem a:hover {
+      background-color: var(--hover-bg-mix);
+    }
+  }
+
+  .mobileOnly a:hover {
+    margin: 0 3px;
+    width: calc(100% - 6px);
+    background-color: var(--nav-bg);
+    color: var(--primary-pink);
+  }
+
+  .mobileThemeToggle {
+    display: block;
+    padding: 0.8rem 1.5rem;
+  }
+
+  .mobileThemeToggleGroup {
+    background-color: var(--surface-card);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .mobileThemeLabel {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+    user-select: none;
+  }
+}
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: var(--overlay-bg);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+  z-index: 999;
+}
+
+.overlayActive {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s ease, visibility 0s linear 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navLinks,
+  .bar,
+  .overlay,
+  .overlayActive {
+    transition: none;
+  }
+}
