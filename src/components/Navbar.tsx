@@ -96,10 +96,10 @@ const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
             id="nav-menu"
             className={`${styles.navLinks} ${isOpen ? styles.active : ""}`}
           >
-            <li><Link to="https://transcircle.org" onClick={closeMenu}>首页</Link></li>
+            <li><a href="https://transcircle.org" onClick={closeMenu}>首页</a></li>
             <li><Link to="/submit" onClick={closeMenu}>故事征集</Link></li>
-            <li><Link to="#archive" onClick={closeMenu}>人物归档（开发中）</Link></li>
-            <li><Link to="#community" onClick={closeMenu}>社群互助（开发中）</Link></li>
+            <li><a href="#archive" onClick={closeMenu}>人物归档（开发中）</a></li>
+            <li><a href="#community" onClick={closeMenu}>社群互助（开发中）</a></li>
 
             {mobileLinks && (
               <>
