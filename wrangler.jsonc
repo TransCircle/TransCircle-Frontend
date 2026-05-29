@@ -1,0 +1,32 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
+  "name": "transcircle-submit",
+  "pages_build_output_dir": "dist",
+  "compatibility_date": "2025-05-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "transcircle-submissions",
+      "database_id": "PLACEHOLDER_D1_ID"
+    }
+  ],
+
+  // Non-sensitive config — safe to commit
+  "vars": {
+    "GITHUB_ORG": "TransCircle",
+    "STORY_REPO_OWNER": "TransCircle",
+    "STORY_REPO_NAME": "story.transcircle.org"
+  },
+
+  "env": {
+    "production": {
+      "vars": {
+        "GITHUB_CLIENT_ID": "PLACEHOLDER_GH_CLIENT_ID",
+        "X_CLIENT_ID": "PLACEHOLDER_X_CLIENT_ID",
+        "TURNSTILE_SITE_KEY": "PLACEHOLDER_TURNSTILE_SITE_KEY"
+      }
+    }
+  }
+}

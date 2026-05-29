@@ -1,3 +1,4 @@
+import SubmitForm from '@/components/SubmitForm'
 import styles from '../App.module.css'
 
 const Submit = () => {
@@ -6,15 +7,11 @@ const Submit = () => {
       <header className={styles.contentHeader}>
         <h1 className={styles.mainTitle}>故事投稿</h1>
         <p className={styles.subTitle}>
-          分享你的经历与故事。
+          分享你的经历与故事。所有投稿经审核后发布在 story.transcircle.org。
         </p>
       </header>
 
-      <section className={styles.introSection}>
-        <p className={styles.greeting}>
-          投稿系统正在开发中。
-        </p>
-      </section>
+      <SubmitForm />
     </>
   )
 }
