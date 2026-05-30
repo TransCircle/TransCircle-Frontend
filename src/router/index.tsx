@@ -4,6 +4,7 @@ import RootLayout from '../layouts/RootLayout'
 
 import Submit from '../pages/Submit'
 import Admin from '../pages/Admin'
+import OAuthCallback from '../pages/OAuthCallback'
 import NotFound from '../pages/NotFound'
 
 export const router = createBrowserRouter([
@@ -22,6 +23,10 @@ export const router = createBrowserRouter([
       {
         path: 'admin',
         element: <Admin />,
+      },
+      {
+        path: 'auth/callback',
+        element: <OAuthCallback />,
       },
       {
         path: '*',

@@ -79,28 +79,35 @@ const SubmitForm = () => {
     setStatus('submitting')
 
     try {
-      const res = await fetch('/api/submit', {
+      const res = await fetch('/v1/contributions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: form.title,
           content: form.content,
+          contentFormat: 'markdown',
           category: form.category,
+          tags: form.category ? [form.category] : [],
+          language: 'zh-CN',
+          submitMode: 'submit',
           authorType: form.authorType,
           authorName: form.authorType !== 'anonymous' ? form.authorName : undefined,
           contact: form.contact || undefined,
         }),
       })
 
-      const data = await res.json() as { id?: string; error?: string }
+      const body = await res.json() as {
+        data?: { id?: string; status?: string }
+        error?: { code?: string; message?: string }
+      }
 
       if (!res.ok) {
-        setServerError(data.error ?? '提交失败，请稍后重试')
+        setServerError(body.error?.message ?? '提交失败，请稍后重试')
         setStatus('error')
         return
       }
 
-      setSubmitId(data.id!)
+      setSubmitId(body.data?.id!)
       setStatus('success')
     } catch {
       setServerError('网络错误，请检查网络连接后重试')
@@ -282,7 +289,7 @@ const SubmitForm = () => {
       </FormField>
 
       {status === 'error' && serverError && (
-        <div className={styles.errorBox}>
+        <div className={styles.errorBox} role="alert">
           <p className={styles.errorText}>{serverError}</p>
         </div>
       )}

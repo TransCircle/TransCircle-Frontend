@@ -1,7 +1,7 @@
 # Copy to .dev.vars and fill in values
 # .dev.vars is gitignored — never commit real secrets
 
-SESSION_SECRET=change-me-to-random-64-chars
+SESSION_SECRET=change-me-to-a-long-random-string-at-least-32-chars
 TEMP_ADMIN_TOKEN=change-me-to-a-strong-temp-token
 
 # GitHub OAuth (optional for initial deploy — admin can use TEMP_ADMIN_TOKEN)

@@ -3,30 +3,48 @@ import { useAuth } from '@/context/AuthContext'
 import styles from './Admin.module.css'
 
 const TEMP_TOKEN_KEY = 'tc_temp_admin_token'
+const TEMP_TOKEN_EXPIRY_KEY = 'tc_temp_admin_token_exp'
+const TEMP_TOKEN_MAX_AGE = 24 * 60 * 60 * 1000 // 24 hours
 
 type Status = 'pending' | 'approved' | 'rejected'
-type ReviewAction = 'approve' | 'reject' | 'request_changes'
+type ReviewAction = 'approved' | 'rejected'
 
 interface Submission {
   id: string
   title: string
-  category: string
-  author_type: string
-  author_name: string | null
-  contact: string | null
-  content: string
+  category: string | null
+  author_type?: string
+  authorType?: string
+  author_name?: string | null
+  authorName?: string | null
+  contact?: string | null
+  content?: string
+  contentRaw?: string
   status: Status
-  reviewer_gh: string | null
-  review_notes: string | null
-  created_at: string
-  reviewed_at: string | null
-  submitter_gh: string | null
-  submitter_x: string | null
+  version: number
+  reviewer_gh?: string | null
+  reviewerGh?: string | null
+  review_notes?: string | null
+  reviewNotes?: string | null
+  created_at?: number
+  createdAt?: number
+  reviewed_at?: number | null
+  reviewedAt?: number | null
+  updated_at?: number
+  updatedAt?: number
+  submitter_gh?: string | null
+  submitterGh?: string | null
+  submitter_x?: string | null
+  submitterX?: string | null
+  author?: { id: string | null; displayName: string; avatarUrl: string | null }
 }
 
 interface ListResponse {
-  submissions: Submission[]
-  total: number
+  submissions?: Submission[]
+  data?: Submission[]
+  pagination?: { nextCursor: string | null; hasMore: boolean; limit: number }
+  nextCursor?: string | null
+  limit?: number
 }
 
 const TABS: { key: Status; label: string }[] = [
@@ -37,58 +55,104 @@ const TABS: { key: Status; label: string }[] = [
 
 function getStoredToken(): string {
   try {
-    return localStorage.getItem(TEMP_TOKEN_KEY) || ''
+    const token = localStorage.getItem(TEMP_TOKEN_KEY) || ''
+    const exp = localStorage.getItem(TEMP_TOKEN_EXPIRY_KEY)
+    if (exp && Date.now() > Number(exp)) {
+      localStorage.removeItem(TEMP_TOKEN_KEY)
+      localStorage.removeItem(TEMP_TOKEN_EXPIRY_KEY)
+      return ''
+    }
+    return token
   } catch { return '' }
 }
 
+function formatTs(ts: number | string | null): string {
+  if (!ts) return ''
+  const n = typeof ts === 'string' ? Number(ts) : ts
+  if (isNaN(n)) return String(ts)
+  return new Date(n).toISOString().slice(0, 16).replace('T', ' ')
+}
+
 const Admin = () => {
-  const { user, loading: authLoading, loginWithGitHub } = useAuth()
+  const { user, loading: authLoading, accessToken, loginWithGitHub } = useAuth()
   const [tempToken, setTempToken] = useState(getStoredToken)
   const [tokenInput, setTokenInput] = useState('')
   const [activeTab, setActiveTab] = useState<Status>('pending')
   const [submissions, setSubmissions] = useState<Submission[]>([])
-  const [total, setTotal] = useState(0)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [selected, setSelected] = useState<Submission | null>(null)
   const [reviewNotes, setReviewNotes] = useState('')
 
-  const authHeaders = (): Record<string, string> => {
-    if (user?.isAdmin) return {} // uses session cookie
-    if (tempToken) return { Authorization: `Bearer ${tempToken}` }
-    return {}
+  function getField(s: unknown, ...keys: string[]): unknown {
+    if (typeof s !== 'object' || s === null) return null
+    const obj = s as Record<string, unknown>
+    for (const k of keys) {
+      if (k in obj) return obj[k]
+    }
+    return null
   }
 
-  const fetchSubmissions = useCallback(async () => {
+  const authHeaders = useCallback((): Record<string, string> => {
+    const h: Record<string, string> = {}
+    if (accessToken) h.Authorization = `Bearer ${accessToken}`
+    else if (tempToken) h.Authorization = `Bearer ${tempToken}`
+    return h
+  }, [accessToken, tempToken])
+
+  const fetchSubmissions = useCallback(async (cursor?: string | null) => {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`/api/admin/submissions?status=${activeTab}`, { headers: authHeaders() })
+      const params = new URLSearchParams({ status: activeTab, limit: '50' })
+      if (cursor) params.set('cursor', cursor)
+
+      const res = await fetch(`/v1/admin/contributions?${params}`, { headers: authHeaders() })
       if (res.status === 403) {
         localStorage.removeItem(TEMP_TOKEN_KEY)
+        localStorage.removeItem(TEMP_TOKEN_EXPIRY_KEY)
         setTempToken('')
+        setLoading(false)
         return
       }
-      if (!res.ok) throw new Error('加载失败')
-      const data = await res.json() as ListResponse
-      setSubmissions(data.submissions)
-      setTotal(data.total)
-    } catch {
-      setError('加载投稿列表失败')
+      if (!res.ok) {
+        const body = await res.json() as { error?: { message?: string } }
+        throw new Error(body.error?.message ?? '加载失败')
+      }
+      const body = await res.json() as ListResponse
+
+      // Handle both contract format (data array + pagination) and legacy format
+      const items = body.data ?? body.submissions ?? []
+      const pageCursor = body.pagination?.nextCursor ?? body.nextCursor ?? null
+
+      if (pageCursor) {
+        setSubmissions(prev => [...prev, ...items])
+      } else {
+        setSubmissions(items)
+      }
+      setNextCursor(pageCursor)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '加载投稿列表失败')
     } finally {
       setLoading(false)
     }
-  }, [activeTab, tempToken, user])
+  }, [activeTab, authHeaders])
 
   useEffect(() => {
     if (user?.isAdmin || tempToken) fetchSubmissions()
   }, [user, tempToken, fetchSubmissions])
 
+  useEffect(() => {
+    if (user?.isAdmin || tempToken) fetchSubmissions()
+  }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const fetchDetail = async (id: string) => {
     try {
-      const res = await fetch(`/api/admin/submissions/${id}`, { headers: authHeaders() })
+      const res = await fetch(`/v1/admin/contributions/${id}`, { headers: authHeaders() })
       if (!res.ok) throw new Error('加载失败')
-      setSelected(await res.json() as Submission)
+      const body = await res.json() as { data?: Submission }
+      setSelected(body.data ?? null)
       setReviewNotes('')
     } catch {
       setError('加载投稿详情失败')
@@ -97,19 +161,20 @@ const Admin = () => {
 
   const handleReview = async (action: ReviewAction) => {
     if (!selected) return
+    const v = selected.version || 1
     try {
-      const res = await fetch('/api/admin/review', {
-        method: 'PATCH',
+      const res = await fetch(`/v1/admin/contributions/${selected.id}/review`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({
-          id: selected.id,
-          action,
-          notes: reviewNotes || undefined,
+          decision: action,
+          internalNote: reviewNotes || undefined,
+          expectedVersion: v,
         }),
       })
       if (!res.ok) {
-        const data = await res.json() as { error?: string }
-        throw new Error(data.error ?? '操作失败')
+        const body = await res.json() as { error?: { message?: string } }
+        throw new Error(body.error?.message ?? '操作失败')
       }
       setSelected(null)
       fetchSubmissions()
@@ -134,6 +199,7 @@ const Admin = () => {
     const handleTempLogin = () => {
       if (tokenInput.trim()) {
         localStorage.setItem(TEMP_TOKEN_KEY, tokenInput.trim())
+        localStorage.setItem(TEMP_TOKEN_EXPIRY_KEY, String(Date.now() + TEMP_TOKEN_MAX_AGE))
         setTempToken(tokenInput.trim())
       }
     }
@@ -217,28 +283,52 @@ const Admin = () => {
           ))}
         </nav>
 
-        <div className={styles.count}>共 {total} 篇</div>
+        <div className={styles.count}>共 {submissions.length} 篇{nextCursor ? '+' : ''}</div>
 
-        {error && <div className={styles.errorBox}>{error}</div>}
+        {error && <div className={styles.errorBox} role="alert">{error}</div>}
 
-        {loading ? (
+        {loading && submissions.length === 0 ? (
           <div className={styles.loading}>加载中...</div>
         ) : submissions.length === 0 ? (
           <div className={styles.empty}>暂无投稿</div>
         ) : (
-          <ul className={styles.list}>
-            {submissions.map((s) => (
-              <li key={s.id} className={styles.item} onClick={() => fetchDetail(s.id)}>
-                <div className={styles.itemMain}>
-                  <div className={styles.itemTitle}>{s.title}</div>
-                  <div className={styles.itemMeta}>
-                    {s.author_type === 'anonymous' ? '匿名' : s.author_name} · {s.created_at.slice(0, 10)}
+          <>
+            <ul className={styles.list}>
+              {submissions.map((s) => (
+                <li
+                  key={s.id}
+                  className={styles.item}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => fetchDetail(s.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      fetchDetail(s.id)
+                    }
+                  }}
+                >
+                  <div className={styles.itemMain}>
+                    <div className={styles.itemTitle}>{s.title}</div>
+                    <div className={styles.itemMeta}>
+                      {(getField(s, 'authorType', 'author_type') === 'anonymous' ? '匿名' : (getField(s, 'authorName', 'author_name') || '匿名')) as string} · {formatTs(getField(s, 'createdAt', 'created_at') as number | null)}
+                    </div>
                   </div>
-                </div>
-                <span className={styles.itemCategory}>{s.category}</span>
-              </li>
-            ))}
-          </ul>
+                  <span className={styles.itemCategory}>{s.category}</span>
+                </li>
+              ))}
+            </ul>
+            {nextCursor && (
+              <button
+                className={styles.btnSecondary}
+                onClick={() => fetchSubmissions(nextCursor)}
+                disabled={loading}
+                style={{ marginTop: '1rem', width: '100%' }}
+              >
+                {loading ? '加载中...' : '加载更多'}
+              </button>
+            )}
+          </>
         )}
       </main>
     )
@@ -263,7 +353,7 @@ const Admin = () => {
               ? '匿名'
               : `${selected.author_name}（${selected.author_type === 'real' ? '实名' : '笔名'}）`}
           </span>
-          <span>投稿时间：{selected.created_at.slice(0, 16).replace('T', ' ')}</span>
+          <span>投稿时间：{formatTs(selected.created_at ?? selected.createdAt ?? null)}</span>
           <span>状态：{selected.status === 'pending' ? '待审核' : selected.status === 'approved' ? '已通过' : '已拒绝'}</span>
           {selected.submitter_gh && <span>GitHub: {selected.submitter_gh}</span>}
           {selected.submitter_x && <span>X: {selected.submitter_x}</span>}
@@ -283,11 +373,11 @@ const Admin = () => {
           <div className={styles.detailContact}>
             审核意见：{selected.review_notes}
             {selected.reviewer_gh && `（审核人：${selected.reviewer_gh}）`}
-            {selected.reviewed_at && ` · ${selected.reviewed_at.slice(0, 16).replace('T', ' ')}`}
+            {selected.reviewed_at && ` · ${formatTs(selected.reviewed_at)}`}
           </div>
         )}
 
-        {error && <div className={styles.errorBox}>{error}</div>}
+        {error && <div className={styles.errorBox} role="alert">{error}</div>}
 
         {selected.status === 'pending' && (
           <>
@@ -299,13 +389,10 @@ const Admin = () => {
             />
 
             <div className={styles.reviewActions}>
-              <button className={styles.btnPrimary} onClick={() => handleReview('approve')}>
+              <button className={styles.btnPrimary} onClick={() => handleReview('approved')}>
                 通过
               </button>
-              <button className={styles.btnSecondary} onClick={() => handleReview('request_changes')}>
-                要求修改
-              </button>
-              <button className={styles.btnReject} onClick={() => handleReview('reject')}>
+              <button className={styles.btnReject} onClick={() => handleReview('rejected')}>
                 拒绝
               </button>
             </div>
@@ -315,7 +402,7 @@ const Admin = () => {
         {selected.status !== 'pending' && (
           <button
             className={styles.btnSecondary}
-            onClick={() => handleReview('approve')}
+            onClick={() => handleReview('approved')}
             style={{ marginTop: '0.5rem' }}
           >
             重新审核为通过

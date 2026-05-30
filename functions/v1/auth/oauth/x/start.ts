@@ -1,4 +1,7 @@
-// GET /api/auth/x — initiate X (Twitter) OAuth 2.0 with PKCE
+// GET /v1/auth/oauth/x/start — return X (Twitter) authorization URL
+// Per apidocs.md §1.6.1
+
+import { successResponse } from '../../../_response'
 
 interface Env {
   X_CLIENT_ID: string
@@ -11,8 +14,7 @@ function generateCodeVerifier(): string {
 }
 
 async function generateCodeChallenge(verifier: string): Promise<string> {
-  const enc = new TextEncoder()
-  const digest = await crypto.subtle.digest('SHA-256', enc.encode(verifier))
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))
   return btoa(String.fromCharCode(...new Uint8Array(digest)))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
@@ -23,7 +25,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const state = crypto.randomUUID()
 
   const url = new URL(request.url)
-  const redirectUri = `${url.origin}/api/auth/x-callback`
+  const redirectUri = `${url.origin}/v1/auth/oauth/x/callback`
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -35,14 +37,17 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     code_challenge_method: 'S256',
   })
 
-  const authUrl = `https://x.com/i/oauth2/authorize?${params.toString()}`
+  const authorizationUrl = `https://x.com/i/oauth2/authorize?${params.toString()}`
 
-  // Store code_verifier in a short-lived cookie for the callback
-  const resp = Response.redirect(authUrl, 302)
+  const resp = successResponse({ authorizationUrl, stateExpiresIn: 600 })
   const headers = new Headers(resp.headers)
-  headers.set(
+  headers.append(
     'Set-Cookie',
-    `x_pkce=${codeVerifier}; HttpOnly; Secure; SameSite=Lax; Path=/api/auth; Max-Age=600`,
+    `x_pkce=${codeVerifier}; HttpOnly; Secure; SameSite=Lax; Path=/v1/auth/oauth; Max-Age=600`,
+  )
+  headers.append(
+    'Set-Cookie',
+    `oauth_state=${state}; HttpOnly; Secure; SameSite=Lax; Path=/v1/auth/oauth; Max-Age=600`,
   )
   return new Response(resp.body, { ...resp, headers })
 }

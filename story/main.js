@@ -60,7 +60,12 @@ function storyCard(s) {
       ? '匿名'
       : s.author_name || '匿名'
 
-  const date = s.created_at?.slice(0, 10) || ''
+  // Handle both Unix-ms timestamps and ISO strings
+  const date = s.created_at
+    ? (typeof s.created_at === 'number' || !s.created_at.includes('-')
+        ? new Date(typeof s.created_at === 'string' ? Number(s.created_at) : s.created_at).toISOString().slice(0, 10)
+        : s.created_at.slice(0, 10))
+    : ''
 
   // Truncate content for preview (first 200 chars)
   const preview = s.content
@@ -73,14 +78,14 @@ function storyCard(s) {
       <h2 class="cardTitle">${escapeHtml(s.title)}</h2>
       <p class="cardPreview">${escapeHtml(preview)}...</p>
       <div class="cardMeta">
-        <span>${authorDisplay}</span>
+        <span>${escapeHtml(authorDisplay)}</span>
         <span>${date}</span>
       </div>
       <button class="cardExpand" onclick="toggleStory('${s.id}')">阅读全文</button>
       <div class="cardFull" id="full-${s.id}" hidden>
         <div class="cardContent">${renderMarkdown(s.content)}</div>
         <p class="cardAuthor">
-          作者：${authorDisplay}${s.author_type !== 'anonymous' ? `（${s.author_type === 'real' ? '实名' : '笔名'}）` : ''}
+          作者：${escapeHtml(authorDisplay)}${s.author_type !== 'anonymous' ? `（${s.author_type === 'real' ? '实名' : '笔名'}）` : ''}
         </p>
       </div>
     </article>

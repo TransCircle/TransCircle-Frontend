@@ -15,8 +15,8 @@ interface ApprovedSubmission {
   category: string
   author_name: string | null
   author_type: string
-  created_at: string
-  reviewed_at: string
+  created_at: number
+  reviewed_at: number | null
 }
 
 const OWNER = 'TransCircle'
@@ -34,10 +34,10 @@ export async function triggerRebuild(env: Env): Promise<boolean> {
   const repo = env.STORY_REPO_NAME || REPO
 
   try {
-    // 1. Fetch all approved submissions from D1
+    // 1. Fetch all approved contributions from D1
     const { results } = await env.DB.prepare(
-      `SELECT id, title, content, category, author_name, author_type, created_at, reviewed_at
-       FROM submissions WHERE status = 'approved' ORDER BY created_at DESC`,
+      `SELECT id, title, content_raw as content, category, author_name, author_type, created_at, reviewed_at
+       FROM contributions WHERE status IN ('approved', 'published') ORDER BY created_at DESC`,
     ).all<ApprovedSubmission>()
 
     const json = JSON.stringify(results, null, 2)
