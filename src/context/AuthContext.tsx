@@ -5,6 +5,9 @@ interface User {
   username: string
   avatarUrl?: string
   isAdmin: boolean
+  displayName?: string
+  emailVerified?: boolean
+  roles?: string[]
 }
 
 interface AuthContextValue {
@@ -15,6 +18,7 @@ interface AuthContextValue {
   loginWithX: () => Promise<void>
   logout: () => Promise<void>
   exchangeLoginCode: (loginCode: string) => Promise<User | null>
+  completeRegistration: (provider: string, data: { username?: string; email?: string; password?: string; displayName?: string }) => Promise<{ loginCode?: string; user: User | null } | null>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -96,15 +100,43 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return null
   }, [])
 
+  // Complete OAuth registration for new users (per apidocs.md §1.6.4)
+  const completeRegistration = useCallback(async (provider: string, data: { username?: string; email?: string; password?: string; displayName?: string }) => {
+    try {
+      const csrfMatch = document.cookie.match(/oauth_pending_csrf=([^;]+)/)
+      const csrfToken = csrfMatch?.[1] || ''
+
+      const res = await fetch(`/v1/auth/oauth/complete-registration?provider=${encodeURIComponent(provider)}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
+        },
+        body: JSON.stringify(data),
+      })
+
+      if (!res.ok) return null
+      const body = await res.json() as { data?: { loginCode?: string; user?: User } }
+
+      if (body.data?.loginCode) {
+        const user = await exchangeLoginCode(body.data.loginCode)
+        return { loginCode: body.data.loginCode, user }
+      }
+    } catch { /* registration failed */ }
+    return null
+  }, [exchangeLoginCode])
+
   const logout = useCallback(async () => {
-    await fetch('/v1/auth/logout', { method: 'POST' }).catch(() => {})
+    const headers: Record<string, string> = {}
+    if (memoryToken) headers.Authorization = `Bearer ${memoryToken}`
+    await fetch('/v1/auth/logout', { method: 'POST', headers }).catch(() => {})
     memoryToken = null
     setAccessToken(null)
     setUser(null)
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, loading, accessToken, loginWithGitHub, loginWithX, logout, exchangeLoginCode }}>
+    <AuthContext.Provider value={{ user, loading, accessToken, loginWithGitHub, loginWithX, logout, exchangeLoginCode, completeRegistration }}>
       {children}
     </AuthContext.Provider>
   )

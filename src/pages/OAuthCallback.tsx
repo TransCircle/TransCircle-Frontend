@@ -24,10 +24,8 @@ const OAuthCallback = () => {
           navigate('/submit', { replace: true })
         }
       } else if (status === 'pending_registration') {
-        // New OAuth user — redirect to submit page for now
-        // In a full implementation, this would show a registration form
-        // that calls POST /v1/auth/oauth/complete-registration
-        navigate('/submit?status=pending_registration', { replace: true })
+        const provider = searchParams.get('provider') || 'github'
+        navigate(`/register?provider=${encodeURIComponent(provider)}`, { replace: true })
       } else if (status === 'bad_state' || status === 'oauth_error') {
         navigate(`/submit?error=oauth_${status}`, { replace: true })
       } else {

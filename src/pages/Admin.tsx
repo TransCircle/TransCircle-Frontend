@@ -193,9 +193,9 @@ const Admin = () => {
     )
   }
 
-  // ── Not logged in ──
+  // ── Not logged in (no OAuth user + no temp token) ──
 
-  if (!user) {
+  if (!user && !tempToken) {
     const handleTempLogin = () => {
       if (tokenInput.trim()) {
         localStorage.setItem(TEMP_TOKEN_KEY, tokenInput.trim())
@@ -240,9 +240,9 @@ const Admin = () => {
     )
   }
 
-  // ── Not admin ──
+  // ── Not admin (OAuth user but not in org) ──
 
-  if (!user.isAdmin) {
+  if (user && !user.isAdmin) {
     return (
       <main className={styles.container}>
         <h1 style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
@@ -266,7 +266,7 @@ const Admin = () => {
               审核后台
             </h1>
             <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-              {user.username} ({user.provider})
+              {user ? `${user.username} (${user.provider})` : '临时管理员'}
             </span>
           </div>
         </div>
@@ -349,14 +349,14 @@ const Admin = () => {
           <span>分类：{selected.category}</span>
           <span>
             署名：
-            {selected.author_type === 'anonymous'
+            {selected.authorType === 'anonymous'
               ? '匿名'
-              : `${selected.author_name}（${selected.author_type === 'real' ? '实名' : '笔名'}）`}
+              : `${selected.authorName}（${selected.authorType === 'real' ? '实名' : '笔名'}）`}
           </span>
-          <span>投稿时间：{formatTs(selected.created_at ?? selected.createdAt ?? null)}</span>
+          <span>投稿时间：{formatTs(selected.createdAt ?? selected.created_at ?? null)}</span>
           <span>状态：{selected.status === 'pending' ? '待审核' : selected.status === 'approved' ? '已通过' : '已拒绝'}</span>
-          {selected.submitter_gh && <span>GitHub: {selected.submitter_gh}</span>}
-          {selected.submitter_x && <span>X: {selected.submitter_x}</span>}
+          {selected.submitterGh && <span>GitHub: {selected.submitterGh}</span>}
+          {selected.submitterX && <span>X: {selected.submitterX}</span>}
         </div>
 
         {selected.contact && (
@@ -366,14 +366,14 @@ const Admin = () => {
         )}
 
         <div className={styles.detailContent}>
-          {selected.content}
+          {selected.contentRaw}
         </div>
 
-        {selected.review_notes && (
+        {selected.reviewNotes && (
           <div className={styles.detailContact}>
-            审核意见：{selected.review_notes}
-            {selected.reviewer_gh && `（审核人：${selected.reviewer_gh}）`}
-            {selected.reviewed_at && ` · ${formatTs(selected.reviewed_at)}`}
+            审核意见：{selected.reviewNotes}
+            {selected.reviewerGh && `（审核人：${selected.reviewerGh}）`}
+            {selected.reviewedAt && ` · ${formatTs(selected.reviewedAt)}`}
           </div>
         )}
 
@@ -399,15 +399,7 @@ const Admin = () => {
           </>
         )}
 
-        {selected.status !== 'pending' && (
-          <button
-            className={styles.btnSecondary}
-            onClick={() => handleReview('approved')}
-            style={{ marginTop: '0.5rem' }}
-          >
-            重新审核为通过
-          </button>
-        )}
+        {/* Re-review is not supported by the current backend state machine */}
       </div>
     </main>
   )

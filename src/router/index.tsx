@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import RootLayout from '../layouts/RootLayout'
 
 import Submit from '../pages/Submit'
+import Register from '../pages/Register'
 import Admin from '../pages/Admin'
 import OAuthCallback from '../pages/OAuthCallback'
 import NotFound from '../pages/NotFound'
@@ -19,6 +20,10 @@ export const router = createBrowserRouter([
       {
         path: 'submit',
         element: <Submit />,
+      },
+      {
+        path: 'register',
+        element: <Register />,
       },
       {
         path: 'admin',

@@ -19,6 +19,7 @@ interface FormData {
   authorName: string
   contact: string
   agreement: boolean
+  website: string
 }
 
 interface FormErrors {
@@ -37,6 +38,7 @@ const INITIAL_FORM: FormData = {
   authorName: '',
   contact: '',
   agreement: false,
+  website: '',
 }
 
 const validate = (data: FormData): FormErrors => {
@@ -53,7 +55,7 @@ const validate = (data: FormData): FormErrors => {
 
 const SubmitForm = () => {
   const { theme } = useTheme()
-  const { user, loading, loginWithGitHub, loginWithX } = useAuth()
+  const { user, loading, accessToken, loginWithGitHub, loginWithX } = useAuth()
   const [form, setForm] = useState<FormData>(INITIAL_FORM)
   const [errors, setErrors] = useState<FormErrors>({})
   const [status, setStatus] = useState<FormStatus>('idle')
@@ -79,9 +81,11 @@ const SubmitForm = () => {
     setStatus('submitting')
 
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (accessToken) headers.Authorization = `Bearer ${accessToken}`
       const res = await fetch('/v1/contributions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           title: form.title,
           content: form.content,
@@ -93,6 +97,7 @@ const SubmitForm = () => {
           authorType: form.authorType,
           authorName: form.authorType !== 'anonymous' ? form.authorName : undefined,
           contact: form.contact || undefined,
+          website: form.website,
         }),
       })
 
@@ -177,8 +182,8 @@ const SubmitForm = () => {
         className={styles.honeypot}
         tabIndex={-1}
         autoComplete="off"
-        value=""
-        readOnly
+        value={form.website}
+        onChange={(e) => set('website', e.target.value)}
       />
 
       <FormField label="标题" required error={errors.title}>

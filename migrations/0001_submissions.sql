@@ -48,17 +48,18 @@ CREATE TABLE IF NOT EXISTS contribution_review_events (
 CREATE INDEX IF NOT EXISTS idx_review_events_contrib ON contribution_review_events(contribution_id, created_at);
 
 CREATE TABLE IF NOT EXISTS refresh_tokens (
-  token_hash       TEXT PRIMARY KEY,
-  user_id          TEXT NOT NULL,
-  provider         TEXT NOT NULL,
-  username         TEXT NOT NULL,
-  is_admin         INTEGER NOT NULL DEFAULT 0,
-  token_version    INTEGER NOT NULL DEFAULT 0,
-  status           TEXT NOT NULL DEFAULT 'active',
-  rotated_to_hash  TEXT,
-  created_at       INTEGER NOT NULL,
-  expires_at       INTEGER NOT NULL,
-  used_at          INTEGER
+  token_hash        TEXT PRIMARY KEY,
+  user_id           TEXT NOT NULL,
+  provider          TEXT NOT NULL,
+  provider_user_id  TEXT,
+  username          TEXT NOT NULL,
+  is_admin          INTEGER NOT NULL DEFAULT 0,
+  token_version     INTEGER NOT NULL DEFAULT 0,
+  status            TEXT NOT NULL DEFAULT 'active',
+  rotated_to_hash   TEXT,
+  created_at        INTEGER NOT NULL,
+  expires_at        INTEGER NOT NULL,
+  used_at           INTEGER
 );
 
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);
@@ -72,6 +73,13 @@ CREATE TABLE IF NOT EXISTS login_codes (
   is_admin    INTEGER NOT NULL DEFAULT 0,
   expires_at  INTEGER NOT NULL,
   created_at  INTEGER NOT NULL
+);
+
+-- apidocs.md §C2 — rate limiting (D1-backed, shared across isolates)
+CREATE TABLE IF NOT EXISTS rate_limits (
+  ip_hash  TEXT NOT NULL PRIMARY KEY,
+  count    INTEGER NOT NULL DEFAULT 1,
+  reset_at INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS oauth_pending (

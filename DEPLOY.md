@@ -63,30 +63,35 @@ npx wrangler d1 execute transcircle-submissions \
    - Output directory: `dist`
 4. 绑定 D1：变量名 `DB`，选择 `transcircle-submissions`
 
-## 3. Pages 环境变量 & Secrets（Settings → Environment variables）
+## 3. Pages 环境变量（Settings → Environment variables）
 
-| 变量 | 说明 |
-|------|------|
-| `TEMP_ADMIN_TOKEN` | 临时管理员令牌（OAuth 配置完成前必设） |
-| `SESSION_SECRET` | `openssl rand -hex 32` 生成 |
-| `GITHUB_CLIENT_ID` | GitHub OAuth App（可选） |
-| `GITHUB_CLIENT_SECRET` | GitHub OAuth App（可选） |
-| `X_CLIENT_ID` | X OAuth App（可选） |
-| `X_CLIENT_SECRET` | X OAuth App（可选） |
-| `STORY_REPO_TOKEN` | GitHub PAT，自动构建用（可选） |
-| `TURNSTILE_SITE_KEY` | Cloudflare Turnstile（可选） |
-| `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile（可选） |
+所有变量统一在 Cloudflare Dashboard 管理，wrangler.jsonc 仅保留三个非敏感常量。
 
-## 4. 非敏感环境变量
+### 必需（生产运行依赖）
 
-| 变量 | 值 |
-|------|-----|
-| `GITHUB_ORG` | `TransCircle` |
-| `STORY_REPO_OWNER` | `TransCircle` |
-| `STORY_REPO_NAME` | `story.transcircle.org` |
-| `GITHUB_CLIENT_ID` | GitHub OAuth Client ID（非敏感，可放这里） |
-| `X_CLIENT_ID` | X OAuth Client ID（非敏感，可放这里） |
-| `TURNSTILE_SITE_KEY` | Turnstile Site Key（非敏感，可放这里） |
+| 变量 | 说明 | 加密 |
+|------|------|------|
+| `SESSION_SECRET` | `openssl rand -hex 32` 生成，JWT 签名密钥 | 🔒 Secret |
+| `TEMP_ADMIN_TOKEN` | 临时管理员令牌（OAuth 可用前唯一管理入口）| 🔒 Secret |
+
+### OAuth（登录功能需要）
+
+| 变量 | 说明 | 加密 |
+|------|------|------|
+| `GITHUB_CLIENT_ID` | GitHub OAuth App Client ID | 明文 |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth App Client Secret | 🔒 Secret |
+| `X_CLIENT_ID` | X OAuth 2.0 Client ID | 明文 |
+| `X_CLIENT_SECRET` | X OAuth 2.0 Client Secret | 🔒 Secret |
+
+### 可选
+
+| 变量 | 说明 | 加密 |
+|------|------|------|
+| `STORY_REPO_TOKEN` | GitHub PAT (repo scope)，审核通过自动构建 story 站点 | 🔒 Secret |
+| `TURNSTILE_SITE_KEY` | Cloudflare Turnstile Site Key | 明文 |
+| `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile Secret Key | 🔒 Secret |
+
+> **注意**：`GITHUB_ORG`、`STORY_REPO_OWNER`、`STORY_REPO_NAME` 已硬编码在 `wrangler.jsonc`，无需在 Dashboard 重复设置。
 
 ## 5. 验证
 
