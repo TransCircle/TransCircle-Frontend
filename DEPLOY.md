@@ -1,8 +1,47 @@
 # 合入 main 后的部署清单
 
+## 0. Cloudflare API Token（CI/CD 必需）
+
+### 获取 Account ID
+
+1. 打开 [Cloudflare Dashboard](https://dash.cloudflare.com/)
+2. 登录后，右侧边栏顶部可见 **Account ID**，点击复制
+3. 也可从 URL 获取：`https://dash.cloudflare.com/<Account ID>`
+
+### 创建 API Token
+
+1. Cloudflare Dashboard → 右上角头像 → **My Profile**
+2. 左侧 **API Tokens** → 点 **Create Token**
+3. 选 **Create Custom Token**，配置：
+
+   | 字段 | 值 |
+   |------|-----|
+   | Token name | `TransCircle-GitHub-Actions` |
+   | Permissions → Account → Cloudflare Pages | `Edit` |
+   | Permissions → Account → D1 | `Edit` |
+   | Permissions → Account → Workers Scripts | `Edit` |
+   | Account Resources | 选择当前账号 |
+   | TTL | 365 days |
+
+4. **Continue to summary** → **Create Token**
+5. **立即复制 Token**（只显示一次，刷新后不可见）
+
+### 添加 GitHub Secrets
+
+1. GitHub → TransCircle-Frontend 仓库 → **Settings** → **Secrets and variables** → **Actions**
+2. 点击 **New repository secret**，添加：
+   - `CLOUDFLARE_API_TOKEN` = 上面复制的 Token
+   - `CLOUDFLARE_ACCOUNT_ID` = 你的 Account ID
+
 ## 1. Cloudflare D1 数据库
 
 ```bash
+# 用刚才的 Token 登录
+npx wrangler login
+# 或设置环境变量
+# export CLOUDFLARE_API_TOKEN=xxx
+# export CLOUDFLARE_ACCOUNT_ID=xxx
+
 # 创建生产数据库
 npx wrangler d1 create transcircle-submissions
 
@@ -24,7 +63,7 @@ npx wrangler d1 execute transcircle-submissions \
    - Output directory: `dist`
 4. 绑定 D1：变量名 `DB`，选择 `transcircle-submissions`
 
-## 3. Secrets（Settings → Environment variables → Add secret）
+## 3. Pages 环境变量 & Secrets（Settings → Environment variables）
 
 | 变量 | 说明 |
 |------|------|
