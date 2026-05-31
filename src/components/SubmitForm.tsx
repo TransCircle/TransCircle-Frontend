@@ -3,6 +3,7 @@ import { MdEditor } from 'md-editor-rt'
 import 'md-editor-rt/lib/style.css'
 import { useTheme } from '@/context/ThemeContext'
 import { useAuth } from '@/context/AuthContext'
+import API_BASE from '@/config'
 import FormField from './FormField'
 import styles from './SubmitForm.module.css'
 
@@ -83,7 +84,7 @@ const SubmitForm = () => {
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (accessToken) headers.Authorization = `Bearer ${accessToken}`
-      const res = await fetch('/v1/contributions', {
+      const res = await fetch(`${API_BASE}/contributions`, {
         method: 'POST',
         headers,
         body: JSON.stringify({

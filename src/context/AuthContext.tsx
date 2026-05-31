@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
+import API_BASE from '@/config'
 
 interface User {
   provider: 'github' | 'x'
@@ -35,7 +36,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const init = async () => {
       // Try refresh to get an access token
       try {
-        const refreshRes = await fetch('/v1/auth/refresh', { method: 'POST' })
+        const refreshRes = await fetch(`${API_BASE}/auth/refresh`, { method: 'POST' })
         if (refreshRes.ok) {
           const body = await refreshRes.json() as { data?: { accessToken?: string } }
           if (body.data?.accessToken) {
@@ -49,7 +50,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         const headers: Record<string, string> = {}
         if (memoryToken) headers.Authorization = `Bearer ${memoryToken}`
-        const res = await fetch('/v1/me', { headers })
+        const res = await fetch(`${API_BASE}/me`, { headers })
         const body = await res.json() as { data?: { user: User | null } }
         if (body.data?.user) setUser(body.data.user)
       } catch { /* API not available */ }
@@ -62,7 +63,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Start OAuth flow: fetch authorization URL from backend, then redirect
   const loginWithGitHub = useCallback(async () => {
     try {
-      const res = await fetch('/v1/auth/oauth/github/start')
+      const res = await fetch(`${API_BASE}/auth/oauth/github/start`)
       const body = await res.json() as { data?: { authorizationUrl?: string } }
       if (body.data?.authorizationUrl) {
         window.location.href = body.data.authorizationUrl
@@ -72,7 +73,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const loginWithX = useCallback(async () => {
     try {
-      const res = await fetch('/v1/auth/oauth/x/start')
+      const res = await fetch(`${API_BASE}/auth/oauth/x/start`)
       const body = await res.json() as { data?: { authorizationUrl?: string } }
       if (body.data?.authorizationUrl) {
         window.location.href = body.data.authorizationUrl
@@ -83,7 +84,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Exchange loginCode for access token (called from callback page)
   const exchangeLoginCode = useCallback(async (loginCode: string): Promise<User | null> => {
     try {
-      const res = await fetch('/v1/auth/oauth/exchange', {
+      const res = await fetch(`${API_BASE}/auth/oauth/exchange`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ loginCode }),
@@ -106,7 +107,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const csrfMatch = document.cookie.match(/oauth_pending_csrf=([^;]+)/)
       const csrfToken = csrfMatch?.[1] || ''
 
-      const res = await fetch(`/v1/auth/oauth/complete-registration?provider=${encodeURIComponent(provider)}`, {
+      const res = await fetch(`${API_BASE}/auth/oauth/complete-registration?provider=${encodeURIComponent(provider)}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -129,7 +130,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = useCallback(async () => {
     const headers: Record<string, string> = {}
     if (memoryToken) headers.Authorization = `Bearer ${memoryToken}`
-    await fetch('/v1/auth/logout', { method: 'POST', headers }).catch(() => {})
+    await fetch(`${API_BASE}/auth/logout`, { method: 'POST', headers }).catch(() => {})
     memoryToken = null
     setAccessToken(null)
     setUser(null)

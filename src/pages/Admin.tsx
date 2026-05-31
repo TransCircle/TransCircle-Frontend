@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
+import API_BASE from '@/config'
 import styles from './Admin.module.css'
 
 const TEMP_TOKEN_KEY = 'tc_temp_admin_token'
@@ -108,7 +109,7 @@ const Admin = () => {
       const params = new URLSearchParams({ status: activeTab, limit: '50' })
       if (cursor) params.set('cursor', cursor)
 
-      const res = await fetch(`/v1/admin/contributions?${params}`, { headers: authHeaders() })
+      const res = await fetch(`${API_BASE}/admin/contributions?${params}`, { headers: authHeaders() })
       if (res.status === 403) {
         localStorage.removeItem(TEMP_TOKEN_KEY)
         localStorage.removeItem(TEMP_TOKEN_EXPIRY_KEY)
@@ -149,7 +150,7 @@ const Admin = () => {
 
   const fetchDetail = async (id: string) => {
     try {
-      const res = await fetch(`/v1/admin/contributions/${id}`, { headers: authHeaders() })
+      const res = await fetch(`${API_BASE}/admin/contributions/${id}`, { headers: authHeaders() })
       if (!res.ok) throw new Error('加载失败')
       const body = await res.json() as { data?: Submission }
       setSelected(body.data ?? null)
@@ -163,7 +164,7 @@ const Admin = () => {
     if (!selected) return
     const v = selected.version || 1
     try {
-      const res = await fetch(`/v1/admin/contributions/${selected.id}/review`, {
+      const res = await fetch(`${API_BASE}/admin/contributions/${selected.id}/review`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({

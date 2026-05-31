@@ -3,22 +3,5 @@
   "name": "transcircle-submit",
   "pages_build_output_dir": "dist",
   "compatibility_date": "2025-05-01",
-  "compatibility_flags": ["nodejs_compat"],
-
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "transcircle-submissions",
-      "database_id": "PLACEHOLDER_D1_ID"
-    }
-  ],
-
-  // Non-sensitive config — safe to commit
-  // All secrets and per-environment vars managed via Cloudflare Dashboard:
-  //   Settings → Environment variables
-  "vars": {
-    "GITHUB_ORG": "TransCircle",
-    "STORY_REPO_OWNER": "TransCircle",
-    "STORY_REPO_NAME": "story.transcircle.org"
-  }
+  "compatibility_flags": ["nodejs_compat"]
 }
