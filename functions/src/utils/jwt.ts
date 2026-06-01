@@ -5,8 +5,8 @@ const JWT_SECRET = (sessionConf.SESS_SECRET as string) || 'default-secret-change
 
 const ALGO = { name: 'HMAC', hash: 'SHA-256' } as const;
 
-function b64UrlEncode(buf: ArrayBuffer): string {
-  return btoa(String.fromCharCode(...new Uint8Array(buf)))
+function b64UrlEncode(data: Uint8Array): string {
+  return btoa(String.fromCharCode(...data))
     .replace(/=/g, '')
     .replace(/\+/g, '-')
     .replace(/\//g, '_');
@@ -40,12 +40,12 @@ export async function signJwt(payload: Omit<JwtPayload, 'iat' | 'exp'>): Promise
   const body = b64UrlEncode(new TextEncoder().encode(JSON.stringify({
     ...payload,
     iat: now,
-    exp: now + 900, // 15 minutes
+    exp: now + 300, // 5 minutes
   })));
 
   const key = await getKey();
   const signature = await crypto.subtle.sign(ALGO, key, new TextEncoder().encode(`${header}.${body}`));
-  return `${header}.${body}.${b64UrlEncode(signature)}`;
+  return `${header}.${body}.${b64UrlEncode(new Uint8Array(signature))}`;
 }
 
 /** Verify and decode a JWT. Returns null if invalid/expired. */
@@ -55,10 +55,12 @@ export async function verifyJwt(token: string): Promise<JwtPayload | null> {
 
   try {
     const key = await getKey();
+    // Cast through unknown for TS 6.0 BufferSource strictness
+    const decodedSig = b64UrlDecode(parts[2]) as unknown as BufferSource;
     const valid = await crypto.subtle.verify(
       ALGO,
       key,
-      b64UrlDecode(parts[2]),
+      decodedSig,
       new TextEncoder().encode(`${parts[0]}.${parts[1]}`),
     );
     if (!valid) return null;

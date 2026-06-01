@@ -10,6 +10,9 @@ import { router } from './router'
 
 import './styles/index.css'
 
+// Initialize i18n — side-effect import ensures language resources are loaded
+import './i18n/config'
+
 ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement,
 ).render(

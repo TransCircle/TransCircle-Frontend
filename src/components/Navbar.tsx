@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, type ReactNode } from "react";
 import { Link } from 'react-router-dom'
-import ThemeToggle from "./ThemeToggle";
+import { useTranslation } from 'react-i18next'
+import { ThemeToggle } from "./ThemeToggle";
 import styles from "./Navbar.module.css";
 
 interface MobileLink {
@@ -15,7 +16,8 @@ interface NavbarProps {
 
 const MOBILE_BREAKPOINT = 1200;
 
-const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
+export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
+  const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false);
 
   const hamburgerRef = useRef<HTMLButtonElement>(null);
@@ -71,7 +73,7 @@ const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
 
   return (
     <>
-      <nav className={styles.navbar} aria-label="主导航">
+      <nav className={styles.navbar} aria-label={t('nav.ariaLabel')}>
         <div className={styles.container}>
           <div className={styles.leftSection}>
             <button
@@ -79,7 +81,7 @@ const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
               type="button"
               className={styles.hamburger}
               onClick={() => (isOpen ? closeMenu() : openMenu())}
-              aria-label={isOpen ? "关闭菜单" : "打开菜单"}
+              aria-label={isOpen ? t('nav.closeMenu') : t('nav.openMenu')}
               aria-expanded={isOpen}
               aria-controls="nav-menu"
             >
@@ -88,7 +90,7 @@ const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
               <span className={styles.bar}></span>
             </button>
 
-            <div className={styles.logo}>TransCircle</div>
+            <div className={styles.logo}>{t('nav.logo')}</div>
           </div>
 
           <ul
@@ -96,10 +98,10 @@ const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
             id="nav-menu"
             className={`${styles.navLinks} ${isOpen ? styles.active : ""}`}
           >
-            <li><a href="https://transcircle.org" onClick={closeMenu}>首页</a></li>
-            <li><Link to="/submit" onClick={closeMenu}>故事征集</Link></li>
-            <li><a href="#archive" onClick={closeMenu}>人物归档（开发中）</a></li>
-            <li><a href="#community" onClick={closeMenu}>社群互助（开发中）</a></li>
+            <li><a href="https://transcircle.org" onClick={closeMenu}>{t('nav.home')}</a></li>
+            <li><Link to="/submit" onClick={closeMenu}>{t('nav.submit')}</Link></li>
+            <li><a href="#archive" onClick={closeMenu}>{t('nav.archive')}</a></li>
+            <li><a href="#community" onClick={closeMenu}>{t('nav.community')}</a></li>
 
             {mobileLinks && (
               <>
@@ -121,7 +123,7 @@ const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
 
             <li className={styles.mobileDivider}></li>
             <li className={`${styles.mobileOnly} ${styles.mobileThemeToggle}`}>
-              <div className={styles.mobileThemeLabel}>主题</div>
+              <div className={styles.mobileThemeLabel}>{t('nav.mobileThemeLabel')}</div>
               <ThemeToggle className={styles.mobileThemeToggleGroup} />
             </li>
           </ul>
@@ -140,5 +142,3 @@ const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
     </>
   );
 };
-
-export default Navbar;

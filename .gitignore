@@ -18,3 +18,6 @@ config.toml
 # local env
 .env
 .env.local
+
+# generated lockfile (functions is standalone, lockfile created by CI)
+functions/pnpm-lock.yaml

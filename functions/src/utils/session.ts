@@ -4,24 +4,15 @@ import { ulid } from './ulid';
 const SESSION_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
 const REFRESH_TOKEN_BYTES = 32;
 
-function hashToken(token: string): string {
-  let hash = 0;
-  for (const c of token) {
-    hash = ((hash << 5) - hash) + c.charCodeAt(0);
-    hash |= 0;
-  }
-  return Math.abs(hash).toString(36);
-}
-
 function randomToken(): string {
   const buf = crypto.getRandomValues(new Uint8Array(REFRESH_TOKEN_BYTES));
   return Array.from(buf).map(b => b.toString(36).padStart(2, '0')).join('');
 }
 
-function hashSha256(data: string): string {
-  // Simple SHA-256 via WebCrypto for session token prefix hashing
-  const enc = new TextEncoder();
-  // Use a synchronous approach — for async we'd need restructuring
+/** Simple DJB2-style hash — short, fast, NOT cryptographic.
+ *  Used for token indexing and IP/UA fingerprinting only.
+ *  Do NOT use for security-sensitive hashing. */
+function shortHash(data: string): string {
   let h = 0;
   for (const c of data) {
     h = ((h << 5) - h) + c.charCodeAt(0);
@@ -53,10 +44,10 @@ export async function createSession(
   const sessionId = ulid();
   const refreshToken = randomToken();
   const tokenPrefix = refreshToken.slice(0, 8);
-  const tokenHash = hashSha256(refreshToken);
-  const ipHash = hashSha256(ip || 'unknown');
+  const tokenHash = shortHash(refreshToken);
+  const ipHash = shortHash(ip || 'unknown');
   const ipPrefix = (ip || 'unknown').split('.').slice(0, 3).join('.') + '.0';
-  const uaHash = hashSha256(ua || 'unknown');
+  const uaHash = shortHash(ua || 'unknown');
   const now = Date.now();
 
   await exec(
@@ -77,13 +68,16 @@ export async function createSession(
 /**
  * Verify and rotate a refresh token.
  * Returns null on invalid/reused token.
+ *
+ * Atomic rotation: UPDATE ... WHERE status='active' eliminates the
+ * TOCTOU race between checking status and marking as rotated.
  */
 export async function rotateRefreshToken(
   rawToken: string,
   ip: string,
   ua: string,
 ): Promise<SessionInfo | null> {
-  const tokenHash = hashSha256(rawToken);
+  const tokenHash = shortHash(rawToken);
   const prefix = rawToken.slice(0, 8);
 
   const event = await queryOne<any[]>(
@@ -95,10 +89,23 @@ export async function rotateRefreshToken(
 
   if (!event) return null;
 
-  // Mark current token as rotated/reused
   const now = Date.now();
+  const newToken = randomToken();
+  const newHash = shortHash(newToken);
+  const newPrefix = newToken.slice(0, 8);
 
-  if (event.status === 'active') {
+  // ── Atomic claim: only 'active' tokens can be rotated ──────
+  // If two requests race, the first UPDATE wins (affectedRows === 1).
+  // The loser falls through to the reuse/theft-detection path.
+  const claimed = await exec(
+    `UPDATE refresh_token_events
+     SET status = 'rotated', rotatedToHash = ?, usedAt = ?
+     WHERE id = ? AND status = 'active'`,
+    [newHash, now, event.id],
+  );
+
+  if (claimed.affectedRows === 1) {
+    // This request won the race — token is atomically ours.
     const session = await queryOne<any[]>(
       `SELECT s.id, s.userId, s.expiresAt, s.revokedAt, u.tokenVersion, u.isAdmin
        FROM sessions s
@@ -108,39 +115,26 @@ export async function rotateRefreshToken(
     );
 
     if (!session || session.revokedAt || session.expiresAt < now) {
-      // Session invalid — revoke this token event
+      // Session already gone — revoke the rotated token
       await exec(
-        `UPDATE refresh_token_events SET status = 'revoked', usedAt = ? WHERE id = ?`,
-        [now, event.id],
+        `UPDATE refresh_token_events SET status = 'revoked' WHERE tokenHash = ?`,
+        [newHash],
       );
       return null;
     }
 
-    // Rotate: issue new token
-    const newToken = randomToken();
-    const newHash = hashSha256(newToken);
-    const newPrefix = newToken.slice(0, 8);
-
-    // Mark old as rotated
-    await exec(
-      `UPDATE refresh_token_events SET status = 'rotated', rotatedToHash = ?, usedAt = ? WHERE id = ?`,
-      [newHash, now, event.id],
-    );
-
-    // Insert new token event
+    // Insert new active token event
     await exec(
       `INSERT INTO refresh_token_events (id, sessionId, tokenHash, tokenPrefix, status, createdAt)
        VALUES (?, ?, ?, ?, 'active', ?)`,
       [ulid(), event.sessionId, newHash, newPrefix, now],
     );
 
-    // Update session lastUsedAt
     await exec(
       `UPDATE sessions SET lastUsedAt = ? WHERE id = ?`,
       [now, event.sessionId],
     );
 
-    // Store new raw token in response (returned to caller — caller must set cookie)
     return {
       id: session.id,
       userId: session.userId,
@@ -150,9 +144,15 @@ export async function rotateRefreshToken(
     };
   }
 
-  // Reused or rotated token — potential token theft
-  if (event.status === 'rotated' && event.rotatedToHash) {
-    // Revoke the rotated-to token chain
+  // ── Token already consumed — potential token theft ──────────
+  if (event.status === 'active') {
+    // Was active at read time but someone else rotated it first — replay.
+    await exec(
+      `UPDATE sessions SET revokedAt = ?, revokedReason = 'refresh_reuse_detected' WHERE id = ?`,
+      [now, event.sessionId],
+    );
+  } else if (event.status === 'rotated' && event.rotatedToHash) {
+    // Reuse of an already-rotated token — chase the chain.
     const rotatedEvent = await queryOne<any[]>(
       `SELECT sessionId FROM refresh_token_events WHERE tokenHash = ?`,
       [event.rotatedToHash],

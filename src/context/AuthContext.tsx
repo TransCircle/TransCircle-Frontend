@@ -1,13 +1,17 @@
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
-import API_BASE from '@/config'
+import { createContext, useEffect, useState, useCallback, type ReactNode } from 'react'
+import { API_BASE } from '@/config'
 
 interface User {
   provider: 'github' | 'x'
+  id?: string
   username: string
+  email?: string
   avatarUrl?: string
   isAdmin: boolean
   displayName?: string
   emailVerified?: boolean
+  status?: string
+  createdAt?: number
   roles?: string[]
 }
 
@@ -143,8 +147,4 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   )
 }
 
-export const useAuth = (): AuthContextValue => {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
-  return ctx
-}
+export { AuthContext, type AuthContextValue, type User }

@@ -1,13 +1,16 @@
-import SubmitForm from '@/components/SubmitForm'
+import { useTranslation } from 'react-i18next'
+import { SubmitForm } from '@/components/SubmitForm'
 import styles from '../App.module.css'
 
-const Submit = () => {
+export const Submit = () => {
+  const { t } = useTranslation()
+
   return (
     <>
       <header className={styles.contentHeader}>
-        <h1 className={styles.mainTitle}>故事投稿</h1>
+        <h1 className={styles.mainTitle}>{t('submitPage.title')}</h1>
         <p className={styles.subTitle}>
-          分享你的经历与故事。所有投稿经审核后发布在 story.transcircle.org。
+          {t('submitPage.description')}
         </p>
       </header>
 
@@ -15,5 +18,3 @@ const Submit = () => {
     </>
   )
 }
-
-export default Submit

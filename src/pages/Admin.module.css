@@ -4,6 +4,26 @@
   gap: 1.5rem;
 }
 
+/* ── Shared heading ───────────────────────── */
+
+.heading {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.headingDesc {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin: 0.25rem 0 0 0;
+}
+
+.userInfo {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
 /* ── Login ────────────────────────────────── */
 
 .loginBox {
@@ -28,6 +48,21 @@
 .loginBox input:focus {
   border-color: var(--primary-pink);
   box-shadow: 0 0 0 3px rgba(255, 133, 162, 0.15);
+}
+
+.loginBoxBtn {
+  margin-bottom: 1.5rem;
+}
+
+.loginDivider {
+  border-top: 1px solid var(--divider-color);
+  padding-top: 1.25rem;
+}
+
+.loginDescription {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0 0 0.65rem 0;
 }
 
 /* ── Tabs ─────────────────────────────────── */
@@ -265,6 +300,11 @@
   cursor: pointer;
   transition: border-color 0.15s ease;
   font-family: inherit;
+}
+
+.loadMoreBtn {
+  margin-top: 1rem;
+  width: 100%;
 }
 
 .btnSecondary:hover {

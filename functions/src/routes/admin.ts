@@ -5,6 +5,7 @@ import { sendSuccess, sendError, Errors } from '../utils/response';
 import { requireAuth, requireAdmin } from '../middleware/auth';
 import { reviewSchema } from '../utils/validation';
 import { rateLimitCheck } from '../middleware/rateLimit';
+import { conf } from '../Config';
 
 const router: RouterType = Router();
 
@@ -65,24 +66,24 @@ router.get('/contributions', async (req, res) => {
 
   // Get author metadata from contributions (we store it in a simple way)
   // For simplicity, extract what we can from the data
-  const submissions = rows.map((row: any) => ({
-    id: row.id,
-    title: row.title,
-    category: row.category,
-    authorType: row.authorType,
-    authorName: row.authorName,
-    contact: row.contact,
-    status: row.status,
-    version: row.version,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-    submittedAt: row.submittedAt,
+  const submissions = rows.map((row: Record<string, unknown>) => ({
+    id: row.id as string,
+    title: row.title as string,
+    category: row.category as string | null,
+    authorType: row.authorType as string | null,
+    authorName: row.authorName as string | null,
+    contact: row.contact as string | null,
+    status: row.status as string,
+    version: row.version as number,
+    createdAt: row.createdAt as number,
+    updatedAt: row.updatedAt as number,
+    submittedAt: row.submittedAt as number | null,
     submitterGh: null as string | null,
     submitterX: null as string | null,
     author: row.username ? {
-      id: row.authorUserId,
-      displayName: row.displayName || row.username,
-      avatarUrl: row.avatarUrl,
+      id: row.authorUserId as string | null,
+      displayName: (row.displayName || row.username) as string,
+      avatarUrl: row.avatarUrl as string | null,
     } : null,
   }));
 
@@ -217,11 +218,58 @@ router.post('/contributions/:id/review', (req, _res, next) => { req.rateLimitAct
     ],
   );
 
+  // If approved, trigger story site rebuild via GitHub repository_dispatch
+  if (toStatus === 'approved') {
+    triggerStoryRebuild(req).catch((err) =>
+      console.error('Story rebuild trigger failed (non-blocking):', err)
+    );
+  }
+
   sendSuccess(res, {
     id,
     status: toStatus,
     version: newVersion,
   }, req.requestId);
 });
+
+// ── Story rebuild trigger ──────────────────────
+
+interface StoryConfig {
+  STORY_REPO?: string;
+  STORY_REPO_TOKEN?: string;
+}
+
+async function triggerStoryRebuild(req: import('express').Request): Promise<void> {
+  const storyConf = conf.STORY as StoryConfig | undefined;
+  const token = storyConf?.STORY_REPO_TOKEN;
+  const repo = storyConf?.STORY_REPO;
+
+  if (!token || !repo) {
+    // Not configured — skip silently
+    return;
+  }
+
+  const res = await fetch(`https://api.github.com/repos/${repo}/dispatches`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/vnd.github.v3+json',
+      Authorization: `Bearer ${token}`,
+      'User-Agent': 'TransCircle',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      event_type: 'story-rebuild',
+      client_payload: {
+        api_base: (conf.STORY as Record<string, string> | undefined)?.STORY_API_BASE || '',
+        triggered_by: req.user?.userId || 'unknown',
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`GitHub dispatch failed (${res.status}): ${text}`);
+  }
+}
 
 export default router;

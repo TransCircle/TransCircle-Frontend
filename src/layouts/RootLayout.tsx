@@ -1,10 +1,10 @@
 import { Outlet } from 'react-router-dom'
 
-import Navbar from '../components/Navbar'
-import LicenseFooter from '../components/LicenseFooter'
+import { Navbar } from '../components/Navbar'
+import { LicenseFooter } from '../components/LicenseFooter'
 import styles from '../App.module.css'
 
-const Rootlayout = () => {
+export const RootLayout = () => {
   return (
     <div className={styles.appContainer}>
       <Navbar />
@@ -17,5 +17,3 @@ const Rootlayout = () => {
     </div>
   )
 }
-
-export default Rootlayout

@@ -31,7 +31,8 @@ export const completeRegistrationSchema = z.object({
     .refine(v => [...v].length >= 2 && [...v].length <= 32, {
       message: '用户名长度需 2-32 个字符',
     }),
-  email: z.string().email('邮箱格式不正确').refine(v => v === '' || [...v].length <= 254, '邮箱最多 254 个字符').optional().or(z.literal('')),
-  password: z.string().min(8, '密码至少 8 个字符').max(128),
-  displayName: z.string().refine(v => [...v].length <= 50, '最多 50 个字符').optional(),
+  email: z.string().email('邮箱格式不正确').refine(v => [...v].length <= 254, '邮箱最多 254 个字符'),
+  password: z.string().min(12, '密码至少 12 个字符').max(128),
+  displayName: z.string().refine(v => [...v].length >= 1 && [...v].length <= 50, '显示名称需 1-50 个字符'),
+  emailMatchesProvider: z.boolean().optional(),
 });

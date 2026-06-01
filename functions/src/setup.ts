@@ -56,9 +56,10 @@ async function main() {
     for (const stmt of statements) {
       try {
         await conn.execute(stmt);
-      } catch (err: any) {
+      } catch (err: unknown) {
         // Table already exists errors are OK
-        if (err?.errno === 1050) {
+        const mysqlErr = err as { errno?: number; message?: string };
+        if (mysqlErr?.errno === 1050) {
           console.log(`  Table already exists, skipping...`);
         } else {
           console.error(`  Error executing: ${stmt.slice(0, 60)}...`);

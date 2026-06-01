@@ -1,14 +1,12 @@
-// OAuth callback handler page
-// Backend redirects here with ?status=login_ok&loginCode=xxx&provider=github
-// This page exchanges the loginCode for an access token and redirects
-
 import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useAuth } from '@/context/AuthContext'
+import { useTranslation } from 'react-i18next'
+import { useAuth } from '@/context/useAuth'
 
-const OAuthCallback = () => {
+export const OAuthCallback = () => {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { exchangeLoginCode } = useAuth()
 
   useEffect(() => {
@@ -37,9 +35,7 @@ const OAuthCallback = () => {
 
   return (
     <main style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
-      <p style={{ fontSize: '1.1rem', color: 'var(--text-muted)' }}>完成登录...</p>
+      <p style={{ fontSize: '1.1rem', color: 'var(--text-muted)' }}>{t('oauth.loading')}</p>
     </main>
   )
 }
-
-export default OAuthCallback

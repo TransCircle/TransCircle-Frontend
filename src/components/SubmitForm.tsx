@@ -1,10 +1,12 @@
 import { useState, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { MdEditor } from 'md-editor-rt'
 import 'md-editor-rt/lib/style.css'
-import { useTheme } from '@/context/ThemeContext'
-import { useAuth } from '@/context/AuthContext'
-import API_BASE from '@/config'
-import FormField from './FormField'
+import { useTheme } from '@/context/useTheme'
+import { useAuth } from '@/context/useAuth'
+import { API_BASE } from '@/config'
+import { FormField } from './FormField'
+import { FieldErrorConsumer } from './FieldError'
 import styles from './SubmitForm.module.css'
 
 const CATEGORIES = ['个人经历', '观点评论', '资源指南'] as const
@@ -42,19 +44,20 @@ const INITIAL_FORM: FormData = {
   website: '',
 }
 
-const validate = (data: FormData): FormErrors => {
+const validate = (data: FormData, t: (key: string) => string): FormErrors => {
   const errors: FormErrors = {}
-  if (!data.title.trim()) errors.title = '请输入标题'
-  if (!data.content.trim()) errors.content = '请输入正文'
-  if (!data.category) errors.category = '请选择分类'
+  if (!data.title.trim()) errors.title = t('submit.errors.titleRequired')
+  if (!data.content.trim()) errors.content = t('submit.errors.contentRequired')
+  if (!data.category) errors.category = t('submit.errors.categoryRequired')
   if ((data.authorType === 'real' || data.authorType === 'pen_name') && !data.authorName.trim()) {
-    errors.authorName = '请输入署名名称'
+    errors.authorName = t('submit.errors.authorNameRequired')
   }
-  if (!data.agreement) errors.agreement = '请同意投稿协议'
+  if (!data.agreement) errors.agreement = t('submit.errors.agreementRequired')
   return errors
 }
 
-const SubmitForm = () => {
+export const SubmitForm = () => {
+  const { t } = useTranslation()
   const { theme } = useTheme()
   const { user, loading, accessToken, loginWithGitHub, loginWithX } = useAuth()
   const [form, setForm] = useState<FormData>(INITIAL_FORM)
@@ -73,7 +76,7 @@ const SubmitForm = () => {
     e.preventDefault()
     setServerError('')
 
-    const validationErrors = validate(form)
+    const validationErrors = validate(form, t)
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors)
       return
@@ -108,15 +111,15 @@ const SubmitForm = () => {
       }
 
       if (!res.ok) {
-        setServerError(body.error?.message ?? '提交失败，请稍后重试')
+        setServerError(body.error?.message ?? t('submit.serverError'))
         setStatus('error')
         return
       }
 
-      setSubmitId(body.data?.id!)
+      setSubmitId(body.data?.id ?? '')
       setStatus('success')
     } catch {
-      setServerError('网络错误，请检查网络连接后重试')
+      setServerError(t('submit.networkError'))
       setStatus('error')
     }
   }
@@ -131,10 +134,10 @@ const SubmitForm = () => {
   if (status === 'success') {
     return (
       <div className={styles.successBox}>
-        <h3 className={styles.successTitle}>投稿成功</h3>
-        <p className={styles.successId}>投稿编号：{submitId}</p>
+        <h3 className={styles.successTitle}>{t('submit.success.title')}</h3>
+        <p className={styles.successId}>{t('submit.success.id', { id: submitId })}</p>
         <p className={styles.successHint}>
-          请保存此编号以便查询进度。审核通过后将发表在 story.transcircle.org。
+          {t('submit.success.hint')}
         </p>
         <button
           type="button"
@@ -142,7 +145,7 @@ const SubmitForm = () => {
           onClick={handleReset}
           style={{ marginTop: '1rem' }}
         >
-          继续投稿
+          {t('submit.status.continue')}
         </button>
       </div>
     )
@@ -160,16 +163,16 @@ const SubmitForm = () => {
                 {user.provider === 'github' ? 'GitHub' : 'X'}
               </span>
               <span className={styles.userName}>{user.username}</span>
-              <span className={styles.userTag}>已登录 · 投稿将关联到你的账号</span>
+              <span className={styles.userTag}>{t('submit.loggedInAs')}</span>
             </span>
           ) : (
             <span className={styles.loginActions}>
-              登录后可认领投稿：
+              {t('submit.loginHint')}
               <button type="button" className={styles.loginBtn} onClick={loginWithGitHub}>
-                GitHub
+                {t('submit.loginWithGithub')}
               </button>
               <button type="button" className={styles.loginBtn} onClick={loginWithX}>
-                X
+                {t('submit.loginWithX')}
               </button>
             </span>
           )}
@@ -187,19 +190,19 @@ const SubmitForm = () => {
         onChange={(e) => set('website', e.target.value)}
       />
 
-      <FormField label="标题" required error={errors.title}>
+      <FormField label={t('submit.title')} required error={errors.title}>
         <input
           className={styles.textInput}
           type="text"
           value={form.title}
           onChange={(e) => set('title', e.target.value)}
-          placeholder="输入故事标题"
+          placeholder={t('submit.titlePlaceholder')}
           maxLength={200}
         />
       </FormField>
 
-      <FormField label="正文" required error={errors.content}>
-        <div className={styles.editorWrapper}>
+      <FormField label={t('submit.content')} required error={errors.content} htmlFor="submit-content">
+        <div className={styles.editorWrapper} id="submit-content">
           <MdEditor
             value={form.content}
             onChange={(v: string) => set('content', v)}
@@ -212,13 +215,13 @@ const SubmitForm = () => {
         </div>
       </FormField>
 
-      <FormField label="分类" required error={errors.category}>
+      <FormField label={t('submit.category')} required error={errors.category}>
         <select
           className={styles.selectInput}
           value={form.category}
           onChange={(e) => set('category', e.target.value)}
         >
-          <option value="">选择分类</option>
+          <option value="">{t('submit.categoryPlaceholder')}</option>
           {CATEGORIES.map((cat) => (
             <option key={cat} value={cat}>
               {cat}
@@ -227,33 +230,38 @@ const SubmitForm = () => {
         </select>
       </FormField>
 
-      <FormField label="署名方式">
-        <div className={styles.radioGroup}>
-          {[
-            { value: 'real' as const, label: '实名' },
-            { value: 'pen_name' as const, label: '笔名' },
-            { value: 'anonymous' as const, label: '匿名' },
-          ].map((opt) => (
-            <label key={opt.value} className={styles.radioLabel}>
-              <input
-                type="radio"
-                name="authorType"
-                value={opt.value}
-                checked={form.authorType === opt.value}
-                onChange={() => {
-                  set('authorType', opt.value)
-                  if (opt.value === 'anonymous') set('authorName', '')
-                }}
-              />
-              {opt.label}
-            </label>
-          ))}
-        </div>
+      <FormField label={t('submit.authorType')}>
+        <FieldErrorConsumer>
+          {(errorId) => (
+            <div className={styles.radioGroup} role="radiogroup" aria-describedby={errorId || undefined}>
+              {[
+                { value: 'real' as const, label: t('submit.authorReal') },
+                { value: 'pen_name' as const, label: t('submit.authorPenName') },
+                { value: 'anonymous' as const, label: t('submit.authorAnonymous') },
+              ].map((opt) => (
+                <label key={opt.value} className={styles.radioLabel}>
+                  <input
+                    type="radio"
+                    name="authorType"
+                    value={opt.value}
+                    checked={form.authorType === opt.value}
+                    onChange={() => {
+                      set('authorType', opt.value)
+                      if (opt.value === 'anonymous') set('authorName', '')
+                    }}
+                    aria-invalid={!!errorId}
+                  />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+          )}
+        </FieldErrorConsumer>
       </FormField>
 
       {form.authorType !== 'anonymous' && (
         <FormField
-          label={form.authorType === 'real' ? '真实姓名' : '笔名'}
+          label={form.authorType === 'real' ? t('submit.realName') : t('submit.penName')}
           required
           error={errors.authorName}
         >
@@ -262,36 +270,41 @@ const SubmitForm = () => {
             type="text"
             value={form.authorName}
             onChange={(e) => set('authorName', e.target.value)}
-            placeholder={form.authorType === 'real' ? '输入真实姓名' : '输入笔名'}
+            placeholder={form.authorType === 'real' ? t('submit.realNamePlaceholder') : t('submit.penNamePlaceholder')}
             maxLength={50}
           />
         </FormField>
       )}
 
-      <FormField label="联系方式（选填，仅审核人员可见）">
+      <FormField label={t('submit.contact')}>
         <input
           className={styles.textInput}
           type="text"
           value={form.contact}
           onChange={(e) => set('contact', e.target.value)}
-          placeholder="邮箱、社交媒体账号等"
+          placeholder={t('submit.contactPlaceholder')}
           maxLength={200}
         />
       </FormField>
 
       <FormField label="" error={errors.agreement}>
-        <div className={styles.checkboxRow}>
-          <input
-            type="checkbox"
-            id="agreement"
-            checked={form.agreement}
-            onChange={(e) => set('agreement', e.target.checked)}
-          />
-          <label htmlFor="agreement" className={styles.checkboxLabel}>
-            我确认内容真实、原创，并授权 TransCircle 在 story.transcircle.org
-            上以 CC BY-NC-SA 4.0 协议发布。我知道投稿内容将公开可见。
-          </label>
-        </div>
+        <FieldErrorConsumer>
+          {(errorId) => (
+            <div className={styles.checkboxRow}>
+              <input
+                type="checkbox"
+                id="agreement"
+                checked={form.agreement}
+                onChange={(e) => set('agreement', e.target.checked)}
+                aria-describedby={errorId || undefined}
+                aria-invalid={!!errorId}
+              />
+              <label htmlFor="agreement" className={styles.checkboxLabel}>
+                {t('submit.agreement')}
+              </label>
+            </div>
+          )}
+        </FieldErrorConsumer>
       </FormField>
 
       {status === 'error' && serverError && (
@@ -305,10 +318,8 @@ const SubmitForm = () => {
         className={styles.submitButton}
         disabled={status === 'submitting'}
       >
-        {status === 'submitting' ? '提交中...' : '提交投稿'}
+        {status === 'submitting' ? t('submit.status.submitting') : t('submit.status.submit')}
       </button>
     </form>
   )
 }
-
-export default SubmitForm

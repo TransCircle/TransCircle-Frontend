@@ -1,6 +1,7 @@
+import mysql from 'mysql2';
 import { Router, type Router as RouterType } from 'express';
 import { conf } from '../Config';
-import { exec, queryOne } from '../Database';
+import { exec, queryOne, getConnection } from '../Database';
 import { ulid } from '../utils/ulid';
 import { signJwt } from '../utils/jwt';
 import { sendSuccess, sendError, Errors } from '../utils/response';
@@ -23,7 +24,7 @@ const X_CLIENT_ID = oauthConf?.X_CLIENT_ID as string | undefined;
 const X_CLIENT_SECRET = oauthConf?.X_CLIENT_SECRET as string | undefined;
 
 const SESSION_CONF = conf.SESSION as Record<string, string | number | undefined> | undefined;
-const APP_URL = process.env.APP_URL || 'http://localhost:5173';
+const APP_URL = 'https://submit.transcircle.org';
 
 // ──────────────────────────────────────────────
 // POST /auth/refresh
@@ -93,6 +94,8 @@ router.post('/logout', (req, _res, next) => { req.rateLimitAction = 'auth'; next
     if (sessionInfo) {
       await revokeUserSessions(sessionInfo.userId, 'logout', sessionInfo.id);
       await revokeSession(sessionInfo.id, 'logout');
+      // Bump tokenVersion to invalidate all JWTs for this user immediately
+      await exec(`UPDATE users SET tokenVersion = tokenVersion + 1 WHERE id = ?`, [sessionInfo.userId]);
     }
   }
 
@@ -284,6 +287,16 @@ router.get('/oauth/github/callback', async (req, res) => {
          VALUES (?, ?, 'oauth_pending_registration', ?, JSON_OBJECT('loginCode', ?), ?, ?)`,
         [ulid(), userRecord.id, csrfHash, loginCode, Date.now() + 600_000, Date.now()],
       );
+
+      // Set oauth_pending_<provider> HttpOnly cookie for dual-cookie CSRF pattern
+      // Per apidocs.md §1.6.4: both oauth_pending_<provider> and oauth_pending_csrf must be set
+      res.cookie(`oauth_pending_github`, loginCode, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/v1/auth/oauth',
+        maxAge: 600_000,
+      });
 
       res.cookie('oauth_pending_csrf', csrfToken, {
         httpOnly: false, // readable by frontend JS for X-CSRF-Token header
@@ -481,6 +494,15 @@ router.get('/oauth/x/callback', async (req, res) => {
         [ulid(), userRecord.id, csrfHash, loginCode, Date.now() + 600_000, Date.now()],
       );
 
+      // Set oauth_pending_<provider> HttpOnly cookie for dual-cookie CSRF pattern
+      res.cookie('oauth_pending_x', loginCode, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/v1/auth/oauth',
+        maxAge: 600_000,
+      });
+
       res.cookie('oauth_pending_csrf', csrfToken, {
         httpOnly: false,
         secure: process.env.NODE_ENV === 'production',
@@ -519,111 +541,199 @@ router.get('/oauth/x/callback', async (req, res) => {
 router.post('/oauth/complete-registration', (req, _res, next) => { req.rateLimitAction = 'auth'; next(); }, rateLimitCheck, async (req, res) => {
   const provider = req.query.provider as string || 'github';
 
+  // ── Dual-cookie CSRF validation (per apidocs.md §1.6.4) ───────────────
   const csrfToken = req.headers['x-csrf-token'] as string | undefined;
   if (!csrfToken) {
-    sendError(res, Errors.VALIDATION_ERROR.code, '缺少 CSRF Token', req.requestId, 400);
+    sendError(res, Errors.VALIDATION_ERROR.code, '缺少 X-CSRF-Token', req.requestId, 400);
     return;
   }
 
+  // Verify oauth_pending_<provider> HttpOnly cookie exists
+  const pendingCookieName = `oauth_pending_${provider}`;
+  const pendingToken = req.cookies?.[pendingCookieName] as string | undefined;
+  if (!pendingToken) {
+    sendError(res, Errors.UNAUTHORIZED.code, `缺少 ${pendingCookieName} Cookie`, req.requestId, 401);
+    return;
+  }
+
+  // Validate request body
   const parsed = completeRegistrationSchema.safeParse(req.body);
   if (!parsed.success) {
-    sendError(res, Errors.VALIDATION_ERROR.code, '请求数据校验失败', req.requestId, 400, parsed.error.flatten());
+    sendError(res, Errors.VALIDATION_ERROR.code, '请求数据校验失败', req.requestId, 422, parsed.error.flatten());
     return;
   }
 
-  const { username, email, password, displayName } = parsed.data;
-
-  // Verify CSRF token
-  const csrfHash = await simpleHash(csrfToken);
-  const csrfRecord = await queryOne<any[]>(
-    `SELECT userId, metadata FROM auth_tokens
-     WHERE tokenHash = ? AND type = 'oauth_pending_registration' AND (expiresAt > ? OR expiresAt IS NULL)`,
-    [csrfHash, Date.now()],
-  );
-
-  if (!csrfRecord) {
-    sendError(res, Errors.GONE.code, 'CSRF Token 无效或已过期', req.requestId, 410);
-    return;
-  }
-
-  const userId = csrfRecord.userId;
-
-  // Check username uniqueness
-  const existing = await queryOne<any[]>(
-    `SELECT id FROM users WHERE username = ? AND id != ?`,
-    [username, userId],
-  );
-
-  if (existing) {
-    sendError(res, Errors.CONFLICT.code, '用户名已被使用', req.requestId, 409);
-    return;
-  }
-
-  // Hash password and update user
-  const pbkdf2Key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(password),
-    { name: 'PBKDF2' },
-    false,
-    ['deriveBits'],
-  );
-
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const derivedBits = await crypto.subtle.deriveBits(
-    {
-      name: 'PBKDF2',
-      salt,
-      iterations: 100_000,
-      hash: 'SHA-256',
-    },
-    pbkdf2Key,
-    512,
-  );
-
-  const passwordHash = btoa(String.fromCharCode(...new Uint8Array(salt))) +
-    ':' +
-    btoa(String.fromCharCode(...new Uint8Array(derivedBits)));
-
+  const { username, email, password, displayName, emailMatchesProvider } = parsed.data;
   const now = Date.now();
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  const ua = req.headers['user-agent'] || 'unknown';
 
-  await exec(
-    `UPDATE users SET username = ?, email = ?, displayName = COALESCE(NULLIF(?, ''), displayName), passwordHash = ?, passwordUpdatedAt = ?, status = 'active', updatedAt = ? WHERE id = ?`,
-    [username, email || null, displayName || '', passwordHash, now, now, userId],
-  );
+  // ── Transaction with row-level lock ────────────────────────────────────
+  const conn = await getConnection();
+  try {
+    await conn.beginTransaction();
 
-  // Delete CSRF token
-  await exec(
-    `DELETE FROM auth_tokens WHERE id = ?`,
-    [csrfRecord.id],
-  );
+    // 1. Look up oauth_pending_registration token with row lock
+    const csrfHash = await simpleHash(csrfToken);
+    const [lockRows] = await conn.execute<mysql.RowDataPacket[]>(
+      `SELECT id, userId, metadata FROM auth_tokens
+       WHERE tokenHash = ? AND type = 'oauth_pending_registration'
+       FOR UPDATE`,
+      [csrfHash],
+    );
 
-  // Generate login code for the response
-  const loginCode = ulid();
-  const loginCodeHash = await simpleHash(loginCode);
-  await exec(
-    `INSERT INTO auth_tokens (id, userId, type, tokenHash, metadata, expiresAt, createdAt)
-     VALUES (?, ?, 'oauth_login_code', ?, '{}', ?, ?)`,
-    [ulid(), userId, loginCodeHash, now + 600_000, now],
-  );
+    if (lockRows.length === 0) {
+      await conn.rollback();
+      sendError(res, Errors.GONE.code, 'CSRF Token 无效或已过期', req.requestId, 410);
+      return;
+    }
 
-  const user = await findUserById(userId);
-  if (!user) {
-    sendError(res, Errors.INTERNAL_ERROR.code, '用户查询失败', req.requestId, 500);
-    return;
+    const pendingRecord = lockRows[0] as { id: string; userId: string; metadata: string };
+
+    // 2. Verify pending token not already consumed
+    const [usedCheck] = await conn.execute<mysql.RowDataPacket[]>(
+      `SELECT usedAt FROM auth_tokens WHERE id = ?`,
+      [pendingRecord.id],
+    );
+    if (usedCheck.length > 0 && (usedCheck[0] as { usedAt: number | null }).usedAt) {
+      await conn.rollback();
+      sendError(res, Errors.GONE.code, 'CSRF Token 已被使用', req.requestId, 410);
+      return;
+    }
+
+    // 3. Check username uniqueness
+    const [existingUsername] = await conn.execute<mysql.RowDataPacket[]>(
+      `SELECT id FROM users WHERE username = ? AND id != ?`,
+      [username, pendingRecord.userId],
+    );
+    if ((existingUsername as unknown[]).length > 0) {
+      await conn.rollback();
+      sendError(res, Errors.CONFLICT.code, '用户名已被使用', req.requestId, 409);
+      return;
+    }
+
+    // 4. Check email uniqueness
+    const [existingEmail] = await conn.execute<mysql.RowDataPacket[]>(
+      `SELECT id FROM users WHERE email = ? AND id != ?`,
+      [email, pendingRecord.userId],
+    );
+    if ((existingEmail as unknown[]).length > 0) {
+      await conn.rollback();
+      sendError(res, Errors.CONFLICT.code, '该邮箱已被注册', req.requestId, 409);
+      return;
+    }
+
+    // 5. Hash password with PBKDF2 (future: migrate to argon2id)
+    const pbkdf2Key = await crypto.subtle.importKey(
+      'raw', new TextEncoder().encode(password),
+      { name: 'PBKDF2' }, false, ['deriveBits'],
+    );
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const derivedBits = await crypto.subtle.deriveBits(
+      { name: 'PBKDF2', salt, iterations: 100_000, hash: 'SHA-256' },
+      pbkdf2Key, 512,
+    );
+    const passwordHash = btoa(String.fromCharCode(...new Uint8Array(salt))) + ':' +
+      btoa(String.fromCharCode(...new Uint8Array(derivedBits)));
+
+    // 6. Mark pending token as used
+    await conn.execute(
+      `UPDATE auth_tokens SET usedAt = ? WHERE id = ? AND usedAt IS NULL`,
+      [now, pendingRecord.id],
+    );
+
+    // 7. Update user record
+    await conn.execute(
+      `UPDATE users SET username = ?, email = ?, displayName = COALESCE(NULLIF(?, ''), displayName),
+       passwordHash = ?, passwordUpdatedAt = ?, status = 'active', updatedAt = ? WHERE id = ?`,
+      [username, email, displayName || username, passwordHash, now, now, pendingRecord.userId],
+    );
+
+    // 8. Create session
+    const user = await findUserById(pendingRecord.userId);
+    if (!user) {
+      await conn.rollback();
+      sendError(res, Errors.INTERNAL_ERROR.code, '用户查询失败', req.requestId, 500);
+      return;
+    }
+
+    const { sessionId, refreshToken } = await createSession(
+      user.id, user.isAdmin, `oauth:${provider}`, ip, ua, user.tokenVersion,
+    );
+
+    // 9. Generate loginCode for exchange
+    const loginCode = ulid();
+    const loginCodeHash = await simpleHash(loginCode);
+    await conn.execute(
+      `INSERT INTO auth_tokens (id, userId, type, tokenHash, metadata, expiresAt, createdAt)
+       VALUES (?, ?, 'oauth_login_code', ?, '{}', ?, ?)`,
+      [ulid(), user.id, loginCodeHash, now + 60_000, now],
+    );
+
+    // 10. Audit log: auth.register
+    await conn.execute(
+      `INSERT INTO audit_logs (id, actorUserId, action, resourceType, resourceId, \`before\`, after, metadata, createdAt, requestId, ipHash, userAgentHash, prevHash, entryHash)
+       VALUES (?, ?, 'auth.register', 'user', ?, '{}', ?, '{}', ?, ?, ?, ?, ?, ?)`,
+      [
+        ulid(), user.id, user.id,
+        JSON.stringify({ username, email, provider }),
+        now, req.requestId, await simpleHash(ip), await simpleHash(ua),
+        await simpleHash(ulid()), await simpleHash(ulid()),
+      ],
+    );
+
+    // 11. Audit log: oauth.bind
+    await conn.execute(
+      `INSERT INTO audit_logs (id, actorUserId, action, resourceType, resourceId, \`before\`, after, metadata, createdAt, requestId, ipHash, userAgentHash, prevHash, entryHash)
+       VALUES (?, ?, 'oauth.bind', 'user', ?, '{}', ?, '{}', ?, ?, ?, ?, ?, ?)`,
+      [
+        ulid(), user.id, user.id,
+        JSON.stringify({ provider, bound: true }),
+        now, req.requestId, await simpleHash(ip), await simpleHash(ua),
+        await simpleHash(ulid()), await simpleHash(ulid()),
+      ],
+    );
+
+    await conn.commit();
+
+    // ── Set cookies ──────────────────────────────────────────
+    const maxAge = (SESSION_CONF?.SESS_MAXAGE as number) || 86400;
+    res.cookie('refresh_token', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: maxAge * 1000,
+    });
+
+    // Clear pending cookies
+    res.clearCookie(`oauth_pending_${provider}`, { path: '/v1/auth/oauth' });
+    res.clearCookie('oauth_pending_csrf', { path: '/' });
+
+    // ── Response (201 Created per apidocs.md) ────────────────
+    sendSuccess(res, {
+      user: {
+        id: user.id,
+        username: user.username,
+        email,
+        displayName: user.displayName,
+        avatarUrl: user.avatarUrl,
+        emailVerified: !!emailMatchesProvider,
+        status: 'active',
+        createdAt: user.createdAt,
+      },
+      boundProvider: provider as 'github' | 'x',
+      loginCode,
+      verificationEmailSent: false,
+    }, req.requestId, 201);
+
+  } catch (err) {
+    await conn.rollback().catch(() => {});
+    console.error('complete-registration error:', err);
+    sendError(res, Errors.INTERNAL_ERROR.code, '注册失败，请稍后重试', req.requestId, 500);
+  } finally {
+    conn.release();
   }
-
-  res.clearCookie('oauth_pending_csrf', { path: '/' });
-
-  sendSuccess(res, {
-    loginCode,
-    user: {
-      provider: provider as 'github' | 'x',
-      username: user.username,
-      avatarUrl: user.avatarUrl,
-      isAdmin: user.isAdmin,
-      displayName: user.displayName,
-    },
-  }, req.requestId);
 });
 
 // Helper: simple SHA-256 hash
@@ -648,37 +758,64 @@ router.post('/oauth/exchange', (req, _res, next) => { req.rateLimitAction = 'aut
   const { loginCode } = parsed.data;
   const loginCodeHash = await simpleHash(loginCode);
 
-  // Atomic: SELECT the token row first
-  const token = await queryOne<any[]>(
-    `SELECT id, userId, expiresAt FROM auth_tokens
-     WHERE tokenHash = ? AND type = 'oauth_login_code'`,
-    [loginCodeHash],
-  );
+  // ── 原子消费：事务 + 行级锁 ──────────────────────────
+  // 防止并发请求同时 SELECT 到同一 loginCode
+  let userId: string | null = null;
+  {
+    const conn = await getConnection();
+    try {
+      await conn.beginTransaction();
 
-  if (!token) {
-    sendError(res, Errors.GONE.code, 'loginCode 无效', req.requestId, 410);
-    return;
+      // 行级锁 — 并发 SELECT ... FOR UPDATE 会排队等待
+      const [lockRows] = await conn.execute(
+        `SELECT id, userId, expiresAt FROM auth_tokens
+         WHERE tokenHash = ? AND type = 'oauth_login_code'
+         FOR UPDATE`,
+        [loginCodeHash],
+      );
+      const rows = lockRows as Array<{ id: string; userId: string; expiresAt: number }>;
+      const token = rows[0] ?? null;
+
+      if (!token) {
+        await conn.rollback();
+        sendError(res, Errors.GONE.code, 'loginCode 无效', req.requestId, 410);
+        return;
+      }
+
+      if (token.expiresAt < Date.now()) {
+        await conn.execute(`DELETE FROM auth_tokens WHERE id = ?`, [token.id]);
+        await conn.commit();
+        sendError(res, Errors.GONE.code, 'loginCode 已过期', req.requestId, 410);
+        return;
+      }
+
+      // 条件 DELETE — 两请求同时 DELETE 同一行，仅第一个 affectedRows = 1
+      const [delRaw] = await conn.execute(
+        `DELETE FROM auth_tokens WHERE id = ? AND tokenHash = ?`,
+        [token.id, loginCodeHash],
+      );
+      const delHeader = delRaw as { affectedRows: number };
+
+      if (delHeader.affectedRows === 0) {
+        await conn.commit();
+        sendError(res, Errors.GONE.code, 'loginCode 已被使用', req.requestId, 410);
+        return;
+      }
+
+      userId = token.userId;
+      await conn.commit();
+    } finally {
+      conn.release();
+    }
   }
 
-  if (token.expiresAt < Date.now()) {
-    await exec(`DELETE FROM auth_tokens WHERE id = ?`, [token.id]);
-    sendError(res, Errors.GONE.code, 'loginCode 已过期', req.requestId, 410);
-    return;
-  }
-
-  // Atomic: DELETE with the specific ID (prevents race)
-  const deleteResult = await exec(
-    `DELETE FROM auth_tokens WHERE id = ? AND tokenHash = ?`,
-    [token.id, loginCodeHash],
-  );
-
-  if (deleteResult.affectedRows === 0) {
-    sendError(res, Errors.GONE.code, 'loginCode 已被使用', req.requestId, 410);
+  if (!userId) {
+    sendError(res, Errors.INTERNAL_ERROR.code, 'loginCode 兑换失败', req.requestId, 500);
     return;
   }
 
   // Get user
-  const user = await findUserById(token.userId);
+  const user = await findUserById(userId);
   if (!user) {
     sendError(res, Errors.INTERNAL_ERROR.code, '用户不存在', req.requestId, 500);
     return;
@@ -687,7 +824,7 @@ router.post('/oauth/exchange', (req, _res, next) => { req.rateLimitAction = 'aut
   // Get the actual OAuth provider
   const exchangeOauth = await queryOne<any[]>(
     `SELECT provider FROM oauth_accounts WHERE userId = ? LIMIT 1`,
-    [token.userId],
+    [userId],
   );
   const exchangeProvider = (exchangeOauth?.provider as 'github' | 'x') || 'github';
 

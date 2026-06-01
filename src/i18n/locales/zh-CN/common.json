@@ -1,0 +1,153 @@
+{
+  "nav": {
+    "ariaLabel": "主导航",
+    "logo": "TransCircle",
+    "home": "首页",
+    "submit": "故事征集",
+    "archive": "人物归档（开发中）",
+    "community": "社群互助（开发中）",
+    "openMenu": "打开菜单",
+    "closeMenu": "关闭菜单",
+    "mobileThemeLabel": "主题"
+  },
+  "theme": {
+    "light": "亮色模式",
+    "dark": "深色模式",
+    "contrast": "高对比度模式",
+    "selectLabel": "主题选择"
+  },
+  "submit": {
+    "title": "标题",
+    "titlePlaceholder": "输入故事标题",
+    "content": "正文",
+    "contentPlaceholder": "输入正文",
+    "category": "分类",
+    "categoryPlaceholder": "选择分类",
+    "categories": {
+      "personal": "个人经历",
+      "opinion": "观点评论",
+      "guide": "资源指南"
+    },
+    "authorType": "署名方式",
+    "authorReal": "实名",
+    "authorPenName": "笔名",
+    "authorAnonymous": "匿名",
+    "realName": "真实姓名",
+    "realNamePlaceholder": "输入真实姓名",
+    "penName": "笔名",
+    "penNamePlaceholder": "输入笔名",
+    "contact": "联系方式（选填，仅审核人员可见）",
+    "contactPlaceholder": "邮箱、社交媒体账号等",
+    "honeypotLabel": "网站",
+    "agreement": "我确认内容真实、原创，并授权 TransCircle 在 story.transcircle.org 上以 CC BY-NC-SA 4.0 协议发布。我知道投稿内容将公开可见。",
+    "loginHint": "登录后可认领投稿：",
+    "loginWithGithub": "GitHub",
+    "loginWithX": "X",
+    "loggedInAs": "已登录 · 投稿将关联到你的账号",
+    "errors": {
+      "titleRequired": "请输入标题",
+      "contentRequired": "请输入正文",
+      "categoryRequired": "请选择分类",
+      "authorNameRequired": "请输入署名名称",
+      "agreementRequired": "请同意投稿协议"
+    },
+    "status": {
+      "submitting": "提交中...",
+      "submit": "提交投稿",
+      "continue": "继续投稿"
+    },
+    "success": {
+      "title": "投稿成功",
+      "id": "投稿编号：{{id}}",
+      "hint": "请保存此编号以便查询进度。审核通过后将发表在 story.transcircle.org。"
+    },
+    "serverError": "提交失败，请稍后重试",
+    "networkError": "网络错误，请检查网络连接后重试"
+  },
+  "submitPage": {
+    "title": "故事投稿",
+    "description": "分享你的经历与故事。所有投稿经审核后发布在 story.transcircle.org。"
+  },
+  "admin": {
+    "title": "审核后台",
+    "description": "使用 GitHub OAuth 登录，或输入临时管理员令牌",
+    "accessDenied": "访问被拒绝",
+    "accessDeniedDetail": "你的 GitHub 账号 ({{username}}) 不是 TransCircle 组织成员，无权访问审核后台。",
+    "loginWithGithub": "使用 GitHub 登录",
+    "tempTokenDescription": "或使用临时令牌登录（OAuth 配置完成前的过渡方案）",
+    "tempTokenPlaceholder": "输入临时管理员令牌",
+    "tempTokenLogin": "令牌登录",
+    "tempAdmin": "临时管理员",
+    "tabs": {
+      "pending": "待审核",
+      "approved": "已通过",
+      "rejected": "已拒绝"
+    },
+    "count": "共 {{count}} 篇",
+    "countMore": "共 {{count}} 篇+",
+    "loading": "加载中...",
+    "empty": "暂无投稿",
+    "loadMore": "加载更多",
+    "back": "← 返回列表",
+    "statusPending": "待审核",
+    "statusApproved": "已通过",
+    "statusRejected": "已拒绝",
+    "category": "分类：{{category}}",
+    "authorLabel": "署名：",
+    "authorAnonymous": "匿名",
+    "authorReal": "实名",
+    "authorPenName": "笔名",
+    "submitTime": "投稿时间：{{time}}",
+    "status": "状态：{{status}}",
+    "contact": "联系方式：{{contact}}",
+    "reviewNotes": "审核意见：{{notes}}",
+    "reviewer": "（审核人：{{reviewer}}）",
+    "reviewTextareaPlaceholder": "审核意见（选填）...",
+    "approve": "通过",
+    "reject": "拒绝",
+    "errorLoad": "加载投稿列表失败",
+    "errorDetail": "加载投稿详情失败",
+    "errorReview": "审核操作失败",
+    "verifying": "验证身份..."
+  },
+  "register": {
+    "title": "完成注册",
+    "description": "你已通过 {{provider}} 登录，请填写以下信息完成注册。",
+    "providerX": "X (Twitter)",
+    "providerGithub": "GitHub",
+    "username": "用户名",
+    "usernamePlaceholder": "你的用户名",
+    "password": "密码",
+    "passwordPlaceholder": "至少8个字符",
+    "email": "邮箱 (选填)",
+    "emailPlaceholder": "your@email.com",
+    "displayName": "显示名称 (选填)",
+    "displayNamePlaceholder": "你的显示名称",
+    "submitting": "注册中...",
+    "submit": "完成注册",
+    "errors": {
+      "usernameRequired": "请输入用户名",
+      "passwordTooShort": "密码至少需要8个字符",
+      "failed": "注册失败，请重试"
+    }
+  },
+  "oauth": {
+    "loading": "完成登录..."
+  },
+  "notFound": {
+    "title": "页面未找到",
+    "backToHome": "返回首页"
+  },
+  "footer": {
+    "heading": "LICENSE",
+    "text1": "对于此页面的文字和素材：CC BY 4.0 or later",
+    "text2": "对于其他人提供的材料，依照她们的版权要求。届时我们会提供单独的版权页面。"
+  },
+  "toc": {
+    "label": "目录"
+  },
+  "common": {
+    "and": " · ",
+    "anonymous": "匿名"
+  }
+}

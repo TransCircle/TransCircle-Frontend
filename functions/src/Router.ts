@@ -11,6 +11,7 @@ import authRoutes from './routes/auth';
 import meRoutes from './routes/me';
 import contributionRoutes from './routes/contributions';
 import adminRoutes from './routes/admin';
+import storiesRoutes from './routes/stories';
 
 const app: Express = express();
 
@@ -44,6 +45,7 @@ app.use('/v1/auth', authRoutes);
 app.use('/v1/me', meRoutes);
 app.use('/v1/contributions', contributionRoutes);
 app.use('/v1/admin', adminRoutes);
+app.use('/v1/stories', storiesRoutes);
 
 // ── 404 handler ─────────────────────────────────
 app.use((req: Request, res: Response) => {

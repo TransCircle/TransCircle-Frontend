@@ -1,33 +1,99 @@
+/* ── Theme Variables ─────────────────────────── */
+/* Light (default) */
 :root {
-  --bg: #fff9fb;
-  --text: #333;
-  --text-muted: #888;
-  --primary: #ff85a2;
-  --accent: #f06292;
+  --bg-color: #fff9fb;
+  --text-main: #000000;
+  --text-secondary: #666666;
+  --text-muted: #888888;
+  --text-body: #333333;
+  --primary-pink: #ff85a2;
+  --soft-pink: #ffccd5;
+  --accent-pink: #f06292;
+  --nav-bg: rgba(255, 251, 252, 0.85);
+  --divider-color: #ffccd5;
+  --hover-bg: #ffedf1;
+  --overlay-bg: rgba(0, 0, 0, 0.3);
   --card-bg: white;
-  --border: #ffccd5;
 }
 
+/* Dark */
+[data-theme="dark"] {
+  --bg-color: #12121a;
+  --text-main: #f0f0f5;
+  --text-secondary: #a0a0b0;
+  --text-muted: #808090;
+  --text-body: #c0c0d0;
+  --primary-pink: #ff85a2;
+  --soft-pink: #3a2a35;
+  --accent-pink: #ff6b9d;
+  --nav-bg: rgba(24, 24, 35, 0.85);
+  --divider-color: #2a2a3a;
+  --hover-bg: #2a1f25;
+  --overlay-bg: rgba(0, 0, 0, 0.5);
+  --card-bg: #1a1a24;
+}
+
+/* High Contrast */
+[data-theme="contrast"] {
+  --bg-color: #000000;
+  --text-main: #ffffff;
+  --text-secondary: #ffffff;
+  --text-muted: #ffffff;
+  --text-body: #ffffff;
+  --primary-pink: #ffaa00;
+  --soft-pink: #332200;
+  --accent-pink: #ffaa00;
+  --nav-bg: rgba(0, 0, 0, 0.95);
+  --divider-color: #ffffff;
+  --hover-bg: #332200;
+  --overlay-bg: rgba(0, 0, 0, 0.8);
+  --card-bg: #000000;
+}
+
+/* Maintain prefers-color-scheme for visitors without JS theme system */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #12121a;
-    --text: #e0e0e0;
-    --text-muted: #888;
+  :root:not([data-theme]) {
+    --bg-color: #12121a;
+    --text-main: #f0f0f5;
+    --text-secondary: #a0a0b0;
+    --text-muted: #808090;
+    --text-body: #c0c0d0;
+    --primary-pink: #ff85a2;
+    --soft-pink: #3a2a35;
+    --accent-pink: #ff6b9d;
+    --nav-bg: rgba(24, 24, 35, 0.85);
+    --divider-color: #2a2a3a;
+    --hover-bg: #2a1f25;
+    --overlay-bg: rgba(0, 0, 0, 0.5);
     --card-bg: #1a1a24;
-    --border: #2a2a3a;
   }
 }
 
+/* ── Reduced Motion ─────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* ── Base ───────────────────────────────────── */
 * { box-sizing: border-box; }
 
+:focus-visible {
+  outline: 2px solid var(--primary-pink);
+  outline-offset: 2px;
+}
+
 body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg-color);
+  color: var(--text-body);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   margin: 0;
   padding: 0;
 }
 
+/* ── Header ─────────────────────────────────── */
 .header {
   text-align: center;
   padding: 3rem 1rem 1.5rem;
@@ -37,7 +103,7 @@ body {
   font-size: 2.2rem;
   font-weight: 700;
   margin: 0;
-  color: var(--accent);
+  color: var(--accent-pink);
   letter-spacing: -0.02em;
 }
 
@@ -47,6 +113,7 @@ body {
   font-size: 0.95rem;
 }
 
+/* ── Filter ─────────────────────────────────── */
 .filter {
   display: flex;
   justify-content: center;
@@ -56,9 +123,9 @@ body {
 }
 
 .filterBtn {
-  border: 1.5px solid var(--border);
+  border: 1.5px solid var(--divider-color);
   background: none;
-  color: var(--text);
+  color: var(--text-main);
   padding: 0.35rem 1rem;
   border-radius: 50px;
   font-size: 0.85rem;
@@ -67,12 +134,19 @@ body {
   font-family: inherit;
 }
 
-.filterBtn:hover, .filterBtn.active {
-  background: var(--primary);
-  color: white;
-  border-color: var(--primary);
+.filterBtn:hover {
+  background: var(--hover-bg);
+  border-color: var(--accent-pink);
+  color: var(--accent-pink);
 }
 
+.filterBtn.active {
+  background: var(--primary-pink);
+  color: white;
+  border-color: var(--primary-pink);
+}
+
+/* ── Grid ───────────────────────────────────── */
 .grid {
   max-width: 760px;
   margin: 0 auto;
@@ -88,9 +162,10 @@ body {
   padding: 3rem 1rem;
 }
 
+/* ── Card ───────────────────────────────────── */
 .card {
   background: var(--card-bg);
-  border: 1px solid var(--border);
+  border: 1px solid var(--divider-color);
   border-radius: 12px;
   padding: 1.5rem;
 }
@@ -98,7 +173,7 @@ body {
 .cardCategory {
   font-size: 0.72rem;
   font-weight: 600;
-  background: var(--primary);
+  background: var(--primary-pink);
   color: white;
   padding: 0.15rem 0.6rem;
   border-radius: 50px;
@@ -108,7 +183,7 @@ body {
   font-size: 1.2rem;
   font-weight: 600;
   margin: 0.75rem 0 0.5rem;
-  color: var(--text);
+  color: var(--text-main);
 }
 
 .cardPreview {
@@ -128,7 +203,7 @@ body {
 .cardExpand {
   background: none;
   border: none;
-  color: var(--accent);
+  color: var(--accent-pink);
   font-size: 0.85rem;
   cursor: pointer;
   padding: 0;
@@ -136,10 +211,14 @@ body {
   font-family: inherit;
 }
 
+.cardExpand:hover {
+  text-decoration: underline;
+}
+
 .cardFull {
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--divider-color);
 }
 
 .cardContent {
@@ -162,6 +241,7 @@ body {
   margin-top: 1.25rem;
 }
 
+/* ── Footer ─────────────────────────────────── */
 .footer {
   text-align: center;
   padding: 2rem 1rem 3rem;
@@ -170,9 +250,13 @@ body {
 }
 
 .footer a {
-  color: var(--accent);
+  color: var(--accent-pink);
   text-decoration: none;
   font-weight: 500;
+}
+
+.footer a:hover {
+  text-decoration: underline;
 }
 
 .license {

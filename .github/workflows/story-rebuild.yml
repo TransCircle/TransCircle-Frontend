@@ -1,0 +1,44 @@
+name: Rebuild Story Site
+
+on:
+  repository_dispatch:
+    types: [story-rebuild]
+  # Allow manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      api_base:
+        description: 'API base URL to fetch published stories'
+        required: true
+        default: 'https://api.transcircle.org'
+
+env:
+  # Default API base — overridden by dispatch payload or workflow_dispatch input
+  API_BASE: ${{ github.event.client_payload.api_base || github.event.inputs.api_base || 'https://api.transcircle.org' }}
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy Story Site
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Fetch published submissions from the API ──
+      - name: Fetch published stories
+        run: |
+          mkdir -p story/data
+          # API returns { data: [...], requestId: "..." } — extract the array
+          RESPONSE=$(curl -sSf "${{ env.API_BASE }}/v1/stories/published" -H "Accept: application/json" 2>/dev/null || echo '{"data":[]}')
+          echo "$RESPONSE" | jq '.data // []' > story/data/submissions.json
+          echo "Story entries: $(jq 'length' story/data/submissions.json)"
+
+      # ── Deploy to Cloudflare Pages (separate project for story site) ──
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy story --project-name=transcircle-story --branch=${{ github.ref_name }}

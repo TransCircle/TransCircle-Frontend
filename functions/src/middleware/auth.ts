@@ -29,6 +29,21 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   }
 
   const token = authHeader.slice(7);
+
+  // Allow temp admin token to bypass JWT verification
+  const adminConf = conf.ADMIN as Record<string, string | undefined> | undefined;
+  const adminToken = adminConf?.TEMP_ADMIN_TOKEN as string | undefined;
+  if (adminToken && token === adminToken) {
+    req.user = {
+      userId: 'temp-admin',
+      sessionId: 'temp-admin',
+      tokenVersion: 0,
+      isAdmin: true,
+    };
+    next();
+    return;
+  }
+
   const payload = await verifyJwt(token);
   if (!payload) {
     sendError(res, Errors.UNAUTHORIZED.code, '登录已过期，请重新登录', req.requestId, Errors.UNAUTHORIZED.status);

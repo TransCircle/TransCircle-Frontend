@@ -27,9 +27,12 @@ const LIMITS: Record<string, RateLimitConfig> = {
   admin: { max: 60, windowMs: 60_000, name: '管理' },        // 60/min
 };
 
-/**
- * MySQL-based rate limiter middleware.
+/** MySQL-based rate limiter middleware.
  * Uses a bucket per (key, action) — the key is typically IP.
+ *
+ * Canonical schema is in functions/schema.sql (rate_limits table).
+ * The middleware assumes the table exists — if it doesn't, the
+ * try/catch in rateLimitCheck degrades gracefully (no rate limiting).
  *
  * Set `req.rateLimitAction` to use a specific action bucket instead of 'default'.
  */
@@ -56,7 +59,7 @@ export async function rateLimitCheck(
   const windowStart = Math.floor(now / config.windowMs) * config.windowMs;
   const bucketKey = `rl:${ip}:${action}:${windowStart}`;
 
-  // Cleanup old windows
+  // Cleanup old windows (best-effort)
   try {
     await exec(`DELETE FROM rate_limits WHERE windowStart < ?`, [now - config.windowMs * 2]);
   } catch { /* ignore cleanup errors */ }

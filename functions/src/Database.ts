@@ -19,9 +19,9 @@ const pool = mysql.createPool({
 /** Execute a query, return rows */
 export async function query<T extends mysql.RowDataPacket[]>(
   sql: string,
-  params?: any[],
+  params?: unknown[],
 ): Promise<T> {
-  const [rows] = await pool.execute<T>(sql, params);
+  const [rows] = await pool.execute<T>(sql, params as any[]);
   return rows;
 }
 
@@ -37,9 +37,9 @@ export async function queryOne<T extends mysql.RowDataPacket[]>(
 /** Execute a write query (INSERT/UPDATE/DELETE), return ResultSetHeader */
 export async function exec(
   sql: string,
-  params?: any[],
+  params?: unknown[],
 ): Promise<mysql.ResultSetHeader> {
-  const [result] = await pool.execute<mysql.ResultSetHeader>(sql, params);
+  const [result] = await pool.execute<mysql.ResultSetHeader>(sql, params as any[]);
   return result;
 }
 

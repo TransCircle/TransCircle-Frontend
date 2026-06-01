@@ -174,6 +174,9 @@ export async function setUserAdmin(userId: string, grantorUserId: string, isAdmi
       [userId, role.id],
     );
   }
+
+  // Bump tokenVersion so existing JWTs reflect the new role immediately
+  await exec(`UPDATE users SET tokenVersion = tokenVersion + 1 WHERE id = ?`, [userId]);
 }
 
 /**

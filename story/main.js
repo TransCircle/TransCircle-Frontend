@@ -1,8 +1,48 @@
-// Fetch approved submissions and render them
+// TransCircle Story — fetch approved submissions and render them
 
 const CATEGORIES = ['全部', '个人经历', '观点评论', '资源指南']
+
+/** @type {Array<{ id: string; title: string; category: string; content: string; author_type: string; author_name: string | null; created_at: number | string }>} */
 let submissions = []
 let activeCategory = '全部'
+
+// ── Theme System ──────────────────────────────────────
+
+const STORAGE_KEY = 'transcircle-theme'
+const THEMES = /** @type {const} */ (['light', 'dark', 'contrast'])
+const DEFAULT_THEME = 'light'
+
+function getStoredTheme() {
+  try {
+    return localStorage.getItem(STORAGE_KEY)
+  } catch {
+    return null
+  }
+}
+
+function getSystemTheme() {
+  try {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  } catch {
+    return 'light'
+  }
+}
+
+function applyTheme(theme) {
+  const value = THEMES.includes(theme) ? theme : DEFAULT_THEME
+  document.documentElement.setAttribute('data-theme', value)
+}
+
+function initTheme() {
+  const stored = getStoredTheme()
+  const theme = stored || getSystemTheme()
+  applyTheme(theme)
+}
+
+// Apply theme before rendering to avoid flash
+initTheme()
+
+// ── Data Loading ──────────────────────────────────────
 
 async function load() {
   try {
@@ -15,36 +55,47 @@ async function load() {
   renderGrid()
 }
 
+// ── Filter Rendering ──────────────────────────────────
+
 function renderFilters() {
   const nav = document.getElementById('filterNav')
+  if (!nav) return
+
+  /** @type {Record<string, number>} */
   const counts = {}
   for (const s of submissions) {
-    counts[s.category] = (counts[s.category] || 0) + 1
+    const cat = s.category
+    counts[cat] = (counts[cat] || 0) + 1
   }
   counts['全部'] = submissions.length
 
-  nav.innerHTML = CATEGORIES.filter((c) => c === '全部' || counts[c]).map(
-    (cat) =>
-      `<button class="filterBtn ${cat === activeCategory ? 'active' : ''}" data-cat="${cat}">
-        ${cat}${counts[cat] ? ` (${counts[cat]})` : ''}
-      </button>`,
+  const available = CATEGORIES.filter(c => c === '全部' || counts[c])
+
+  nav.innerHTML = available.map(cat =>
+    `<button class="filterBtn ${cat === activeCategory ? 'active' : ''}" data-cat="${cat}">
+      ${cat}${counts[cat] ? ` (${counts[cat]})` : ''}
+    </button>`
   ).join('')
 
-  nav.querySelectorAll('.filterBtn').forEach((btn) => {
+  for (const btn of nav.querySelectorAll('.filterBtn')) {
     btn.addEventListener('click', () => {
-      activeCategory = btn.dataset.cat
+      const cat = btn.dataset.cat || '全部'
+      activeCategory = cat
       renderFilters()
       renderGrid()
     })
-  })
+  }
 }
+
+// ── Grid Rendering ────────────────────────────────────
 
 function renderGrid() {
   const grid = document.getElementById('storyGrid')
-  const filtered =
-    activeCategory === '全部'
-      ? submissions
-      : submissions.filter((s) => s.category === activeCategory)
+  if (!grid) return
+
+  const filtered = activeCategory === '全部'
+    ? submissions
+    : submissions.filter(s => s.category === activeCategory)
 
   if (filtered.length === 0) {
     grid.innerHTML = '<p class="empty">暂无故事</p>'
@@ -55,70 +106,82 @@ function renderGrid() {
 }
 
 function storyCard(s) {
-  const authorDisplay =
-    s.author_type === 'anonymous'
-      ? '匿名'
-      : s.author_name || '匿名'
-
-  // Handle both Unix-ms timestamps and ISO strings
-  const date = s.created_at
-    ? (typeof s.created_at === 'number' || !s.created_at.includes('-')
-        ? new Date(typeof s.created_at === 'string' ? Number(s.created_at) : s.created_at).toISOString().slice(0, 10)
-        : s.created_at.slice(0, 10))
-    : ''
-
-  // Truncate content for preview (first 200 chars)
-  const preview = s.content
-    ?.replace(/[#*`>\[\]()]/g, '')
-    .slice(0, 200) || ''
+  const authorDisplay = s.author_type === 'anonymous' ? '匿名' : s.author_name || '匿名'
+  const date = formatDate(s.created_at)
+  const preview = (s.content || '')
+    .replace(/[#*`>\[\]()]/g, '')
+    .slice(0, 200)
 
   return `
-    <article class="card" id="s-${s.id}">
-      <span class="cardCategory">${s.category}</span>
-      <h2 class="cardTitle">${escapeHtml(s.title)}</h2>
-      <p class="cardPreview">${escapeHtml(preview)}...</p>
+    <article class="card" id="s-${html(s.id)}">
+      <span class="cardCategory">${html(s.category)}</span>
+      <h2 class="cardTitle">${html(s.title)}</h2>
+      <p class="cardPreview">${html(preview)}...</p>
       <div class="cardMeta">
-        <span>${escapeHtml(authorDisplay)}</span>
-        <span>${date}</span>
+        <span>${html(authorDisplay)}</span>
+        <span>${html(date)}</span>
       </div>
-      <button class="cardExpand" onclick="toggleStory('${s.id}')">阅读全文</button>
-      <div class="cardFull" id="full-${s.id}" hidden>
+      <button class="cardExpand" onclick="toggleStory('${html(s.id)}')">阅读全文</button>
+      <div class="cardFull" id="full-${html(s.id)}" hidden>
         <div class="cardContent">${renderMarkdown(s.content)}</div>
         <p class="cardAuthor">
-          作者：${escapeHtml(authorDisplay)}${s.author_type !== 'anonymous' ? `（${s.author_type === 'real' ? '实名' : '笔名'}）` : ''}
+          作者：${html(authorDisplay)}${s.author_type !== 'anonymous' ? `（${s.author_type === 'real' ? '实名' : '笔名'}）` : ''}
         </p>
       </div>
     </article>
   `
 }
 
-function escapeHtml(str) {
+// ── Utilities ─────────────────────────────────────────
+
+function formatDate(ts) {
+  if (!ts) return ''
+  if (typeof ts === 'number' || !ts.includes('-')) {
+    const n = typeof ts === 'number' ? ts : Number(ts)
+    return new Date(n).toISOString().slice(0, 10)
+  }
+  return ts.slice(0, 10)
+}
+
+/**
+ * Escape HTML — MUST be called on ALL user-supplied data before DOM insertion.
+ * Uses textContent + innerHTML to let the browser handle escaping correctly.
+ * @param {string} str
+ * @returns {string}
+ */
+function html(str) {
   const div = document.createElement('div')
   div.textContent = str
   return div.innerHTML
 }
 
+/**
+ * Render markdown-style formatting to HTML.
+ * Security: escapes ALL input first via html(), then applies safe tag replacements.
+ * @param {string} md
+ * @returns {string}
+ */
 function renderMarkdown(md) {
-  // Simple markdown rendering (for a full site, use a proper renderer)
-  let html = escapeHtml(md || '')
+  const escaped = html(md || '')
+  let result = escaped
     .replace(/\n## (.+)/g, '<h2>$1</h2>')
     .replace(/\n# (.+)/g, '<h1>$1</h1>')
     .replace(/\n- (.+)/g, '<li>$1</li>')
     .replace(/\n\n/g, '<br><br>')
-  return html
+  return result
 }
 
-// Global toggle function
+// ── Global ────────────────────────────────────────────
+
+/** @param {string} id */
 window.toggleStory = function (id) {
   const full = document.getElementById(`full-${id}`)
   const btn = document.querySelector(`#s-${id} .cardExpand`)
-  if (full.hidden) {
-    full.hidden = false
-    btn.textContent = '收起'
-  } else {
-    full.hidden = true
-    btn.textContent = '阅读全文'
-  }
+  if (!full || !btn) return
+
+  const wasHidden = full.hidden
+  full.hidden = !wasHidden
+  btn.textContent = wasHidden ? '收起' : '阅读全文'
 }
 
 load()

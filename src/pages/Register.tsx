@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useAuth } from '@/context/AuthContext'
+import { useTranslation } from 'react-i18next'
+import { useAuth } from '@/context/useAuth'
 import styles from '../App.module.css'
+import formStyles from './Register.module.css'
 
 const Register = () => {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { completeRegistration } = useAuth()
 
   const provider = searchParams.get('provider') || 'github'
@@ -22,11 +25,11 @@ const Register = () => {
     setError('')
 
     if (!username.trim()) {
-      setError('请输入用户名')
+      setError(t('register.errors.usernameRequired'))
       return
     }
-    if (!password || password.length < 8) {
-      setError('密码至少需要8个字符')
+    if (!password || password.length < 12) {
+      setError(t('register.errors.passwordTooShort'))
       return
     }
 
@@ -34,124 +37,98 @@ const Register = () => {
     try {
       const result = await completeRegistration(provider, {
         username: username.trim(),
-        email: email.trim() || undefined,
-        displayName: displayName.trim() || undefined,
+        email: email.trim(),
+        displayName: displayName.trim() || username.trim(),
         password,
+        emailMatchesProvider: false,
       })
 
       if (result?.user) {
         navigate(result.user.isAdmin ? '/admin' : '/submit', { replace: true })
       } else {
-        setError('注册失败，请重试')
+        setError(t('register.errors.failed'))
       }
     } catch {
-      setError('注册失败，请重试')
+      setError(t('register.errors.failed'))
     } finally {
       setSubmitting(false)
     }
   }
 
+  const providerLabel = provider === 'x' ? t('register.providerX') : t('register.providerGithub')
+
   return (
     <>
       <header className={styles.contentHeader}>
-        <h1 className={styles.mainTitle}>完成注册</h1>
+        <h1 className={styles.mainTitle}>{t('register.title')}</h1>
         <p className={styles.subTitle}>
-          你已通过 {provider === 'x' ? 'X (Twitter)' : 'GitHub'} 登录，请填写以下信息完成注册。
+          {t('register.description', { provider: providerLabel })}
         </p>
       </header>
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '420px' }}>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-          <span style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-main)' }}>用户名</span>
+      <form className={formStyles.form} onSubmit={handleSubmit} noValidate>
+        <label className={formStyles.field}>
+          <span className={formStyles.label}>{t('register.username')}</span>
           <input
+            className={formStyles.input}
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="你的用户名"
+            placeholder={t('register.usernamePlaceholder')}
             required
             autoFocus
-            style={{
-              padding: '0.6rem 0.8rem',
-              borderRadius: '8px',
-              border: '1.5px solid var(--divider-color)',
-              fontSize: '0.95rem',
-              backgroundColor: 'var(--bg-color)',
-              color: 'var(--text-main)',
-            }}
           />
         </label>
 
-        <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-          <span style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-main)' }}>密码</span>
+        <label className={formStyles.field}>
+          <span className={formStyles.label}>{t('register.password')}</span>
           <input
+            className={formStyles.input}
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="至少8个字符"
+            placeholder={t('register.passwordPlaceholder')}
             required
             minLength={8}
-            style={{
-              padding: '0.6rem 0.8rem',
-              borderRadius: '8px',
-              border: '1.5px solid var(--divider-color)',
-              fontSize: '0.95rem',
-              backgroundColor: 'var(--bg-color)',
-              color: 'var(--text-main)',
-            }}
           />
         </label>
 
-        <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-          <span style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-main)' }}>邮箱 (选填)</span>
+        <label className={formStyles.field}>
+          <span className={formStyles.label}>{t('register.email')}</span>
           <input
+            className={formStyles.input}
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="your@email.com"
-            style={{
-              padding: '0.6rem 0.8rem',
-              borderRadius: '8px',
-              border: '1.5px solid var(--divider-color)',
-              fontSize: '0.95rem',
-              backgroundColor: 'var(--bg-color)',
-              color: 'var(--text-main)',
-            }}
+            placeholder={t('register.emailPlaceholder')}
           />
         </label>
 
-        <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-          <span style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-main)' }}>显示名称 (选填)</span>
+        <label className={formStyles.field}>
+          <span className={formStyles.label}>{t('register.displayName')}</span>
           <input
+            className={formStyles.input}
             type="text"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="你的显示名称"
-            style={{
-              padding: '0.6rem 0.8rem',
-              borderRadius: '8px',
-              border: '1.5px solid var(--divider-color)',
-              fontSize: '0.95rem',
-              backgroundColor: 'var(--bg-color)',
-              color: 'var(--text-main)',
-            }}
+            placeholder={t('register.displayNamePlaceholder')}
           />
         </label>
 
         {error && (
-          <p style={{ color: 'var(--primary-pink)', fontSize: '0.85rem', margin: 0 }}>{error}</p>
+          <p className={formStyles.error}>{error}</p>
         )}
 
         <button
           type="submit"
           disabled={submitting}
-          className={styles.ctaPrimary}
-          style={{ border: 'none', cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.6 : 1, alignSelf: 'flex-start' }}
+          className={`${styles.ctaPrimary} ${formStyles.submitBtn}`}
         >
-          {submitting ? '注册中...' : '完成注册'}
+          {submitting ? t('register.submitting') : t('register.submit')}
         </button>
       </form>
     </>
   )
 }
 
-export default Register
+export { Register }

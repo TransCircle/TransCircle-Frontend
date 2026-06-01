@@ -1,5 +1,7 @@
 import { useCallback, useRef } from "react";
-import { useTheme, type Theme } from "../context/ThemeContext";
+import { useTranslation } from 'react-i18next';
+import { useTheme } from "../context/useTheme";
+import type { Theme } from "../context/useTheme";
 import styles from "./ThemeToggle.module.css";
 
 const SunIcon = () => (
@@ -65,35 +67,36 @@ const ContrastIcon = () => (
   </svg>
 );
 
-const themes: { id: Theme; label: string; icon: React.FC }[] = [
-  { id: "light", label: "亮色模式", icon: SunIcon },
-  { id: "dark", label: "深色模式", icon: MoonIcon },
-  { id: "contrast", label: "高对比度模式", icon: ContrastIcon },
+const THEME_KEYS: { id: Theme; i18nKey: string; icon: React.FC }[] = [
+  { id: "light", i18nKey: "theme.light", icon: SunIcon },
+  { id: "dark", i18nKey: "theme.dark", icon: MoonIcon },
+  { id: "contrast", i18nKey: "theme.contrast", icon: ContrastIcon },
 ];
 
 interface ThemeToggleProps {
   className?: string;
 }
 
-const ThemeToggle = ({ className = "" }: ThemeToggleProps) => {
+export const ThemeToggle = ({ className = "" }: ThemeToggleProps) => {
+  const { t } = useTranslation();
   const { theme, setTheme } = useTheme();
   const radioRefs = useRef<HTMLButtonElement[]>([]);
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
       const { key } = event;
-      let nextIndex: number | null = null;
+      let nextIndex: number;
 
       switch (key) {
         case "ArrowLeft":
         case "ArrowUp":
           event.preventDefault();
-          nextIndex = index > 0 ? index - 1 : themes.length - 1;
+          nextIndex = index > 0 ? index - 1 : THEME_KEYS.length - 1;
           break;
         case "ArrowRight":
         case "ArrowDown":
           event.preventDefault();
-          nextIndex = index < themes.length - 1 ? index + 1 : 0;
+          nextIndex = index < THEME_KEYS.length - 1 ? index + 1 : 0;
           break;
         case "Home":
           event.preventDefault();
@@ -101,17 +104,14 @@ const ThemeToggle = ({ className = "" }: ThemeToggleProps) => {
           break;
         case "End":
           event.preventDefault();
-          nextIndex = themes.length - 1;
+          nextIndex = THEME_KEYS.length - 1;
           break;
         default:
           return;
       }
 
-      if (nextIndex !== null) {
-        const nextTheme = themes[nextIndex].id;
-        setTheme(nextTheme);
-        radioRefs.current[nextIndex]?.focus();
-      }
+      setTheme(THEME_KEYS[nextIndex]!.id);
+      radioRefs.current[nextIndex]?.focus();
     },
     [setTheme]
   );
@@ -120,9 +120,9 @@ const ThemeToggle = ({ className = "" }: ThemeToggleProps) => {
     <div
       className={`${styles.toggleGroup} ${className}`.trim()}
       role="radiogroup"
-      aria-label="主题选择"
+      aria-label={t('theme.selectLabel')}
     >
-      {themes.map(({ id, label, icon: Icon }, index) => {
+      {THEME_KEYS.map(({ id, i18nKey, icon: Icon }, index) => {
         const isActive = theme === id;
         return (
           <button
@@ -135,7 +135,7 @@ const ThemeToggle = ({ className = "" }: ThemeToggleProps) => {
             className={`${styles.toggleBtn} ${isActive ? styles.active : ""}`}
             onClick={() => setTheme(id)}
             onKeyDown={(e) => handleKeyDown(e, index)}
-            aria-label={label}
+            aria-label={t(i18nKey)}
             aria-checked={isActive}
             tabIndex={isActive ? 0 : -1}
           >
@@ -146,5 +146,3 @@ const ThemeToggle = ({ className = "" }: ThemeToggleProps) => {
     </div>
   );
 };
-
-export default ThemeToggle;
