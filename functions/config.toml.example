@@ -1,0 +1,52 @@
+[DEBUG_CONFIG]
+DEBUG_MODE = false
+APISERV_ENABLE = true
+
+[LOGGER]
+LOGFILE_FORMAT = "yyyyMMDD"
+LOGTIME_FORMAT = "yyyy-MM-DD HH:mm:ss"
+
+[SESSION]
+SESS_MAXAGE = 86400
+SESS_SECRET = ""
+
+[DB_CONFIG]
+# 去 MySQL 服务商处获取以下几项！！！
+# 创建数据库时设的管理员账号
+DB_USERNAME = ""
+# 数据库密码
+DB_PASSWORD = ""
+# 库名
+DB_DATABASE = ""
+# 数据库主机地址
+DB_HOSTNAME = ""
+DB_PORT = 3306
+
+[SERV_CONFIG]
+SERV_HOSTNAME = "0.0.0.0"
+SERV_PORT = 1145
+
+[OAUTH]
+GITHUB_CLIENT_ID = ""
+GITHUB_CLIENT_SECRET = ""
+
+X_CLIENT_ID = ""
+X_CLIENT_SECRET = ""
+
+[ADMIN]
+TEMP_ADMIN_TOKEN = ""
+
+[CORS]
+ALLOWED_ORIGINS = "https://submit.transcircle.org,http://localhost:5173,http://localhost:4173"
+
+[STORY]
+# 故事站仓库名，格式 owner/repo（如 TransCircle/transcircle-story）
+STORY_REPO = ""
+# GitHub PAT: Settings → Developer settings → Personal access tokens → Fine-grained tokens
+# 需要 Contents: write 权限（用于 repository_dispatch）
+STORY_REPO_TOKEN = ""
+# 公开 API 地址
+STORY_API_BASE = "https://api.transcircle.org"
+
+[GITHUB]
+GITHUB_ORG = "TransCircle"

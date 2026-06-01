@@ -21,7 +21,7 @@
   "simple-git-hooks": {
     "pre-commit": "pnpm lint-staged",
     "pre-push": "pnpm typecheck",
-    "commit-msg": "node .git-hooks/commit-msg.mjs"
+    "commit-msg": "node .git-hooks/commit-msg.mjs \"$1\""
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs,cjs}": [
