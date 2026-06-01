@@ -5,9 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:backend": "cd functions && npx tsx watch src/Index.ts",
+    "dev:all": "concurrently \"npm run dev\" \"npm run dev:backend\"",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:setup": "cd functions && npx tsx src/setup.ts"
   },
   "dependencies": {
     "lucide-react": "^1.17.0",

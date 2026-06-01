@@ -1,0 +1,36 @@
+[DEBUG_CONFIG]
+DEBUG_MODE = false
+APISERV_ENABLE = true
+
+[LOGGER]
+LOGFILE_FORMAT = "yyyyMMDD"
+LOGTIME_FORMAT = "yyyy-MM-DD HH:mm:ss"
+
+[SESSION]
+SESS_MAXAGE = 86400
+SESS_SECRET = "k8FmP2QrX9zL6YtG5wA3cVbN1jH7eD4s"
+
+[DB_CONFIG]
+DB_USERNAME = "transcircle"
+DB_PASSWORD = "password"
+DB_DATABASE = "transcircle"
+DB_HOSTNAME = "localhost"
+DB_PORT = 3306
+
+[SERV_CONFIG]
+SERV_HOSTNAME = "0.0.0.0"
+SERV_PORT = 1145
+
+[OAUTH]
+# GitHub OAuth
+GITHUB_CLIENT_ID = ""
+GITHUB_CLIENT_SECRET = ""
+# X (Twitter) OAuth 2.0
+X_CLIENT_ID = ""
+X_CLIENT_SECRET = ""
+
+[ADMIN]
+TEMP_ADMIN_TOKEN = ""
+
+[CORS]
+ALLOWED_ORIGINS = "http://localhost:5173,http://localhost:4173"

@@ -2,3 +2,19 @@ node_modules/
 dist/
 .wrangler/
 .dev.vars
+story/.wrangler/
+
+# build outputs
+*.tsbuildinfo
+functions/dist/
+
+# logs
+functions/logs/
+
+# local config
+functions/config.toml
+config.toml
+
+# local env
+.env
+.env.local

@@ -3,5 +3,6 @@
   "name": "transcircle-submit",
   "pages_build_output_dir": "dist",
   "compatibility_date": "2025-05-01",
-  "compatibility_flags": ["nodejs_compat"]
+  "compatibility_flags": ["nodejs_compat"],
+  "pages_build_excludes": ["functions/**"]
 }
