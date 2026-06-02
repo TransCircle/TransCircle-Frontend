@@ -24,7 +24,7 @@ router.get('/contributions', async (req, res) => {
   // Validate status
   const validStatuses = ['pending', 'in_review', 'approved', 'rejected', 'published', 'hidden', 'withdrawn', 'draft'];
   if (!validStatuses.includes(status)) {
-    sendError(res, Errors.VALIDATION_ERROR.code, `无效的状态: ${status}`, req.requestId, 400);
+    sendError(res, Errors.VALIDATION_ERROR.code, `无效的状态: ${status}`, req.requestId, Errors.VALIDATION_ERROR.status);
     return;
   }
 
@@ -36,13 +36,13 @@ router.get('/contributions', async (req, res) => {
       const decoded = Buffer.from(cursor, 'base64url').toString('utf-8');
       const cursorTs = parseInt(decoded, 10);
       if (isNaN(cursorTs)) {
-        sendError(res, Errors.VALIDATION_ERROR.code, '无效的 cursor', req.requestId, 400);
+        sendError(res, Errors.VALIDATION_ERROR.code, '无效的 cursor', req.requestId, Errors.VALIDATION_ERROR.status);
         return;
       }
       whereClause += ` AND c.createdAt < ?`;
       params.push(cursorTs);
     } catch {
-      sendError(res, Errors.VALIDATION_ERROR.code, '无效的 cursor 格式', req.requestId, 400);
+      sendError(res, Errors.VALIDATION_ERROR.code, '无效的 cursor 格式', req.requestId, Errors.VALIDATION_ERROR.status);
       return;
     }
   }
@@ -91,14 +91,12 @@ router.get('/contributions', async (req, res) => {
     ? Buffer.from(String(rows[rows.length - 1].createdAt)).toString('base64url')
     : null;
 
-  sendSuccess(res, {
+  // Per api.md §12.2: pagination is a top-level sibling of data, not nested inside it
+  res.status(200).json({
     data: submissions,
-    pagination: {
-      nextCursor,
-      hasMore,
-      limit,
-    },
-  }, req.requestId);
+    pagination: { nextCursor, hasMore, limit },
+    requestId: req.requestId,
+  });
 });
 
 // ──────────────────────────────────────────────
@@ -117,7 +115,7 @@ router.get('/contributions/:id', async (req, res) => {
   );
 
   if (!row) {
-    sendError(res, Errors.NOT_FOUND.code, '投稿不存在', req.requestId, 404);
+    sendError(res, Errors.CONTRIBUTION_NOT_FOUND.code, '投稿不存在', req.requestId, Errors.CONTRIBUTION_NOT_FOUND.status);
     return;
   }
 
@@ -153,7 +151,7 @@ router.post('/contributions/:id/review', (req, _res, next) => { req.rateLimitAct
   const { id } = req.params;
   const parsed = reviewSchema.safeParse(req.body);
   if (!parsed.success) {
-    sendError(res, Errors.VALIDATION_ERROR.code, '请求数据校验失败', req.requestId, 400, parsed.error.flatten());
+    sendError(res, Errors.VALIDATION_ERROR.code, '请求数据校验失败', req.requestId, Errors.VALIDATION_ERROR.status, parsed.error.flatten());
     return;
   }
 
@@ -166,21 +164,21 @@ router.post('/contributions/:id/review', (req, _res, next) => { req.rateLimitAct
   );
 
   if (!contribution) {
-    sendError(res, Errors.NOT_FOUND.code, '投稿不存在', req.requestId, 404);
+    sendError(res, Errors.CONTRIBUTION_NOT_FOUND.code, '投稿不存在', req.requestId, Errors.CONTRIBUTION_NOT_FOUND.status);
     return;
   }
 
   if (contribution.status !== 'pending' && contribution.status !== 'in_review') {
-    sendError(res, Errors.CONFLICT.code,
-      `投稿状态为 ${contribution.status}，不可审核`, req.requestId, 409);
+    sendError(res, Errors.VERSION_CONFLICT.code,
+      `投稿状态为 ${contribution.status}，不可审核`, req.requestId, Errors.VERSION_CONFLICT.status);
     return;
   }
 
   // Optimistic lock: check version
   if (contribution.version !== expectedVersion) {
-    sendError(res, Errors.CONFLICT.code,
+    sendError(res, Errors.VERSION_CONFLICT.code,
       `版本冲突：当前版本为 ${contribution.version}，期望 ${expectedVersion}`,
-      req.requestId, 409);
+      req.requestId, Errors.VERSION_CONFLICT.status);
     return;
   }
 
@@ -197,7 +195,7 @@ router.post('/contributions/:id/review', (req, _res, next) => { req.rateLimitAct
   );
 
   if (result.affectedRows === 0) {
-    sendError(res, Errors.CONFLICT.code, '审核失败，请刷新后重试', req.requestId, 409);
+    sendError(res, Errors.VERSION_CONFLICT.code, '审核失败，请刷新后重试', req.requestId, Errors.VERSION_CONFLICT.status);
     return;
   }
 

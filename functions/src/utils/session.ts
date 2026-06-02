@@ -1,24 +1,34 @@
 import { queryOne, exec } from '../Database';
 import { ulid } from './ulid';
+import { conf } from '../Config';
 
 const SESSION_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
 const REFRESH_TOKEN_BYTES = 32;
+const SESSION_SECRET = ((conf.SESSION as Record<string, string | undefined>)?.SESS_SECRET) || 'default-secret-change-me';
 
 function randomToken(): string {
   const buf = crypto.getRandomValues(new Uint8Array(REFRESH_TOKEN_BYTES));
   return Array.from(buf).map(b => b.toString(36).padStart(2, '0')).join('');
 }
 
-/** Simple DJB2-style hash — short, fast, NOT cryptographic.
- *  Used for token indexing and IP/UA fingerprinting only.
- *  Do NOT use for security-sensitive hashing. */
-function shortHash(data: string): string {
-  let h = 0;
-  for (const c of data) {
-    h = ((h << 5) - h) + c.charCodeAt(0);
-    h |= 0;
-  }
-  return Math.abs(h).toString(36).padStart(6, '0');
+/** HMAC-SHA256 for security-sensitive token hashing (per api.md §1). */
+async function hmacToken(data: string): Promise<string> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw', enc.encode(SESSION_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(data));
+  return btoa(String.fromCharCode(...new Uint8Array(sig)))
+    .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+}
+
+/** SHA-256 for non-security fingerprinting (IP/UA). */
+async function sha256(data: string): Promise<string> {
+  const enc = new TextEncoder();
+  const digest = await crypto.subtle.digest('SHA-256', enc.encode(data));
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 }
 
 export interface SessionInfo {
@@ -44,10 +54,12 @@ export async function createSession(
   const sessionId = ulid();
   const refreshToken = randomToken();
   const tokenPrefix = refreshToken.slice(0, 8);
-  const tokenHash = shortHash(refreshToken);
-  const ipHash = shortHash(ip || 'unknown');
+  const [tokenHash, ipHash, uaHash] = await Promise.all([
+    hmacToken(refreshToken),
+    sha256(ip || 'unknown'),
+    sha256(ua || 'unknown'),
+  ]);
   const ipPrefix = (ip || 'unknown').split('.').slice(0, 3).join('.') + '.0';
-  const uaHash = shortHash(ua || 'unknown');
   const now = Date.now();
 
   void _tokenVersion;
@@ -77,7 +89,7 @@ export async function createSession(
 export async function rotateRefreshToken(
   rawToken: string,
 ): Promise<SessionInfo | null> {
-  const tokenHash = shortHash(rawToken);
+  const [tokenHash] = await Promise.all([hmacToken(rawToken)]);
   const prefix = rawToken.slice(0, 8);
 
   const event = await queryOne(
@@ -91,7 +103,7 @@ export async function rotateRefreshToken(
 
   const now = Date.now();
   const newToken = randomToken();
-  const newHash = shortHash(newToken);
+  const [newHash] = await Promise.all([hmacToken(newToken)]);
   const newPrefix = newToken.slice(0, 8);
 
   // ── Atomic claim: only 'active' tokens can be rotated ──────

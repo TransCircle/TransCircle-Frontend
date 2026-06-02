@@ -33,13 +33,13 @@ const APP_URL = 'https://submit.transcircle.org';
 router.post('/refresh', (req, _res, next) => { req.rateLimitAction = 'auth'; next(); }, rateLimitCheck, async (req, res) => {
   const rawToken = req.cookies?.refresh_token;
   if (!rawToken) {
-    sendError(res, Errors.UNAUTHORIZED.code, '未找到刷新令牌', req.requestId, Errors.UNAUTHORIZED.status);
+    sendError(res, Errors.INVALID_REFRESH_TOKEN.code, '未找到刷新令牌', req.requestId, Errors.INVALID_REFRESH_TOKEN.status);
     return;
   }
 
   const sessionInfo = await rotateRefreshToken(rawToken);
   if (!sessionInfo) {
-    sendError(res, Errors.UNAUTHORIZED.code, '刷新令牌无效或已过期', req.requestId, Errors.UNAUTHORIZED.status);
+    sendError(res, Errors.REFRESH_TOKEN_REVOKED.code, '刷新令牌无效或已过期', req.requestId, Errors.REFRESH_TOKEN_REVOKED.status);
     return;
   }
 
@@ -107,7 +107,7 @@ router.post('/logout', (req, _res, next) => { req.rateLimitAction = 'auth'; next
 // ──────────────────────────────────────────────
 router.get('/oauth/github/start', async (req, res) => {
   if (!GITHUB_CLIENT_ID) {
-    sendError(res, 'OAUTH_NOT_CONFIGURED', 'GitHub OAuth 未配置', req.requestId, 503);
+    sendError(res, Errors.OAUTH_PROVIDER_ERROR.code, 'GitHub OAuth 未配置', req.requestId, 503);
     return;
   }
 
@@ -333,7 +333,7 @@ router.get('/oauth/github/callback', async (req, res) => {
 // ──────────────────────────────────────────────
 router.get('/oauth/x/start', async (req, res) => {
   if (!X_CLIENT_ID) {
-    sendError(res, 'OAUTH_NOT_CONFIGURED', 'X OAuth 未配置', req.requestId, 503);
+    sendError(res, Errors.OAUTH_PROVIDER_ERROR.code, 'X OAuth 未配置', req.requestId, 503);
     return;
   }
 
@@ -542,7 +542,7 @@ router.post('/oauth/complete-registration', (req, _res, next) => { req.rateLimit
   // ── Dual-cookie CSRF validation (per apidocs.md §1.6.4) ───────────────
   const csrfToken = req.headers['x-csrf-token'] as string | undefined;
   if (!csrfToken) {
-    sendError(res, Errors.VALIDATION_ERROR.code, '缺少 X-CSRF-Token', req.requestId, 400);
+    sendError(res, Errors.CSRF_TOKEN_INVALID.code, '缺少 X-CSRF-Token', req.requestId, Errors.CSRF_TOKEN_INVALID.status);
     return;
   }
 
@@ -582,7 +582,7 @@ router.post('/oauth/complete-registration', (req, _res, next) => { req.rateLimit
 
     if (lockRows.length === 0) {
       await conn.rollback();
-      sendError(res, Errors.GONE.code, 'CSRF Token 无效或已过期', req.requestId, 410);
+      sendError(res, Errors.TOKEN_INVALID_OR_EXPIRED.code, 'CSRF Token 无效或已过期', req.requestId, 410);
       return;
     }
 
@@ -595,7 +595,7 @@ router.post('/oauth/complete-registration', (req, _res, next) => { req.rateLimit
     );
     if (usedCheck.length > 0 && (usedCheck[0] as { usedAt: number | null }).usedAt) {
       await conn.rollback();
-      sendError(res, Errors.GONE.code, 'CSRF Token 已被使用', req.requestId, 410);
+      sendError(res, Errors.TOKEN_INVALID_OR_EXPIRED.code, 'CSRF Token 已被使用', req.requestId, 410);
       return;
     }
 
@@ -606,7 +606,7 @@ router.post('/oauth/complete-registration', (req, _res, next) => { req.rateLimit
     );
     if ((existingUsername as unknown[]).length > 0) {
       await conn.rollback();
-      sendError(res, Errors.CONFLICT.code, '用户名已被使用', req.requestId, 409);
+      sendError(res, Errors.USERNAME_TAKEN.code, '用户名已被使用', req.requestId, Errors.USERNAME_TAKEN.status);
       return;
     }
 
@@ -617,7 +617,7 @@ router.post('/oauth/complete-registration', (req, _res, next) => { req.rateLimit
     );
     if ((existingEmail as unknown[]).length > 0) {
       await conn.rollback();
-      sendError(res, Errors.CONFLICT.code, '该邮箱已被注册', req.requestId, 409);
+      sendError(res, Errors.EMAIL_TAKEN.code, '该邮箱已被注册', req.requestId, Errors.EMAIL_TAKEN.status);
       return;
     }
 
@@ -749,7 +749,7 @@ async function simpleHash(data: string): Promise<string> {
 router.post('/oauth/exchange', (req, _res, next) => { req.rateLimitAction = 'auth'; next(); }, rateLimitCheck, async (req, res) => {
   const parsed = loginCodeSchema.safeParse(req.body);
   if (!parsed.success) {
-    sendError(res, Errors.VALIDATION_ERROR.code, 'loginCode 不能为空', req.requestId, 400);
+    sendError(res, Errors.VALIDATION_ERROR.code, 'loginCode 不能为空', req.requestId, Errors.VALIDATION_ERROR.status);
     return;
   }
 
@@ -776,14 +776,14 @@ router.post('/oauth/exchange', (req, _res, next) => { req.rateLimitAction = 'aut
 
       if (!token) {
         await conn.rollback();
-        sendError(res, Errors.GONE.code, 'loginCode 无效', req.requestId, 410);
+        sendError(res, Errors.TOKEN_INVALID_OR_EXPIRED.code, 'loginCode 无效', req.requestId, 410);
         return;
       }
 
       if (token.expiresAt < Date.now()) {
         await conn.execute(`DELETE FROM auth_tokens WHERE id = ?`, [token.id]);
         await conn.commit();
-        sendError(res, Errors.GONE.code, 'loginCode 已过期', req.requestId, 410);
+        sendError(res, Errors.TOKEN_INVALID_OR_EXPIRED.code, 'loginCode 已过期', req.requestId, 410);
         return;
       }
 
@@ -796,7 +796,7 @@ router.post('/oauth/exchange', (req, _res, next) => { req.rateLimitAction = 'aut
 
       if (delHeader.affectedRows === 0) {
         await conn.commit();
-        sendError(res, Errors.GONE.code, 'loginCode 已被使用', req.requestId, 410);
+        sendError(res, Errors.TOKEN_INVALID_OR_EXPIRED.code, 'loginCode 已被使用', req.requestId, 410);
         return;
       }
 

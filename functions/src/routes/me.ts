@@ -13,7 +13,7 @@ const router: RouterType = Router();
 router.get('/', requireAuth, async (req, res) => {
   const user = await findUserById(req.user!.userId);
   if (!user) {
-    sendError(res, Errors.NOT_FOUND.code, '用户不存在', req.requestId, 404);
+    sendError(res, Errors.USER_NOT_FOUND.code, '用户不存在', req.requestId, Errors.USER_NOT_FOUND.status);
     return;
   }
 

@@ -159,7 +159,7 @@ CREATE TABLE mfa_totp_credentials
                                                                        'disabled')),
     algorithm        VARCHAR(16)    NOT NULL DEFAULT 'SHA1',
     digits           TINYINT        NOT NULL DEFAULT 6,
-    `period`         TINYINT        NOT NULL DEFAULT 30,
+    `period`         SMALLINT       NOT NULL DEFAULT 30,
     lastUsedTimeStep BIGINT         NULL,
     createdAt        BIGINT         NOT NULL DEFAULT (UNIX_TIMESTAMP(NOW()) * 1000),
     enabledAt        BIGINT         NULL,
@@ -224,6 +224,7 @@ CREATE TABLE passkeys
     lastUsedAt         BIGINT          NULL,
 
     UNIQUE (credentialIdB64),
+    UNIQUE (credentialId),
     INDEX idx_passkeys_user_status (userId, status),
 
     FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE
@@ -304,6 +305,7 @@ CREATE TABLE contributions
     submitterUserAgentHash VARCHAR(64)  NOT NULL,
 
     INDEX idx_contrib_author_created (authorUserId, createdAt),
+    UNIQUE (authorUserId, idempotencyKey),
     INDEX idx_contrib_status_created (status, createdAt),
     INDEX idx_contrib_publishedAt (publishedAt),
 

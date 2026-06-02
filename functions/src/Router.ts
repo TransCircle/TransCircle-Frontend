@@ -35,7 +35,17 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// ── Health check ────────────────────────────────
+// ── Health checks (per api.md §13.1) ─────────────
+app.get('/healthz', (_req: Request, res: Response) => {
+  res.json({ status: 'ok', timestamp: Date.now() });
+});
+
+app.get('/readyz', (_req: Request, res: Response) => {
+  // Simple readiness — DB connectivity could be added later
+  res.json({ status: 'ready', timestamp: Date.now() });
+});
+
+// Legacy health endpoint
 app.get('/v1/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: Date.now() });
 });

@@ -15,7 +15,7 @@ const router: RouterType = Router();
 router.post('/', (req, _res, next) => { req.rateLimitAction = 'submit'; next(); }, rateLimitCheck, optionalAuth, async (req, res) => {
   const parsed = contributionSchema.safeParse(req.body);
   if (!parsed.success) {
-    sendError(res, Errors.VALIDATION_ERROR.code, '请求数据校验失败', req.requestId, 400, parsed.error.flatten());
+    sendError(res, Errors.VALIDATION_ERROR.code, '请求数据校验失败', req.requestId, Errors.VALIDATION_ERROR.status, parsed.error.flatten());
     return;
   }
 
@@ -31,7 +31,7 @@ router.post('/', (req, _res, next) => { req.rateLimitAction = 'submit'; next(); 
 
   // Validate authorName if not anonymous
   if (data.authorType !== 'anonymous' && !data.authorName?.trim()) {
-    sendError(res, Errors.VALIDATION_ERROR.code, '实名/笔名投稿必须填写署名', req.requestId, 400);
+    sendError(res, Errors.VALIDATION_ERROR.code, '实名/笔名投稿必须填写署名', req.requestId, Errors.VALIDATION_ERROR.status);
     return;
   }
 

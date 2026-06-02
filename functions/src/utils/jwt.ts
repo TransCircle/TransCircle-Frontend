@@ -40,7 +40,7 @@ export async function signJwt(payload: Omit<JwtPayload, 'iat' | 'exp'>): Promise
   const body = b64UrlEncode(new TextEncoder().encode(JSON.stringify({
     ...payload,
     iat: now,
-    exp: now + 300, // 5 minutes
+    exp: now + 900, // 15 minutes (per api.md §1)
   })));
 
   const key = await getKey();
