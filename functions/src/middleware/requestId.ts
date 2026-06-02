@@ -6,6 +6,7 @@ import { ulid } from '../utils/ulid';
  * Available as req.requestId.
  */
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       requestId: string;

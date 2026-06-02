@@ -37,14 +37,14 @@ router.post('/refresh', (req, _res, next) => { req.rateLimitAction = 'auth'; nex
     return;
   }
 
-  const ip = req.ip || req.socket.remoteAddress || 'unknown';
-  const ua = req.headers['user-agent'] || 'unknown';
-
-  const sessionInfo = await rotateRefreshToken(rawToken, ip, ua);
+  const sessionInfo = await rotateRefreshToken(rawToken);
   if (!sessionInfo) {
     sendError(res, Errors.UNAUTHORIZED.code, '刷新令牌无效或已过期', req.requestId, Errors.UNAUTHORIZED.status);
     return;
   }
+
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  const ua = req.headers['user-agent'] || 'unknown';
 
   // Issue new refresh token and set cookie
   // (rotateRefreshToken doesn't return the new raw token, so we issue one here)
@@ -88,9 +88,7 @@ router.post('/logout', (req, _res, next) => { req.rateLimitAction = 'auth'; next
   const rawToken = req.cookies?.refresh_token;
 
   if (rawToken) {
-    const ip = req.ip || req.socket.remoteAddress || 'unknown';
-    const ua = req.headers['user-agent'] || 'unknown';
-    const sessionInfo = await rotateRefreshToken(rawToken, ip, ua);
+    const sessionInfo = await rotateRefreshToken(rawToken);
     if (sessionInfo) {
       await revokeUserSessions(sessionInfo.userId, 'logout', sessionInfo.id);
       await revokeSession(sessionInfo.id, 'logout');
@@ -166,7 +164,7 @@ router.get('/oauth/github/callback', async (req, res) => {
 
   // Verify state record exists in DB with IP/UA binding
   const stateHash = await simpleHash(state);
-  const stateRecord = await queryOne<any[]>(
+  const stateRecord = await queryOne(
     `SELECT id, metadata FROM auth_tokens
      WHERE tokenHash = ? AND type = 'oauth_state' AND expiresAt > ?`,
     [stateHash, Date.now()],
@@ -393,7 +391,7 @@ router.get('/oauth/x/callback', async (req, res) => {
 
   // Retrieve stored state record from DB
   const stateHash = await simpleHash(state);
-  const stateRecord = await queryOne<any[]>(
+  const stateRecord = await queryOne(
     `SELECT id, metadata FROM auth_tokens
      WHERE tokenHash = ? AND type = 'oauth_state' AND expiresAt > ?`,
     [stateHash, Date.now()],
@@ -657,7 +655,7 @@ router.post('/oauth/complete-registration', (req, _res, next) => { req.rateLimit
       return;
     }
 
-    const { sessionId, refreshToken } = await createSession(
+    const { refreshToken } = await createSession(
       user.id, user.isAdmin, `oauth:${provider}`, ip, ua, user.tokenVersion,
     );
 
@@ -760,7 +758,7 @@ router.post('/oauth/exchange', (req, _res, next) => { req.rateLimitAction = 'aut
 
   // ── 原子消费：事务 + 行级锁 ──────────────────────────
   // 防止并发请求同时 SELECT 到同一 loginCode
-  let userId: string | null = null;
+  let userId: string | null;
   {
     const conn = await getConnection();
     try {
@@ -822,7 +820,7 @@ router.post('/oauth/exchange', (req, _res, next) => { req.rateLimitAction = 'aut
   }
 
   // Get the actual OAuth provider
-  const exchangeOauth = await queryOne<any[]>(
+  const exchangeOauth = await queryOne(
     `SELECT provider FROM oauth_accounts WHERE userId = ? LIMIT 1`,
     [userId],
   );

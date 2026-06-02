@@ -63,7 +63,7 @@ function getStoredToken(): string {
     if (token) return token
 
     token = localStorage.getItem(TEMP_TOKEN_KEY) || ''
-    if (!token) return ''
+    if (!token) return ''    
 
     const exp = localStorage.getItem(TEMP_TOKEN_EXPIRY_KEY)
     if (exp && Date.now() > Number(exp)) {
@@ -95,6 +95,7 @@ export const Admin = () => {
   const [selected, setSelected] = useState<Submission | null>(null)
   const [reviewNotes, setReviewNotes] = useState('')
   const [rememberDevice, setRememberDevice] = useState(false)
+  const [pageLoadTs] = useState(() => Date.now())
 
   function getField(s: unknown, ...keys: string[]): unknown {
     if (typeof s !== 'object' || s === null) return null
@@ -251,7 +252,7 @@ export const Admin = () => {
       }
     }
 
-    const expiryTime = new Date(Date.now() + TEMP_TOKEN_MAX_AGE).toLocaleTimeString()
+    const expiryTime = new Date(pageLoadTs + TEMP_TOKEN_MAX_AGE).toLocaleTimeString()
 
     return (
       <main className={styles.container}>
@@ -333,7 +334,7 @@ export const Admin = () => {
               {t('admin.title')}
             </h1>
             <span className={styles.userInfo}>
-              {user ? `${user.username} (${user.provider})` : `${t('admin.tempAdmin')}（临时令牌，${new Date(Date.now() + TEMP_TOKEN_MAX_AGE).toLocaleTimeString()} 过期）`}
+              {user ? `${user.username} (${user.provider})` : `${t('admin.tempAdmin')}（临时令牌，${new Date(pageLoadTs + TEMP_TOKEN_MAX_AGE).toLocaleTimeString()} 过期）`}
             </span>
           </div>
         </div>

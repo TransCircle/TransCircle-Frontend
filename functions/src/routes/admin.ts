@@ -49,7 +49,7 @@ router.get('/contributions', async (req, res) => {
 
   params.push(limit + 1); // Fetch one extra to determine hasMore
 
-  const rows = await query<any[]>(
+  const rows = await query(
     `SELECT c.id, c.title, c.status, c.version, c.createdAt, c.updatedAt,
             c.submittedAt, c.authorType, c.authorName, c.contact, c.category,
             u.username, u.displayName, u.avatarUrl
@@ -108,7 +108,7 @@ router.get('/contributions', async (req, res) => {
 router.get('/contributions/:id', async (req, res) => {
   const { id } = req.params;
 
-  const row = await queryOne<any[]>(
+  const row = await queryOne(
     `SELECT c.*, u.username, u.displayName, u.avatarUrl
      FROM contributions c
      LEFT JOIN users u ON u.id = c.authorUserId
@@ -160,7 +160,7 @@ router.post('/contributions/:id/review', (req, _res, next) => { req.rateLimitAct
   const { decision, expectedVersion, internalNote, publicNote } = parsed.data;
 
   // Check contribution exists and status is reviewable
-  const contribution = await queryOne<any[]>(
+  const contribution = await queryOne(
     `SELECT id, status, version FROM contributions WHERE id = ?`,
     [id],
   );

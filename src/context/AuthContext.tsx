@@ -23,7 +23,7 @@ interface AuthContextValue {
   loginWithX: () => Promise<void>
   logout: () => Promise<void>
   exchangeLoginCode: (loginCode: string) => Promise<User | null>
-  completeRegistration: (provider: string, data: { username?: string; email?: string; password?: string; displayName?: string }) => Promise<{ loginCode?: string; user: User | null } | null>
+  completeRegistration: (provider: string, data: { username?: string; email?: string; password?: string; displayName?: string; emailMatchesProvider?: boolean }) => Promise<{ loginCode?: string; user: User | null } | null>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -106,7 +106,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   // Complete OAuth registration for new users (per apidocs.md §1.6.4)
-  const completeRegistration = useCallback(async (provider: string, data: { username?: string; email?: string; password?: string; displayName?: string }) => {
+  const completeRegistration = useCallback(async (provider: string, data: { username?: string; email?: string; password?: string; displayName?: string; emailMatchesProvider?: boolean }) => {
     try {
       const csrfMatch = document.cookie.match(/oauth_pending_csrf=([^;]+)/)
       const csrfToken = csrfMatch?.[1] || ''

@@ -1,5 +1,5 @@
 import { log } from './Logger';
-import { queryOne, exec } from './Database';
+import { queryOne } from './Database';
 
 /**
  * Eagerly verify middleware tables exist at startup.

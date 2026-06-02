@@ -1,10 +1,11 @@
 import type { Request, Response, NextFunction } from 'express';
-import { verifyJwt, type JwtPayload } from '../utils/jwt';
+import { verifyJwt } from '../utils/jwt';
 import { getValidSession } from '../utils/session';
 import { sendError, Errors } from '../utils/response';
 import { conf } from '../Config';
 
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       user?: {

@@ -11,7 +11,7 @@ const router: RouterType = Router();
 // ──────────────────────────────────────────────
 router.get('/published', async (req, res) => {
   try {
-    const rows = await query<any[]>(
+    const rows = await query(
       `SELECT id, title, contentRaw as content, category,
               authorType as author_type, authorName as author_name,
               submittedAt as created_at

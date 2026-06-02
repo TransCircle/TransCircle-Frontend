@@ -4,6 +4,7 @@ import { sendError, Errors } from '../utils/response';
 import { ulid } from '../utils/ulid';
 
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       rateLimitAction?: string;
@@ -66,7 +67,7 @@ export async function rateLimitCheck(
 
   try {
     // Insert or increment
-    const existing = await queryOne<any[]>(
+    const existing = await queryOne(
       `SELECT id, count FROM rate_limits WHERE bucketKey = ?`,
       [bucketKey],
     );

@@ -21,7 +21,7 @@ export async function query<T extends mysql.RowDataPacket[]>(
   sql: string,
   params?: unknown[],
 ): Promise<T> {
-  const [rows] = await pool.execute<T>(sql, params as any[]);
+  const [rows] = await pool.execute<T>(sql, params);
   return rows;
 }
 
@@ -39,7 +39,7 @@ export async function exec(
   sql: string,
   params?: unknown[],
 ): Promise<mysql.ResultSetHeader> {
-  const [result] = await pool.execute<mysql.ResultSetHeader>(sql, params as any[]);
+  const [result] = await pool.execute<mysql.ResultSetHeader>(sql, params);
   return result;
 }
 

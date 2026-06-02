@@ -1,4 +1,4 @@
-import { query, queryOne, exec } from '../Database';
+import { queryOne, exec } from '../Database';
 import { ulid } from './ulid';
 
 const SESSION_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -39,7 +39,7 @@ export async function createSession(
   loginMethod: string,
   ip: string,
   ua: string,
-  tokenVersion: number,
+  _tokenVersion: number,
 ): Promise<{ sessionId: string; refreshToken: string }> {
   const sessionId = ulid();
   const refreshToken = randomToken();
@@ -49,6 +49,8 @@ export async function createSession(
   const ipPrefix = (ip || 'unknown').split('.').slice(0, 3).join('.') + '.0';
   const uaHash = shortHash(ua || 'unknown');
   const now = Date.now();
+
+  void _tokenVersion;
 
   await exec(
     `INSERT INTO sessions (id, userId, createdAt, lastUsedAt, expiresAt, ipHash, ipPrefix, userAgentHash, loginMethod)
@@ -74,13 +76,11 @@ export async function createSession(
  */
 export async function rotateRefreshToken(
   rawToken: string,
-  ip: string,
-  ua: string,
 ): Promise<SessionInfo | null> {
   const tokenHash = shortHash(rawToken);
   const prefix = rawToken.slice(0, 8);
 
-  const event = await queryOne<any[]>(
+  const event = await queryOne(
     `SELECT id, sessionId, status, rotatedToHash
      FROM refresh_token_events
      WHERE tokenHash = ? AND tokenPrefix = ?`,
@@ -106,7 +106,7 @@ export async function rotateRefreshToken(
 
   if (claimed.affectedRows === 1) {
     // This request won the race — token is atomically ours.
-    const session = await queryOne<any[]>(
+    const session = await queryOne(
       `SELECT s.id, s.userId, s.expiresAt, s.revokedAt, u.tokenVersion, u.isAdmin
        FROM sessions s
        JOIN users u ON u.id = s.userId
@@ -153,7 +153,7 @@ export async function rotateRefreshToken(
     );
   } else if (event.status === 'rotated' && event.rotatedToHash) {
     // Reuse of an already-rotated token — chase the chain.
-    const rotatedEvent = await queryOne<any[]>(
+    const rotatedEvent = await queryOne(
       `SELECT sessionId FROM refresh_token_events WHERE tokenHash = ?`,
       [event.rotatedToHash],
     );
@@ -215,7 +215,7 @@ export async function getValidSession(
   userId: string,
   expectedTokenVersion: number,
 ): Promise<boolean> {
-  const session = await queryOne<any[]>(
+  const session = await queryOne(
     `SELECT id, revokedAt, expiresAt
      FROM sessions
      WHERE id = ? AND userId = ?`,
@@ -227,7 +227,7 @@ export async function getValidSession(
   if (session.expiresAt < Date.now()) return false;
 
   // Check user tokenVersion
-  const user = await queryOne<any[]>(
+  const user = await queryOne(
     `SELECT tokenVersion FROM users WHERE id = ?`,
     [userId],
   );

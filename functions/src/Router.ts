@@ -56,6 +56,7 @@ app.use((req: Request, res: Response) => {
 
 // ── Global error handler ────────────────────────
 app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
+  void _next; // Express error handler needs 4 params
   log(`ERROR: ${err.message}`);
   if (err.stack) {
     const line = err.stack.split('\n')[1]?.trim();

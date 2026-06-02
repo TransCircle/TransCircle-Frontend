@@ -63,7 +63,7 @@ async function main() {
           console.log(`  Table already exists, skipping...`);
         } else {
           console.error(`  Error executing: ${stmt.slice(0, 60)}...`);
-          console.error(`  ${err?.message || err}`);
+          console.error(`  ${mysqlErr?.message || err}`);
         }
       }
     }

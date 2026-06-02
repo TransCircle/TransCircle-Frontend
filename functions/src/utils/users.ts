@@ -1,4 +1,4 @@
-import { query, queryOne, exec } from '../Database';
+import { queryOne, exec } from '../Database';
 import { ulid } from './ulid';
 
 export interface UserRecord {
@@ -32,7 +32,7 @@ export async function findUserByOAuth(
   provider: string,
   providerUserId: string,
 ): Promise<UserRecord | null> {
-  const oauth = await queryOne<any[]>(
+  const oauth = await queryOne(
     `SELECT userId FROM oauth_accounts WHERE provider = ? AND providerUserId = ?`,
     [provider, providerUserId],
   );
@@ -45,7 +45,7 @@ export async function findUserByOAuth(
  * Find a user by ID.
  */
 export async function findUserById(id: string): Promise<UserRecord | null> {
-  const user = await queryOne<any[]>(
+  const user = await queryOne(
     `SELECT u.*, EXISTS(
        SELECT 1 FROM user_roles ur
        JOIN roles r ON r.id = ur.roleId
@@ -61,7 +61,7 @@ export async function findUserById(id: string): Promise<UserRecord | null> {
  * Find a user by username.
  */
 export async function findUserByUsername(username: string): Promise<UserRecord | null> {
-  const user = await queryOne<any[]>(
+  const user = await queryOne(
     `SELECT u.*, EXISTS(
        SELECT 1 FROM user_roles ur
        JOIN roles r ON r.id = ur.roleId
@@ -86,7 +86,7 @@ export async function findOrCreateOAuthUser(
   providerEmail: string | null,
 ): Promise<{ user: UserRecord; isNew: boolean }> {
   // Check if an oauth_account exists for this provider+id
-  const existing = await queryOne<any[]>(
+  const existing = await queryOne(
     `SELECT oa.userId, u.*, EXISTS(
        SELECT 1 FROM user_roles ur
        JOIN roles r ON r.id = ur.roleId
@@ -144,7 +144,7 @@ export async function findOrCreateOAuthUser(
  * Set user admin status (add/remove admin role).
  */
 export async function setUserAdmin(userId: string, grantorUserId: string, isAdmin: boolean): Promise<void> {
-  const role = await queryOne<any[]>(
+  const role = await queryOne(
     `SELECT id FROM roles WHERE name = 'admin'`,
   );
   if (!role) {

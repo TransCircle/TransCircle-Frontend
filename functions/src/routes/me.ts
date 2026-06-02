@@ -18,7 +18,7 @@ router.get('/', requireAuth, async (req, res) => {
   }
 
   // Get the actual OAuth provider from oauth_accounts
-  const oauth = await queryOne<any[]>(
+  const oauth = await queryOne(
     `SELECT provider FROM oauth_accounts WHERE userId = ? LIMIT 1`,
     [req.user!.userId],
   );
