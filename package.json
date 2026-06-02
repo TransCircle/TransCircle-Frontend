@@ -33,7 +33,6 @@
   },
   "dependencies": {
     "i18next": "^26.3.0",
-    "lucide-react": "^1.17.0",
     "md-editor-rt": "^6.5.1",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
@@ -41,7 +40,6 @@
     "react-router-dom": "^7.15.1"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260529.1",
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.12.3",
     "@types/react": "^19.2.15",
