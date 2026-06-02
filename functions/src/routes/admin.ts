@@ -247,4 +247,189 @@ async function triggerStoryRebuild(req: import('express').Request): Promise<void
   }
 }
 
+// ──────────────────────────────────────────────
+// POST /admin/contributions/:id/publish — api.md §6.5
+// ──────────────────────────────────────────────
+router.post('/contributions/:id/publish', async (req, res) => {
+  const { id } = req.params
+  const expectedVersion = req.body?.expectedVersion as number | undefined
+
+  if (!expectedVersion) {
+    sendError(res, Errors.VALIDATION_ERROR.code, 'expectedVersion 必填', req.requestId, 422)
+    return
+  }
+
+  const contrib = await queryOne(`SELECT id, status, version FROM contributions WHERE id = ?`, [id])
+  if (!contrib) { sendError(res, Errors.CONTRIBUTION_NOT_FOUND.code, '投稿不存在', req.requestId, 404); return }
+  if (contrib.status !== 'approved') { sendError(res, 'INVALID_STATE_TRANSITION', '当前状态不可发布', req.requestId, 409); return }
+  if (contrib.version !== expectedVersion) { sendError(res, Errors.VERSION_CONFLICT.code, '版本冲突', req.requestId, Errors.VERSION_CONFLICT.status); return }
+
+  const now = Date.now()
+  const newVersion = contrib.version + 1
+
+  await exec(`UPDATE contributions SET status = 'published', version = ?, publishedAt = ?, updatedAt = ? WHERE id = ? AND version = ?`, [newVersion, now, now, id, expectedVersion])
+
+  await exec(
+    `INSERT INTO contribution_review_events (id, contributionId, reviewerUserId, action, fromStatus, toStatus, createdAt, requestId)
+     VALUES (?, ?, ?, 'publish', 'approved', 'published', ?, ?)`,
+    [ulid(), id, req.user!.userId, now, req.requestId],
+  )
+  await exec(`INSERT INTO audit_logs (id, actorUserId, action, resourceType, resourceId, after, createdAt, requestId) VALUES (?, ?, 'contribution.publish', 'contribution', ?, ?, ?, ?)`, [ulid(), req.user!.userId, id, JSON.stringify({ status: 'published' }), now, req.requestId])
+
+  sendSuccess(res, { id, status: 'published', version: newVersion, publishedAt: now }, req.requestId)
+})
+
+// POST /admin/contributions/:id/hide — api.md §6.4
+router.post('/contributions/:id/hide', async (req, res) => {
+  const { id } = req.params
+  const expectedVersion = req.body?.expectedVersion as number | undefined
+  const reason = req.body?.reason as string | undefined
+  if (!expectedVersion || !reason) { sendError(res, Errors.VALIDATION_ERROR.code, '缺少参数', req.requestId, 422); return }
+
+  const contrib = await queryOne(`SELECT id, status, version FROM contributions WHERE id = ?`, [id])
+  if (!contrib) { sendError(res, Errors.CONTRIBUTION_NOT_FOUND.code, '投稿不存在', req.requestId, 404); return }
+  if (contrib.status !== 'published') { sendError(res, 'INVALID_STATE_TRANSITION', '当前状态不可隐藏', req.requestId, 409); return }
+  if (contrib.version !== expectedVersion) { sendError(res, Errors.VERSION_CONFLICT.code, '版本冲突', req.requestId, Errors.VERSION_CONFLICT.status); return }
+
+  const now = Date.now(); const newVersion = contrib.version + 1
+  await exec(
+    `UPDATE contributions SET status = 'hidden', version = ?, updatedAt = ? WHERE id = ? AND version = ?`,
+    [newVersion, now, id, expectedVersion],
+  )
+  await exec(
+    `INSERT INTO contribution_review_events (id, contributionId, reviewerUserId, action, fromStatus, toStatus, publicNote, createdAt, requestId)
+     VALUES (?, ?, ?, 'hide', 'published', 'hidden', ?, ?, ?)`,
+    [ulid(), id, req.user!.userId, reason, now, req.requestId],
+  )
+  await exec(
+    `INSERT INTO audit_logs (id, actorUserId, action, resourceType, resourceId, after, createdAt, requestId)
+     VALUES (?, ?, 'contribution.hide', 'contribution', ?, ?, ?, ?)`,
+    [ulid(), req.user!.userId, id, JSON.stringify({ reason }), now, req.requestId],
+  )
+
+  sendSuccess(res, { id, status: 'hidden', version: newVersion }, req.requestId)
+})
+
+// POST /admin/contributions/:id/restore — api.md §6.4
+router.post('/contributions/:id/restore', async (req, res) => {
+  const { id } = req.params
+  const expectedVersion = req.body?.expectedVersion as number | undefined
+  if (!expectedVersion) { sendError(res, Errors.VALIDATION_ERROR.code, 'expectedVersion 必填', req.requestId, 422); return }
+
+  const contrib = await queryOne(`SELECT id, status, version FROM contributions WHERE id = ?`, [id])
+  if (!contrib) { sendError(res, Errors.CONTRIBUTION_NOT_FOUND.code, '投稿不存在', req.requestId, 404); return }
+  if (contrib.status !== 'hidden') { sendError(res, 'INVALID_STATE_TRANSITION', '当前状态不可恢复', req.requestId, 409); return }
+  if (contrib.version !== expectedVersion) { sendError(res, Errors.VERSION_CONFLICT.code, '版本冲突', req.requestId, Errors.VERSION_CONFLICT.status); return }
+
+  const now = Date.now(); const newVersion = contrib.version + 1
+  await exec(
+    `UPDATE contributions SET status = 'published', version = ?, updatedAt = ? WHERE id = ? AND version = ?`,
+    [newVersion, now, id, expectedVersion],
+  )
+  await exec(
+    `INSERT INTO contribution_review_events (id, contributionId, reviewerUserId, action, fromStatus, toStatus, createdAt, requestId)
+     VALUES (?, ?, ?, 'restore', 'hidden', 'published', ?, ?)`,
+    [ulid(), id, req.user!.userId, now, req.requestId],
+  )
+  await exec(
+    `INSERT INTO audit_logs (id, actorUserId, action, resourceType, resourceId, after, createdAt, requestId)
+     VALUES (?, ?, 'contribution.restore', 'contribution', ?, ?, ?, ?)`,
+    [ulid(), req.user!.userId, id, JSON.stringify({ status: 'published' }), now, req.requestId],
+  )
+
+  sendSuccess(res, { id, status: 'published', version: newVersion }, req.requestId)
+})
+
+// POST /admin/contributions/:id/delete — api.md §6.6
+router.post('/contributions/:id/delete', async (req, res) => {
+  const { id } = req.params
+  const expectedVersion = req.body?.expectedVersion as number | undefined
+  const reason = req.body?.reason as string | undefined
+  if (!expectedVersion || !reason) { sendError(res, Errors.VALIDATION_ERROR.code, '缺少参数', req.requestId, 422); return }
+
+  const validFromStatuses = ['draft', 'rejected', 'withdrawn', 'hidden', 'approved']
+  const contrib = await queryOne(`SELECT id, status, version FROM contributions WHERE id = ?`, [id])
+  if (!contrib) { sendError(res, Errors.CONTRIBUTION_NOT_FOUND.code, '投稿不存在', req.requestId, 404); return }
+  if (!validFromStatuses.includes(contrib.status)) { sendError(res, 'INVALID_STATE_TRANSITION', '当前状态不可删除', req.requestId, 409); return }
+  if (contrib.version !== expectedVersion) { sendError(res, Errors.VERSION_CONFLICT.code, '版本冲突', req.requestId, Errors.VERSION_CONFLICT.status); return }
+
+  const now = Date.now(); const newVersion = contrib.version + 1
+  await exec(
+    `UPDATE contributions SET status = 'deleted', version = ?, deletedAt = ?, updatedAt = ? WHERE id = ? AND version = ?`,
+    [newVersion, now, now, id, expectedVersion],
+  )
+  await exec(
+    `INSERT INTO audit_logs (id, actorUserId, action, resourceType, resourceId, after, createdAt, requestId)
+     VALUES (?, ?, 'contribution.delete', 'contribution', ?, ?, ?, ?)`,
+    [ulid(), req.user!.userId, id, JSON.stringify({ reason }), now, req.requestId],
+  )
+
+  sendSuccess(res, { id, status: 'deleted', version: newVersion, deletedAt: now }, req.requestId)
+})
+
+// GET /admin/contributions/:id/review-events — api.md §6.7
+router.get('/contributions/:id/review-events', async (req, res) => {
+  const { id } = req.params
+  const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 20, 1), 100)
+  const cursor = req.query.cursor as string | undefined
+
+  let whereClause = 'WHERE contributionId = ?'
+  const params: unknown[] = [id]
+  if (cursor) { whereClause += ' AND createdAt < ?'; params.push(parseInt(Buffer.from(cursor, 'base64url').toString('utf-8'), 10)) }
+  params.push(limit + 1)
+
+  const rows = await query(
+    `SELECT id, contributionId, reviewerUserId, fromStatus, toStatus, publicNote, internalNote, createdAt, requestId
+     FROM contribution_review_events ${whereClause} ORDER BY createdAt DESC LIMIT ?`,
+    params,
+  )
+
+  const hasMore = rows.length > limit
+  if (hasMore) rows.pop()
+
+  const data = (rows as Array<Record<string, unknown>>).map((r) => ({
+    id: r.id, contributionId: r.contributionId,
+    reviewer: { id: r.reviewerUserId, displayName: null },
+    fromStatus: r.fromStatus, toStatus: r.toStatus,
+    publicNote: r.publicNote || null, internalNote: null,
+    createdAt: r.createdAt, requestId: r.requestId,
+  }))
+
+  const nextCursor = hasMore ? Buffer.from(String((rows[rows.length - 1] as Record<string, unknown>).createdAt)).toString('base64url') : null
+  res.status(200).json({ data, pagination: { nextCursor, hasMore, limit }, requestId: req.requestId })
+})
+
+// GET /admin/contributions/stats — api.md §6.8
+router.get('/contributions/stats', async (req, res) => {
+  const rows = await query(
+    `SELECT status, COUNT(*) as count FROM contributions GROUP BY status`,
+  ) as Array<Record<string, unknown>>
+
+  const totals: Record<string, number> = { draft: 0, pending: 0, in_review: 0, approved: 0, rejected: 0, published: 0, hidden: 0, withdrawn: 0, deleted: 0 }
+  for (const r of rows) { totals[r.status as string] = r.count as number }
+
+  const now = Date.now()
+  const todayStart = now - (now % 86400000)
+  const weekAgo = now - 7 * 86400000
+  const monthAgo = now - 30 * 86400000
+
+  const submissions = await query(
+    `SELECT SUM(CASE WHEN submittedAt >= ? THEN 1 ELSE 0 END) as today,
+            SUM(CASE WHEN submittedAt >= ? THEN 1 ELSE 0 END) as last7Days,
+            SUM(CASE WHEN submittedAt >= ? THEN 1 ELSE 0 END) as last30Days,
+            AVG(CASE WHEN reviewedAt IS NOT NULL THEN reviewedAt - submittedAt ELSE NULL END) / 1000 as avgLatency
+     FROM contributions LEFT JOIN contribution_review_events ON contributionId = id AND action = 'review'
+     WHERE submittedAt IS NOT NULL`,
+    [todayStart, weekAgo, monthAgo],
+  )
+
+  const s = submissions[0] as Record<string, unknown> || {}
+
+  sendSuccess(res, {
+    totals,
+    submissions: { today: s.today || 0, last7Days: s.last7Days || 0, last30Days: s.last30Days || 0 },
+    averageReviewLatencySeconds: Math.round((s.avgLatency as number) || 0),
+  }, req.requestId)
+})
+
 export default router

@@ -10,9 +10,20 @@ import pool from './Database'
 
 // Import route modules
 import authRoutes from './routes/auth'
+import authRegisterRoutes from './routes/auth-register'
+import authLoginRoutes from './routes/auth-login'
+import authPasswordRoutes from './routes/auth-password'
+import authSessionsRoutes from './routes/auth-sessions'
+import authTotpRoutes from './routes/auth-totp'
+import authStepupRoutes from './routes/auth-stepup'
+import authOauthBindRoutes from './routes/auth-oauth-bind'
+import authMergeRoutes from './routes/auth-merge'
 import meRoutes from './routes/me'
 import contributionRoutes from './routes/contributions'
 import adminRoutes from './routes/admin'
+import adminUsersRoutes from './routes/admin-users'
+import adminAuditRoutes from './routes/admin-audit'
+import publicContributionsRoutes from './routes/public-contributions'
 import storiesRoutes from './routes/stories'
 
 const app: Express = express()
@@ -75,9 +86,20 @@ app.get('/v1/health', (req: Request, res: Response) => {
 
 // ── API Routes ──────────────────────────────────
 app.use('/v1/auth', authRoutes)
+app.use('/v1/auth', authRegisterRoutes)
+app.use('/v1/auth', authLoginRoutes)
+app.use('/v1', authPasswordRoutes)    // /auth/password/forgot, /auth/password/reset, /me/password
+app.use('/v1', authSessionsRoutes)    // /auth/session, /auth/logout-all, /me/sessions
+app.use('/v1', authTotpRoutes)        // /me/mfa/totp/*, /auth/mfa/totp/verify
+app.use('/v1', authStepupRoutes)      // /auth/step-up/start, /auth/step-up/verify
+app.use('/v1', authOauthBindRoutes)   // /me/oauth
+app.use('/v1', authMergeRoutes)       // /auth/merge
 app.use('/v1/me', meRoutes)
 app.use('/v1/contributions', contributionRoutes)
 app.use('/v1/admin', adminRoutes)
+app.use('/v1/admin', adminUsersRoutes)
+app.use('/v1/admin', adminAuditRoutes)
+app.use('/v1/public', publicContributionsRoutes)
 app.use('/v1/stories', storiesRoutes)
 
 // ── 404 handler ─────────────────────────────────
