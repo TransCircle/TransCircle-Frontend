@@ -4,75 +4,52 @@ import { useAuth } from '@/context/useAuth'
 import { API_BASE } from '@/config'
 import styles from './Admin.module.css'
 
-const TEMP_TOKEN_KEY = 'tc_temp_admin_token'
-const TEMP_TOKEN_EXPIRY_KEY = 'tc_temp_admin_token_exp'
-const TEMP_TOKEN_SESSION_KEY = 'tc_temp_admin_token_session'
-const TEMP_TOKEN_MAX_AGE = 4 * 60 * 60 * 1000 // 4 hours (was 24h, reduced per S2)
-
+// Temp token is kept in memory only (per api.md §JWT Payload Structure:
+// access tokens must not be stored in localStorage or sessionStorage).
+// On page refresh, admin must re-enter the token.
 type Status = 'pending' | 'approved' | 'rejected'
 type ReviewAction = 'approved' | 'rejected'
 
 interface Submission {
   id: string
   title: string
-  category: string | null
-  author_type?: string
-  authorType?: string
-  author_name?: string | null
-  authorName?: string | null
-  contact?: string | null
-  content?: string
+  summary: string | null
   contentRaw?: string
+  contentHtml?: string
+  contentFormat?: string
+  tags?: string[]
+  language?: string
   status: Status
   version: number
-  reviewer_gh?: string | null
-  reviewerGh?: string | null
-  review_notes?: string | null
-  reviewNotes?: string | null
-  created_at?: number
-  createdAt?: number
-  reviewed_at?: number | null
-  reviewedAt?: number | null
-  updated_at?: number
+  author: {
+    id: string | null
+    username?: string
+    displayName: string
+    avatarUrl: string | null
+    emailVerified?: boolean
+  }
+  createdAt: number
   updatedAt?: number
-  submitter_gh?: string | null
-  submitterGh?: string | null
-  submitter_x?: string | null
-  submitterX?: string | null
-  author?: { id: string | null; displayName: string; avatarUrl: string | null }
+  submittedAt?: number | null
+  publishedAt?: number | null
+  review?: {
+    reviewerUserId: string | null
+    reviewedAt: number | null
+    decision: string | null
+    publicNote: string | null
+    internalNote: string | null
+  }
 }
 
 interface ListResponse {
-  submissions?: Submission[]
-  data?: Submission[]
-  pagination?: { nextCursor: string | null; hasMore: boolean; limit: number }
-  nextCursor?: string | null
-  limit?: number
+  data: Submission[]
+  pagination: { nextCursor: string | null; hasMore: boolean; limit: number }
 }
 
 const STATUS_LABEL_KEYS: Record<Status, string> = {
   pending: 'admin.statusPending',
   approved: 'admin.statusApproved',
   rejected: 'admin.statusRejected',
-}
-
-function getStoredToken(): string {
-  try {
-    // Prefer sessionStorage (cleared on tab close) over localStorage (persistent)
-    let token = sessionStorage.getItem(TEMP_TOKEN_SESSION_KEY) || ''
-    if (token) return token
-
-    token = localStorage.getItem(TEMP_TOKEN_KEY) || ''
-    if (!token) return ''    
-
-    const exp = localStorage.getItem(TEMP_TOKEN_EXPIRY_KEY)
-    if (exp && Date.now() > Number(exp)) {
-      localStorage.removeItem(TEMP_TOKEN_KEY)
-      localStorage.removeItem(TEMP_TOKEN_EXPIRY_KEY)
-      return ''
-    }
-    return token
-  } catch { return '' }
 }
 
 function formatTs(ts: number | string | null): string {
@@ -84,8 +61,8 @@ function formatTs(ts: number | string | null): string {
 
 export const Admin = () => {
   const { t } = useTranslation()
-  const { user, loading: authLoading, accessToken, loginWithGitHub } = useAuth()
-  const [tempToken, setTempToken] = useState(getStoredToken)
+  const { user, loading: authLoading, accessToken, loginProvider, isAdmin, loginWithGitHub } = useAuth()
+  const [tempToken, setTempToken] = useState('')
   const [tokenInput, setTokenInput] = useState('')
   const [activeTab, setActiveTab] = useState<Status>('pending')
   const [submissions, setSubmissions] = useState<Submission[]>([])
@@ -94,17 +71,6 @@ export const Admin = () => {
   const [error, setError] = useState('')
   const [selected, setSelected] = useState<Submission | null>(null)
   const [reviewNotes, setReviewNotes] = useState('')
-  const [rememberDevice, setRememberDevice] = useState(false)
-  const [pageLoadTs] = useState(() => Date.now())
-
-  function getField(s: unknown, ...keys: string[]): unknown {
-    if (typeof s !== 'object' || s === null) return null
-    const obj = s as Record<string, unknown>
-    for (const k of keys) {
-      if (k in obj) return obj[k]
-    }
-    return null
-  }
 
   const authHeaders = useCallback((): Record<string, string> => {
     const h: Record<string, string> = {}
@@ -122,8 +88,6 @@ export const Admin = () => {
 
       const res = await fetch(`${API_BASE}/admin/contributions?${params}`, { headers: authHeaders() })
       if (res.status === 403) {
-        localStorage.removeItem(TEMP_TOKEN_KEY)
-        localStorage.removeItem(TEMP_TOKEN_EXPIRY_KEY)
         setTempToken('')
         setLoading(false)
         return
@@ -134,8 +98,8 @@ export const Admin = () => {
       }
       const body = await res.json() as ListResponse
 
-      const items = body.data ?? body.submissions ?? []
-      const pageCursor = body.pagination?.nextCursor ?? body.nextCursor ?? null
+      const items = body.data
+      const pageCursor = body.pagination.nextCursor
 
       if (pageCursor) {
         setSubmissions(prev => [...prev, ...items])
@@ -151,7 +115,7 @@ export const Admin = () => {
   }, [activeTab, authHeaders, t])
 
   useEffect(() => {
-    if (!user?.isAdmin && !tempToken) return
+    if (!isAdmin && !tempToken) return
     let cancelled = false
 
     const load = async () => {
@@ -163,8 +127,6 @@ export const Admin = () => {
         if (cancelled) return
 
         if (res.status === 403) {
-          localStorage.removeItem(TEMP_TOKEN_KEY)
-          localStorage.removeItem(TEMP_TOKEN_EXPIRY_KEY)
           setTempToken('')
           return
         }
@@ -175,8 +137,8 @@ export const Admin = () => {
         const body = await res.json() as ListResponse
         if (cancelled) return
 
-        const items = body.data ?? body.submissions ?? []
-        const pageCursor = body.pagination?.nextCursor ?? body.nextCursor ?? null
+        const items = body.data
+        const pageCursor = body.pagination.nextCursor
         setSubmissions(pageCursor ? prev => [...prev, ...items] : items)
         setNextCursor(pageCursor)
       } catch (err) {
@@ -188,7 +150,7 @@ export const Admin = () => {
 
     load()
     return () => { cancelled = true }
-  }, [activeTab, user?.isAdmin, tempToken, authHeaders, t])
+  }, [activeTab, isAdmin, tempToken, authHeaders, t])
 
   const fetchDetail = async (id: string) => {
     try {
@@ -211,7 +173,7 @@ export const Admin = () => {
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({
           decision: action,
-          internalNote: reviewNotes || undefined,
+          publicNote: reviewNotes || undefined,
           expectedVersion: v,
         }),
       })
@@ -241,18 +203,9 @@ export const Admin = () => {
   if (!user && !tempToken) {
     const handleTempLogin = () => {
       if (tokenInput.trim()) {
-        const expiry = Date.now() + TEMP_TOKEN_MAX_AGE
-        if (rememberDevice) {
-          localStorage.setItem(TEMP_TOKEN_KEY, tokenInput.trim())
-          localStorage.setItem(TEMP_TOKEN_EXPIRY_KEY, String(expiry))
-        } else {
-          sessionStorage.setItem(TEMP_TOKEN_SESSION_KEY, tokenInput.trim())
-        }
         setTempToken(tokenInput.trim())
       }
     }
-
-    const expiryTime = new Date(pageLoadTs + TEMP_TOKEN_MAX_AGE).toLocaleTimeString()
 
     return (
       <main className={styles.container}>
@@ -281,14 +234,6 @@ export const Admin = () => {
               placeholder={t('admin.tempTokenPlaceholder')}
               onKeyDown={(e) => e.key === 'Enter' && handleTempLogin()}
             />
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', margin: '0.5rem 0' }}>
-              <input
-                type="checkbox"
-                checked={rememberDevice}
-                onChange={(e) => setRememberDevice(e.target.checked)}
-              />
-              <span>记住此设备（关闭标签页不清除，最长至 {expiryTime}）</span>
-            </label>
             <button className={styles.btnSecondary} onClick={handleTempLogin}>
               {t('admin.tempTokenLogin')}
             </button>
@@ -300,7 +245,7 @@ export const Admin = () => {
 
   // ── Not admin (OAuth user but not in org) ──
 
-  if (user && !user.isAdmin) {
+  if (user && !isAdmin) {
     return (
       <main className={styles.container}>
         <h1 className={styles.heading}>
@@ -334,7 +279,7 @@ export const Admin = () => {
               {t('admin.title')}
             </h1>
             <span className={styles.userInfo}>
-              {user ? `${user.username} (${user.provider})` : `${t('admin.tempAdmin')}（临时令牌，${new Date(pageLoadTs + TEMP_TOKEN_MAX_AGE).toLocaleTimeString()} 过期）`}
+              {user ? `${user.username} (${loginProvider ?? 'oauth'})` : `${t('admin.tempAdmin')}（仅内存，刷新页面需重新输入）`}
             </span>
           </div>
         </div>
@@ -379,10 +324,10 @@ export const Admin = () => {
                   <div className={styles.itemMain}>
                     <div className={styles.itemTitle}>{s.title}</div>
                     <div className={styles.itemMeta}>
-                      {(getField(s, 'authorType', 'author_type') === 'anonymous' ? t('admin.authorAnonymous') : (getField(s, 'authorName', 'author_name') || t('admin.authorAnonymous'))) as string} · {formatTs(getField(s, 'createdAt', 'created_at') as number | null)}
+                      {s.author?.displayName || t('admin.authorAnonymous')} · {formatTs(s.createdAt)}
                     </div>
                   </div>
-                  <span className={styles.itemCategory}>{s.category}</span>
+                  <span className={styles.itemCategory}>{s.tags?.[0] || '-'}</span>
                 </li>
               ))}
             </ul>
@@ -403,9 +348,7 @@ export const Admin = () => {
 
   // ── Submission Detail ──
 
-  const authorDisplay = selected.authorType === 'anonymous'
-    ? t('admin.authorAnonymous')
-    : `${selected.authorName}（${selected.authorType === 'real' ? t('admin.authorReal') : t('admin.authorPenName')}）`
+  const authorDisplay = selected.author?.displayName || t('admin.authorAnonymous')
 
   const statusLabel = STATUS_LABEL_KEYS[selected.status] || selected.status
 
@@ -419,31 +362,23 @@ export const Admin = () => {
         <h2 className={styles.detailTitle}>{selected.title}</h2>
 
         <div className={styles.detailMeta}>
-          <span>{t('admin.category', { category: selected.category })}</span>
+          <span>{t('admin.category', { category: selected.tags?.[0] || '-' })}</span>
           <span>
             {t('admin.authorLabel')}{authorDisplay}
           </span>
-          <span>{t('admin.submitTime', { time: formatTs(selected.createdAt ?? selected.created_at ?? null) })}</span>
+          <span>{t('admin.submitTime', { time: formatTs(selected.createdAt) })}</span>
           <span>{t('admin.status', { status: statusLabel })}</span>
-          {selected.submitterGh && <span>GitHub: {selected.submitterGh}</span>}
-          {selected.submitterX && <span>X: {selected.submitterX}</span>}
         </div>
-
-        {selected.contact && (
-          <div className={styles.detailContact}>
-            {t('admin.contact', { contact: selected.contact })}
-          </div>
-        )}
 
         <div className={styles.detailContent}>
           {selected.contentRaw}
         </div>
 
-        {selected.reviewNotes && (
+        {selected.review?.publicNote && (
           <div className={styles.detailContact}>
-            {t('admin.reviewNotes', { notes: selected.reviewNotes })}
-            {selected.reviewerGh && t('admin.reviewer', { reviewer: selected.reviewerGh })}
-            {selected.reviewedAt && ` · ${formatTs(selected.reviewedAt)}`}
+            {t('admin.reviewNotes', { notes: selected.review.publicNote })}
+            {selected.review.reviewerUserId && t('admin.reviewer', { reviewer: selected.review.reviewerUserId })}
+            {selected.review.reviewedAt && ` · ${formatTs(selected.review.reviewedAt)}`}
           </div>
         )}
 

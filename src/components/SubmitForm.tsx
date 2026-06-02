@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useRef, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MdEditor } from 'md-editor-rt'
 import 'md-editor-rt/lib/style.css'
@@ -9,18 +9,16 @@ import { FormField } from './FormField'
 import { FieldErrorConsumer } from './FieldError'
 import styles from './SubmitForm.module.css'
 
-const CATEGORIES = ['个人经历', '观点评论', '资源指南'] as const
-
-type AuthorType = 'real' | 'pen_name' | 'anonymous'
 type FormStatus = 'idle' | 'submitting' | 'success' | 'error'
 
 interface FormData {
   title: string
   content: string
-  category: string
-  authorType: AuthorType
-  authorName: string
-  contact: string
+  summary: string
+  tags: string[]
+  tagInput: string
+  language: string
+  submitMode: string
   agreement: boolean
   website: string
 }
@@ -28,29 +26,39 @@ interface FormData {
 interface FormErrors {
   title?: string
   content?: string
-  category?: string
-  authorName?: string
+  summary?: string
+  tags?: string
   agreement?: string
 }
 
 const INITIAL_FORM: FormData = {
   title: '',
   content: '',
-  category: '',
-  authorType: 'anonymous',
-  authorName: '',
-  contact: '',
+  summary: '',
+  tags: [],
+  tagInput: '',
+  language: 'zh-CN',
+  submitMode: 'submit',
   agreement: false,
   website: '',
 }
+
+const LANGUAGES = ['zh-CN', 'zh-TW', 'en', 'ja', 'other'] as const
+
+const TAG_MAX = 8
+const TAG_MAX_LENGTH = 32
 
 const validate = (data: FormData, t: (key: string) => string): FormErrors => {
   const errors: FormErrors = {}
   if (!data.title.trim()) errors.title = t('submit.errors.titleRequired')
   if (!data.content.trim()) errors.content = t('submit.errors.contentRequired')
-  if (!data.category) errors.category = t('submit.errors.categoryRequired')
-  if ((data.authorType === 'real' || data.authorType === 'pen_name') && !data.authorName.trim()) {
-    errors.authorName = t('submit.errors.authorNameRequired')
+  if (data.summary.length > 300) errors.summary = t('submit.errors.summaryTooLong')
+  if (data.tags.length > TAG_MAX) errors.tags = t('submit.errors.tagsTooMany', { max: TAG_MAX })
+  for (const tag of data.tags) {
+    if (tag.length > TAG_MAX_LENGTH) {
+      errors.tags = t('submit.errors.tagTooLong', { max: TAG_MAX_LENGTH })
+      break
+    }
   }
   if (!data.agreement) errors.agreement = t('submit.errors.agreementRequired')
   return errors
@@ -59,12 +67,13 @@ const validate = (data: FormData, t: (key: string) => string): FormErrors => {
 export const SubmitForm = () => {
   const { t } = useTranslation()
   const { theme } = useTheme()
-  const { user, loading, accessToken, loginWithGitHub, loginWithX } = useAuth()
+  const { user, loading, accessToken, loginProvider, loginWithGitHub, loginWithX } = useAuth()
   const [form, setForm] = useState<FormData>(INITIAL_FORM)
   const [errors, setErrors] = useState<FormErrors>({})
   const [status, setStatus] = useState<FormStatus>('idle')
   const [submitId, setSubmitId] = useState<string>('')
   const [serverError, setServerError] = useState<string>('')
+  const idempotencyKeyRef = useRef<string>('')
 
   const set = <K extends keyof FormData>(key: K, value: FormData[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -72,9 +81,47 @@ export const SubmitForm = () => {
     if (errors[errorKey]) setErrors((prev) => ({ ...prev, [errorKey]: undefined }))
   }
 
+  const addTag = (raw: string) => {
+    const tag = raw.trim()
+    if (!tag) return
+    if (tag.length > TAG_MAX_LENGTH) return
+    if (form.tags.length >= TAG_MAX) return
+    if (form.tags.includes(tag)) return
+    set('tags', [...form.tags, tag])
+    set('tagInput', '')
+  }
+
+  const removeTag = (tag: string) => {
+    set('tags', form.tags.filter((t) => t !== tag))
+  }
+
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault()
+      addTag(form.tagInput)
+    }
+    if (e.key === 'Backspace' && !form.tagInput && form.tags.length > 0) {
+      removeTag(form.tags[form.tags.length - 1]!)
+    }
+  }
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setServerError('')
+
+    // 未登录用户不可提交投稿（api.md §3.1 要求 Authorization Bearer token）
+    if (!user) {
+      setServerError(t('submit.errors.loginRequired'))
+      setStatus('error')
+      return
+    }
+
+    // 校验邮箱状态：pending_verification 用户不可提交投稿（api.md §概述 用户状态表）
+    if (user.status !== 'active') {
+      setServerError(t('submit.errors.emailNotVerified'))
+      setStatus('error')
+      return
+    }
 
     const validationErrors = validate(form, t)
     if (Object.keys(validationErrors).length > 0) {
@@ -85,7 +132,10 @@ export const SubmitForm = () => {
     setStatus('submitting')
 
     try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Idempotency-Key': idempotencyKeyRef.current || (idempotencyKeyRef.current = crypto.randomUUID()),
+      }
       if (accessToken) headers.Authorization = `Bearer ${accessToken}`
       const res = await fetch(`${API_BASE}/contributions`, {
         method: 'POST',
@@ -94,24 +144,34 @@ export const SubmitForm = () => {
           title: form.title,
           content: form.content,
           contentFormat: 'markdown',
-          category: form.category,
-          tags: form.category ? [form.category] : [],
-          language: 'zh-CN',
-          submitMode: 'submit',
-          authorType: form.authorType,
-          authorName: form.authorType !== 'anonymous' ? form.authorName : undefined,
-          contact: form.contact || undefined,
-          website: form.website,
+          summary: form.summary.trim() || undefined,
+          tags: form.tags,
+          language: form.language,
+          submitMode: form.submitMode,
         }),
       })
 
       const body = await res.json() as {
         data?: { id?: string; status?: string }
         error?: { code?: string; message?: string }
+        requestId?: string
       }
 
       if (!res.ok) {
-        setServerError(body.error?.message ?? t('submit.serverError'))
+        const code = body.error?.code
+        const reqId = body.requestId
+        if (code === 'UNAUTHORIZED') {
+          setServerError(t('submit.errors.loginRequired'))
+        } else if (code === 'EMAIL_NOT_VERIFIED') {
+          setServerError(t('submit.errors.emailNotVerified'))
+        } else if (code === 'DUPLICATE_SUBMISSION') {
+          setServerError(t('submit.errors.duplicateSubmission'))
+        } else if (code === 'CONTENT_TOO_LARGE') {
+          setServerError(t('submit.errors.contentTooLarge'))
+        } else {
+          setServerError(body.error?.message ?? t('submit.serverError'))
+        }
+        if (reqId) console.debug(`[api] contributions POST error code=${code} requestId=${reqId}`)
         setStatus('error')
         return
       }
@@ -129,6 +189,7 @@ export const SubmitForm = () => {
     setErrors({})
     setStatus('idle')
     setServerError('')
+    idempotencyKeyRef.current = ''
   }
 
   if (status === 'success') {
@@ -160,7 +221,7 @@ export const SubmitForm = () => {
           {user ? (
             <span className={styles.userBadge}>
               <span className={styles.userProvider}>
-                {user.provider === 'github' ? 'GitHub' : 'X'}
+                {loginProvider === 'github' ? 'GitHub' : 'X'}
               </span>
               <span className={styles.userName}>{user.username}</span>
               <span className={styles.userTag}>{t('submit.loggedInAs')}</span>
@@ -197,7 +258,7 @@ export const SubmitForm = () => {
           value={form.title}
           onChange={(e) => set('title', e.target.value)}
           placeholder={t('submit.titlePlaceholder')}
-          maxLength={200}
+          maxLength={120}
         />
       </FormField>
 
@@ -215,76 +276,60 @@ export const SubmitForm = () => {
         </div>
       </FormField>
 
-      <FormField label={t('submit.category')} required error={errors.category}>
+      <FormField label={t('submit.summary')} error={errors.summary}>
+        <textarea
+          className={styles.textInput}
+          value={form.summary}
+          onChange={(e) => set('summary', e.target.value)}
+          placeholder={t('submit.summaryPlaceholder')}
+          maxLength={300}
+          rows={3}
+          style={{ resize: 'vertical' }}
+        />
+      </FormField>
+
+      <FormField label={t('submit.tags')} error={errors.tags}>
+        <div className={styles.tagInputWrapper}>
+          <div className={styles.tagList}>
+            {form.tags.map((tag) => (
+              <span key={tag} className={styles.tagChip}>
+                {tag}
+                <button
+                  type="button"
+                  className={styles.tagRemove}
+                  onClick={() => removeTag(tag)}
+                  aria-label={t('submit.removeTag', { tag })}
+                >
+                  &times;
+                </button>
+              </span>
+            ))}
+          </div>
+          <input
+            className={styles.tagInput}
+            type="text"
+            value={form.tagInput}
+            onChange={(e) => set('tagInput', e.target.value)}
+            onKeyDown={handleTagKeyDown}
+            placeholder={form.tags.length >= TAG_MAX ? t('submit.tagsMaxReached', { max: TAG_MAX }) : t('submit.tagsPlaceholder')}
+            disabled={form.tags.length >= TAG_MAX}
+            aria-invalid={!!errors.tags}
+          />
+        </div>
+      </FormField>
+
+      <FormField label={t('submit.language')}>
         <select
           className={styles.selectInput}
-          value={form.category}
-          onChange={(e) => set('category', e.target.value)}
+          value={form.language}
+          onChange={(e) => set('language', e.target.value)}
         >
-          <option value="">{t('submit.categoryPlaceholder')}</option>
-          {CATEGORIES.map((cat) => (
-            <option key={cat} value={cat}>
-              {cat}
+          {LANGUAGES.map((lang) => (
+            <option key={lang} value={lang}>
+              {t(`submit.languages.${lang}`)}
             </option>
           ))}
         </select>
-      </FormField>
-
-      <FormField label={t('submit.authorType')}>
-        <FieldErrorConsumer>
-          {(errorId) => (
-            <div className={styles.radioGroup} role="radiogroup" aria-describedby={errorId || undefined}>
-              {[
-                { value: 'real' as const, label: t('submit.authorReal') },
-                { value: 'pen_name' as const, label: t('submit.authorPenName') },
-                { value: 'anonymous' as const, label: t('submit.authorAnonymous') },
-              ].map((opt) => (
-                <label key={opt.value} className={styles.radioLabel}>
-                  <input
-                    type="radio"
-                    name="authorType"
-                    value={opt.value}
-                    checked={form.authorType === opt.value}
-                    onChange={() => {
-                      set('authorType', opt.value)
-                      if (opt.value === 'anonymous') set('authorName', '')
-                    }}
-                    aria-invalid={!!errorId}
-                  />
-                  {opt.label}
-                </label>
-              ))}
-            </div>
-          )}
-        </FieldErrorConsumer>
-      </FormField>
-
-      {form.authorType !== 'anonymous' && (
-        <FormField
-          label={form.authorType === 'real' ? t('submit.realName') : t('submit.penName')}
-          required
-          error={errors.authorName}
-        >
-          <input
-            className={styles.textInput}
-            type="text"
-            value={form.authorName}
-            onChange={(e) => set('authorName', e.target.value)}
-            placeholder={form.authorType === 'real' ? t('submit.realNamePlaceholder') : t('submit.penNamePlaceholder')}
-            maxLength={50}
-          />
-        </FormField>
-      )}
-
-      <FormField label={t('submit.contact')}>
-        <input
-          className={styles.textInput}
-          type="text"
-          value={form.contact}
-          onChange={(e) => set('contact', e.target.value)}
-          placeholder={t('submit.contactPlaceholder')}
-          maxLength={200}
-        />
       </FormField>
 
       <FormField label="" error={errors.agreement}>

@@ -1,9 +1,42 @@
-import { useState } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
+import { API_BASE } from '@/config'
 import styles from '../App.module.css'
 import formStyles from './Register.module.css'
+
+// 用户名：3-32 字符，小写字母开头，仅允许小写字母/数字/下划线/短横线
+const USERNAME_RE = /^[a-z][a-z0-9_-]{2,31}$/
+
+// 密码强度检查：至少满足 4 类中的 3 类
+const UPPER_RE = /[A-Z]/
+const LOWER_RE = /[a-z]/
+const DIGIT_RE = /\d/
+// ASCII 标点或 Unicode 标点（\p{P}）
+const SYMBOL_RE = /[!-/:-@[-`{-~]|[\p{P}\p{S}]/u
+
+function checkPasswordStrength(password: string): number {
+  let score = 0
+  if (UPPER_RE.test(password)) score++
+  if (LOWER_RE.test(password)) score++
+  if (DIGIT_RE.test(password)) score++
+  if (SYMBOL_RE.test(password)) score++
+  return score
+}
+
+function validateEmail(email: string): boolean {
+  // 简单 RFC 5322 近似校验
+  const parts = email.split('@')
+  if (parts.length !== 2) return false
+  const [local, domain] = parts
+  if (!local || !domain) return false
+  if (local.length > 64) return false
+  if (email.length > 254) return false
+  const domainRe = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$/
+  if (!domainRe.test(domain)) return false
+  return true
+}
 
 const Register = () => {
   const [searchParams] = useSearchParams()
@@ -19,32 +52,92 @@ const Register = () => {
   const [displayName, setDisplayName] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [suggestedEmail, setSuggestedEmail] = useState<string | null>(null)
+  // Tracks whether the OAuth provider has verified the user's email (e.g., GitHub verified=true)
+  const [providerEmailVerified, setProviderEmailVerified] = useState(false)
+
+  // Fetch OAuth pending profile to get suggested email for auto-detection
+  useEffect(() => {
+    const csrfMatch = document.cookie.match(/oauth_pending_csrf=([^;]+)/)
+    const csrfToken = csrfMatch?.[1] || ''
+    if (!csrfToken) return
+
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/auth/oauth/pending-profile?provider=${encodeURIComponent(provider)}`, {
+          headers: { 'X-CSRF-Token': csrfToken },
+          credentials: 'include',
+        })
+        if (!res.ok) return
+        const body = await res.json() as { data?: { suggestedEmail?: string | null; providerEmailVerified?: boolean } }
+        if (body.data?.suggestedEmail) {
+          setSuggestedEmail(body.data.suggestedEmail)
+          // Pre-fill email field with suggested email
+          setEmail(body.data.suggestedEmail)
+        }
+        setProviderEmailVerified(body.data?.providerEmailVerified ?? false)
+      } catch { /* profile fetch best-effort */ }
+    }
+    fetchProfile()
+  }, [provider])
+
+  const fieldErrors = useMemo(() => {
+    const errs: { username?: string; password?: string; email?: string; displayName?: string } = {}
+
+    // 用户名验证：3-32 字符，小写字母开头，仅 [a-z0-9_-]
+    if (!username.trim()) {
+      errs.username = t('register.errors.usernameRequired')
+    } else if (!USERNAME_RE.test(username.trim())) {
+      errs.username = t('register.errors.usernameInvalid')
+    }
+
+    // 密码验证：12-128 字符，至少 3 类字符
+    const pw = password || ''
+    if (pw.length < 12 || pw.length > 128) {
+      errs.password = t('register.errors.passwordLength')
+    } else if (checkPasswordStrength(pw) < 3) {
+      errs.password = t('register.errors.passwordStrength')
+    }
+
+    // 邮箱验证（选填时为非必填）
+    if (email.trim() && !validateEmail(email.trim())) {
+      errs.email = t('register.errors.emailInvalid')
+    }
+
+    // 显示名称验证
+    const dn = displayName.trim()
+    if (dn.length > 50) {
+      errs.displayName = t('register.errors.displayNameTooLong')
+    }
+
+    return errs
+  }, [username, password, email, displayName, t])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
-    if (!username.trim()) {
-      setError(t('register.errors.usernameRequired'))
-      return
-    }
-    if (!password || password.length < 12) {
-      setError(t('register.errors.passwordTooShort'))
+    if (Object.keys(fieldErrors).length > 0) {
+      setError(t('register.errors.validationFailed'))
       return
     }
 
     setSubmitting(true)
     try {
+      const trimmedEmail = email.trim()
+      // emailMatchesProvider=true only if email matches AND provider has verified it
+      const emailMatchesProvider = providerEmailVerified && !!(suggestedEmail && trimmedEmail.toLowerCase() === suggestedEmail.toLowerCase())
+
       const result = await completeRegistration(provider, {
         username: username.trim(),
-        email: email.trim(),
+        email: trimmedEmail,
         displayName: displayName.trim() || username.trim(),
         password,
-        emailMatchesProvider: false,
+        emailMatchesProvider,
       })
 
       if (result?.user) {
-        navigate(result.user.isAdmin ? '/admin' : '/submit', { replace: true })
+        navigate(result.user.roles.includes('reviewer') ? '/admin' : '/submit', { replace: true })
       } else {
         setError(t('register.errors.failed'))
       }
@@ -77,7 +170,12 @@ const Register = () => {
             placeholder={t('register.usernamePlaceholder')}
             required
             autoFocus
+            maxLength={32}
+            aria-invalid={!!fieldErrors.username}
           />
+          {fieldErrors.username && (
+            <span className={formStyles.error} role="alert">{fieldErrors.username}</span>
+          )}
         </label>
 
         <label className={formStyles.field}>
@@ -89,8 +187,13 @@ const Register = () => {
             onChange={(e) => setPassword(e.target.value)}
             placeholder={t('register.passwordPlaceholder')}
             required
-            minLength={8}
+            minLength={12}
+            maxLength={128}
+            aria-invalid={!!fieldErrors.password}
           />
+          {fieldErrors.password && (
+            <span className={formStyles.error} role="alert">{fieldErrors.password}</span>
+          )}
         </label>
 
         <label className={formStyles.field}>
@@ -101,7 +204,12 @@ const Register = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder={t('register.emailPlaceholder')}
+            maxLength={254}
+            aria-invalid={!!fieldErrors.email}
           />
+          {fieldErrors.email && (
+            <span className={formStyles.error} role="alert">{fieldErrors.email}</span>
+          )}
         </label>
 
         <label className={formStyles.field}>
@@ -112,11 +220,16 @@ const Register = () => {
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             placeholder={t('register.displayNamePlaceholder')}
+            maxLength={50}
+            aria-invalid={!!fieldErrors.displayName}
           />
+          {fieldErrors.displayName && (
+            <span className={formStyles.error} role="alert">{fieldErrors.displayName}</span>
+          )}
         </label>
 
         {error && (
-          <p className={formStyles.error}>{error}</p>
+          <p className={formStyles.error} role="alert">{error}</p>
         )}
 
         <button
