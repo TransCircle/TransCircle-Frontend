@@ -1,5 +1,5 @@
 import { queryOne, exec } from '../Database'
-import { ulid } from './ulid'
+import { genId } from './ulid'
 
 export interface UserRecord {
   id: string
@@ -11,6 +11,7 @@ export interface UserRecord {
   tokenVersion: number
   status: string
   createdAt: number
+  updatedAt: number
   lastLoginAt: number | null
   roles: string[]
 }
@@ -26,10 +27,16 @@ export interface OAuthAccountRecord {
 }
 
 /** Build roles list from subquery result. */
-function parseRoles(row: Record<string, unknown> | null): string[] {
-  if (!row) return []
-  const isAdmin = !!(row.isAdmin as number | boolean)
-  return isAdmin ? ['reviewer'] : []
+async function fetchRoles(userId: string): Promise<string[]> {
+  try {
+    const rows = await import('../Database').then(d => d.query(
+      `SELECT r.name FROM user_roles ur JOIN roles r ON r.id = ur.roleId WHERE ur.userId = ?`,
+      [userId],
+    ))
+    return (rows as Array<{ name: string }>).map(r => r.name)
+  } catch {
+    return []
+  }
 }
 
 /** Find a user by OAuth provider + providerUserId. */
@@ -45,106 +52,52 @@ export async function findUserByOAuth(provider: string, providerUserId: string):
 /** Find a user by ID. */
 export async function findUserById(id: string): Promise<UserRecord | null> {
   const user = await queryOne(
-    `SELECT u.*,
-            EXISTS(SELECT 1 FROM user_roles ur JOIN roles r ON r.id = ur.roleId WHERE ur.userId = u.id AND r.name = 'admin') AS isAdmin
-     FROM users u WHERE u.id = ?`,
+    `SELECT * FROM users WHERE id = ?`,
     [id],
   )
   if (!user) return null
   return {
     ...user,
-    roles: parseRoles(user),
+    roles: await fetchRoles(id),
   } as unknown as UserRecord
 }
 
 /** Find a user by username. */
 export async function findUserByUsername(username: string): Promise<UserRecord | null> {
   const user = await queryOne(
-    `SELECT u.*,
-            EXISTS(SELECT 1 FROM user_roles ur JOIN roles r ON r.id = ur.roleId WHERE ur.userId = u.id AND r.name = 'admin') AS isAdmin
-     FROM users u WHERE u.username = ?`,
+    `SELECT * FROM users WHERE username = ?`,
     [username],
   )
   if (!user) return null
   return {
     ...user,
-    roles: parseRoles(user),
+    roles: await fetchRoles(user.id as string),
   } as unknown as UserRecord
 }
 
 /** Find a user by email. */
 export async function findUserByEmail(email: string): Promise<UserRecord | null> {
   const user = await queryOne(
-    `SELECT u.*,
-            EXISTS(SELECT 1 FROM user_roles ur JOIN roles r ON r.id = ur.roleId WHERE ur.userId = u.id AND r.name = 'admin') AS isAdmin
-     FROM users u WHERE u.email = ?`,
+    `SELECT * FROM users WHERE email = ?`,
     [email],
   )
   if (!user) return null
   return {
     ...user,
-    roles: parseRoles(user),
+    roles: await fetchRoles(user.id as string),
   } as unknown as UserRecord
 }
 
-/** Find or create an OAuth user. */
-export async function findOrCreateOAuthUser(
-  provider: string,
-  providerUserId: string,
-  providerUsername: string | null,
-  providerDisplayName: string | null,
-  providerAvatarUrl: string | null,
-  providerEmail: string | null,
-): Promise<{ user: UserRecord; isNew: boolean }> {
-  const existing = await queryOne(
-    `SELECT oa.userId, u.*,
-            EXISTS(SELECT 1 FROM user_roles ur JOIN roles r ON r.id = ur.roleId WHERE ur.userId = u.id AND r.name = 'admin') AS isAdmin
-     FROM oauth_accounts oa
-     JOIN users u ON u.id = oa.userId
-     WHERE oa.provider = ? AND oa.providerUserId = ?`,
-    [provider, providerUserId],
-  )
-
-  if (existing) {
-    if (providerUsername || providerDisplayName) {
-      await exec(
-        `UPDATE oauth_accounts SET providerUsername = ?, providerDisplayName = ?, providerAvatarUrl = ?, updatedAt = ? WHERE provider = ? AND providerUserId = ?`,
-        [providerUsername || null, providerDisplayName || null, providerAvatarUrl || null, Date.now(), provider, providerUserId],
-      )
-    }
-    return { user: { ...existing, roles: parseRoles(existing) } as unknown as UserRecord, isNew: false }
-  }
-
-  const userId = ulid()
-  const now = Date.now()
-  const displayName = providerDisplayName || providerUsername || `user_${providerUserId.slice(0, 8)}`
-  const username = `user_${ulid().slice(0, 12).toLowerCase()}`
-
-  await exec(
-    `INSERT INTO users (id, username, email, emailVerified, displayName, avatarUrl, status, createdAt, lastLoginAt)
-     VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)`,
-    [userId, username, providerEmail || null, !!providerEmail, displayName, providerAvatarUrl || null, now, now],
-  )
-
-  await exec(
-    `INSERT INTO oauth_accounts (id, userId, provider, providerUserId, providerUsername, providerDisplayName, providerAvatarUrl, providerEmail, createdAt, updatedAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [ulid(), userId, provider, providerUserId, providerUsername || null, providerDisplayName || null, providerAvatarUrl || null, providerEmail || null, now, now],
-  )
-
-  const user = await findUserById(userId)
-  return { user: user!, isNew: true }
-}
 
 /** Set user admin status. */
 export async function setUserAdmin(userId: string, grantorUserId: string, isAdmin: boolean): Promise<void> {
   const role = await queryOne(`SELECT id FROM roles WHERE name = 'admin'`)
   if (!role) {
-    const roleId = ulid()
+    const roleId = genId('role_')
     await exec(`INSERT INTO roles (id, name, description, createdAt) VALUES (?, 'admin', '系统管理员', ?)`, [roleId, Date.now()])
     if (isAdmin) {
       await exec(`INSERT INTO user_roles (id, userId, roleId, grantedBy, createdAt) VALUES (?, ?, ?, ?, ?)`, [
-        ulid(),
+        genId('ur_'),
         userId,
         roleId,
         grantorUserId,
@@ -157,7 +110,7 @@ export async function setUserAdmin(userId: string, grantorUserId: string, isAdmi
 
   if (isAdmin) {
     await exec(`INSERT IGNORE INTO user_roles (id, userId, roleId, grantedBy, createdAt) VALUES (?, ?, ?, ?, ?)`, [
-      ulid(),
+      genId('ur_'),
       userId,
       role.id,
       grantorUserId,

@@ -1,10 +1,11 @@
-import { useState, useRef, type FormEvent } from 'react'
+﻿import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MdEditor } from 'md-editor-rt'
 import 'md-editor-rt/lib/style.css'
 import { useTheme } from '@/context/useTheme'
 import { useAuth } from '@/context/useAuth'
-import { API_BASE } from '@/config'
+import { post } from '@/api/client'
+import { ERRORS } from '@/api/errors'
 import { FormField } from './FormField'
 import { FieldErrorConsumer } from './FieldError'
 import styles from './SubmitForm.module.css'
@@ -48,7 +49,7 @@ const LANGUAGES = ['zh-CN', 'zh-TW', 'en', 'ja', 'other'] as const
 const TAG_MAX = 8
 const TAG_MAX_LENGTH = 32
 
-const validate = (data: FormData, t: (key: string) => string): FormErrors => {
+const validate = (data: FormData, t: (key: string, options?: Record<string, unknown>) => string): FormErrors => {
   const errors: FormErrors = {}
   if (!data.title.trim()) errors.title = t('submit.errors.titleRequired')
   if (!data.content.trim()) errors.content = t('submit.errors.contentRequired')
@@ -67,13 +68,12 @@ const validate = (data: FormData, t: (key: string) => string): FormErrors => {
 export const SubmitForm = () => {
   const { t } = useTranslation()
   const { theme } = useTheme()
-  const { user, loading, accessToken, loginProvider, loginWithGitHub, loginWithX } = useAuth()
+  const { user, loading, loginProvider, loginWithGitHub, loginWithX } = useAuth()
   const [form, setForm] = useState<FormData>(INITIAL_FORM)
   const [errors, setErrors] = useState<FormErrors>({})
   const [status, setStatus] = useState<FormStatus>('idle')
   const [submitId, setSubmitId] = useState<string>('')
   const [serverError, setServerError] = useState<string>('')
-  const idempotencyKeyRef = useRef<string>('')
 
   const set = <K extends keyof FormData>(key: K, value: FormData[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -132,51 +132,35 @@ export const SubmitForm = () => {
     setStatus('submitting')
 
     try {
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'Idempotency-Key': idempotencyKeyRef.current || (idempotencyKeyRef.current = crypto.randomUUID()),
-      }
-      if (accessToken) headers.Authorization = `Bearer ${accessToken}`
-      const res = await fetch(`${API_BASE}/contributions`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          title: form.title,
-          content: form.content,
-          contentFormat: 'markdown',
-          summary: form.summary.trim() || undefined,
-          tags: form.tags,
-          language: form.language,
-          submitMode: form.submitMode,
-        }),
-      })
+      const result = await post<{ id: string; status: string }>('/contributions', {
+        title: form.title,
+        content: form.content,
+        contentFormat: 'markdown',
+        summary: form.summary.trim() || null,
+        tags: form.tags,
+        language: form.language,
+        submitMode: form.submitMode,
+        website: form.website, // honeypot: bots fill this, humans don't
+      }, { idempotent: true })
 
-      const body = await res.json() as {
-        data?: { id?: string; status?: string }
-        error?: { code?: string; message?: string }
-        requestId?: string
-      }
-
-      if (!res.ok) {
-        const code = body.error?.code
-        const reqId = body.requestId
-        if (code === 'UNAUTHORIZED') {
+      if (!result.ok) {
+        const code = result.error.code
+        if (code === ERRORS.UNAUTHORIZED) {
           setServerError(t('submit.errors.loginRequired'))
-        } else if (code === 'EMAIL_NOT_VERIFIED') {
+        } else if (code === ERRORS.EMAIL_NOT_VERIFIED) {
           setServerError(t('submit.errors.emailNotVerified'))
-        } else if (code === 'DUPLICATE_SUBMISSION') {
+        } else if (code === ERRORS.DUPLICATE_SUBMISSION) {
           setServerError(t('submit.errors.duplicateSubmission'))
-        } else if (code === 'CONTENT_TOO_LARGE') {
+        } else if (code === ERRORS.CONTENT_TOO_LARGE) {
           setServerError(t('submit.errors.contentTooLarge'))
         } else {
-          setServerError(body.error?.message ?? t('submit.serverError'))
+          setServerError(result.error.message || t('submit.serverError'))
         }
-        if (reqId) console.debug(`[api] contributions POST error code=${code} requestId=${reqId}`)
         setStatus('error')
         return
       }
 
-      setSubmitId(body.data?.id ?? '')
+      setSubmitId(result.data.id)
       setStatus('success')
     } catch {
       setServerError(t('submit.networkError'))
@@ -189,7 +173,6 @@ export const SubmitForm = () => {
     setErrors({})
     setStatus('idle')
     setServerError('')
-    idempotencyKeyRef.current = ''
   }
 
   if (status === 'success') {
@@ -221,7 +204,7 @@ export const SubmitForm = () => {
           {user ? (
             <span className={styles.userBadge}>
               <span className={styles.userProvider}>
-                {loginProvider === 'github' ? 'GitHub' : 'X'}
+                {loginProvider === 'github' ? 'GitHub' : loginProvider === 'x' ? 'X' : ''}
               </span>
               <span className={styles.userName}>{user.username}</span>
               <span className={styles.userTag}>{t('submit.loggedInAs')}</span>
@@ -271,7 +254,6 @@ export const SubmitForm = () => {
             language="zh-CN"
             preview={true}
             toolbarsExclude={['image', 'link', 'mermaid', 'katex', 'github']}
-            style={{ height: '400px' }}
           />
         </div>
       </FormField>
@@ -288,7 +270,7 @@ export const SubmitForm = () => {
         />
       </FormField>
 
-      <FormField label={t('submit.tags')} error={errors.tags}>
+      <FormField label={t('submit.tags')} error={errors.tags} htmlFor="submit-tags">
         <div className={styles.tagInputWrapper}>
           <div className={styles.tagList}>
             {form.tags.map((tag) => (
@@ -305,16 +287,22 @@ export const SubmitForm = () => {
               </span>
             ))}
           </div>
-          <input
-            className={styles.tagInput}
-            type="text"
-            value={form.tagInput}
-            onChange={(e) => set('tagInput', e.target.value)}
-            onKeyDown={handleTagKeyDown}
-            placeholder={form.tags.length >= TAG_MAX ? t('submit.tagsMaxReached', { max: TAG_MAX }) : t('submit.tagsPlaceholder')}
-            disabled={form.tags.length >= TAG_MAX}
-            aria-invalid={!!errors.tags}
-          />
+          <FieldErrorConsumer>
+            {(errorId) => (
+              <input
+                id="submit-tags"
+                className={styles.tagInput}
+                type="text"
+                value={form.tagInput}
+                onChange={(e) => set('tagInput', e.target.value)}
+                onKeyDown={handleTagKeyDown}
+                placeholder={form.tags.length >= TAG_MAX ? t('submit.tagsMaxReached', { max: TAG_MAX }) : t('submit.tagsPlaceholder')}
+                disabled={form.tags.length >= TAG_MAX}
+                aria-invalid={!!errors.tags}
+                aria-describedby={errorId || undefined}
+              />
+            )}
+          </FieldErrorConsumer>
         </div>
       </FormField>
 
@@ -368,3 +356,4 @@ export const SubmitForm = () => {
     </form>
   )
 }
+

@@ -21,3 +21,6 @@ config.toml
 
 # generated lockfile (functions is standalone, lockfile created by CI)
 functions/pnpm-lock.yaml
+
+# dev/plan documents
+docs/superpowers/

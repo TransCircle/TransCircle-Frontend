@@ -11,6 +11,20 @@ for (let i = 0; i < 32; i++) {
 
 /** Generate a ULID string */
 export function ulid(): string {
+  return _ulid();
+}
+
+/**
+ * Generate a prefixed ID: prefix + 26-char Crockford Base32 ULID.
+ * E.g., genId('usr_') → "usr_01HZYC7Q9N8K2P4R6X0M9A1B2C"
+ *
+ * Per api.md resource ID convention: prefix + ULID.
+ */
+export function genId(prefix: string): string {
+  return prefix + _ulid();
+}
+
+function _ulid(): string {
   const now = Date.now();
   const ts = now.toString(16).padStart(12, '0');
   const random = crypto.getRandomValues(new Uint8Array(16));

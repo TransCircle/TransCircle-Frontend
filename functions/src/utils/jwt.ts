@@ -1,6 +1,13 @@
-import { ulid } from './ulid'
+import { genId } from './ulid'
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { join } from 'node:path'
 
-// Ed25519 密钥对（进程级缓存，生产环境应从 KMS 加载）
+// Ed25519 密钥对（持久化到文件，支持多实例部署）
+// 生产环境应从 KMS 加载
+const KEY_DIR = process.env.JWT_KEY_DIR || join(process.cwd(), '.jwt-keys')
+const PRIV_KEY_PATH = join(KEY_DIR, 'ed25519.priv.bin')
+const PUB_KEY_PATH = join(KEY_DIR, 'ed25519.pub.bin')
+
 let cachedPrivateKey: Uint8Array | null = null
 let cachedPublicKey: Uint8Array | null = null
 
@@ -8,8 +15,26 @@ async function getKeyPair(): Promise<{ privateKey: Uint8Array; publicKey: Uint8A
   if (cachedPrivateKey && cachedPublicKey) {
     return { privateKey: cachedPrivateKey, publicKey: cachedPublicKey }
   }
+
+  // Try loading from persistent file
+  if (existsSync(PRIV_KEY_PATH) && existsSync(PUB_KEY_PATH)) {
+    cachedPrivateKey = new Uint8Array(readFileSync(PRIV_KEY_PATH))
+    cachedPublicKey = new Uint8Array(readFileSync(PUB_KEY_PATH))
+    return { privateKey: cachedPrivateKey, publicKey: cachedPublicKey }
+  }
+
+  // Generate and persist
   const ed = await import('@noble/ed25519')
   const key = await ed.keygenAsync()
+
+  // Ensure directory exists
+  if (!existsSync(KEY_DIR)) {
+    mkdirSync(KEY_DIR, { recursive: true })
+  }
+
+  writeFileSync(PRIV_KEY_PATH, Buffer.from(key.secretKey))
+  writeFileSync(PUB_KEY_PATH, Buffer.from(key.publicKey))
+
   cachedPrivateKey = key.secretKey
   cachedPublicKey = key.publicKey
   return { privateKey: key.secretKey, publicKey: key.publicKey }
@@ -50,13 +75,13 @@ export async function signJwt(
 
   const jwtPayload: JwtPayload = {
     ...payload,
-    jti: ulid(),
+    jti: genId('jwt_'),
     iat: now,
     exp: now + 900, // 15 min
   }
 
   const header = base64url(
-    new TextEncoder().encode(JSON.stringify({ alg: 'EdDSA', typ: 'JWT' })),
+    new TextEncoder().encode(JSON.stringify({ alg: 'EdDSA', typ: 'JWT', kid: 'k1' })),
   )
   const body = base64url(
     new TextEncoder().encode(JSON.stringify(jwtPayload)),

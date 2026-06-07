@@ -1,49 +1,85 @@
 /**
  * Per api.md §9: Markdown 内容安全清洗
- *
- * 当前为轻量级 HTML 净化实现。
- * 生产环境建议使用 DOMPurify（服务端版本 isomorphic-dompurify）。
+ * 使用 marked + DOMPurify 实现工业级安全渲染
  */
 
-/** 简易白名单 HTML 清洗 */
-export function sanitizeHtml(html: string): string {
-  return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/on\w+\s*=\s*"[^"]*"/gi, '')
-    .replace(/on\w+\s*=\s*'[^']*'/gi, '')
-    .replace(/javascript\s*:/gi, '')
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-    .replace(/<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi, '')
-    .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '')
+import { marked } from 'marked'
+import { JSDOM } from 'jsdom'
+import DOMPurify from 'dompurify'
+
+const dom = new JSDOM('')
+const purify = DOMPurify(dom.window as unknown as Parameters<typeof DOMPurify>[0])
+
+const ALLOWED_IMAGE_DOMAINS = [
+  'api.transcircle.org',
+  'avatars.githubusercontent.com',
+  'avatars.',
+]
+
+/**
+ * Render Markdown to sanitized HTML per api.md §9 rules:
+ * - All links get rel="nofollow noopener noreferrer"
+ * - Image domains restricted to allowlist
+ * - No script, iframe, onerror, onclick, javascript: URLs
+ */
+export function markdownToHtml(md: string): string {
+  // Configure marked with safe options
+  const raw = marked.parse(md, { async: false }) as string
+
+  // Post-process links for security
+  const processed = raw
+    .replace(/<a\s+( href="[^"]*")/gi, '<a$1 rel="nofollow noopener noreferrer"')
+    .replace(/<img\s+src="([^"]+)"([^>]*)>/gi, (match: string, src: string) => {
+      try {
+        const url = new URL(src)
+        const allowed = ALLOWED_IMAGE_DOMAINS.some((d) => url.hostname.endsWith(d))
+        if (!allowed) {
+          return `<a href="${src}" rel="nofollow noopener noreferrer">${src}</a>`
+        }
+      } catch {
+        if (!src.startsWith('/v1/images/')) {
+          return `<a href="${src}" rel="nofollow noopener noreferrer">${src}</a>`
+        }
+      }
+      return match
+    })
+
+  return purify.sanitize(processed, {
+    ALLOWED_TAGS: [
+      'p', 'br', 'strong', 'em', 'u', 's', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'hr', 'a', 'img', 'table',
+      'thead', 'tbody', 'tr', 'th', 'td', 'del', 'ins', 'sup', 'sub', 'dl', 'dt', 'dd',
+    ],
+    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'rel', 'target', 'class', 'id'],
+    ALLOW_DATA_ATTR: false,
+  })
 }
 
-/** 简易 Markdown → HTML 渲染（仅支持基础语法） */
-export function markdownToHtml(md: string): string {
-  return sanitizeHtml(
-    md
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      // code block
-      .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
-      // inline code
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
-      // bold
-      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-      // italic
-      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-      // images (allowlist only /v1/images/*)
-      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, url) => {
-        if (url.startsWith('/v1/images/') || url.startsWith('https://api.transcircle.org/v1/images/')) {
-          return `<img src="${url}" alt="${alt}" />`
-        }
-        return `<a href="${url}">${alt}</a>`
-      })
-      // links
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" rel="nofollow noopener noreferrer">$1</a>')
-      // paragraphs (double newline)
-      .replace(/\n\n/g, '</p><p>')
-      // line break
-      .replace(/\n/g, '<br/>'),
-  )
+/** Plain text → escaped HTML (no Markdown rendering) */
+export function plainTextToHtml(text: string): string {
+  const escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+  return purify.sanitize(`<p>${escaped.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br/>')}</p>`, {
+    ALLOWED_TAGS: ['p', 'br'],
+    ALLOWED_ATTR: [],
+    ALLOW_DATA_ATTR: false,
+  })
+}
+
+/**
+ * Lightweight HTML sanitizer for non-Markdown scenarios.
+ * Also available as standalone.
+ */
+export function sanitizeHtml(html: string): string {
+  return purify.sanitize(html, {
+    ALLOWED_TAGS: [
+      'p', 'br', 'strong', 'em', 'u', 's', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'hr', 'a', 'img', 'table',
+      'thead', 'tbody', 'tr', 'th', 'td',
+    ],
+    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'rel', 'target'],
+    ALLOW_DATA_ATTR: false,
+  })
 }

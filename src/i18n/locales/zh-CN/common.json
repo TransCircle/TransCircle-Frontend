@@ -1,4 +1,4 @@
-{
+﻿{
   "nav": {
     "ariaLabel": "主导航",
     "logo": "TransCircle",
@@ -80,6 +80,7 @@
     "tempTokenLogin": "令牌登录",
     "tempAdmin": "临时管理员",
     "tabs": {
+      "inReview": "???",
       "pending": "待审核",
       "approved": "已通过",
       "rejected": "已拒绝"
@@ -131,7 +132,9 @@
       "usernameInvalid": "用户名需 3-32 字符，小写字母开头，仅限字母/数字/下划线/短横线",
       "passwordLength": "密码需 12-128 个字符",
       "passwordStrength": "密码需包含大写字母、小写字母、数字、符号中至少 3 类",
+      "emailRequired": "请输入邮箱",
       "emailInvalid": "邮箱格式不正确",
+      "displayNameRequired": "请输入显示名称",
       "displayNameTooLong": "显示名称不超过 50 个字符",
       "validationFailed": "请修正表单中的错误",
       "failed": "注册失败，请重试"
@@ -177,6 +180,7 @@
     "oauthAlternative": "或使用第三方账号登录",
     "errors": {
       "invalidCredentials": "邮箱/用户名或密码错误",
+      "emailNotVerified": "邮箱未验证，请先查看收件箱完成验证",
       "serverError": "登录失败，请稍后重试"
     }
   },
@@ -195,5 +199,77 @@
   "common": {
     "and": " · ",
     "anonymous": "匿名"
+  },
+  "registerDirect": {
+    "title": "注册新账号",
+    "description": "使用邮箱和密码创建账号",
+    "username": "用户名",
+    "usernamePlaceholder": "小写字母开头，3-32 字符",
+    "email": "邮箱",
+    "emailPlaceholder": "your@email.com",
+    "password": "密码",
+    "passwordPlaceholder": "12-128 字符，至少含 3 类字符",
+    "displayName": "显示名称",
+    "displayNamePlaceholder": "您的昵称",
+    "submit": "注册",
+    "submitting": "注册中...",
+    "success": "注册成功！请查收验证邮件",
+    "errors": {
+      "usernameRequired": "请输入用户名",
+      "usernameInvalid": "用户名需3-32字符，以小写字母开头，仅含小写字母/数字/下划线/短横线",
+      "emailRequired": "请输入邮箱",
+      "emailInvalid": "邮箱格式不正确",
+      "passwordLength": "密码长度需12-128字符",
+      "passwordStrength": "密码需至少含大写字母、小写字母、数字、符号中的 3 类",
+      "displayNameRequired": "请输入显示名称",
+      "displayNameTooLong": "显示名称不能超过 50 个字符",
+      "usernameTaken": "该用户名已被占用",
+      "emailTaken": "该邮箱已被注册",
+      "validationFailed": "请修正表单中的错误",
+      "failed": "注册失败"
+    }
+  },
+  "emailVerify": {
+    "title": "验证邮箱",
+    "verifying": "正在验证邮箱...",
+    "success": "邮箱验证成功！",
+    "error": "验证链接无效或已过期",
+    "redirectToLogin": "前往登录"
+  },
+  "emailResend": {
+    "title": "重发验证邮件",
+    "description": "输入您注册时使用的邮箱地址",
+    "email": "邮箱",
+    "emailPlaceholder": "your@email.com",
+    "submit": "发送验证邮件",
+    "submitting": "发送中...",
+    "success": "验证邮件已发送，请检查收件箱",
+    "emailNotFound": "该邮箱未注册",
+    "alreadyVerified": "该邮箱已验证，无需重发",
+    "error": "发送失败，请稍后重试"
+  },
+  "forgotPassword": {
+    "title": "忘记密码",
+    "description": "输入注册邮箱，我们将发送密码重置链接",
+    "email": "邮箱",
+    "emailPlaceholder": "your@email.com",
+    "submit": "发送重置邮件",
+    "submitting": "发送中...",
+    "success": "重置邮件已发送，请检查收件箱",
+    "emailNotFound": "该邮箱未注册",
+    "accountBanned": "账户已被封禁，无法重置密码",
+    "error": "发送失败，请稍后重试"
+  },
+  "resetPassword": {
+    "title": "重置密码",
+    "description": "输入新密码",
+    "newPassword": "新密码",
+    "newPasswordPlaceholder": "12-128 字符，至少含 3 类字符",
+    "submit": "重置密码",
+    "submitting": "重置中...",
+    "success": "密码重置成功！请使用新密码登录",
+    "tokenInvalid": "重置链接已过期或无效",
+    "validationError": "密码不满足强度要求",
+    "error": "重置失败"
   }
 }

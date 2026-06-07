@@ -36,6 +36,12 @@ X_CLIENT_SECRET = ""
 [ADMIN]
 TEMP_ADMIN_TOKEN = ""
 
+[APP]
+# 前端页面 URL（用于 OAuth 回调重定向等场景）
+FRONTEND_URL = "https://submit.transcircle.org"
+# API 基础 URL（用于图片 URL 等返回给客户端的地址）
+API_URL = "https://api.transcircle.org"
+
 [CORS]
 ALLOWED_ORIGINS = "https://submit.transcircle.org,http://localhost:5173,http://localhost:4173"
 

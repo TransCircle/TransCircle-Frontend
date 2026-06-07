@@ -17,9 +17,10 @@ CREATE TABLE users
                                                                                    'pending_verification',
                                                                                    'pending_deletion',
                                                                                    'deleted')),
-    mergedIntoUserId  VARCHAR(64)  NULL,
-    deletedAt         BIGINT       NULL,
-    createdAt         BIGINT       NOT NULL DEFAULT (UNIX_TIMESTAMP(NOW()) * 1000),
+    mergedIntoUserId     VARCHAR(64)  NULL,
+    deletedAt            BIGINT       NULL,
+    emailVerifiedSource  VARCHAR(64)  NULL COMMENT '记录来源: oauth:github / oauth:x / platform',
+    createdAt            BIGINT       NOT NULL DEFAULT (UNIX_TIMESTAMP(NOW()) * 1000),
     updatedAt         BIGINT       NOT NULL DEFAULT (UNIX_TIMESTAMP(NOW()) * 1000),
     lastLoginAt       BIGINT       NULL,
 
@@ -63,6 +64,7 @@ CREATE TABLE auth_tokens
                                                          'mfa_challenge',
                                                          'passkey_register',
                                                          'passkey_login',
+                                                         'totp_setup',
                                                          'oauth_state',
                                                          'oauth_login_code',
                                                          'oauth_pending_registration',
@@ -100,7 +102,8 @@ CREATE TABLE sessions
                                               'account_banned',
                                               'account_merged',
                                               'account_pending_deletion',
-                                              'role_changed', 'manual_revoke')),
+                                              'role_changed', 'manual_revoke',
+                                              'user_revoked', 'oauth_unbound')),
     ipHash           VARCHAR(64) NOT NULL,
     ipPrefix         VARCHAR(64) NOT NULL,
     userAgentHash    VARCHAR(64) NOT NULL,
@@ -137,6 +140,7 @@ CREATE TABLE refresh_token_events
                                                                  'revoked')),
     rotatedToHash VARCHAR(128) NULL,
     createdAt     BIGINT       NOT NULL DEFAULT (UNIX_TIMESTAMP(NOW()) * 1000),
+    expiresAt     BIGINT       NOT NULL,
     usedAt        BIGINT       NULL,
 
     UNIQUE (tokenHash),
@@ -266,7 +270,7 @@ CREATE TABLE user_roles
 CREATE TABLE contributions
 (
     id                     VARCHAR(64)  NOT NULL PRIMARY KEY,
-    authorUserId           VARCHAR(64)  NULL,
+    authorUserId           VARCHAR(64)  NOT NULL,
     title                  VARCHAR(120) NOT NULL,
     summary                VARCHAR(300) NULL,
     contentRaw             TEXT         NOT NULL,
@@ -291,17 +295,21 @@ CREATE TABLE contributions
                                                                          'ja',
                                                                          'other')),
     tags                   JSON         NOT NULL DEFAULT ('[]'),
+    idempotencyKey         VARCHAR(64)  NULL,
     createdAt              BIGINT       NOT NULL DEFAULT (UNIX_TIMESTAMP(NOW()) * 1000),
     updatedAt              BIGINT       NOT NULL DEFAULT (UNIX_TIMESTAMP(NOW()) * 1000),
     submittedAt            BIGINT       NULL,
     publishedAt            BIGINT       NULL,
     deletedAt              BIGINT       NULL,
+    submitterIpHash        VARCHAR(64)  NOT NULL,
+    submitterUserAgentHash VARCHAR(64)  NOT NULL,
 
     INDEX idx_contrib_author_created (authorUserId, createdAt),
     INDEX idx_contrib_status_created (status, createdAt),
     INDEX idx_contrib_publishedAt (publishedAt),
+    UNIQUE (authorUserId, idempotencyKey),
 
-    FOREIGN KEY (authorUserId) REFERENCES users (id) ON DELETE SET NULL
+    FOREIGN KEY (authorUserId) REFERENCES users (id) ON DELETE RESTRICT
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;

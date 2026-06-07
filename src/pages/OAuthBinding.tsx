@@ -1,7 +1,8 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { API_BASE } from '@/config'
+import { post, tryRefreshToken } from '@/api/client'
+import { ERRORS } from '@/api/errors'
 import { useAuth } from '@/context/useAuth'
 import { StepUpDialog } from '@/components/StepUpDialog'
 
@@ -21,37 +22,30 @@ export const OAuthBinding = () => {
     setErrorMsg('')
 
     try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
-      else {
-        setErrorMsg(t('oauth.bindStepUpRequired'))
-        setStatus('error')
-        return
+      let currentToken = accessToken
+      if (!currentToken) {
+        // Token might be null in memory but refresh token cookie still valid — try refresh
+        const refreshed = await tryRefreshToken()
+        if (refreshed) {
+          currentToken = refreshed
+        } else {
+          setErrorMsg(t('oauth.bindStepUpRequired'))
+          setStatus('error')
+          return
+        }
       }
 
-      const csrfMatch = document.cookie.match(/oauth_pending_csrf=([^;]+)/)
-      const csrfToken = csrfMatch?.[1] || ''
-      if (csrfToken) headers['X-CSRF-Token'] = csrfToken
-
-      const res = await fetch(`${API_BASE}/auth/oauth/complete-binding`, {
-        method: 'POST',
-        headers,
-        credentials: 'include',
+      const result = await post('/auth/oauth/complete-binding', undefined, {
+        csrf: true,
+        skipRefresh: true, // avoid infinite loop if refresh also 401s
       })
 
-      if (res.status === 403) {
-        const body = await res.json() as { error?: { code?: string } }
-        if (body.error?.code === 'STEP_UP_REQUIRED') {
+      if (!result.ok) {
+        if (result.error.code === ERRORS.STEP_UP_REQUIRED) {
           setShowStepUp(true)
           setStatus('idle')
           return
         }
-        setErrorMsg(t('oauth.bindError'))
-        setStatus('error')
-        return
-      }
-
-      if (!res.ok) {
         setErrorMsg(t('oauth.bindError'))
         setStatus('error')
         return
@@ -118,8 +112,10 @@ export const OAuthBinding = () => {
         <StepUpDialog
           onSuccess={handleStepUpSuccess}
           onCancel={() => setShowStepUp(false)}
+          accessToken={accessToken ?? ''}
         />
       )}
     </>
   )
 }
+

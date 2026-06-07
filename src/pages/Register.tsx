@@ -1,8 +1,8 @@
-import { useState, useMemo, useEffect } from 'react'
+﻿import { useState, useMemo, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
-import { API_BASE } from '@/config'
+import { get } from '@/api/client'
 import styles from '../App.module.css'
 import formStyles from './Register.module.css'
 
@@ -58,25 +58,19 @@ const Register = () => {
 
   // Fetch OAuth pending profile to get suggested email for auto-detection
   useEffect(() => {
-    const csrfMatch = document.cookie.match(/oauth_pending_csrf=([^;]+)/)
-    const csrfToken = csrfMatch?.[1] || ''
-    if (!csrfToken) return
-
     const fetchProfile = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/auth/oauth/pending-profile?provider=${encodeURIComponent(provider)}`, {
-          headers: { 'X-CSRF-Token': csrfToken },
-          credentials: 'include',
-        })
-        if (!res.ok) return
-        const body = await res.json() as { data?: { suggestedEmail?: string | null; providerEmailVerified?: boolean } }
-        if (body.data?.suggestedEmail) {
-          setSuggestedEmail(body.data.suggestedEmail)
-          // Pre-fill email field with suggested email
-          setEmail(body.data.suggestedEmail)
+      const result = await get<{
+        suggestedEmail?: string | null
+        providerEmailVerified?: boolean
+      }>(`/auth/oauth/pending-profile?provider=${encodeURIComponent(provider)}`, { csrf: true })
+
+      if (result.ok) {
+        if (result.data.suggestedEmail) {
+          setSuggestedEmail(result.data.suggestedEmail)
+          setEmail(result.data.suggestedEmail)
         }
-        setProviderEmailVerified(body.data?.providerEmailVerified ?? false)
-      } catch { /* profile fetch best-effort */ }
+        setProviderEmailVerified(result.data.providerEmailVerified ?? false)
+      }
     }
     fetchProfile()
   }, [provider])
@@ -99,14 +93,18 @@ const Register = () => {
       errs.password = t('register.errors.passwordStrength')
     }
 
-    // 邮箱验证（选填时为非必填）
-    if (email.trim() && !validateEmail(email.trim())) {
+    // 邮箱验证（api.md §1.6.4 要求必填）
+    if (!email.trim()) {
+      errs.email = t('register.errors.emailRequired')
+    } else if (!validateEmail(email.trim())) {
       errs.email = t('register.errors.emailInvalid')
     }
 
-    // 显示名称验证
+    // 显示名称验证（api.md §1.6.4 要求 1-50 字符，必填）
     const dn = displayName.trim()
-    if (dn.length > 50) {
+    if (!dn) {
+      errs.displayName = t('register.errors.displayNameRequired')
+    } else if (dn.length > 50) {
       errs.displayName = t('register.errors.displayNameTooLong')
     }
 
@@ -204,6 +202,7 @@ const Register = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder={t('register.emailPlaceholder')}
+            required
             maxLength={254}
             aria-invalid={!!fieldErrors.email}
           />
@@ -220,6 +219,7 @@ const Register = () => {
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             placeholder={t('register.displayNamePlaceholder')}
+            required
             maxLength={50}
             aria-invalid={!!fieldErrors.displayName}
           />
@@ -245,3 +245,4 @@ const Register = () => {
 }
 
 export { Register }
+

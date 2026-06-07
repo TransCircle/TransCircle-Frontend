@@ -74,11 +74,37 @@ async function main() {
 
   // Create roles
   try {
-    await conn.execute(`INSERT IGNORE INTO roles (id, name, description, createdAt) VALUES (UUID(), 'admin', '系统管理员', UNIX_TIMESTAMP(NOW()) * 1000)`);
-    await conn.execute(`INSERT IGNORE INTO roles (id, name, description, createdAt) VALUES (UUID(), 'editor', '编辑', UNIX_TIMESTAMP(NOW()) * 1000)`);
-    await conn.execute(`INSERT IGNORE INTO roles (id, name, description, createdAt) VALUES (UUID(), 'reviewer', '审稿员', UNIX_TIMESTAMP(NOW()) * 1000)`);
+    // Role IDs use role_<slug> format per api.md §15.9
+    await conn.execute(`INSERT IGNORE INTO roles (id, name, description, createdAt) VALUES ('role_admin', 'admin', '系统管理员', UNIX_TIMESTAMP(NOW()) * 1000)`);
+    await conn.execute(`INSERT IGNORE INTO roles (id, name, description, createdAt) VALUES ('role_editor', 'editor', '编辑', UNIX_TIMESTAMP(NOW()) * 1000)`);
+    await conn.execute(`INSERT IGNORE INTO roles (id, name, description, createdAt) VALUES ('role_reviewer', 'reviewer', '审稿员', UNIX_TIMESTAMP(NOW()) * 1000)`);
     console.log('Default roles created.');
   } catch { /* roles may already exist */ }
+
+  // Run migrations
+  const migrationsDir = path.resolve(import.meta.dirname, '..', 'migrations');
+  if (fs.existsSync(migrationsDir)) {
+    const migrationFiles = fs.readdirSync(migrationsDir)
+      .filter(f => f.endsWith('.sql'))
+      .sort();
+    for (const mf of migrationFiles) {
+      const migrationSql = fs.readFileSync(path.join(migrationsDir, mf), 'utf-8');
+      const stmts = migrationSql.split(';').map(s => s.trim()).filter(s => s.length > 0);
+      for (const stmt of stmts) {
+        try {
+          await conn.execute(stmt);
+          console.log(`  Migration ${mf} applied.`);
+        } catch (err: unknown) {
+          const mysqlErr = err as { errno?: number; message?: string };
+          if (mysqlErr?.errno === 1050) {
+            console.log(`  ${mf}: table already exists, skipping...`);
+          } else {
+            console.error(`  Migration ${mf} error: ${mysqlErr?.message || err}`);
+          }
+        }
+      }
+    }
+  }
 
   await conn.end();
   console.log('Done!');

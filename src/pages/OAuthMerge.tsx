@@ -1,7 +1,8 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { API_BASE } from '@/config'
+import { post, tryRefreshToken } from '@/api/client'
+import { ERRORS } from '@/api/errors'
 import { useAuth } from '@/context/useAuth'
 import { StepUpDialog } from '@/components/StepUpDialog'
 
@@ -28,39 +29,31 @@ export const OAuthMerge = () => {
     setErrorMsg('')
 
     try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
-      else {
-        setErrorMsg(t('oauth.mergeStepUpRequired'))
-        setStatus('error')
-        return
+      let currentToken = accessToken
+      if (!currentToken) {
+        const refreshed = await tryRefreshToken()
+        if (refreshed) {
+          currentToken = refreshed
+        } else {
+          setErrorMsg(t('oauth.mergeStepUpRequired'))
+          setStatus('error')
+          return
+        }
       }
 
-      const res = await fetch(`${API_BASE}/auth/merge`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ mergeToken, confirm: true }),
-      })
+      const result = await post('/auth/merge', { mergeToken, confirm: true })
 
-      if (res.status === 403) {
-        const body = await res.json() as { error?: { code?: string } }
-        if (body.error?.code === 'STEP_UP_REQUIRED') {
+      if (!result.ok) {
+        if (result.error.code === ERRORS.STEP_UP_REQUIRED) {
           setShowStepUp(true)
           setStatus('idle')
           return
         }
-        setErrorMsg(t('oauth.mergeError'))
-        setStatus('error')
-        return
-      }
-
-      if (res.status === 410) {
-        setErrorMsg(t('oauth.mergeTokenExpired'))
-        setStatus('error')
-        return
-      }
-
-      if (!res.ok) {
+        if (result.error.code === ERRORS.TOKEN_INVALID_OR_EXPIRED) {
+          setErrorMsg(t('oauth.mergeTokenExpired'))
+          setStatus('error')
+          return
+        }
         setErrorMsg(t('oauth.mergeError'))
         setStatus('error')
         return
@@ -134,8 +127,10 @@ export const OAuthMerge = () => {
         <StepUpDialog
           onSuccess={handleStepUpSuccess}
           onCancel={() => setShowStepUp(false)}
+          accessToken={accessToken ?? ''}
         />
       )}
     </>
   )
 }
+

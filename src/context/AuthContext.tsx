@@ -1,5 +1,12 @@
 import { createContext, useEffect, useState, useCallback, type ReactNode } from 'react'
-import { API_BASE } from '@/config'
+import { get, post, setAccessToken as setClientToken, clearAuth, tryRefreshToken } from '@/api/client'
+
+function arrayBufferToBase64url(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  for (const b of bytes) binary += String.fromCharCode(b)
+  return btoa(binary).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+}
 
 interface User {
   id: string
@@ -20,75 +27,35 @@ interface User {
   lastLoginAt: number | null
 }
 
+export interface LoginResult {
+  user: User | null
+  /** Non-null when MFA is required — contains the MFA challenge details */
+  mfaChallengeToken?: string
+  mfaAvailableMethods?: string[]
+  /** Error code when login fails (null if successful) */
+  errorCode?: string
+}
+
 interface AuthContextValue {
   user: User | null
   loading: boolean
   accessToken: string | null
   loginProvider: string | null
   isAdmin: boolean
-  loginWithPassword: (identifier: string, password: string) => Promise<User | null>
+  loginWithPassword: (identifier: string, password: string) => Promise<LoginResult>
   loginWithGitHub: () => Promise<void>
   loginWithX: () => Promise<void>
   logout: () => Promise<void>
+  logoutAll: () => Promise<{ revokedSessions: number } | null>
   exchangeLoginCode: (loginCode: string) => Promise<User | null>
   completeRegistration: (provider: string, data: { username?: string; email?: string; password?: string; displayName?: string; emailMatchesProvider?: boolean }) => Promise<{ loginCode?: string; user: User | null } | null>
+  /** MFA TOTP verification — saves token to context and fetches user profile (api.md §1.9.4) */
+  mfaVerify: (mfaChallengeToken: string, code: string) => Promise<User | null>
+  /** Passkey login — full WebAuthn flow (api.md §1.10.5) */
+  loginWithPasskey: () => Promise<LoginResult>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
-
-let memoryToken: string | null = null
-
-function _logRequestId(label: string, body: { requestId?: string }): void {
-  if (body.requestId) {
-    console.debug(`[api] ${label} requestId=${body.requestId}`)
-  }
-}
-
-// Refresh promise queue: prevents concurrent refresh requests when multiple callers
-// request a token refresh at the same time (e.g., rapid page navigation).
-let _refreshPromise: Promise<string | null> | null = null
-
-async function doRefresh(): Promise<string | null> {
-  // If a refresh is already in-flight, reuse its promise (race-grace prevention)
-  if (_refreshPromise) return _refreshPromise
-
-  _refreshPromise = (async () => {
-    try {
-      const res = await fetch(`${API_BASE}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-      })
-
-      if (res.status === 401) {
-        // REFRESH_TOKEN_REVOKED or INVALID_REFRESH_TOKEN — clear stale state
-        memoryToken = null
-        return null
-      }
-
-      if (!res.ok) return null
-
-      const body = await res.json() as { data?: { accessToken?: string }; requestId?: string }
-      _logRequestId('auth/refresh', body)
-
-      if (body.data?.accessToken) {
-        memoryToken = body.data.accessToken
-        return memoryToken
-      }
-      return null
-    } catch {
-      return null
-    } finally {
-      _refreshPromise = null
-    }
-  })()
-
-  return _refreshPromise
-}
-
-function setMemoryToken(token: string | null): void {
-  memoryToken = token
-}
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
@@ -101,22 +68,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const init = async () => {
       // Try refresh to get an access token — cookie-based, must include credentials
-      const token = await doRefresh()
-      if (token) setAccessToken(token)
+      const token = await tryRefreshToken()
+      if (token) {
+        setAccessToken(token)
+      }
 
       // Get full user profile from /v1/me (per api.md §2.1)
-      try {
-        const headers: Record<string, string> = {}
-        const tk = memoryToken
-        if (tk) headers.Authorization = `Bearer ${tk}`
-        const res = await fetch(`${API_BASE}/me`, { headers })
-        const body = await res.json() as { data?: Record<string, unknown>; requestId?: string }
-        _logRequestId('me', body)
-        if (body.data) {
-          const u = normalizeUser(body.data)
-          setUser(u)
-        }
-      } catch { /* API not available */ }
+      const meResult = await get<Record<string, unknown>>('/me', { noAuth: false })
+      if (meResult.ok) {
+        setUser(normalizeUser(meResult.data))
+      }
 
       setLoading(false)
     }
@@ -124,84 +85,66 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   // Start OAuth flow: fetch authorization URL from backend, then redirect
-  const loginWithGitHub = useCallback(async () => {
-    setLoginProvider('github')
+  const startOAuth = useCallback(async (provider: 'github' | 'x') => {
+    setLoginProvider(provider)
     const redirectAfter = window.location.pathname + window.location.search
-    try {
-      const res = await fetch(`${API_BASE}/auth/oauth/github/start?redirectAfter=${encodeURIComponent(redirectAfter)}`)
-      const body = await res.json() as { data?: { authorizationUrl?: string } }
-      if (body.data?.authorizationUrl) {
-        window.location.href = body.data.authorizationUrl
-      }
-    } catch { /* fallback: direct redirect */ }
+    const result = await get<{ authorizationUrl: string }>(
+      `/auth/oauth/${provider}/start?redirectAfter=${encodeURIComponent(redirectAfter)}`,
+    )
+    if (result.ok && result.data.authorizationUrl) {
+      window.location.href = result.data.authorizationUrl
+    } else {
+      window.location.href = `/auth/error?status=oauth_error&provider=${provider}`
+    }
   }, [])
 
-  const loginWithX = useCallback(async () => {
-    setLoginProvider('x')
-    const redirectAfter = window.location.pathname + window.location.search
-    try {
-      const res = await fetch(`${API_BASE}/auth/oauth/x/start?redirectAfter=${encodeURIComponent(redirectAfter)}`)
-      const body = await res.json() as { data?: { authorizationUrl?: string } }
-      if (body.data?.authorizationUrl) {
-        window.location.href = body.data.authorizationUrl
-      }
-    } catch { /* fallback */ }
-  }, [])
+  const loginWithGitHub = useCallback(() => startOAuth('github'), [startOAuth])
+  const loginWithX = useCallback(() => startOAuth('x'), [startOAuth])
 
   // Password login (api.md §1.3): POST /v1/auth/login
-  const loginWithPassword = useCallback(async (identifier: string, password: string): Promise<User | null> => {
-    try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, password }),
-        credentials: 'include',
-      })
+  const loginWithPassword = useCallback(async (identifier: string, password: string): Promise<LoginResult> => {
+    const result = await post<{
+      accessToken?: string
+      user?: Record<string, unknown>
+      mfaRequired?: boolean
+      mfaChallengeToken?: string
+      availableMethods?: string[]
+    }>('/auth/login', { identifier, password }, { idempotent: true })
 
-      if (!res.ok) {
-        // Let the caller handle errors based on status/code
-        return null
+    if (!result.ok) {
+      return { user: null, errorCode: result.error.code }
+    }
+
+    const d = result.data
+
+    // MFA required — return challenge details so caller handles without second API call
+    if (d.mfaRequired) {
+      return {
+        user: null,
+        mfaChallengeToken: d.mfaChallengeToken || '',
+        mfaAvailableMethods: d.availableMethods || [],
       }
+    }
 
-      const body = await res.json() as {
-        data?: { accessToken?: string; user?: Record<string, unknown>; mfaRequired?: boolean }
-        requestId?: string
-      }
-      _logRequestId('auth/login', body)
+    if (d.accessToken && d.user) {
+      setClientToken(d.accessToken)
+      setAccessToken(d.accessToken)
+      setLoginProvider(null)
 
-      const d = body.data
-      if (!d) return null
-
-      // MFA required — not yet handled in MVP
-      if (d.mfaRequired) return null
-
-      if (d.accessToken && d.user) {
-        setMemoryToken(d.accessToken)
-        setAccessToken(d.accessToken)
-        setLoginProvider(null)
-
-        // Fetch full profile from /v1/me for roles/status/security
-        try {
-          const meRes = await fetch(`${API_BASE}/me`, {
-            headers: { Authorization: `Bearer ${d.accessToken}` },
-          })
-          if (meRes.ok) {
-            const meBody = await meRes.json() as { data?: Record<string, unknown>; requestId?: string }
-            _logRequestId('me', meBody)
-            if (meBody.data) {
-              const u = normalizeUser(meBody.data)
-              setUser(u)
-              return u
-            }
-          }
-        } catch { /* fallback to login user data */ }
-
-        const u = normalizeUser(d.user)
+      // Fetch full profile from /v1/me for roles/status/security
+      const meResult = await get<Record<string, unknown>>('/me')
+      if (meResult.ok) {
+        const u = normalizeUser(meResult.data)
         setUser(u)
-        return u
+        return { user: u }
       }
-    } catch { /* login failed */ }
-    return null
+
+      const u = normalizeUser(d.user)
+      setUser(u)
+      return { user: u }
+    }
+
+    return { user: null }
   }, [])
 
   // Normalize user data from different API response shapes into the canonical User type
@@ -225,91 +168,208 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Exchange loginCode for access token (called from callback page)
   // After exchange, fetch full /v1/me to get complete user profile
   const exchangeLoginCode = useCallback(async (loginCode: string): Promise<User | null> => {
-    try {
-      const res = await fetch(`${API_BASE}/auth/oauth/exchange`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ loginCode }),
-      })
-      if (!res.ok) return null
-      const body = await res.json() as { data?: { accessToken?: string; user?: Record<string, unknown> }; requestId?: string }
-      _logRequestId('auth/oauth/exchange', body)
-      if (body.data?.accessToken && body.data?.user) {
-        setMemoryToken(body.data.accessToken)
-        setAccessToken(body.data.accessToken)
-        // Fetch full profile from /v1/me to get roles/status/createdAt/security
-        try {
-          const meRes = await fetch(`${API_BASE}/me`, {
-            headers: { Authorization: `Bearer ${body.data.accessToken}` },
-          })
-          if (meRes.ok) {
-            const meBody = await meRes.json() as { data?: Record<string, unknown>; requestId?: string }
-            _logRequestId('me', meBody)
-            if (meBody.data) {
-              const u = normalizeUser(meBody.data)
-              setUser(u)
-              return u
-            }
-          }
-        } catch { /* fallback to exchange user data */ }
-        // Fallback: use minimal user data from exchange response
-        const u = normalizeUser(body.data.user)
-        setUser(u)
-        return u
-      }
-    } catch { /* exchange failed */ }
-    return null
+    const result = await post<{
+      accessToken?: string
+      user?: Record<string, unknown>
+    }>('/auth/oauth/exchange', { loginCode })
+
+    if (!result.ok || !result.data.accessToken || !result.data.user) return null
+
+    setClientToken(result.data.accessToken)
+    setAccessToken(result.data.accessToken)
+
+    // Fetch full profile from /v1/me to get roles/status/createdAt/security
+    const meResult = await get<Record<string, unknown>>('/me')
+    if (meResult.ok) {
+      const u = normalizeUser(meResult.data)
+      setUser(u)
+      return u
+    }
+
+    // Fallback: use minimal user data from exchange response
+    const u = normalizeUser(result.data.user)
+    setUser(u)
+    return u
   }, [])
 
-  // Complete OAuth registration for new users (per apidocs.md §1.6.4)
-  const completeRegistration = useCallback(async (provider: string, data: { username?: string; email?: string; password?: string; displayName?: string; emailMatchesProvider?: boolean }) => {
-    try {
-      const csrfMatch = document.cookie.match(/oauth_pending_csrf=([^;]+)/)
-      const csrfToken = csrfMatch?.[1] || ''
-
-      const res = await fetch(`${API_BASE}/auth/oauth/complete-registration?provider=${encodeURIComponent(provider)}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken,
-          'Idempotency-Key': crypto.randomUUID(),
-        },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      })
-
-      if (!res.ok) return null
-      const body = await res.json() as { data?: { loginCode?: string; user?: Record<string, unknown> }; requestId?: string }
-      _logRequestId('auth/oauth/complete-registration', body)
-
-      if (body.data?.loginCode) {
-        const u = await exchangeLoginCode(body.data.loginCode)
-        return { loginCode: body.data.loginCode, user: u }
+  // Complete OAuth registration for new users (api.md §1.6.4)
+  const completeRegistration = useCallback(async (
+    provider: string,
+    data: { username?: string; email?: string; password?: string; displayName?: string; emailMatchesProvider?: boolean },
+  ) => {
+    const payload: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(data)) {
+      if (k === 'emailMatchesProvider') {
+        if (v !== undefined) payload[k] = v
+      } else if (v !== undefined) {
+        payload[k] = v
       }
-    } catch { /* registration failed */ }
+    }
+
+    const result = await post<{
+      loginCode?: string
+      user?: Record<string, unknown>
+    }>(`/auth/oauth/complete-registration?provider=${encodeURIComponent(provider)}`, payload, {
+      csrf: true,
+      idempotent: true,
+    })
+
+    if (!result.ok) return null
+
+    if (result.data.loginCode) {
+      const u = await exchangeLoginCode(result.data.loginCode)
+      return { loginCode: result.data.loginCode, user: u }
+    }
     return null
   }, [exchangeLoginCode])
 
-  const logout = useCallback(async () => {
-    const headers: Record<string, string> = {}
-    const tk = memoryToken
-    if (tk) headers.Authorization = `Bearer ${tk}`
+  // MFA TOTP verification (api.md §1.9.4): /v1/auth/mfa/totp/verify
+  const mfaVerify = useCallback(async (mfaChallengeToken: string, code: string): Promise<User | null> => {
+    const result = await post<{
+      accessToken?: string
+      user?: Record<string, unknown>
+    }>('/auth/mfa/totp/verify', { mfaChallengeToken, code })
+
+    if (!result.ok || !result.data.accessToken) return null
+
+    setClientToken(result.data.accessToken)
+    setAccessToken(result.data.accessToken)
+
+    // Fetch full profile from /v1/me
+    const meResult = await get<Record<string, unknown>>('/me')
+    if (meResult.ok) {
+      const u = normalizeUser(meResult.data)
+      setUser(u)
+      return u
+    }
+
+    // Fallback: minimal user
+    if (result.data.user) {
+      const u = normalizeUser(result.data.user)
+      setUser(u)
+      return u
+    }
+    return null
+  }, [])
+
+  // ── Passkey Login (api.md §1.10.5) ──
+  const loginWithPasskey = useCallback(async (): Promise<LoginResult> => {
+    const startResult = await post<{
+      challengeId: string
+      publicKey: {
+        challenge: string
+        rpId: string
+        timeout: number
+        userVerification: string
+        allowCredentials?: Array<{ type: string; id: string; transports: string[] }>
+      }
+      expiresIn: number
+    }>('/auth/passkey/login/start', {})
+
+    if (!startResult.ok) {
+      return { user: null, errorCode: startResult.error.code }
+    }
+
+    const { challengeId, publicKey } = startResult.data
+
     try {
-      const res = await fetch(`${API_BASE}/auth/logout`, { method: 'POST', headers, credentials: 'include' })
-      // 204 No Content — parse requestId from header if available
-      const reqId = res.headers.get('X-Request-Id')
-      if (reqId) console.debug(`[api] auth/logout requestId=${reqId}`)
-    } catch { /* logout best-effort */ }
-    _refreshPromise = null
-    setMemoryToken(null)
+      const credential = await navigator.credentials.get({
+        publicKey: {
+          challenge: Uint8Array.from(
+            atob(publicKey.challenge.replace(/-/g, '+').replace(/_/g, '/')),
+            c => c.charCodeAt(0),
+          ).buffer as ArrayBuffer,
+          rpId: publicKey.rpId,
+          userVerification: publicKey.userVerification as UserVerificationRequirement,
+          allowCredentials: publicKey.allowCredentials?.map(c => ({
+            ...c,
+            id: Uint8Array.from(
+              atob(c.id.replace(/-/g, '+').replace(/_/g, '/')),
+              cc => cc.charCodeAt(0),
+            ),
+          })),
+        } as CredentialRequestOptions,
+      })
+
+      if (!credential) {
+        return { user: null, errorCode: 'PASSKEY_CANCELLED' }
+      }
+
+      const pkCred = credential as PublicKeyCredential
+      const response = pkCred.response as AuthenticatorAssertionResponse
+
+      const finishResult = await post<{
+        accessToken?: string
+        user?: Record<string, unknown>
+      }>('/auth/passkey/login/finish', {
+        challengeId,
+        credential: {
+          id: pkCred.id,
+          rawId: pkCred.id,
+          type: pkCred.type,
+          response: {
+            clientDataJSON: arrayBufferToBase64url(response.clientDataJSON),
+            authenticatorData: arrayBufferToBase64url(response.authenticatorData),
+            signature: arrayBufferToBase64url(response.signature),
+            userHandle: response.userHandle ? arrayBufferToBase64url(response.userHandle) : null,
+          },
+          clientExtensionResults: pkCred.clientExtensionResults || {},
+        },
+      })
+
+      if (!finishResult.ok || !finishResult.data.accessToken) {
+        return { user: null, errorCode: finishResult.ok ? undefined : finishResult.error.code }
+      }
+
+      setClientToken(finishResult.data.accessToken)
+      setAccessToken(finishResult.data.accessToken)
+      setLoginProvider(null)
+
+      const meResult = await get<Record<string, unknown>>('/me')
+      if (meResult.ok) {
+        const u = normalizeUser(meResult.data)
+        setUser(u)
+        return { user: u }
+      }
+
+      if (finishResult.data.user) {
+        const u = normalizeUser(finishResult.data.user)
+        setUser(u)
+        return { user: u }
+      }
+
+      return { user: null }
+    } catch {
+      return { user: null, errorCode: 'PASSKEY_VERIFICATION_FAILED' }
+    }
+  }, [])
+
+  const logout = useCallback(async () => {
+    const result = await post('/auth/logout', undefined, { skipRefresh: true })
+    if (!result.ok) {
+      console.warn('[auth] logout API failed, clearing local state anyway', result.error)
+    }
+    clearAuth()
     setAccessToken(null)
     setUser(null)
     setLoginProvider(null)
   }, [])
 
+  // Logout all sessions (api.md §1.11.4)
+  const logoutAll = useCallback(async (): Promise<{ revokedSessions: number } | null> => {
+    const result = await post<{ revokedSessions: number }>('/auth/logout-all')
+    if (result.ok) {
+      clearAuth()
+      setAccessToken(null)
+      setUser(null)
+      setLoginProvider(null)
+      return result.data
+    }
+    return null
+  }, [])
+
   return (
-    <AuthContext.Provider value={{ user, loading, accessToken, loginProvider, isAdmin, loginWithPassword, loginWithGitHub, loginWithX, logout, exchangeLoginCode, completeRegistration }}>
+    <AuthContext.Provider value={{ user, loading, accessToken, loginProvider, isAdmin, loginWithPassword, loginWithGitHub, loginWithX, loginWithPasskey, logout, logoutAll, exchangeLoginCode, completeRegistration, mfaVerify }}>
       {children}
     </AuthContext.Provider>
   )

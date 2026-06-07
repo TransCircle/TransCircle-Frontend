@@ -92,6 +92,19 @@
 
 .editorWrapper :global(.md-editor) {
   border: none;
+  height: 400px;
+}
+
+@media (max-width: 768px) {
+  .editorWrapper :global(.md-editor) {
+    height: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .editorWrapper :global(.md-editor) {
+    height: 250px;
+  }
 }
 
 .checkboxRow {

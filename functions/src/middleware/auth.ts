@@ -19,7 +19,7 @@ declare global {
 }
 
 /**
- * Requires a valid JWT Bearer token.
+ * Requires a valid JWT Bearer token or TEMP_ADMIN_TOKEN.
  * Sets req.user on success.
  */
 export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -31,13 +31,13 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
   const token = authHeader.slice(7)
 
-  // Allow temp admin token to bypass JWT verification
+  // Check TEMP_ADMIN_TOKEN (dev/debug bypass: token in memory only, not a real JWT)
   const adminConf = conf.ADMIN as Record<string, string | undefined> | undefined
-  const adminToken = adminConf?.TEMP_ADMIN_TOKEN as string | undefined
-  if (adminToken && token === adminToken) {
+  const tempAdminToken = adminConf?.TEMP_ADMIN_TOKEN as string | undefined
+  if (tempAdminToken && token === tempAdminToken) {
     req.user = {
-      userId: 'temp-admin',
-      sessionId: 'temp-admin',
+      userId: 'usr_temp_admin',
+      sessionId: 'sess_temp_admin',
       tokenVersion: 0,
       roles: ['reviewer'],
     }
@@ -61,14 +61,34 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     return
   }
 
-  // Verify tokenVersion matches
+  // Verify tokenVersion matches and user status is allowed
   const user = await queryOne(
-    `SELECT tokenVersion FROM users WHERE id = ?`,
+    `SELECT tokenVersion, status FROM users WHERE id = ?`,
     [payload.sub],
   )
   if (!user || user.tokenVersion !== payload.tokenVersion) {
     sendError(res, Errors.UNAUTHORIZED.code, '登录已过期，请重新登录', req.requestId, Errors.UNAUTHORIZED.status)
     return
+  }
+  // Per api.md §1.1 user status table — each status gets its own error code
+  if (user.status !== 'active' && user.status !== 'pending_verification') {
+    switch (user.status) {
+      case 'banned':
+        sendError(res, Errors.ACCOUNT_BANNED.code, Errors.ACCOUNT_BANNED.message, req.requestId, Errors.ACCOUNT_BANNED.status)
+        return
+      case 'merged':
+        sendError(res, Errors.ACCOUNT_MERGED.code, Errors.ACCOUNT_MERGED.message, req.requestId, Errors.ACCOUNT_MERGED.status)
+        return
+      case 'pending_deletion':
+        sendError(res, Errors.ACCOUNT_PENDING_DELETION.code, Errors.ACCOUNT_PENDING_DELETION.message, req.requestId, Errors.ACCOUNT_PENDING_DELETION.status)
+        return
+      case 'deleted':
+        sendError(res, Errors.ACCOUNT_DELETED.code, Errors.ACCOUNT_DELETED.message, req.requestId, Errors.ACCOUNT_DELETED.status)
+        return
+      default:
+        sendError(res, Errors.UNAUTHORIZED.code, '账户状态异常，无法访问', req.requestId, Errors.UNAUTHORIZED.status)
+        return
+    }
   }
 
   req.user = {
@@ -100,10 +120,10 @@ export async function optionalAuth(req: Request, _res: Response, next: NextFunct
     )
     if (session && !session.revokedAt && session.expiresAt >= Date.now()) {
       const user = await queryOne(
-        `SELECT tokenVersion FROM users WHERE id = ?`,
+        `SELECT tokenVersion, status FROM users WHERE id = ?`,
         [payload.sub],
       )
-      if (user && user.tokenVersion === payload.tokenVersion) {
+      if (user && user.tokenVersion === payload.tokenVersion && (user.status === 'active' || user.status === 'pending_verification')) {
         req.user = {
           userId: payload.sub,
           sessionId: payload.sid,
@@ -137,5 +157,10 @@ export function requireRole(...allowedRoles: string[]) {
   }
 }
 
-// Re-export requireAdmin as a convenience
-export const requireAdmin = requireRole('reviewer')
+/**
+ * 要求用户拥有 reviewer 角色（即 api.md 中的审核员）。
+ * reviewer 是当前唯一的"管理"角色，对应 JWT roles 中的 `["reviewer"]`。
+ */
+export const requireReviewer = requireRole('reviewer')
+/** @deprecated 使用 requireReviewer 代替 — reviewer 即审核员角色，非传统 admin */
+export const requireAdmin = requireReviewer

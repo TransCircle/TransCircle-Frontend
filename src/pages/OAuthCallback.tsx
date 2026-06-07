@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
+import { saveCsrfToken } from '@/api/client'
 
 // login_blocked 子错误码文案映射
 const BLOCKED_REASONS: Record<string, string> = {
@@ -25,6 +26,10 @@ export const OAuthCallback = () => {
       const code = searchParams.get('code') || ''
       const mergeToken = searchParams.get('mergeToken') || ''
       const conflictUserId = searchParams.get('conflictUserId') || ''
+
+      // Persist CSRF token to sessionStorage for registration/binding pages
+      const csrfMatch = document.cookie.match(/oauth_pending_csrf=([^;]+)/)
+      if (csrfMatch?.[1]) saveCsrfToken(csrfMatch[1])
 
       switch (status) {
         case 'login_ok':

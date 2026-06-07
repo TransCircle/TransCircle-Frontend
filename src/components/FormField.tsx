@@ -1,4 +1,4 @@
-import { useId, Children, isValidElement, cloneElement, type ReactNode } from 'react'
+import { useId, Children, isValidElement, cloneElement, type ReactNode, type ReactElement } from 'react'
 import { FieldErrorContext } from './FieldError'
 import styles from './FormField.module.css'
 
@@ -11,11 +11,16 @@ interface FormFieldProps {
 }
 
 /** Elements that accept `htmlFor` / are "labelable" per HTML spec */
-function isLabelableElement(props: Record<string, unknown>): boolean {
+function isLabelableElement(child: ReactElement): boolean {
+  const { type } = child
+  // <input>, <select>, <textarea> are labelable per HTML spec
+  if (type === 'select' || type === 'textarea' || type === 'input') return true
+  // Fallback: detect by props for wrapped/untyped elements
+  const props = child.props as Record<string, unknown>
   return (
-    typeof props.type === 'string' ||      // <input type="...">
-    typeof props.multiple === 'boolean' || // <select multiple>
-    typeof props.rows === 'number' ||      // <textarea rows=...>
+    typeof props.type === 'string' ||
+    typeof props.multiple === 'boolean' ||
+    typeof props.rows === 'number' ||
     typeof props.cols === 'number'
   )
 }
@@ -27,7 +32,7 @@ export const FormField = ({ label, required, error, children, htmlFor }: FormFie
 
   // Determine if the first direct child is a labelable form element
   const firstChild = Children.toArray(children)[0]
-  const firstIsLabelable = isValidElement(firstChild) && isLabelableElement((firstChild as React.ReactElement).props as Record<string, unknown>)
+  const firstIsLabelable = isValidElement(firstChild) && isLabelableElement(firstChild as React.ReactElement)
   // Only auto-associate the label when we have a valid target
   const canAutoAssociate = !!htmlFor || firstIsLabelable
 
@@ -38,7 +43,7 @@ export const FormField = ({ label, required, error, children, htmlFor }: FormFie
 
     // Only inject id into labelable form elements (needed for <label htmlFor>).
     // For wrapper divs the caller manages ids manually via htmlFor prop.
-    if (!htmlFor && !props.id && isLabelableElement(props)) {
+    if (!htmlFor && !props.id && isLabelableElement(child)) {
       extra.id = fieldId
     }
 
@@ -47,7 +52,7 @@ export const FormField = ({ label, required, error, children, htmlFor }: FormFie
     if (error) {
       if (!props['aria-describedby']) extra['aria-describedby'] = errorId
       // aria-invalid is only meaningful on actual form controls
-      if (isLabelableElement(props)) extra['aria-invalid'] = true
+      if (isLabelableElement(child)) extra['aria-invalid'] = true
     }
 
     return Object.keys(extra).length > 0 ? cloneElement(child, extra) : child

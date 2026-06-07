@@ -80,6 +80,7 @@
     "tempTokenLogin": "令牌登入",
     "tempAdmin": "臨時管理員",
     "tabs": {
+      "inReview": "???",
       "pending": "待審核",
       "approved": "已通過",
       "rejected": "已拒絕"
@@ -131,7 +132,9 @@
       "usernameInvalid": "使用者名稱需 3-32 字元，小寫字母開頭，僅限字母/數字/底線/連字號",
       "passwordLength": "密碼需 12-128 個字元",
       "passwordStrength": "密碼需包含大寫字母、小寫字母、數字、符號中至少 3 類",
+      "emailRequired": "請輸入信箱",
       "emailInvalid": "信箱格式不正確",
+      "displayNameRequired": "請輸入顯示名稱",
       "displayNameTooLong": "顯示名稱不超過 50 個字元",
       "validationFailed": "請修正表單中的錯誤",
       "failed": "註冊失敗，請重試"
@@ -195,5 +198,77 @@
   "common": {
     "and": " · ",
     "anonymous": "匿名"
+  },
+  "registerDirect": {
+    "title": "註冊新帳號",
+    "description": "使用信箱和密碼建立帳號",
+    "username": "使用者名稱",
+    "usernamePlaceholder": "小寫字母開頭，3-32 字元",
+    "email": "信箱",
+    "emailPlaceholder": "your@email.com",
+    "password": "密碼",
+    "passwordPlaceholder": "12-128 字元，至少含 3 類字元",
+    "displayName": "顯示名稱",
+    "displayNamePlaceholder": "您的暱稱",
+    "submit": "註冊",
+    "submitting": "註冊中...",
+    "success": "註冊成功！請查收驗證郵件",
+    "errors": {
+      "usernameRequired": "請輸入使用者名稱",
+      "usernameInvalid": "使用者名稱需3-32字元，以小寫字母開頭，僅含小寫字母/數字/底線/連字號",
+      "emailRequired": "請輸入信箱",
+      "emailInvalid": "信箱格式不正確",
+      "passwordLength": "密碼長度需12-128字元",
+      "passwordStrength": "密碼需至少含大寫字母、小寫字母、數字、符號中的 3 類",
+      "displayNameRequired": "請輸入顯示名稱",
+      "displayNameTooLong": "顯示名稱不能超過 50 個字元",
+      "usernameTaken": "該使用者名稱已被佔用",
+      "emailTaken": "該信箱已被註冊",
+      "validationFailed": "請修正表單中的錯誤",
+      "failed": "註冊失敗"
+    }
+  },
+  "emailVerify": {
+    "title": "驗證信箱",
+    "verifying": "正在驗證信箱...",
+    "success": "信箱驗證成功！",
+    "error": "驗證連結無效或已過期",
+    "redirectToLogin": "前往登入"
+  },
+  "emailResend": {
+    "title": "重發驗證郵件",
+    "description": "輸入您註冊時使用的信箱地址",
+    "email": "信箱",
+    "emailPlaceholder": "your@email.com",
+    "submit": "發送驗證郵件",
+    "submitting": "發送中...",
+    "success": "驗證郵件已發送，請檢查收件匣",
+    "emailNotFound": "該信箱未註冊",
+    "alreadyVerified": "該信箱已驗證，無需重發",
+    "error": "發送失敗，請稍後重試"
+  },
+  "forgotPassword": {
+    "title": "忘記密碼",
+    "description": "輸入註冊信箱，我們將發送密碼重設連結",
+    "email": "信箱",
+    "emailPlaceholder": "your@email.com",
+    "submit": "發送重設郵件",
+    "submitting": "發送中...",
+    "success": "重設郵件已發送，請檢查收件匣",
+    "emailNotFound": "該信箱未註冊",
+    "accountBanned": "帳號已被封鎖，無法重設密碼",
+    "error": "發送失敗，請稍後重試"
+  },
+  "resetPassword": {
+    "title": "重設密碼",
+    "description": "輸入新密碼",
+    "newPassword": "新密碼",
+    "newPasswordPlaceholder": "12-128 字元，至少含 3 類字元",
+    "submit": "重設密碼",
+    "submitting": "重設中...",
+    "success": "密碼重設成功！請使用新密碼登入",
+    "tokenInvalid": "重設連結已過期或無效",
+    "validationError": "密碼不滿足強度要求",
+    "error": "重設失敗"
   }
 }

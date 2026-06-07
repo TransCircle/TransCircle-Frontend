@@ -1,4 +1,5 @@
 import argon2 from 'argon2'
+import { query } from '../Database'
 
 /**
  * Hash a password using argon2id per api.md 安全基线:
@@ -18,4 +19,36 @@ export async function hashPassword(password: string): Promise<string> {
 /** Verify a password against an argon2id hash. */
 export async function verifyPassword(hash: string, password: string): Promise<boolean> {
   return argon2.verify(hash, password)
+}
+
+/**
+ * Hash a recovery code using argon2id (api.md §15.7).
+ * Recovery codes are stored as argon2id hashes, not HMAC,
+ * so a compromised DB dump doesn't reveal the plaintext codes.
+ */
+export async function hashRecoveryCode(code: string): Promise<string> {
+  return hashPassword(code)
+}
+
+/**
+ * Find and consume an unused recovery code for a user.
+ * Scans all unused codes and tries argon2id.verify on each.
+ * Returns the matching record id, or null if none match.
+ *
+ * Caller must mark usedAt in a transaction after this returns a match.
+ */
+export async function findUnusedRecoveryCode(userId: string, code: string): Promise<string | null> {
+  const rows = await query(
+    `SELECT id, codeHash FROM mfa_recovery_codes WHERE userId = ? AND usedAt IS NULL ORDER BY createdAt ASC`,
+    [userId],
+  ) as unknown as Array<{ id: string; codeHash: string }>
+
+  if (!rows || rows.length === 0) return null
+
+  for (const row of rows) {
+    if (await argon2.verify(row.codeHash, code)) {
+      return row.id
+    }
+  }
+  return null
 }

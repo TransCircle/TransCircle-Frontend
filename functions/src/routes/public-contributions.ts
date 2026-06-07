@@ -10,8 +10,10 @@ router.get('/contributions', async (req, res) => {
   const cursor = req.query.cursor as string | undefined
   const language = req.query.language as string | undefined
   const tag = req.query.tag as string | undefined
+  const sort = (req.query.sort as string) || 'publishedAt_desc'
 
   let whereClause = `WHERE c.status = 'published'`
+  let orderClause = 'ORDER BY c.publishedAt DESC'
   const params: unknown[] = []
 
   if (language) { whereClause += ' AND c.language = ?'; params.push(language) }
@@ -19,6 +21,9 @@ router.get('/contributions', async (req, res) => {
   if (cursor) {
     whereClause += ' AND c.publishedAt < ?'
     params.push(parseInt(Buffer.from(cursor, 'base64url').toString('utf-8'), 10))
+  }
+  if (sort === 'publishedAt_asc') {
+    orderClause = 'ORDER BY c.publishedAt ASC'
   }
 
   params.push(limit + 1)
@@ -29,7 +34,7 @@ router.get('/contributions', async (req, res) => {
      FROM contributions c
      LEFT JOIN users u ON u.id = c.authorUserId
      ${whereClause}
-     ORDER BY c.publishedAt DESC
+     ${orderClause}
      LIMIT ?`,
     params,
   )
@@ -54,7 +59,11 @@ router.get('/contributions', async (req, res) => {
     ? Buffer.from(String((rows[rows.length - 1] as Record<string, unknown>).publishedAt)).toString('base64url')
     : null
 
-  res.status(200).json({ data, pagination: { nextCursor, hasMore, limit }, requestId: req.requestId })
+  // Per api.md §6.4: cache headers for CDN
+  res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=60')
+  res.setHeader('Surrogate-Key', 'list_contributions')
+
+  sendSuccess(res, data, req.requestId, 200, { nextCursor, hasMore, limit })
 })
 
 // GET /public/contributions/:id — api.md §5.2
@@ -72,6 +81,10 @@ router.get('/contributions/:id', async (req, res) => {
     sendError(res, Errors.CONTRIBUTION_NOT_FOUND.code, '投稿不存在或未发布', req.requestId, Errors.CONTRIBUTION_NOT_FOUND.status)
     return
   }
+
+  // Per api.md §6.4: cache headers for CDN
+  res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=60')
+  res.setHeader('Surrogate-Key', `contrib_${row.id}`)
 
   sendSuccess(res, {
     id: row.id,
