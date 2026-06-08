@@ -1297,7 +1297,7 @@ router.post('/oauth/complete-registration', (req, _res, next) => { req.rateLimit
       return
     }
 
-    await conn.commit()
+    // (both branches above return — no additional commit needed here)
   } catch (err) {
     await conn.rollback().catch(() => {})
     console.error('complete-registration error:', err)

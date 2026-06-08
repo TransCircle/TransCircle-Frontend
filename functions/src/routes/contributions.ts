@@ -96,28 +96,37 @@ router.post('/', requireAuth, (req, _res, next) => { req.rateLimitAction = 'subm
   const ipHash = await hmacToken(ip)
   const uaHash = await sha256(ua)    // sha256 per api.md §15.11
 
-  await exec(
-    `INSERT INTO contributions (id, authorUserId, title, summary, contentRaw, contentFormat, contentHtml, rendererVersion, status, version, language, tags, idempotencyKey, submitterIpHash, submitterUserAgentHash, submittedAt, createdAt, updatedAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'v1', ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      id,
-      req.user!.userId,
-      data.title.trim(),
-      data.summary?.trim() || null,
-      data.content,
-      data.contentFormat || 'markdown',
-      contentHtml,
-      status,
-      data.language || 'zh-CN',
-      JSON.stringify(data.tags || []),
-      (req.headers['idempotency-key'] as string) || null,
-      ipHash,
-      uaHash,
-      status === 'pending' ? now : null,
-      now,
-      now,
-    ],
-  )
+  try {
+    await exec(
+      `INSERT INTO contributions (id, authorUserId, title, summary, contentRaw, contentFormat, contentHtml, rendererVersion, status, version, language, tags, idempotencyKey, submitterIpHash, submitterUserAgentHash, submittedAt, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'v1', ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        req.user!.userId,
+        data.title.trim(),
+        data.summary?.trim() || null,
+        data.content,
+        data.contentFormat || 'markdown',
+        contentHtml,
+        status,
+        data.language || 'zh-CN',
+        JSON.stringify(data.tags || []),
+        (req.headers['idempotency-key'] as string) || null,
+        ipHash,
+        uaHash,
+        status === 'pending' ? now : null,
+        now,
+        now,
+      ],
+    )
+  } catch (insertErr: unknown) {
+    const mysqlErr = insertErr as { code?: string }
+    if (mysqlErr.code === 'ER_DUP_ENTRY') {
+      sendError(res, Errors.IDEMPOTENCY_KEY_MISMATCH.code, '重复提交', req.requestId, 409)
+      return
+    }
+    throw insertErr
+  }
 
   // Write audit log per api.md §3
   await writeAuditLog(req, {
