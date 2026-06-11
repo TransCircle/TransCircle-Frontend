@@ -53,10 +53,10 @@ const validate = (data: FormData, t: (key: string, options?: Record<string, unkn
   const errors: FormErrors = {}
   if (!data.title.trim()) errors.title = t('submit.errors.titleRequired')
   if (!data.content.trim()) errors.content = t('submit.errors.contentRequired')
-  if (data.summary.length > 300) errors.summary = t('submit.errors.summaryTooLong')
+  if ([...data.summary].length > 300) errors.summary = t('submit.errors.summaryTooLong')
   if (data.tags.length > TAG_MAX) errors.tags = t('submit.errors.tagsTooMany', { max: TAG_MAX })
   for (const tag of data.tags) {
-    if (tag.length > TAG_MAX_LENGTH) {
+    if ([...tag].length > TAG_MAX_LENGTH) {
       errors.tags = t('submit.errors.tagTooLong', { max: TAG_MAX_LENGTH })
       break
     }
@@ -84,7 +84,7 @@ export const SubmitForm = () => {
   const addTag = (raw: string) => {
     const tag = raw.trim()
     if (!tag) return
-    if (tag.length > TAG_MAX_LENGTH) return
+    if ([...tag].length > TAG_MAX_LENGTH) return
     if (form.tags.length >= TAG_MAX) return
     if (form.tags.includes(tag)) return
     set('tags', [...form.tags, tag])

@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
 import { get, post, patch } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import { ERRORS } from '@/api/errors'
@@ -45,7 +44,6 @@ export const MyContributionDetail = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { loading: authLoading } = useAuth()
-  void useTranslation()
 
   const [contrib, setContrib] = useState<ContributionDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -56,6 +54,7 @@ export const MyContributionDetail = () => {
   const [summary, setSummary] = useState('')
   const [saving, setSaving] = useState(false)
   const [actionError, setActionError] = useState('')
+  const busy = useRef(false)
 
   useEffect(() => {
     if (!id || authLoading) return
@@ -95,11 +94,14 @@ export const MyContributionDetail = () => {
   }
 
   const handleSubmit = async () => {
-    if (!contrib) return
-    if (!window.confirm('确定提交该草稿进行审核？')) return
+    if (busy.current || !contrib) return
+    busy.current = true
+    setActionError('')
+    if (!window.confirm('确定提交该草稿进行审核？')) { busy.current = false; return }
     const result = await post(`/me/contributions/${contrib.id}/submit`, {
       expectedVersion: contrib.version,
     })
+    busy.current = false
     if (result.ok) {
       setContrib(prev => prev ? { ...prev, status: 'pending', version: (result.data as unknown as Record<string, number>).version ?? prev.version } : prev)
     } else if (result.error.code === ERRORS.VERSION_CONFLICT) {
@@ -110,11 +112,14 @@ export const MyContributionDetail = () => {
   }
 
   const handleWithdraw = async () => {
-    if (!contrib) return
-    if (!window.confirm('确定撤回该投稿？')) return
+    if (busy.current || !contrib) return
+    busy.current = true
+    setActionError('')
+    if (!window.confirm('确定撤回该投稿？')) { busy.current = false; return }
     const result = await post(`/me/contributions/${contrib.id}/withdraw`, {
       expectedVersion: contrib.version,
     })
+    busy.current = false
     if (result.ok) {
       setContrib(prev => prev ? { ...prev, status: 'withdrawn', version: (result.data as unknown as Record<string, number>).version ?? prev.version } : prev)
     } else if (result.error.code === ERRORS.VERSION_CONFLICT) {

@@ -543,7 +543,8 @@ export const Admin = () => {
             <ul style={{ margin: '0.5rem 0 0', padding: '0 0 0 1.2rem', fontSize: '0.82rem', lineHeight: 1.8 }}>
               {reviewEvents.map(ev => (
                 <li key={ev.id}>
-                  {ev.action} · {ev.fromStatus} → {ev.toStatus}
+                  {ev.fromStatus} → {ev.toStatus}
+                  {ev.reviewerUserId ? ` · 审核员: ${ev.reviewerUserId.slice(0, 16)}...` : ''}
                   {ev.publicNote ? ` · 备注: ${ev.publicNote}` : ''}
                   {ev.createdAt ? ` · ${formatTs(ev.createdAt)}` : ''}
                 </li>

@@ -71,6 +71,8 @@ const Register = () => {
           setEmail(result.data.suggestedEmail)
         }
         setProviderEmailVerified(result.data.providerEmailVerified ?? false)
+      } else if (result.error.code === 'TOKEN_INVALID_OR_EXPIRED') {
+        setError('注册会话已过期，请重新发起 OAuth 登录')
       }
     }
     fetchProfile()

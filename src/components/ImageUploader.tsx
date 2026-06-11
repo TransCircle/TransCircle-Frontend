@@ -57,7 +57,10 @@ export const ImageUploader = ({ onUploaded }: ImageUploaderProps) => {
         type="file"
         accept="image/jpeg,image/png,image/gif,image/webp"
         style={{ display: 'none' }}
-        onChange={e => handleFile(e.target.files?.[0])}
+        onChange={e => {
+          handleFile(e.target.files?.[0])
+          e.target.value = ''
+        }}
       />
       <button
         type="button"
