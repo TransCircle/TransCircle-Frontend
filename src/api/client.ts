@@ -293,18 +293,19 @@ export async function apiRequest<T = unknown>(
     if (status >= 200 && status < 300) {
       logRequestId(`${method} ${path}`, json)
       const base = { requestId, status, rateLimit }
-      const result: ApiResult<T> = json.pagination
-        ? { ...base, ok: true as const, data: json.data as T, pagination: json.pagination as ApiResult<T>['pagination'] }
+      const pagination = json.pagination as { limit: number; nextCursor: string | null; hasMore: boolean } | undefined
+      const result: ApiResult<T> = pagination
+        ? { ...base, ok: true as const, data: json.data as T, pagination }
         : { ...base, ok: true as const, data: json.data as T }
       return result
     }
 
     // Error response — api.md §12 format: { error: { code, message, details?, data? }, requestId }
-    const errorBody = json as ApiErrorBody
+    const errorData = json.error as { code: string; message: string; details?: Array<{ field: string; reason: string }>; data?: Record<string, unknown> } | undefined
     return {
       ok: false,
-      error: errorBody.error || { code: 'UNKNOWN', message: '未知错误' },
-      requestId: errorBody.requestId || requestId,
+      error: errorData || { code: 'UNKNOWN', message: '未知错误' },
+      requestId: (json.requestId as string) || requestId,
       status,
       rateLimit,
     }

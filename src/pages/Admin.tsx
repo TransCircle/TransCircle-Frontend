@@ -8,7 +8,7 @@ import styles from './Admin.module.css'
 // Temp token is kept in memory only (per api.md §JWT Payload Structure:
 // access tokens must not be stored in localStorage or sessionStorage).
 // On page refresh, admin must re-enter the token.
-type Status = 'pending' | 'in_review' | 'approved' | 'rejected'
+type Status = 'pending' | 'in_review' | 'approved' | 'rejected' | 'published' | 'hidden'
 type ReviewAction = 'approved' | 'rejected'
 
 interface Submission {
@@ -59,6 +59,8 @@ const STATUS_LABEL_KEYS: Record<Status, string> = {
   approved: 'admin.statusApproved',
   rejected: 'admin.statusRejected',
   in_review: 'admin.statusInReview',
+  published: '已发布',
+  hidden: '已隐藏',
 }
 
 function formatTs(ts: number | string | null): string {
@@ -358,11 +360,13 @@ export const Admin = () => {
   // ── Submission List ──
 
   if (!selected) {
-    const tabs = [
-      { key: 'pending' as Status, label: t('admin.tabs.pending') },
-      { key: 'approved' as Status, label: t('admin.tabs.approved') },
-      { key: 'rejected' as Status, label: t('admin.tabs.rejected') },
-      { key: 'in_review' as Status, label: t('admin.tabs.inReview') },
+    const tabs: Array<{ key: Status; label: string }> = [
+      { key: 'pending', label: t('admin.tabs.pending') },
+      { key: 'approved', label: t('admin.tabs.approved') },
+      { key: 'rejected', label: t('admin.tabs.rejected') },
+      { key: 'in_review', label: t('admin.tabs.inReview') },
+      { key: 'published', label: '已发布' },
+      { key: 'hidden', label: '已隐藏' },
     ]
 
     const countLabel = nextCursor
