@@ -31,7 +31,7 @@ interface StartResponse {
 export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogProps) => {
   const [challengeId, setChallengeId] = useState('')
   const [availableMethods, setAvailableMethods] = useState<StepUpMethod[]>([])
-  const [passkeyChallenge, setPasskeyChallenge] = useState<StartResponse['passkey']['publicKey'] | null>(null)
+  const [passkeyChallenge, setPasskeyChallenge] = useState<StartResponse['passkey'] | null>(null)
   const [selectedMethod, setSelectedMethod] = useState<StepUpMethod | null>(null)
 
   const [password, setPassword] = useState('')
@@ -56,7 +56,7 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
       setChallengeId(result.data.challengeId)
       const methods = result.data.availableMethods || []
       setAvailableMethods(methods)
-      setPasskeyChallenge(result.data.passkey?.publicKey ?? null)
+      setPasskeyChallenge(result.data.passkey ?? null)
 
       // Default to password, fallback to first available
       setSelectedMethod(methods.includes('password') ? 'password' : (methods[0] ?? null))
@@ -116,23 +116,25 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
 
     try {
       // Convert base64url challenge to ArrayBuffer for WebAuthn API
-      const credential = await navigator.credentials.get({
-        publicKey: {
-          challenge: Uint8Array.from(
-            atob(passkeyChallenge.challenge.replace(/-/g, '+').replace(/_/g, '/')),
-            c => c.charCodeAt(0),
+      const allowCreds: PublicKeyCredentialDescriptor[] | undefined =
+        passkeyChallenge.publicKey.allowCredentials?.map((c: { id: string; type: 'public-key'; transports: string[] }) => ({
+          type: 'public-key' as const,
+          id: Uint8Array.from(
+            atob(c.id.replace(/-/g, '+').replace(/_/g, '/')),
+            (cc: string) => cc.charCodeAt(0),
           ).buffer as ArrayBuffer,
-          rpId: passkeyChallenge.rpId,
-          userVerification: passkeyChallenge.userVerification as UserVerificationRequirement,
-          allowCredentials: passkeyChallenge.allowCredentials?.map(c => ({
-            ...c,
-            id: Uint8Array.from(
-              atob(c.id.replace(/-/g, '+').replace(/_/g, '/')),
-              cc => cc.charCodeAt(0),
-            ),
-          })),
-        } as CredentialRequestOptions,
-      })
+          transports: c.transports as AuthenticatorTransport[],
+        }))
+      const publicKeyCredOpts: PublicKeyCredentialRequestOptions = {
+        challenge: Uint8Array.from(
+          atob(passkeyChallenge.publicKey.challenge.replace(/-/g, '+').replace(/_/g, '/')),
+          (c: string) => c.charCodeAt(0),
+        ).buffer as ArrayBuffer,
+        rpId: passkeyChallenge.publicKey.rpId,
+        userVerification: passkeyChallenge.publicKey.userVerification as UserVerificationRequirement,
+        allowCredentials: allowCreds,
+      }
+      const credential = await navigator.credentials.get({ publicKey: publicKeyCredOpts })
 
       if (!credential) {
         setError('用户取消了操作')
@@ -156,7 +158,7 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
             signature: arrayBufferToBase64url(response.signature),
             userHandle: response.userHandle ? arrayBufferToBase64url(response.userHandle) : null,
           },
-          clientExtensionResults: pkCred.clientExtensionResults || {},
+          clientExtensionResults: pkCred.getClientExtensionResults(),
         },
       }, { headers: { Authorization: `Bearer ${accessToken}` } })
 

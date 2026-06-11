@@ -273,23 +273,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { challengeId, publicKey } = startResult.data
 
     try {
-      const credential = await navigator.credentials.get({
-        publicKey: {
-          challenge: Uint8Array.from(
-            atob(publicKey.challenge.replace(/-/g, '+').replace(/_/g, '/')),
-            c => c.charCodeAt(0),
+      const allowCreds: PublicKeyCredentialDescriptor[] | undefined =
+        publicKey.allowCredentials?.map((c: { type: string; id: string; transports: string[] }) => ({
+          type: 'public-key' as const,
+          id: Uint8Array.from(
+            atob(c.id.replace(/-/g, '+').replace(/_/g, '/')),
+            (cc: string) => cc.charCodeAt(0),
           ).buffer as ArrayBuffer,
-          rpId: publicKey.rpId,
-          userVerification: publicKey.userVerification as UserVerificationRequirement,
-          allowCredentials: publicKey.allowCredentials?.map(c => ({
-            ...c,
-            id: Uint8Array.from(
-              atob(c.id.replace(/-/g, '+').replace(/_/g, '/')),
-              cc => cc.charCodeAt(0),
-            ),
-          })),
-        } as CredentialRequestOptions,
-      })
+          transports: c.transports as AuthenticatorTransport[],
+        }))
+      const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions = {
+        challenge: Uint8Array.from(
+          atob(publicKey.challenge.replace(/-/g, '+').replace(/_/g, '/')),
+          (c: string) => c.charCodeAt(0),
+        ).buffer as ArrayBuffer,
+        rpId: publicKey.rpId,
+        userVerification: publicKey.userVerification as UserVerificationRequirement,
+        allowCredentials: allowCreds,
+      }
+      const credential = await navigator.credentials.get({ publicKey: publicKeyCredentialRequestOptions })
 
       if (!credential) {
         return { user: null, errorCode: 'PASSKEY_CANCELLED' }
@@ -313,7 +315,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             signature: arrayBufferToBase64url(response.signature),
             userHandle: response.userHandle ? arrayBufferToBase64url(response.userHandle) : null,
           },
-          clientExtensionResults: pkCred.clientExtensionResults || {},
+          clientExtensionResults: pkCred.getClientExtensionResults(),
         },
       })
 
