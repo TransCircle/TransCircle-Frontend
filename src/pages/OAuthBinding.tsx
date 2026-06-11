@@ -35,9 +35,8 @@ export const OAuthBinding = () => {
         }
       }
 
-      const result = await post('/auth/oauth/complete-binding', undefined, {
+      const result = await post(`/auth/oauth/complete-binding?provider=${encodeURIComponent(provider)}`, undefined, {
         csrf: true,
-        skipRefresh: true, // avoid infinite loop if refresh also 401s
       })
 
       if (!result.ok) {
@@ -46,7 +45,23 @@ export const OAuthBinding = () => {
           setStatus('idle')
           return
         }
-        setErrorMsg(t('oauth.bindError'))
+        if (result.error.code === 'OAUTH_ALREADY_LINKED') {
+          // Merge token is in error.data — navigate to merge page
+          const errorData = result.error.data as Record<string, string> | undefined
+          if (errorData?.mergeToken) {
+            navigate(`/auth/oauth/merge?mergeToken=${encodeURIComponent(errorData.mergeToken)}`, { replace: true })
+            return
+          }
+        }
+        if (result.error.code === 'TOKEN_INVALID_OR_EXPIRED') {
+          setErrorMsg('绑定会话已过期，请重新发起绑定')
+        } else if (result.error.code === 'PROVIDER_ALREADY_BOUND') {
+          setErrorMsg('该 OAuth 账号已绑定到其他用户')
+        } else if (result.error.code === 'EMAIL_NOT_VERIFIED') {
+          setErrorMsg('请先验证邮箱后再绑定 OAuth')
+        } else {
+          setErrorMsg(result.error.message || t('oauth.bindError'))
+        }
         setStatus('error')
         return
       }
