@@ -704,10 +704,17 @@ export const SettingsSecurity = () => {
                 </label>
                 <label className={styles.headingDesc} style={{ display: 'block', marginBottom: '0.75rem' }}>
                   TOTP 验证码（选填）
-                  <input type="text" inputMode="numeric" value={cancelMfaCode}
-                    onChange={e => setCancelMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  <input type="text" inputMode="text" value={cancelMfaCode}
+                    onChange={e => {
+                      const raw = e.target.value.toUpperCase()
+                      if (/[A-Z-]/.test(raw)) {
+                        setCancelMfaCode(raw.replace(/[^A-Z0-9-]/g, '').slice(0, 14))
+                      } else {
+                        setCancelMfaCode(raw.replace(/\D/g, '').slice(0, 6))
+                      }
+                    }}
                     className={styles.input} style={{ display: 'block', width: '100%', marginTop: '0.25rem' }}
-                    placeholder="如启用 TOTP 请填写" />
+                    placeholder="TOTP 6位数字 或 恢复码 XXXX-XXXX-XXXX" />
                 </label>
 
                 {cancelError && (

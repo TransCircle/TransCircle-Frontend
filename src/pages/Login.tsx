@@ -84,18 +84,27 @@ export const Login = () => {
         </p>
         <input
           type="text"
-          inputMode="numeric"
+          inputMode="text"
           value={mfaCode}
-          onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-          placeholder="123456"
+          onChange={(e) => {
+            const raw = e.target.value.toUpperCase()
+            if (/[A-Z-]/.test(raw)) {
+              // Recovery code: allow A-Z, digits, dashes, max 14 chars
+              setMfaCode(raw.replace(/[^A-Z0-9-]/g, '').slice(0, 14))
+            } else {
+              // TOTP: numeric only, max 6 chars
+              setMfaCode(raw.replace(/\D/g, '').slice(0, 6))
+            }
+          }}
+          placeholder="123456 或 XXXX-XXXX-XXXX"
           style={{ width: '200px', padding: '0.5rem', textAlign: 'center', fontSize: '1.2rem', letterSpacing: '0.5em' }}
-          maxLength={6}
+          maxLength={14}
           autoFocus
         />
         {error && <p style={{ color: '#c62828', fontSize: '0.85rem', marginTop: '0.5rem' }}>{error}</p>}
         <button
           onClick={handleMfaSubmit}
-          disabled={mfaSubmitting || mfaCode.length < 6}
+          disabled={mfaSubmitting || (mfaCode.length !== 6 && mfaCode.length !== 14)}
           style={{ marginTop: '1rem', padding: '0.5rem 2rem', background: 'var(--accent-pink)', color: '#fff', border: 'none', borderRadius: '50px' }}
         >
           {mfaSubmitting ? t('login.submitting') : t('login.submit')}
