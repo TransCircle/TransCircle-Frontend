@@ -78,7 +78,7 @@ function formatTs(ts: number | null | undefined): string {
 export const SettingsSecurity = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { user: authUser, accessToken } = useAuth()
+  const { user: authUser, accessToken, logoutAll } = useAuth()
 
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [activeTab, setActiveTab] = useState<TabId>('password')
@@ -1110,15 +1110,15 @@ export const SettingsSecurity = () => {
           </p>
           <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <button className={styles.btnSecondary} onClick={async () => {
-              if (!window.confirm('确定退出全部其他会话？当前会话将保留。')) return
-              const result = await post('/auth/logout-all')
-              if (result.ok) {
-                setSessions(prev => prev.filter(s => s.current))
+              if (!window.confirm('确定退出全部会话？包括当前会话在内的所有设备都将被登出，你需要重新登录。')) return
+              const result = await logoutAll()
+              if (result) {
+                navigate('/login', { replace: true })
               } else {
-                setSessionError(result.error.message)
+                setSessionError('退出全部会话失败')
               }
             }} style={{ color: '#c62828', borderColor: '#ef9a9a' }}>
-              退出全部其他会话
+              退出全部会话
             </button>
           </div>
           {sessionError && (
