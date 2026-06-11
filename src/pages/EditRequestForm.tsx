@@ -32,7 +32,7 @@ export const EditRequestForm = () => {
       proposedContent: proposedContent || undefined,
       proposedContentFormat: proposedContent ? 'markdown' : undefined,
       proposedSummary: proposedSummary.trim() || undefined,
-    })
+    }, { idempotent: true })
     setSubmitting(false)
     if (result.ok) {
       setSuccess(true)

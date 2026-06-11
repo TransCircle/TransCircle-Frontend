@@ -49,7 +49,6 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
       const result = await post<StartResponse>(
         '/auth/step-up/start',
         {},
-        { headers: { Authorization: `Bearer ${accessToken}` } },
       )
       if (!result.ok || !result.data.challengeId) {
         setError('无法发起验证')
@@ -94,9 +93,7 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
         return
       }
 
-      const result = await post('/auth/step-up/verify', body, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      })
+      const result = await post('/auth/step-up/verify', body)
 
       if (!result.ok) {
         throw new Error(result.error.message || '验证失败')
@@ -163,7 +160,7 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
           },
           clientExtensionResults: pkCred.getClientExtensionResults(),
         },
-      }, { headers: { Authorization: `Bearer ${accessToken}` } })
+      })
 
       if (!result.ok) {
         throw new Error(result.error.message || 'Passkey 验证失败')

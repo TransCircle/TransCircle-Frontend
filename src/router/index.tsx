@@ -1,31 +1,22 @@
 ﻿import { createBrowserRouter } from 'react-router-dom'
+import { lazy, Suspense } from 'react'
 
 import { RootLayout } from '../layouts/RootLayout'
 
-import { Submit } from '../pages/Submit'
-import { Login } from '../pages/Login'
-import { Register } from '../pages/Register'
-import { Admin } from '../pages/Admin'
-import { AdminUsers } from '../pages/AdminUsers'
-import { AdminEditRequests } from '../pages/AdminEditRequests'
-import { AdminAuditLogs } from '../pages/AdminAuditLogs'
-import { OAuthCallback } from '../pages/OAuthCallback'
-import { AuthError } from '../pages/AuthError'
-import { OAuthBinding } from '../pages/OAuthBinding'
-import { OAuthContinue } from '../pages/OAuthContinue'
-import { OAuthMerge } from '../pages/OAuthMerge'
-import { SettingsSecurity } from '../pages/SettingsSecurity'
-import { NotFound } from '../pages/NotFound'
-import { RegisterDirect } from '../pages/RegisterDirect'
-import { EmailVerify } from '../pages/EmailVerify'
-import { EmailResend } from '../pages/EmailResend'
-import { ForgotPassword } from '../pages/ForgotPassword'
-import { ResetPassword } from '../pages/ResetPassword'
 import { Home } from '../pages/Home'
-import { MyContributions } from '../pages/MyContributions'
-import { MyContributionDetail } from '../pages/MyContributionDetail'
-import { PublicContributionDetail } from '../pages/PublicContributionDetail'
-import { EditRequestForm } from '../pages/EditRequestForm'
+
+function lazyNamed(
+  importFn: () => Promise<Record<string, unknown>>,
+  name: string,
+) {
+  const LazyComponent = lazy(async () => {
+    const mod = await importFn()
+    return { default: mod[name] as React.ComponentType<unknown> }
+  })
+  return <Suspense fallback={<div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>加载中...</div>}>
+    <LazyComponent />
+  </Suspense>
+}
 
 export const router = createBrowserRouter([
   {
@@ -38,95 +29,95 @@ export const router = createBrowserRouter([
       },
       {
         path: 'submit',
-        element: <Submit />,
+        element: lazyNamed(() => import('../pages/Submit'), 'Submit'),
       },
       {
         path: 'login',
-        element: <Login />,
+        element: lazyNamed(() => import('../pages/Login'), 'Login'),
       },
       {
         path: 'register',
-        element: <Register />,
+        element: lazyNamed(() => import('../pages/Register'), 'Register'),
       },
       {
         path: 'admin',
-        element: <Admin />,
+        element: lazyNamed(() => import('../pages/Admin'), 'Admin'),
       },
       {
         path: 'admin/edit-requests',
-        element: <AdminEditRequests />,
+        element: lazyNamed(() => import('../pages/AdminEditRequests'), 'AdminEditRequests'),
       },
       {
         path: 'admin/audit-logs',
-        element: <AdminAuditLogs />,
+        element: lazyNamed(() => import('../pages/AdminAuditLogs'), 'AdminAuditLogs'),
       },
       {
         path: 'auth/callback',
-        element: <OAuthCallback />,
+        element: lazyNamed(() => import('../pages/OAuthCallback'), 'OAuthCallback'),
       },
       {
         path: 'auth/error',
-        element: <AuthError />,
+        element: lazyNamed(() => import('../pages/AuthError'), 'AuthError'),
       },
       {
         path: 'auth/oauth/continue',
-        element: <OAuthContinue />,
+        element: lazyNamed(() => import('../pages/OAuthContinue'), 'OAuthContinue'),
       },
       {
         path: 'auth/oauth/merge',
-        element: <OAuthMerge />,
+        element: lazyNamed(() => import('../pages/OAuthMerge'), 'OAuthMerge'),
       },
       {
         path: 'settings/security',
-        element: <SettingsSecurity />,
+        element: lazyNamed(() => import('../pages/SettingsSecurity'), 'SettingsSecurity'),
       },
       {
         path: 'settings/security/oauth-bind/confirm',
-        element: <OAuthBinding />,
+        element: lazyNamed(() => import('../pages/OAuthBinding'), 'OAuthBinding'),
       },
       {
         path: 'register-direct',
-        element: <RegisterDirect />,
+        element: lazyNamed(() => import('../pages/RegisterDirect'), 'RegisterDirect'),
       },
       {
         path: 'auth/email/verify',
-        element: <EmailVerify />,
+        element: lazyNamed(() => import('../pages/EmailVerify'), 'EmailVerify'),
       },
       {
         path: 'auth/email/resend',
-        element: <EmailResend />,
+        element: lazyNamed(() => import('../pages/EmailResend'), 'EmailResend'),
       },
       {
         path: 'auth/password/forgot',
-        element: <ForgotPassword />,
+        element: lazyNamed(() => import('../pages/ForgotPassword'), 'ForgotPassword'),
       },
       {
         path: 'auth/password/reset',
-        element: <ResetPassword />,
+        element: lazyNamed(() => import('../pages/ResetPassword'), 'ResetPassword'),
       },
       {
         path: 'admin/users',
-        element: <AdminUsers />,
+        element: lazyNamed(() => import('../pages/AdminUsers'), 'AdminUsers'),
       },
       {
         path: 'me/contributions',
-        element: <MyContributions />,
+        element: lazyNamed(() => import('../pages/MyContributions'), 'MyContributions'),
       },
       {
         path: 'me/contributions/:id',
-        element: <MyContributionDetail />,
+        element: lazyNamed(() => import('../pages/MyContributionDetail'), 'MyContributionDetail'),
       },
       {
         path: 'contributions/:id',
-        element: <PublicContributionDetail />,
+        element: lazyNamed(() => import('../pages/PublicContributionDetail'), 'PublicContributionDetail'),
       },
       {
         path: 'contributions/:id/edit-request',
-        element: <EditRequestForm />,
+        element: lazyNamed(() => import('../pages/EditRequestForm'), 'EditRequestForm'),
       },
       {
         path: '*',
-        element: <NotFound />,
+        element: lazyNamed(() => import('../pages/NotFound'), 'NotFound'),
       },
     ],
   },

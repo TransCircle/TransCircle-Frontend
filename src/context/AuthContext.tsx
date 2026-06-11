@@ -345,7 +345,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       return { user: null }
-    } catch {
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'NotAllowedError') {
+        return { user: null, errorCode: 'PASSKEY_CANCELLED' }
+      }
       return { user: null, errorCode: 'PASSKEY_VERIFICATION_FAILED' }
     }
   }, [])

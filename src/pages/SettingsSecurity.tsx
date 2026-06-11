@@ -956,7 +956,7 @@ export const SettingsSecurity = () => {
                 </div>
                 <button
                   className={styles.btnPrimary}
-                  onClick={() => setShowRecoveryCodes(false)}
+                  onClick={() => { setShowRecoveryCodes(false); setRecoveryCodes(null) }}
                   style={{ marginTop: '1rem' }}
                 >
                   我已保存

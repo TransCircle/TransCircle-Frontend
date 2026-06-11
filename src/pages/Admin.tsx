@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/context/useAuth'
 import { get, post, API_BASE } from '@/api/client'
+import { ERRORS } from '@/api/errors'
 import styles from './Admin.module.css'
 
 // Temp token is kept in memory only (per api.md §JWT Payload Structure:
@@ -226,7 +227,12 @@ export const Admin = () => {
       expectedVersion: v,
     }, { headers: authHeaders(), skipRefresh: !accessToken })
     if (!result.ok) {
-      setError(result.error.message || t('admin.errorReview'))
+      if (result.error.code === ERRORS.VERSION_CONFLICT && selected) {
+        setError('数据已被修改，已自动刷新')
+        fetchDetail(selected.id)
+      } else {
+        setError(result.error.message || t('admin.errorReview'))
+      }
       return
     }
     setSelected(null)
@@ -246,7 +252,12 @@ export const Admin = () => {
       reason: reason.trim(),
     }, { headers: authHeaders(), skipRefresh: !accessToken })
     if (!result.ok) {
-      setError(result.error.message || t('admin.errorReview'))
+      if (result.error.code === ERRORS.VERSION_CONFLICT && selected) {
+        setError('数据已被修改，已自动刷新')
+        fetchDetail(selected.id)
+      } else {
+        setError(result.error.message || t('admin.errorReview'))
+      }
       return
     }
     setSelected(null)
@@ -261,7 +272,12 @@ export const Admin = () => {
       reason: '管理员恢复',
     }, { headers: authHeaders(), skipRefresh: !accessToken })
     if (!result.ok) {
-      setError(result.error.message || t('admin.errorReview'))
+      if (result.error.code === ERRORS.VERSION_CONFLICT && selected) {
+        setError('数据已被修改，已自动刷新')
+        fetchDetail(selected.id)
+      } else {
+        setError(result.error.message || t('admin.errorReview'))
+      }
       return
     }
     setSelected(null)
@@ -282,7 +298,12 @@ export const Admin = () => {
       reason: reason.trim(),
     }, { headers: authHeaders(), skipRefresh: !accessToken })
     if (!result.ok) {
-      setError(result.error.message || t('admin.errorReview'))
+      if (result.error.code === ERRORS.VERSION_CONFLICT && selected) {
+        setError('数据已被修改，已自动刷新')
+        fetchDetail(selected.id)
+      } else {
+        setError(result.error.message || t('admin.errorReview'))
+      }
       return
     }
     setSelected(null)

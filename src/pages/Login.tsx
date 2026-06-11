@@ -1,5 +1,5 @@
 ﻿import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
 import styles from '../App.module.css'
@@ -169,9 +169,9 @@ export const Login = () => {
             maxLength={128}
           />
           <div style={{ textAlign: 'right', marginTop: '0.25rem' }}>
-            <a href="/auth/password/forgot" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            <Link to="/auth/password/forgot" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
               忘记密码？
-            </a>
+            </Link>
           </div>
         </label>
 
@@ -188,7 +188,7 @@ export const Login = () => {
 
       <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.85rem' }}>
         没有账号？{' '}
-        <a href="/register-direct" style={{ color: 'var(--accent-pink)' }}>注册新账号</a>
+        <Link to="/register-direct" style={{ color: 'var(--accent-pink)' }}>注册新账号</Link>
       </p>
 
       <div style={{

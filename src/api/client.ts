@@ -134,6 +134,7 @@ export interface RateLimitInfo {
   limit: number
   remaining: number
   reset: number
+  retryAfter?: number
 }
 
 type ApiResultBase = {
@@ -277,8 +278,14 @@ export async function apiRequest<T = unknown>(
     const limit = res.headers.get('X-RateLimit-Limit')
     const remaining = res.headers.get('X-RateLimit-Remaining')
     const reset = res.headers.get('X-RateLimit-Reset')
+    const retryAfter = res.headers.get('Retry-After')
     if (limit && remaining && reset) {
-      return { limit: Number(limit), remaining: Number(remaining), reset: Number(reset) }
+      return {
+        limit: Number(limit),
+        remaining: Number(remaining),
+        reset: Number(reset),
+        ...(retryAfter ? { retryAfter: Number(retryAfter) } : {}),
+      }
     }
     return undefined
   })()
