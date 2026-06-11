@@ -80,7 +80,7 @@
     "tempTokenLogin": "令牌登录",
     "tempAdmin": "临时管理员",
     "tabs": {
-      "inReview": "???",
+      "inReview": "审核中",
       "pending": "待审核",
       "approved": "已通过",
       "rejected": "已拒绝"
@@ -110,7 +110,9 @@
     "errorLoad": "加载投稿列表失败",
     "errorDetail": "加载投稿详情失败",
     "errorReview": "审核操作失败",
-    "verifying": "验证身份..."
+    "verifying": "验证身份...",
+    "networkError": "网络错误",
+    "statusInReview": "审核中"
   },
   "register": {
     "title": "完成注册",
@@ -178,10 +180,17 @@
     "submitting": "登录中...",
     "submit": "登录",
     "oauthAlternative": "或使用第三方账号登录",
+    "mfaTitle": "二步验证",
+    "mfaDescription": "请输入 TOTP 验证码或恢复码完成登录",
     "errors": {
       "invalidCredentials": "邮箱/用户名或密码错误",
       "emailNotVerified": "邮箱未验证，请先查看收件箱完成验证",
-      "serverError": "登录失败，请稍后重试"
+      "serverError": "登录失败，请稍后重试",
+      "banned": "账号已被封禁",
+      "merged": "账号已合并，请使用主账号登录",
+      "pendingDeletion": "账号待注销，如需撤销请前往安全设置",
+      "locked": "账户已锁定，请 15 分钟后重试",
+      "deleted": "该账号已被注销"
     }
   },
   "notFound": {
@@ -226,7 +235,9 @@
       "usernameTaken": "该用户名已被占用",
       "emailTaken": "该邮箱已被注册",
       "validationFailed": "请修正表单中的错误",
-      "failed": "注册失败"
+      "failed": "注册失败",
+      "passwordContainsUsername": "密码不能包含用户名",
+      "passwordContainsEmail": "密码不能包含邮箱地址"
     }
   },
   "emailVerify": {
@@ -271,5 +282,11 @@
     "tokenInvalid": "重置链接已过期或无效",
     "validationError": "密码不满足强度要求",
     "error": "重置失败"
+  },
+  "settings": {
+    "passwordMismatch": "两次密码输入不一致",
+    "currentPasswordWrong": "当前密码错误",
+    "serverError": "服务器错误，请稍后重试",
+    "stepUpRequired": "需要二次认证"
   }
 }

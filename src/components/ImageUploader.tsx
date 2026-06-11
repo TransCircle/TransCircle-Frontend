@@ -30,18 +30,23 @@ export const ImageUploader = ({ onUploaded }: ImageUploaderProps) => {
       return
     }
 
-    const result = await uploadFile(file)
-    setUploading(false)
+    try {
+      const result = await uploadFile(file)
+      setUploading(false)
 
-    if (result.ok) {
-      onUploaded(result.data.url)
-    } else {
-      const code = result.error.code
-      if (code === ERRORS.EMAIL_NOT_VERIFIED) setError('邮箱未验证，不能上传图片')
-      else if (code === ERRORS.CONTENT_TOO_LARGE) setError('文件超过 2MB')
-      else if (code === ERRORS.UNSUPPORTED_MEDIA_TYPE) setError('不支持的图片格式')
-      else if (code === ERRORS.INVALID_IMAGE) setError('图片损坏或不符合要求')
-      else setError(result.error.message || '上传失败')
+      if (result.ok) {
+        onUploaded(result.data.url)
+      } else {
+        const code = result.error.code
+        if (code === ERRORS.EMAIL_NOT_VERIFIED) setError('邮箱未验证，不能上传图片')
+        else if (code === ERRORS.CONTENT_TOO_LARGE) setError('文件超过 2MB')
+        else if (code === ERRORS.UNSUPPORTED_MEDIA_TYPE) setError('不支持的图片格式')
+        else if (code === ERRORS.INVALID_IMAGE) setError('图片损坏或不符合要求')
+        else setError(result.error.message || '上传失败')
+      }
+    } catch {
+      setUploading(false)
+      setError('上传失败，请检查网络连接')
     }
   }
 

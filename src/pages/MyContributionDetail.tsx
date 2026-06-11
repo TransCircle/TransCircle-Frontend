@@ -185,7 +185,7 @@ export const MyContributionDetail = () => {
               {isEditable && (
                 <button className={styles.btnSecondary} onClick={handleSubmit}>提交审核</button>
               )}
-              {contrib.status === 'pending' && (
+              {(contrib.status === 'pending' || contrib.status === 'in_review') && (
                 <button className={styles.btnSecondary} onClick={handleWithdraw} style={{ color: '#c62828' }}>撤回</button>
               )}
             </div>
