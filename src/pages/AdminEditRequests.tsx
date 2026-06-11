@@ -5,15 +5,34 @@ import styles from './Admin.module.css'
 
 interface EditRequestItem {
   id: string
-  contributionId: string
-  requesterId: string
-  reason: string
-  proposedTitle: string | null
-  proposedContent: string | null
-  proposedSummary: string | null
-  proposedTags: string[] | null
   status: string
   version: number
+  reason: string
+  requesterId: string
+  // Nested structure (api.md §10.5)
+  contribution?: {
+    id: string
+    title: string
+  }
+  proposed?: {
+    title?: string | null
+    summary?: string | null
+    content?: string | null
+    tags?: string[] | null
+  } | null
+  votes?: {
+    approve: number
+    reject: number
+    total: number
+    required: number
+  }
+  myVote?: string | null
+  // Legacy flat fields for backward compat during migration
+  contributionId?: string
+  proposedTitle?: string | null
+  proposedContent?: string | null
+  proposedSummary?: string | null
+  proposedTags?: string[] | null
   createdAt: number
   updatedAt: number
 }
@@ -52,7 +71,7 @@ export const AdminEditRequests = () => {
     setLoading(true)
     setError('')
     try {
-      const params = new URLSearchParams({ limit: '20' })
+      const params = new URLSearchParams({ limit: '20', status: 'pending' })
       if (cursorVal) params.set('cursor', cursorVal)
       const result = await get<EditRequestItem[]>(`/admin/edit-requests?${params}`, {
         headers: authHeaders(), skipRefresh: true,
@@ -108,17 +127,41 @@ export const AdminEditRequests = () => {
         <div className={styles.detailCard}>
           <h2 className={styles.detailTitle}>修改申请详情</h2>
           <div className={styles.detailMeta}>
-            <span>投稿 ID: {detail.contributionId}</span>
+            <span>投稿 ID: {detail.contribution?.id ?? detail.contributionId ?? '—'}</span>
             <span>状态: {detail.status}</span>
+            <span>版本: v{detail.version}</span>
             <span>创建: {formatTs(detail.createdAt)}</span>
           </div>
           <div className={styles.detailContent}><strong>原因：</strong>{detail.reason}</div>
-          {detail.proposedTitle && <p><strong>建议新标题：</strong>{detail.proposedTitle}</p>}
-          {detail.proposedSummary && <p><strong>建议新摘要：</strong>{detail.proposedSummary}</p>}
-          {detail.proposedContent && (
-            <div className={styles.detailContent}><strong>建议新内容：</strong><pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>{detail.proposedContent}</pre></div>
+
+          {/* Votes progress */}
+          {detail.votes && (
+            <div style={{ margin: '1rem 0', padding: '0.75rem', background: 'var(--hover-bg)', borderRadius: '8px' }}>
+              <strong>投票进度：</strong>
+              赞成 {detail.votes.approve} · 反对 {detail.votes.reject}
+              · 总票数 {detail.votes.total} · 需要 {detail.votes.required} 票
+              {detail.myVote && <span> · 我的投票：{detail.myVote === 'approve' ? '赞成' : '反对'}</span>}
+            </div>
           )}
-          {detail.proposedTags && <p><strong>建议新标签：</strong>{detail.proposedTags.join(', ')}</p>}
+
+          {/* Proposed changes — prefer nested fields, fall back to flat */}
+          {(detail.proposed?.title ?? (detail as unknown as Record<string, string | null>).proposedTitle) && (
+            <p><strong>建议新标题：</strong>{detail.proposed?.title ?? (detail as unknown as Record<string, string | null>).proposedTitle}</p>
+          )}
+          {(detail.proposed?.summary ?? (detail as unknown as Record<string, string | null>).proposedSummary) && (
+            <p><strong>建议新摘要：</strong>{detail.proposed?.summary ?? (detail as unknown as Record<string, string | null>).proposedSummary}</p>
+          )}
+          {(detail.proposed?.content ?? (detail as unknown as Record<string, string | null>).proposedContent) && (
+            <div className={styles.detailContent}>
+              <strong>建议新内容：</strong>
+              <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>
+                {detail.proposed?.content ?? (detail as unknown as Record<string, string | null>).proposedContent}
+              </pre>
+            </div>
+          )}
+          {(detail.proposed?.tags ?? (detail as unknown as Record<string, string[] | null>).proposedTags) && (
+            <p><strong>建议新标签：</strong>{(detail.proposed?.tags ?? (detail as unknown as Record<string, string[] | null>).proposedTags)!.join(', ')}</p>
+          )}
 
           {error && <div className={styles.errorBox}>{error}</div>}
 
@@ -167,7 +210,7 @@ export const AdminEditRequests = () => {
               onClick={() => fetchDetail(item.id)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fetchDetail(item.id) } }}>
               <div className={styles.itemMain}>
-                <div className={styles.itemTitle}>投稿 {item.contributionId.slice(0, 20)}... · {item.status}</div>
+                <div className={styles.itemTitle}>投稿 {(item.contribution?.id ?? item.contributionId ?? '').slice(0, 20)}... · {item.status}</div>
                 <div className={styles.itemMeta}>{item.reason.slice(0, 60)} · {formatTs(item.createdAt)}</div>
               </div>
             </li>
