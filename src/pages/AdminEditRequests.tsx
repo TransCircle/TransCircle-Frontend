@@ -82,17 +82,16 @@ export const AdminEditRequests = () => {
   }
 
   const handleVote = async (vote: 'approve' | 'reject') => {
-    if (!selectedId) return
+    if (!selectedId || !detail) return
     setVoteSubmitting(true)
     setError('')
     const result = await post(`/admin/edit-requests/${selectedId}/vote`, {
       vote,
       note: voteNote.trim() || null,
+      expectedVersion: detail.version,
     }, { headers: authHeaders(), skipRefresh: true })
     setVoteSubmitting(false)
     if (result.ok) {
-      const voteData = result.data as VoteResult
-      setVotes(prev => [...prev, voteData])
       setVoteNote('')
       fetchDetail(selectedId)
     } else {

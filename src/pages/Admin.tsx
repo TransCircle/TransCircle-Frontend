@@ -228,9 +228,15 @@ export const Admin = () => {
 
   const handleHide = async () => {
     if (!selected) return
+    const reason = prompt('隐藏原因（必填，1-200 字符）：')
+    if (!reason || !reason.trim() || reason.trim().length > 200) {
+      setError('隐藏原因必填（1-200 字符）')
+      return
+    }
     const v = selected.version || 1
     const result = await post(`/admin/contributions/${selected.id}/hide`, {
       expectedVersion: v,
+      reason: reason.trim(),
     }, { headers: authHeaders(), skipRefresh: !accessToken })
     if (!result.ok) {
       setError(result.error.message || t('admin.errorReview'))
@@ -245,6 +251,7 @@ export const Admin = () => {
     const v = selected.version || 1
     const result = await post(`/admin/contributions/${selected.id}/restore`, {
       expectedVersion: v,
+      reason: '管理员恢复',
     }, { headers: authHeaders(), skipRefresh: !accessToken })
     if (!result.ok) {
       setError(result.error.message || t('admin.errorReview'))
@@ -256,10 +263,16 @@ export const Admin = () => {
 
   const handleDelete = async () => {
     if (!selected) return
+    const reason = prompt('删除原因（必填，1-200 字符）：')
+    if (!reason || !reason.trim() || reason.trim().length > 200) {
+      setError('删除原因必填（1-200 字符）')
+      return
+    }
     if (!window.confirm('确定要软删除该投稿？此操作可审计追溯。')) return
     const v = selected.version || 1
     const result = await post(`/admin/contributions/${selected.id}/delete`, {
       expectedVersion: v,
+      reason: reason.trim(),
     }, { headers: authHeaders(), skipRefresh: !accessToken })
     if (!result.ok) {
       setError(result.error.message || t('admin.errorReview'))
