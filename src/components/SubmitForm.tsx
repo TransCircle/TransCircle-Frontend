@@ -153,6 +153,17 @@ export const SubmitForm = () => {
           setServerError(t('submit.errors.duplicateSubmission'))
         } else if (code === ERRORS.CONTENT_TOO_LARGE) {
           setServerError(t('submit.errors.contentTooLarge'))
+        } else if (code === ERRORS.VALIDATION_ERROR && result.error.details) {
+          // Map API validation errors to individual form fields
+          const fieldErrors: FormErrors = {}
+          for (const d of result.error.details) {
+            if (d.field === 'title') fieldErrors.title = d.reason
+            else if (d.field === 'content') fieldErrors.content = d.reason
+            else if (d.field === 'summary') fieldErrors.summary = d.reason
+            else if (d.field === 'tags') fieldErrors.tags = d.reason
+            else fieldErrors.title = d.reason // fallback: show first unrecognized field's reason
+          }
+          setErrors(fieldErrors)
         } else {
           setServerError(result.error.message || t('submit.serverError'))
         }
