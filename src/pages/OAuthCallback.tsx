@@ -43,11 +43,12 @@ export const OAuthCallback = () => {
           }
           {
             const user = await exchangeLoginCode(loginCode)
-            if (user?.roles.includes('reviewer')) {
-              navigate('/admin', { replace: true })
-            } else {
-              navigate('/submit', { replace: true })
-            }
+            // Read redirectAfter from URL params and validate it's a safe relative path
+            const redirectAfter = searchParams.get('redirectAfter') || ''
+            const safeRedirect = redirectAfter.startsWith('/') && !redirectAfter.startsWith('//')
+              ? redirectAfter
+              : (user?.roles.includes('admin') || user?.roles.includes('reviewer') ? '/admin' : '/submit')
+            navigate(safeRedirect, { replace: true })
           }
           break
 

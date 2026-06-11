@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
 import { get } from '@/api/client'
+import { ERRORS } from '@/api/errors'
 import styles from '../App.module.css'
 import formStyles from './Register.module.css'
 
@@ -137,7 +138,12 @@ const Register = () => {
       if (result?.user) {
         navigate(result.user.roles.includes('reviewer') ? '/admin' : '/submit', { replace: true })
       } else {
-        setError(t('register.errors.failed'))
+        const code = result?.errorCode
+        if (code === ERRORS.USERNAME_TAKEN) setError('该用户名已被占用，请换一个')
+        else if (code === ERRORS.EMAIL_TAKEN) setError('该邮箱已被注册')
+        else if (code === ERRORS.TOKEN_INVALID_OR_EXPIRED) setError('注册会话已过期，请重新发起 OAuth 登录')
+        else if (code === ERRORS.VALIDATION_ERROR) setError('请检查输入信息')
+        else setError(t('register.errors.failed'))
       }
     } catch {
       setError(t('register.errors.failed'))
