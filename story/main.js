@@ -46,9 +46,20 @@ initTheme()
 
 async function load() {
   try {
-    const res = await fetch('/data/submissions.json')
-    submissions = await res.json()
-  } catch {
+    const res = await fetch('/v1/public/contributions?limit=100')
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const body = await res.json()
+    submissions = (body.data || []).map(item => ({
+      id: item.id,
+      title: item.title,
+      category: item.tags?.[0] || '全部',
+      content: item.summary || '',
+      author_type: 'real',
+      author_name: item.author?.displayName || '匿名',
+      created_at: item.publishedAt,
+    }))
+  } catch (err) {
+    console.error('Failed to load submissions:', err)
     submissions = []
   }
   renderFilters()
@@ -138,6 +149,7 @@ function formatDate(ts) {
   if (!ts) return ''
   if (typeof ts === 'number' || !ts.includes('-')) {
     const n = typeof ts === 'number' ? ts : Number(ts)
+    if (isNaN(n)) return String(ts)
     return new Date(n).toISOString().slice(0, 10)
   }
   return ts.slice(0, 10)
@@ -152,7 +164,10 @@ function formatDate(ts) {
 function html(str) {
   const div = document.createElement('div')
   div.textContent = str
+  // The browser's textContent→innerHTML handles & < > but not " and '
   return div.innerHTML
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }
 
 /**
