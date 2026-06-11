@@ -248,7 +248,7 @@ export const SettingsSecurity = () => {
       }
       post('/me/delete', body).then(r => {
         if (r.ok) navigate('/?toast=deletion_scheduled')
-        else setError(r.error?.message || '删除失败')
+        else setCancelError(r.error?.message || '删除失败')
       })
     } else if (action?.startsWith('unbind-')) {
       const provider = action.replace('unbind-', '') as 'github' | 'x'
@@ -459,20 +459,34 @@ export const SettingsSecurity = () => {
       const { registrationId, publicKey: creationOptions } = startResult.data
 
       // Convert base64url challenge/user.id to ArrayBuffer for the browser API
-      const cred = await navigator.credentials.create({
-        publicKey: {
-          ...creationOptions,
-          challenge: Uint8Array.from(atob(creationOptions.challenge.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)).buffer,
-          user: {
-            ...creationOptions.user,
-            id: Uint8Array.from(atob((creationOptions.user as unknown as { id: string }).id.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)),
-          },
-          excludeCredentials: creationOptions.excludeCredentials?.map(c => ({
-            ...c,
-            id: Uint8Array.from(atob((c as unknown as { id: string }).id.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)),
-          })),
-        } as CredentialCreationOptions,
-      })
+      const base64urlToBuffer = (s: string): ArrayBuffer =>
+        Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)).buffer
+
+      const base64urlToUint8Array = (s: string): Uint8Array =>
+        Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))
+
+      const rawChallenge = creationOptions.challenge as unknown as string
+      const rawUser = creationOptions.user as unknown as { id: string; displayName: string; name: string }
+      const rawExclude = creationOptions.excludeCredentials as unknown as Array<{ id: string; type: string; transports?: AuthenticatorTransport[] }> | undefined
+
+      const publicKey: PublicKeyCredentialCreationOptions = {
+        ...creationOptions,
+        challenge: base64urlToBuffer(rawChallenge) as ArrayBuffer,
+        rp: creationOptions.rp as PublicKeyCredentialRpEntity,
+        user: {
+          id: base64urlToUint8Array(rawUser.id).buffer as ArrayBuffer,
+          displayName: rawUser.displayName,
+          name: rawUser.name,
+        },
+        pubKeyCredParams: creationOptions.pubKeyCredParams as PublicKeyCredentialParameters[],
+        excludeCredentials: rawExclude?.map(c => ({
+          type: c.type as PublicKeyCredentialType,
+          id: base64urlToUint8Array(c.id).buffer as ArrayBuffer,
+          transports: c.transports,
+        })),
+      }
+
+      const cred = await navigator.credentials.create({ publicKey })
 
       if (!cred) {
         setPasskeyError('用户取消了操作')
@@ -496,7 +510,7 @@ export const SettingsSecurity = () => {
             attestationObject: arrayBufferToBase64url(response.attestationObject),
             transports: response.getTransports?.() || [],
           },
-          clientExtensionResults: pkCred.clientExtensionResults || {},
+          clientExtensionResults: pkCred.getClientExtensionResults(),
         },
       })
 
@@ -528,8 +542,10 @@ export const SettingsSecurity = () => {
     const result = await get<{ authorizationUrl: string }>(`/me/oauth/${provider}/bind/start`)
     if (result.ok && result.data.authorizationUrl) {
       window.location.href = result.data.authorizationUrl
-    } else {
+    } else if (!result.ok) {
       setOauthError(result.error.message)
+    } else {
+      setOauthError('无法获取授权链接')
     }
   }
 
