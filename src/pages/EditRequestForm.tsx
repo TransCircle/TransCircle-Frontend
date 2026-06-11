@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { post } from '@/api/client'
+import { post, setIntentKey } from '@/api/client'
 import styles from '../App.module.css'
 import formStyles from './Register.module.css'
 import adminStyles from './Admin.module.css'
@@ -26,6 +26,7 @@ export const EditRequestForm = () => {
     }
     setSubmitting(true)
     setError('')
+    setIntentKey(crypto.randomUUID())  // Per-intent idempotency-key (M9)
     const result = await post(`/contributions/${id}/edit-requests`, {
       reason: reason.trim(),
       proposedTitle: proposedTitle.trim() || undefined,
@@ -35,6 +36,7 @@ export const EditRequestForm = () => {
     }, { idempotent: true })
     setSubmitting(false)
     if (result.ok) {
+      setIntentKey(null)
       setSuccess(true)
     } else {
       setError(result.error.message)

@@ -113,6 +113,20 @@ export function newIdempotencyKey(): string {
   return crypto.randomUUID()
 }
 
+// ─── Per-Intent Idempotency-Key ──────────────────────────────
+
+let _intentKey: string | null = null
+
+/**
+ * Set an idempotency-key for the current business intent.
+ * The key persists until explicitly cleared, so retries (e.g. after 401 refresh
+ * or network timeout) reuse the same key — matching api.md's requirement that
+ * keys are generated "per business intent" and reused across retries.
+ */
+export function setIntentKey(key: string | null): void {
+  _intentKey = key
+}
+
 // ─── API Response Types ────────────────────────────────────────
 
 export interface ApiSuccess<T = unknown> {
@@ -226,9 +240,13 @@ export async function apiRequest<T = unknown>(
     headers.set('X-CSRF-Token', getCsrfToken())
   }
 
-  // Idempotency-Key — 在每个 apiRequest 内生成一次（同一调用内 401 重试复用）
-  // TODO: 将 key 提升到表单/业务意图层，确保超时重试复用同一 key 而非按请求生成
-  const idempotencyKey = options.idempotent ? newIdempotencyKey() : undefined
+  // Idempotency-Key — 提升到业务意图层，超时重试复用同一 key（M9）
+  const idempotencyKey = options.idempotent
+    ? (_intentKey || newIdempotencyKey())
+    : undefined
+  if (idempotencyKey && !_intentKey) {
+    _intentKey = idempotencyKey
+  }
   if (idempotencyKey) {
     headers.set('Idempotency-Key', idempotencyKey)
   }
@@ -300,6 +318,9 @@ export async function apiRequest<T = unknown>(
 
     if (status >= 200 && status < 300) {
       logRequestId(`${method} ${path}`, json)
+      // Persist CSRF token from response body if present (H1 — supports cross-origin OAuth flows)
+      const responseCsrf = json.csrfToken as string | undefined
+      if (responseCsrf) saveCsrfToken(responseCsrf)
       const base = { requestId, status, rateLimit }
       const pagination = json.pagination as { limit: number; nextCursor: string | null; hasMore: boolean } | undefined
       const result: ApiResult<T> = pagination
@@ -309,6 +330,9 @@ export async function apiRequest<T = unknown>(
     }
 
     // Error response — api.md §12 format: { error: { code, message, details?, data? }, requestId }
+    // Also extract CSRF token from error responses (H1)
+    const errorCsrf = json.csrfToken as string | undefined
+    if (errorCsrf) saveCsrfToken(errorCsrf)
     const errorData = json.error as { code: string; message: string; details?: Array<{ field: string; reason: string }>; data?: Record<string, unknown> } | undefined
     return {
       ok: false,
@@ -419,4 +443,5 @@ export function clearAuth(): void {
   _memoryToken = null
   _loginProvider = null
   _refreshPromise = null
+  _intentKey = null
 }

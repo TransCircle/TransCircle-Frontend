@@ -4,7 +4,7 @@ import { MdEditor } from 'md-editor-rt'
 import 'md-editor-rt/lib/style.css'
 import { useTheme } from '@/context/useTheme'
 import { useAuth } from '@/context/useAuth'
-import { post } from '@/api/client'
+import { post, setIntentKey } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { FormField } from './FormField'
 import { FieldErrorConsumer } from './FieldError'
@@ -132,6 +132,7 @@ export const SubmitForm = () => {
     setStatus('submitting')
 
     try {
+      setIntentKey(crypto.randomUUID())  // Per-intent idempotency-key (M9)
       const result = await post<{ id: string; status: string }>('/contributions', {
         title: form.title,
         content: form.content,
@@ -172,6 +173,7 @@ export const SubmitForm = () => {
       }
 
       setSubmitId(result.data.id)
+      setIntentKey(null)
       setStatus('success')
     } catch {
       setServerError(t('submit.networkError'))

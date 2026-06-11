@@ -1,7 +1,7 @@
 ﻿import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { post } from '@/api/client'
+import { post, setIntentKey } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import styles from '../App.module.css'
 import formStyles from './Register.module.css'
@@ -73,6 +73,7 @@ export const RegisterDirect = () => {
     }
     setSubmitting(true)
     try {
+      setIntentKey(crypto.randomUUID())  // Per-intent idempotency-key (M9)
       const result = await post('/auth/register', {
         username: username.trim(),
         email: email.trim(),
@@ -89,6 +90,7 @@ export const RegisterDirect = () => {
       }
 
       setSuccess(true)
+      setIntentKey(null)
     } catch {
       setError(t('registerDirect.errors.failed'))
     } finally {
