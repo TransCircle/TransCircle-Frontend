@@ -18,6 +18,7 @@ export const Login = () => {
   // MFA state
   const [mfaRequired, setMfaRequired] = useState(false)
   const [mfaChallengeToken, setMfaChallengeToken] = useState('')
+  const [mfaMethods, setMfaMethods] = useState<string[]>([])
   const [mfaCode, setMfaCode] = useState('')
   const [mfaSubmitting, setMfaSubmitting] = useState(false)
 
@@ -38,6 +39,7 @@ export const Login = () => {
       } else if (result.mfaChallengeToken) {
         setMfaRequired(true)
         setMfaChallengeToken(result.mfaChallengeToken)
+        setMfaMethods(result.mfaAvailableMethods || ['totp'])
       } else {
         const code = result.errorCode
         if (code === 'ACCOUNT_BANNED') setError(t('login.errors.banned'))
@@ -76,38 +78,56 @@ export const Login = () => {
   }
 
   if (mfaRequired) {
+    const hasTotp = mfaMethods.includes('totp') || mfaMethods.includes('recovery_code')
+    const hasPasskey = mfaMethods.includes('passkey')
+
     return (
       <main style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem' }}>
         <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>{t('login.mfaTitle')}</h1>
         <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
           {t('login.mfaDescription')}
         </p>
-        <input
-          type="text"
-          inputMode="text"
-          value={mfaCode}
-          onChange={(e) => {
-            const raw = e.target.value.toUpperCase()
-            if (/[A-Z-]/.test(raw)) {
-              // Recovery code: allow A-Z, digits, dashes, max 14 chars
-              setMfaCode(raw.replace(/[^A-Z0-9-]/g, '').slice(0, 14))
-            } else {
-              // TOTP: numeric only, max 6 chars
-              setMfaCode(raw.replace(/\D/g, '').slice(0, 6))
-            }
-          }}
-          placeholder="123456 或 XXXX-XXXX-XXXX"
-          style={{ width: '200px', padding: '0.5rem', textAlign: 'center', fontSize: '1.2rem', letterSpacing: '0.5em' }}
-          maxLength={14}
-          autoFocus
-        />
+        {hasTotp && (
+          <input
+            type="text"
+            inputMode="text"
+            value={mfaCode}
+            onChange={(e) => {
+              const raw = e.target.value.toUpperCase()
+              if (/[A-Z-]/.test(raw)) {
+                // Recovery code: allow A-Z, digits, dashes, max 14 chars
+                setMfaCode(raw.replace(/[^A-Z0-9-]/g, '').slice(0, 14))
+              } else {
+                // TOTP: numeric only, max 6 chars
+                setMfaCode(raw.replace(/\D/g, '').slice(0, 6))
+              }
+            }}
+            placeholder="123456 或 XXXX-XXXX-XXXX"
+            style={{ width: '200px', padding: '0.5rem', textAlign: 'center', fontSize: '1.2rem', letterSpacing: '0.5em' }}
+            maxLength={14}
+            autoFocus
+          />
+        )}
+        {hasPasskey && !hasTotp && (
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.5rem', textAlign: 'center' }}>
+            当前账户仅启用了 Passkey 验证，请完成 Passkey 验证流程。
+          </p>
+        )}
         {error && <p style={{ color: '#c62828', fontSize: '0.85rem', marginTop: '0.5rem' }}>{error}</p>}
+        {hasTotp && (
+          <button
+            onClick={handleMfaSubmit}
+            disabled={mfaSubmitting || (mfaCode.length !== 6 && mfaCode.length !== 14)}
+            style={{ marginTop: '1rem', padding: '0.5rem 2rem', background: 'var(--accent-pink)', color: '#fff', border: 'none', borderRadius: '50px' }}
+          >
+            {mfaSubmitting ? t('login.submitting') : t('login.submit')}
+          </button>
+        )}
         <button
-          onClick={handleMfaSubmit}
-          disabled={mfaSubmitting || (mfaCode.length !== 6 && mfaCode.length !== 14)}
-          style={{ marginTop: '1rem', padding: '0.5rem 2rem', background: 'var(--accent-pink)', color: '#fff', border: 'none', borderRadius: '50px' }}
+          onClick={() => { setMfaRequired(false); setMfaCode(''); setMfaMethods([]); setError('') }}
+          style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
         >
-          {mfaSubmitting ? t('login.submitting') : t('login.submit')}
+          返回登录
         </button>
       </main>
     )
