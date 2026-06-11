@@ -27,7 +27,7 @@ function formatTs(ts: number | null | undefined): string {
 }
 
 export const AdminUsers = () => {
-  const { accessToken } = useAuth()
+  const { accessToken, loading: authLoading } = useAuth()
 
   const [users, setUsers] = useState<ManagedUser[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
@@ -49,7 +49,7 @@ export const AdminUsers = () => {
       if (keyword.trim()) params.set('keyword', keyword.trim())
       if (cursorVal) params.set('cursor', cursorVal)
       const result = await get<ManagedUser[]>(`/admin/users?${params}`, {
-        headers: authHeaders(), skipRefresh: true,
+        headers: authHeaders(), skipRefresh: !accessToken,
       })
       if (!result.ok) throw new Error(result.error.message)
       if (cursorVal) setUsers(prev => [...prev, ...result.data])
@@ -62,8 +62,12 @@ export const AdminUsers = () => {
     }
   }
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { fetchUsers() }, [])
+  useEffect(() => {
+    if (authLoading || !accessToken) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchUsers()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, accessToken])
 
   const fetchDetail = async (userId: string) => {
     setSelectedId(userId)

@@ -21,7 +21,7 @@ function formatTs(ts: number | null | undefined): string {
 }
 
 export const AdminAuditLogs = () => {
-  const { accessToken } = useAuth()
+  const { accessToken, loading: authLoading } = useAuth()
 
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
@@ -42,7 +42,7 @@ export const AdminAuditLogs = () => {
       if (resourceFilter.trim()) params.set('resourceType', resourceFilter.trim())
       if (cursorVal) params.set('cursor', cursorVal)
       const result = await get<AuditLogEntry[]>(`/admin/audit-logs?${params}`, {
-        headers: authHeaders(), skipRefresh: true,
+        headers: authHeaders(), skipRefresh: !accessToken,
       })
       if (!result.ok) throw new Error(result.error.message)
       if (cursorVal) setLogs(prev => [...prev, ...result.data])
@@ -55,8 +55,12 @@ export const AdminAuditLogs = () => {
     }
   }
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { fetchLogs() }, [])
+  useEffect(() => {
+    if (authLoading || !accessToken) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchLogs()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, accessToken])
 
   return (
     <main className={styles.container}>

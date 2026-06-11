@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { get, post, patch } from '@/api/client'
+import { useAuth } from '@/context/useAuth'
 import { ERRORS } from '@/api/errors'
 import styles from './Admin.module.css'
 
@@ -43,6 +44,7 @@ function formatTs(ts: number | null | undefined): string {
 export const MyContributionDetail = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { loading: authLoading } = useAuth()
   void useTranslation()
 
   const [contrib, setContrib] = useState<ContributionDetail | null>(null)
@@ -56,7 +58,7 @@ export const MyContributionDetail = () => {
   const [actionError, setActionError] = useState('')
 
   useEffect(() => {
-    if (!id) return
+    if (!id || authLoading) return
     const load = async () => {
       const result = await get<ContributionDetail>(`/me/contributions/${id}`)
       if (result.ok) {
@@ -70,7 +72,7 @@ export const MyContributionDetail = () => {
       setLoading(false)
     }
     load()
-  }, [id])
+  }, [id, authLoading])
 
   const handleSave = async () => {
     if (!contrib) return

@@ -52,7 +52,7 @@ function formatTs(ts: number | null | undefined): string {
 }
 
 export const AdminEditRequests = () => {
-  const { accessToken } = useAuth()
+  const { accessToken, loading: authLoading } = useAuth()
 
   const [items, setItems] = useState<EditRequestItem[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
@@ -74,7 +74,7 @@ export const AdminEditRequests = () => {
       const params = new URLSearchParams({ limit: '20', status: 'pending' })
       if (cursorVal) params.set('cursor', cursorVal)
       const result = await get<EditRequestItem[]>(`/admin/edit-requests?${params}`, {
-        headers: authHeaders(), skipRefresh: true,
+        headers: authHeaders(), skipRefresh: !accessToken,
       })
       if (!result.ok) throw new Error(result.error.message)
       if (cursorVal) setItems(prev => [...prev, ...result.data])
@@ -87,14 +87,18 @@ export const AdminEditRequests = () => {
     }
   }
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { fetchList() }, [])
+  useEffect(() => {
+    if (authLoading || !accessToken) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchList()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, accessToken])
 
   const fetchDetail = async (id: string) => {
     setSelectedId(id)
     setVoteNote('')
     const result = await get<EditRequestItem>(`/admin/edit-requests/${id}`, {
-      headers: authHeaders(), skipRefresh: true,
+      headers: authHeaders(), skipRefresh: !accessToken,
     })
     if (result.ok) setDetail(result.data)
     else setError(result.error.message)
