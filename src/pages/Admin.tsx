@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react'
+﻿import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/context/useAuth'
@@ -84,6 +84,7 @@ export const Admin = () => {
   const [reviewNotes, setReviewNotes] = useState('')
   const [reviewEvents, setReviewEvents] = useState<ReviewEvent[]>([])
   const [reviewEventsLoading, setReviewEventsLoading] = useState(false)
+  const fetchSeq = useRef(0)
 
   const authHeaders = useCallback((): Record<string, string> => {
     const h: Record<string, string> = {}
@@ -93,6 +94,7 @@ export const Admin = () => {
   }, [accessToken, tempToken])
 
   const fetchSubmissions = useCallback(async (cursor?: string | null) => {
+    const seq = ++fetchSeq.current
     setLoading(true)
     setError('')
     try {
@@ -103,14 +105,18 @@ export const Admin = () => {
         headers: authHeaders(),
         skipRefresh: !accessToken, // tempToken users can't auto-refresh
       })
+      if (seq !== fetchSeq.current) return
       if (result.status === 403) {
         setTempToken('')
         setLoading(false)
         return
       }
       if (!result.ok) {
+        if (seq !== fetchSeq.current) return
         throw new Error(result.error.message || t('admin.errorLoad'))
       }
+
+      if (seq !== fetchSeq.current) return
 
       const items = result.data
       const isLoadMore = !!cursor
@@ -122,9 +128,10 @@ export const Admin = () => {
       }
       setNextCursor(result.pagination?.nextCursor || null)
     } catch (err) {
+      if (seq !== fetchSeq.current) return
       setError(err instanceof Error ? err.message : t('admin.errorLoad'))
     } finally {
-      setLoading(false)
+      if (seq === fetchSeq.current) setLoading(false)
     }
   }, [activeTab, authHeaders, t, accessToken])
 

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { get } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
@@ -30,8 +30,10 @@ export const MyContributions = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const fetchSeq = useRef(0)
 
   const fetchList = async (cursorVal?: string | null) => {
+    const seq = ++fetchSeq.current
     setLoading(true)
     setError('')
     try {
@@ -40,6 +42,7 @@ export const MyContributions = () => {
       if (cursorVal) params.set('cursor', cursorVal)
 
       const result = await get<MyContribution[]>(`/me/contributions?${params}`)
+      if (seq !== fetchSeq.current) return  // Stale response, discard
       if (!result.ok) throw new Error(result.error.message)
 
       if (cursorVal) {
@@ -49,16 +52,20 @@ export const MyContributions = () => {
       }
       setCursor(result.pagination?.nextCursor || null)
     } catch (err) {
+      if (seq !== fetchSeq.current) return  // Stale response, discard
       setError(err instanceof Error ? err.message : '加载失败')
     } finally {
-      setLoading(false)
+      if (seq === fetchSeq.current) setLoading(false)
     }
   }
 
   useEffect(() => {
     if (!user) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
+    setItems([])
+    setCursor(null)
     fetchList()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, filterStatus])
 
   if (!user) {

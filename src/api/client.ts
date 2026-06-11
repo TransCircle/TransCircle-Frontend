@@ -225,7 +225,8 @@ export async function apiRequest<T = unknown>(
     headers.set('X-CSRF-Token', getCsrfToken())
   }
 
-  // Idempotency-Key — 在函数作用域内生成一次，首次请求和 401 retry 复用同一 key（api.md §12）
+  // Idempotency-Key — 在每个 apiRequest 内生成一次（同一调用内 401 重试复用）
+  // TODO: 将 key 提升到表单/业务意图层，确保超时重试复用同一 key 而非按请求生成
   const idempotencyKey = options.idempotent ? newIdempotencyKey() : undefined
   if (idempotencyKey) {
     headers.set('Idempotency-Key', idempotencyKey)
