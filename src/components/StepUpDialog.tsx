@@ -38,6 +38,8 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
   const [code, setCode] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  /** Tracks whether handlePasskey has been triggered (for render — ref is used for the actual guard) */
+  const [passkeyProcessing, setPasskeyProcessing] = useState(false)
 
   const passkeyProcessed = useRef(false)
 
@@ -111,6 +113,7 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
   const handlePasskey = async () => {
     if (!challengeId || !passkeyChallenge || passkeyProcessed.current) return
     passkeyProcessed.current = true
+    setPasskeyProcessing(true)
     setSubmitting(true)
     setError('')
 
@@ -168,6 +171,8 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
 
       onSuccess()
     } catch (err) {
+      passkeyProcessed.current = false  // Allow retry on cancel/error
+      setPasskeyProcessing(false)
       setError(err instanceof Error ? err.message : '验证失败')
     } finally {
       setSubmitting(false)
@@ -257,9 +262,24 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
         )}
 
         {selectedMethod === 'passkey' && (
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
-            正在请求 Passkey 验证...
-          </p>
+          <div>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
+              {passkeyProcessing ? '正在请求 Passkey 验证...' : '点击下方按钮进行 Passkey 验证'}
+            </p>
+            {!passkeyProcessing && (
+              <button
+                onClick={() => {
+                  passkeyProcessed.current = true
+                  setPasskeyProcessing(true)
+                  handlePasskey()
+                }}
+                disabled={submitting}
+                style={{ padding: '0.4rem 1rem', background: 'var(--accent-pink)', color: '#fff', border: 'none', borderRadius: '50px', cursor: 'pointer', fontFamily: 'inherit', width: '100%' }}
+              >
+                {submitting ? '验证中...' : '开始 Passkey 验证'}
+              </button>
+            )}
+          </div>
         )}
 
         {error && <p style={{ color: '#c62828', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{error}</p>}
