@@ -78,7 +78,7 @@ function formatTs(ts: number | null | undefined): string {
 export const SettingsSecurity = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { user: authUser, accessToken, logoutAll } = useAuth()
+  const { user: authUser, accessToken, logoutAll, loading: authLoading } = useAuth()
 
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [activeTab, setActiveTab] = useState<TabId>('password')
@@ -153,6 +153,7 @@ export const SettingsSecurity = () => {
 
   // ── Load profile on mount ──
   useEffect(() => {
+    if (authLoading || !accessToken) return
     const load = async () => {
       const result = await get<Record<string, unknown>>('/me')
       if (result.ok) {
@@ -174,7 +175,7 @@ export const SettingsSecurity = () => {
       }
     }
     load()
-  }, [])
+  }, [authLoading, accessToken])
 
   // ── Load OAuth accounts ──
   useEffect(() => {

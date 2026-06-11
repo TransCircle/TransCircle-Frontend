@@ -2,7 +2,7 @@
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
-import { get } from '@/api/client'
+import { get, clearCsrfToken } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import styles from '../App.module.css'
 import formStyles from './Register.module.css'
@@ -138,6 +138,7 @@ const Register = () => {
       })
 
       if (result?.user) {
+        clearCsrfToken()
         navigate(result.user.roles.includes('reviewer') ? '/admin' : '/submit', { replace: true })
       } else {
         const code = result?.errorCode

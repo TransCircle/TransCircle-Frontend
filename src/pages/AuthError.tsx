@@ -9,6 +9,14 @@ const ERROR_MESSAGES: Record<string, string> = {
   login_blocked: 'oauth.errorLoginBlocked',
 } as const
 
+const ALLOWED_REASONS = new Set([
+  'oauth.blockedBanned',
+  'oauth.blockedMerged',
+  'oauth.blockedPendingDeletion',
+  'oauth.blockedDeleted',
+  'oauth.blockedUnknown',
+])
+
 export const AuthError = () => {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -23,7 +31,7 @@ export const AuthError = () => {
     console.warn(`[auth] OAuth error: status=${status} code=${code}`)
   }, [status, code])
 
-  const messageKey = ERROR_MESSAGES[status] || reasonKey || 'oauth.errorDescription'
+  const messageKey = ERROR_MESSAGES[status] || (ALLOWED_REASONS.has(reasonKey) ? reasonKey : 'oauth.errorDescription')
 
   return (
     <main

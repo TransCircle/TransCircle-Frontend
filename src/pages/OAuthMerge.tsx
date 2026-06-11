@@ -1,7 +1,7 @@
 ﻿import { useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { post, tryRefreshToken } from '@/api/client'
+import { post, tryRefreshToken, clearCsrfToken } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { useAuth } from '@/context/useAuth'
 import { StepUpDialog } from '@/components/StepUpDialog'
@@ -59,6 +59,7 @@ export const OAuthMerge = () => {
         return
       }
 
+      clearCsrfToken()
       setStatus('success')
       setTimeout(() => navigate('/submit?toast=merge_success', { replace: true }), 1500)
     } catch {

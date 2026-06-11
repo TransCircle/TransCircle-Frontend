@@ -2,6 +2,7 @@
 import { lazy, Suspense } from 'react'
 
 import { RootLayout } from '../layouts/RootLayout'
+import { ErrorBoundaryPage } from '../pages/ErrorBoundaryPage'
 
 import { Home } from '../pages/Home'
 
@@ -22,6 +23,7 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: <RootLayout />,
+    errorElement: <ErrorBoundaryPage />,
     children: [
       {
         index: true,
