@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { post } from '@/api/client'
@@ -9,15 +9,19 @@ export const EmailVerify = () => {
   const { t } = useTranslation()
   const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying')
   const [errorMsg, setErrorMsg] = useState('')
+  const verified = useRef(false)
 
   useEffect(() => {
     const token = searchParams.get('token')
-    if (!token) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setStatus('error')
-      setErrorMsg(t('emailVerify.error'))
+    if (!token || verified.current) {
+      if (!token) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setStatus('error')
+        setErrorMsg(t('emailVerify.error'))
+      }
       return
     }
+    verified.current = true
     const verify = async () => {
       const result = await post('/auth/email/verify', { token })
       if (result.ok) {

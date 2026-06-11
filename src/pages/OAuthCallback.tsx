@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
@@ -18,7 +18,11 @@ export const OAuthCallback = () => {
   const { t } = useTranslation()
   const { exchangeLoginCode } = useAuth()
 
+  const processed = useRef(false)
+
   useEffect(() => {
+    if (processed.current) return
+    processed.current = true
     const handle = async () => {
       const status = searchParams.get('status')
       const loginCode = searchParams.get('loginCode')
