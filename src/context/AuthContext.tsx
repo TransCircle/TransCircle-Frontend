@@ -42,6 +42,7 @@ interface AuthContextValue {
   accessToken: string | null
   loginProvider: string | null
   isAdmin: boolean
+  isFullAdmin: boolean
   loginWithPassword: (identifier: string, password: string) => Promise<LoginResult>
   loginWithGitHub: () => Promise<void>
   loginWithX: () => Promise<void>
@@ -62,7 +63,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true)
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [loginProvider, setLoginProvider] = useState<string | null>(null)
-  const isAdmin = user ? user.roles.includes('reviewer') : false
+  const isAdmin = user ? (user.roles.includes('admin') || user.roles.includes('reviewer')) : false
+  const isFullAdmin = user ? user.roles.includes('admin') : false
 
   // Try to get current user via stored token or refresh
   useEffect(() => {
@@ -371,7 +373,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, loading, accessToken, loginProvider, isAdmin, loginWithPassword, loginWithGitHub, loginWithX, loginWithPasskey, logout, logoutAll, exchangeLoginCode, completeRegistration, mfaVerify }}>
+    <AuthContext.Provider value={{ user, loading, accessToken, loginProvider, isAdmin, isFullAdmin, loginWithPassword, loginWithGitHub, loginWithX, loginWithPasskey, logout, logoutAll, exchangeLoginCode, completeRegistration, mfaVerify }}>
       {children}
     </AuthContext.Provider>
   )

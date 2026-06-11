@@ -72,7 +72,7 @@ function formatTs(ts: number | string | null): string {
 
 export const Admin = () => {
   const { t } = useTranslation()
-  const { user, loading: authLoading, accessToken, loginProvider, isAdmin, loginWithGitHub } = useAuth()
+  const { user, loading: authLoading, accessToken, loginProvider, isAdmin, isFullAdmin, loginWithGitHub } = useAuth()
   const [tempToken, setTempToken] = useState('')
   const [tokenInput, setTokenInput] = useState('')
   const [activeTab, setActiveTab] = useState<Status>('pending')
@@ -396,12 +396,13 @@ export const Admin = () => {
             <span className={styles.userInfo}>
               {user ? `${user.username} (${loginProvider ?? 'oauth'})` : `${t('admin.tempAdmin')}（仅内存，刷新页面需重新输入）`}
             </span>
-            <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.75rem', fontSize: '0.85rem', flexWrap: 'wrap' }}>
-              <Link to="/admin/users" style={{ color: 'var(--accent-pink)' }}>用户管理</Link>
-              <Link to="/admin/edit-requests" style={{ color: 'var(--accent-pink)' }}>编辑申请</Link>
-              <Link to="/admin/audit-logs" style={{ color: 'var(--accent-pink)' }}>审计日志</Link>
-              <Link to="/admin" style={{ color: 'var(--text-muted)' }}>投稿审核</Link>
-            </div>
+            {isFullAdmin && (
+              <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.75rem', fontSize: '0.85rem', flexWrap: 'wrap' }}>
+                <Link to="/admin/users" style={{ color: 'var(--accent-pink)' }}>用户管理</Link>
+                <Link to="/admin/edit-requests" style={{ color: 'var(--accent-pink)' }}>编辑申请</Link>
+                <Link to="/admin/audit-logs" style={{ color: 'var(--accent-pink)' }}>审计日志</Link>
+              </div>
+            )}
           </div>
         </div>
 

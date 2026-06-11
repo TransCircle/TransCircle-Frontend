@@ -34,7 +34,7 @@ export const Login = () => {
       // Single login call (api.md §1.3) — LoginResult eliminates redundant second call
       const result = await loginWithPassword(identifier.trim(), password)
       if (result.user) {
-        navigate(result.user.roles.includes('reviewer') ? '/admin' : '/submit', { replace: true })
+        navigate((result.user.roles.includes('admin') || result.user.roles.includes('reviewer')) ? '/admin' : '/submit', { replace: true })
       } else if (result.mfaChallengeToken) {
         setMfaRequired(true)
         setMfaChallengeToken(result.mfaChallengeToken)
@@ -64,7 +64,7 @@ export const Login = () => {
     try {
       const user = await mfaVerify(mfaChallengeToken, mfaCode)
       if (user) {
-        navigate(user.roles.includes('reviewer') ? '/admin' : '/submit', { replace: true })
+        navigate((user.roles.includes('admin') || user.roles.includes('reviewer')) ? '/admin' : '/submit', { replace: true })
       } else {
         setError(t('login.errors.invalidCredentials'))
       }
@@ -185,7 +185,7 @@ export const Login = () => {
             try {
               const result = await loginWithPasskey()
               if (result.user) {
-                navigate(result.user.roles.includes('reviewer') ? '/admin' : '/submit', { replace: true })
+                navigate((result.user.roles.includes('admin') || result.user.roles.includes('reviewer')) ? '/admin' : '/submit', { replace: true })
               } else if (result.errorCode === 'PASSKEY_CANCELLED') {
                 // user cancelled
               } else {
