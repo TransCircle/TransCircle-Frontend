@@ -34,15 +34,23 @@ export const Home = () => {
     setLoading(true)
     try {
       const params = new URLSearchParams({ limit: '20' })
-      const searchTerm = searchParams.get('search')
-      if (searchTerm) params.set('search', searchTerm)
       if (cursorVal) params.set('cursor', cursorVal)
       const result = await get<PublicContribution[]>(`/public/contributions?${params}`)
       if (result.ok) {
+        // Client-side search filtering
+        const searchTerm = searchParams.get('search')?.toLowerCase()
+        let data = result.data
+        if (searchTerm) {
+          data = data.filter(item =>
+            item.title.toLowerCase().includes(searchTerm) ||
+            item.summary?.toLowerCase().includes(searchTerm) ||
+            item.tags.some(t => t.toLowerCase().includes(searchTerm))
+          )
+        }
         if (cursorVal) {
-          setItems(prev => [...prev, ...result.data])
+          setItems(prev => [...prev, ...data])
         } else {
-          setItems(result.data)
+          setItems(data)
         }
         setCursor(result.pagination?.nextCursor || null)
       }
@@ -52,7 +60,8 @@ export const Home = () => {
   }
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { fetchList() }, [])
+  useEffect(() => { fetchList();  
+  }, [searchParams])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()

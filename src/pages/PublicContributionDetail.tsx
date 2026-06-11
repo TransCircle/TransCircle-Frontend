@@ -70,7 +70,7 @@ export const PublicContributionDetail = () => {
         />
 
         <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--divider-color)' }}>
-          <Link to={'/' + id + '/edit-request'} style={{ fontSize: '0.85rem', color: 'var(--accent-pink)' }}>
+          <Link to={'/contributions/' + id + '/edit-request'} style={{ fontSize: '0.85rem', color: 'var(--accent-pink)' }}>
             提交修改申请
           </Link>
         </div>
