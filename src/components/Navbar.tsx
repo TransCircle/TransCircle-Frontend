@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, type ReactNode } from "react";
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ThemeToggle } from "./ThemeToggle";
+import { useAuth } from '@/context/useAuth'
 import styles from "./Navbar.module.css";
 
 interface MobileLink {
@@ -18,6 +19,8 @@ const MOBILE_BREAKPOINT = 1200;
 
 export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const { user, isAdmin, logout } = useAuth()
   const [isOpen, setIsOpen] = useState(false);
 
   const hamburgerRef = useRef<HTMLButtonElement>(null);
@@ -103,6 +106,22 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
             <li><a href="#archive" onClick={closeMenu}>{t('nav.archive')}</a></li>
             <li><a href="#community" onClick={closeMenu}>{t('nav.community')}</a></li>
 
+            {user && (
+              <>
+                <li className={styles.mobileDivider}></li>
+                <li><Link to="/me/contributions" onClick={closeMenu}>我的投稿</Link></li>
+                <li><Link to="/settings/security" onClick={closeMenu}>安全设置</Link></li>
+                {isAdmin && <li><Link to="/admin" onClick={closeMenu}>管理后台</Link></li>}
+                <li><button onClick={() => { logout(); closeMenu(); navigate('/') }} style={{
+                  background: 'none', border: 'none', color: 'inherit', cursor: 'pointer',
+                  fontSize: 'inherit', fontFamily: 'inherit', padding: 0
+                }}>退出登录</button></li>
+              </>
+            )}
+            {!user && (
+              <li><Link to="/login" onClick={closeMenu}>登录</Link></li>
+            )}
+
             {mobileLinks && (
               <>
                 <li className={styles.mobileDivider}></li>
@@ -130,6 +149,17 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
 
           <div className={styles.rightSection}>
             <ThemeToggle />
+            <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', marginLeft: '0.5rem' }}>
+              {user ? (
+                <button onClick={() => { logout(); navigate('/') }} style={{
+                  fontSize: '0.8rem', background: 'none', border: '1px solid var(--text-muted)',
+                  borderRadius: '50px', padding: '0.2rem 0.75rem', cursor: 'pointer', fontFamily: 'inherit',
+                  color: 'var(--text-main)'
+                }}>退出</button>
+              ) : (
+                <Link to="/login" style={{ fontSize: '0.85rem', color: 'var(--accent-pink)' }}>登录</Link>
+              )}
+            </div>
           </div>
         </div>
       </nav>
