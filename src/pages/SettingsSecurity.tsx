@@ -124,6 +124,7 @@ export const SettingsSecurity = () => {
 
   // ── Session state ──
   const [sessions, setSessions] = useState<SessionEntry[]>([])
+  const [sessionCursor, setSessionCursor] = useState<string | null>(null)
   const [sessionLoading, setSessionLoading] = useState(false)
   const [sessionRevoking, setSessionRevoking] = useState<string | null>(null)
   const [sessionError, setSessionError] = useState('')
@@ -213,12 +214,29 @@ export const SettingsSecurity = () => {
     let cancelled = false
     get<SessionEntry[]>('/me/sessions?limit=20').then(result => {
       if (cancelled) return
-      if (result.ok) setSessions(result.data)
+      if (result.ok) {
+        setSessions(result.data)
+        setSessionCursor(result.pagination?.nextCursor || null)
+      }
       else setSessionError(result.error.message)
       setSessionLoading(false)
     })
     return () => { cancelled = true }
   }, [activeTab])
+
+  const loadMoreSessions = async () => {
+    if (!sessionCursor) return
+     
+    setSessionLoading(true)
+    const result = await get<SessionEntry[]>(`/me/sessions?limit=20&cursor=${encodeURIComponent(sessionCursor)}`)
+    if (result.ok) {
+      setSessions(prev => [...prev, ...result.data])
+      setSessionCursor(result.pagination?.nextCursor || null)
+    } else {
+      setSessionError(result.error.message)
+    }
+    setSessionLoading(false)
+  }
 
   // When step-up completes, proceed with unbinding
   const handleUnbindAfterStepUp = useCallback(async (provider: 'github' | 'x'): Promise<void> => {
@@ -1165,6 +1183,16 @@ export const SettingsSecurity = () => {
                 </li>
               ))}
             </ul>
+          )}
+          {sessionCursor && (
+            <button
+              className={styles.btnSecondary}
+              onClick={loadMoreSessions}
+              disabled={sessionLoading}
+              style={{ display: 'block', margin: '1rem auto' }}
+            >
+              {sessionLoading ? '加载中...' : '加载更多会话'}
+            </button>
           )}
         </div>
       )}
