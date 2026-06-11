@@ -7,6 +7,14 @@ const ERROR_MESSAGES: Record<string, string> = {
   oauth_error: 'oauth.errorOAuthError',
   oauth_provider_error: 'oauth.errorProviderError',
   login_blocked: 'oauth.errorLoginBlocked',
+  bind_provider_taken: 'oauth.bindProviderTaken',
+} as const
+
+const BLOCKED_CODE_MESSAGES: Record<string, string> = {
+  ACCOUNT_BANNED: 'oauth.blockedBanned',
+  ACCOUNT_MERGED: 'oauth.blockedMerged',
+  ACCOUNT_PENDING_DELETION: 'oauth.blockedPendingDeletion',
+  ACCOUNT_DELETED: 'oauth.blockedDeleted',
 } as const
 
 const ALLOWED_REASONS = new Set([
@@ -31,7 +39,10 @@ export const AuthError = () => {
     console.warn(`[auth] OAuth error: status=${status} code=${code}`)
   }, [status, code])
 
-  const messageKey = ERROR_MESSAGES[status] || (ALLOWED_REASONS.has(reasonKey) ? reasonKey : 'oauth.errorDescription')
+  // login_blocked: use code to distinguish specific ban reasons (api.md §1.6.2)
+  const messageKey = status === 'login_blocked' && BLOCKED_CODE_MESSAGES[code]
+    ? BLOCKED_CODE_MESSAGES[code]
+    : (ERROR_MESSAGES[status] || (ALLOWED_REASONS.has(reasonKey) ? reasonKey : 'oauth.errorDescription'))
 
   return (
     <main

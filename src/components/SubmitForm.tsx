@@ -8,6 +8,7 @@ import { post, setIntentKey } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { FormField } from './FormField'
 import { FieldErrorConsumer } from './FieldError'
+import { ImageUploader } from './ImageUploader'
 import styles from './SubmitForm.module.css'
 
 type FormStatus = 'idle' | 'submitting' | 'success' | 'error'
@@ -103,6 +104,10 @@ export const SubmitForm = () => {
     if (e.key === 'Backspace' && !form.tagInput && form.tags.length > 0) {
       removeTag(form.tags[form.tags.length - 1]!)
     }
+  }
+
+  const handleImageUploaded = (url: string) => {
+    set('content', form.content + `\n![image](${url})\n`)
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -268,6 +273,12 @@ export const SubmitForm = () => {
             preview={true}
             toolbarsExclude={['image', 'link', 'mermaid', 'katex', 'github']}
           />
+          <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <ImageUploader onUploaded={handleImageUploaded} />
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              上传图片后自动在编辑器中插入 Markdown 引用
+            </span>
+          </div>
         </div>
       </FormField>
 

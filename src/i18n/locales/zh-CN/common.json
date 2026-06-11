@@ -139,7 +139,9 @@
       "displayNameRequired": "请输入显示名称",
       "displayNameTooLong": "显示名称不超过 50 个字符",
       "validationFailed": "请修正表单中的错误",
-      "failed": "注册失败，请重试"
+      "failed": "注册失败，请重试",
+      "passwordContainsUsername": "密码不能包含用户名",
+      "passwordContainsEmail": "密码不能包含邮箱地址"
     }
   },
   "oauth": {
@@ -191,7 +193,10 @@
       "pendingDeletion": "账号待注销，如需撤销请前往安全设置",
       "locked": "账户已锁定，请 15 分钟后重试",
       "deleted": "该账号已被注销"
-    }
+    },
+    "forgotPassword": "忘记密码？",
+    "noAccount": "没有账号？",
+    "registerNow": "注册新账号"
   },
   "notFound": {
     "title": "页面未找到",
@@ -287,6 +292,14 @@
     "passwordMismatch": "两次密码输入不一致",
     "currentPasswordWrong": "当前密码错误",
     "serverError": "服务器错误，请稍后重试",
-    "stepUpRequired": "需要二次认证"
+    "stepUpRequired": "需要二次认证",
+    "deleteAccount": {
+      "heading": "删除账户",
+      "description": "删除后账户将被注销，所有投稿将被匿名化。此操作不可撤销。",
+      "button": "删除我的账户",
+      "confirm": "确定要删除账户？之后需要重新完成 OAuth 授权流程。",
+      "passwordPrompt": "请输入当前密码以确认删除账户：",
+      "success": "删除请求已提交，账户将在 7 天后自动注销"
+    }
   }
 }

@@ -183,6 +183,13 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
     return btoa(binary).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
   }
 
+  // Reset passkey guard when method switches away from passkey (M7)
+  useEffect(() => {
+    if (selectedMethod !== 'passkey') {
+      passkeyProcessed.current = false
+    }
+  }, [selectedMethod])
+
   // Auto-trigger passkey flow when selected
   useEffect(() => {
     if (selectedMethod === 'passkey' && challengeId && passkeyChallenge) {

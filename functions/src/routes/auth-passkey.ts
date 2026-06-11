@@ -271,7 +271,7 @@ router.delete('/me/passkeys/:id', requireAuth, async (req, res) => {
     actorUserId: req.user!.userId,
     action: 'passkey.delete',
     resourceType: 'passkey',
-    resourceId: id,
+    resourceId: id as string,
     after: { deletedAt: Date.now() },
   }).catch((e: unknown) => console.error('audit error:', e))
 
@@ -411,6 +411,8 @@ router.post('/auth/passkey/login/finish', (req, _res, next) => { req.rateLimitAc
     signCountSupported: boolean
     status: string
   }
+  let storedCred: StoredPasskeyCredential
+  let passkeyUserId: string
   {
     const conn = await getConnection()
     try {

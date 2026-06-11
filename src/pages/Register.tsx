@@ -94,6 +94,21 @@ const Register = () => {
       errs.password = t('register.errors.passwordLength')
     } else if (checkPasswordStrength(pw) < 3) {
       errs.password = t('register.errors.passwordStrength')
+    } else {
+      // api.md §1.1: password must not contain username or email local part
+      const lowerPw = pw.toLowerCase()
+      const u = username.trim()
+      if (u && lowerPw.includes(u.toLowerCase())) {
+        errs.password = t('register.errors.passwordContainsUsername')
+      } else {
+        const e = email.trim()
+        if (e) {
+          const emailLocal = e.split('@')[0]
+          if (emailLocal && lowerPw.includes(emailLocal.toLowerCase())) {
+            errs.password = t('register.errors.passwordContainsEmail')
+          }
+        }
+      }
     }
 
     // 邮箱验证（api.md §1.6.4 要求必填）

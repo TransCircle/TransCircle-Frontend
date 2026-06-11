@@ -170,7 +170,7 @@ export const Login = () => {
           />
           <div style={{ textAlign: 'right', marginTop: '0.25rem' }}>
             <Link to="/auth/password/forgot" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              忘记密码？
+              {t('login.forgotPassword')}
             </Link>
           </div>
         </label>
@@ -187,8 +187,8 @@ export const Login = () => {
       </form>
 
       <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.85rem' }}>
-        没有账号？{' '}
-        <Link to="/register-direct" style={{ color: 'var(--accent-pink)' }}>注册新账号</Link>
+        {t('login.noAccount')}{' '}
+        <Link to="/register-direct" style={{ color: 'var(--accent-pink)' }}>{t('login.registerNow')}</Link>
       </p>
 
       <div style={{

@@ -82,7 +82,7 @@ router.post('/', requireAuth, (req, _res, next) => { req.rateLimitAction = 'subm
   const data = parsed.data
 
   const id = genId('contrib_')
-  const now = Date.now()
+  const ts = Date.now()
   const submitMode = data.submitMode || 'submit'
   const status = submitMode === 'draft' ? 'draft' : 'pending'
 
@@ -114,9 +114,9 @@ router.post('/', requireAuth, (req, _res, next) => { req.rateLimitAction = 'subm
         (req.headers['idempotency-key'] as string) || null,
         ipHash,
         uaHash,
-        status === 'pending' ? now : null,
-        now,
-        now,
+        status === 'pending' ? ts : null,
+        ts,
+        ts,
       ],
     )
   } catch (insertErr: unknown) {
@@ -141,10 +141,10 @@ router.post('/', requireAuth, (req, _res, next) => { req.rateLimitAction = 'subm
   await exec(
     `INSERT INTO rate_limits (id, bucketKey, windowStart, count, createdAt) VALUES (?, ?, ?, 1, ?)
      ON DUPLICATE KEY UPDATE count = count + 1`,
-    [ulid(), submitIpKey, submitIpWindow, now],
+    [ulid(), submitIpKey, submitIpWindow, ts],
   ).catch(() => {})
 
-  sendSuccess(res, { id, status, createdAt: now }, req.requestId, 201)
+  sendSuccess(res, { id, status, createdAt: ts }, req.requestId, 201)
 })
 
 export default router

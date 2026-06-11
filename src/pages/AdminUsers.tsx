@@ -72,7 +72,7 @@ export const AdminUsers = () => {
   const fetchDetail = async (userId: string) => {
     setSelectedId(userId)
     const result = await get<DetailedUser>(`/admin/users/${userId}`, {
-      headers: authHeaders(), skipRefresh: true,
+      headers: authHeaders(), skipRefresh: !accessToken,
     })
     if (result.ok) setDetail(result.data)
     else setError(result.error.message)
@@ -82,7 +82,7 @@ export const AdminUsers = () => {
     const reason = prompt('封禁原因：')
     if (!reason) return
     const result = await post(`/admin/users/${userId}/ban`, { reason }, {
-      headers: authHeaders(), skipRefresh: true,
+      headers: authHeaders(), skipRefresh: !accessToken,
     })
     if (result.ok) { fetchDetail(userId); fetchUsers() }
     else setError(result.error.message)
@@ -90,7 +90,7 @@ export const AdminUsers = () => {
 
   const handleUnban = async (userId: string) => {
     const result = await post(`/admin/users/${userId}/unban`, { reason: '管理员解封' }, {
-      headers: authHeaders(), skipRefresh: true,
+      headers: authHeaders(), skipRefresh: !accessToken,
     })
     if (result.ok) { fetchDetail(userId); fetchUsers() }
     else setError(result.error.message)
@@ -100,7 +100,7 @@ export const AdminUsers = () => {
     const roleId = prompt('角色 ID（如 role_reviewer）：')
     if (!roleId) return
     const result = await post(`/admin/users/${userId}/roles`, { roleId }, {
-      headers: authHeaders(), skipRefresh: true,
+      headers: authHeaders(), skipRefresh: !accessToken,
     })
     if (result.ok) fetchDetail(userId)
     else setError(result.error.message)
@@ -108,7 +108,7 @@ export const AdminUsers = () => {
 
   const handleRevokeRole = async (userId: string, roleId: string) => {
     const result = await del(`/admin/users/${userId}/roles/${roleId}`, undefined, {
-      headers: authHeaders(), skipRefresh: true,
+      headers: authHeaders(), skipRefresh: !accessToken,
     })
     if (result.ok) fetchDetail(userId)
     else setError(result.error.message)

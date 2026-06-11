@@ -112,7 +112,7 @@ export const AdminEditRequests = () => {
       vote,
       note: voteNote.trim() || null,
       expectedVersion: detail.version,
-    }, { headers: authHeaders(), skipRefresh: true })
+    }, { headers: authHeaders(), skipRefresh: !accessToken })
     setVoteSubmitting(false)
     if (result.ok) {
       setVoteNote('')

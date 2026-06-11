@@ -46,8 +46,10 @@ interface Submission {
 interface ReviewEvent {
   id: string
   contributionId: string
-  reviewerUserId: string
-  action: string
+  reviewer: {
+    id: string
+    displayName: string
+  } | null
   fromStatus: string
   toStatus: string
   publicNote: string | null
@@ -544,7 +546,7 @@ export const Admin = () => {
               {reviewEvents.map(ev => (
                 <li key={ev.id}>
                   {ev.fromStatus} → {ev.toStatus}
-                  {ev.reviewerUserId ? ` · 审核员: ${ev.reviewerUserId.slice(0, 16)}...` : ''}
+                  {ev.reviewer?.displayName ? ` · 审核员: ${ev.reviewer.displayName}` : ''}
                   {ev.publicNote ? ` · 备注: ${ev.publicNote}` : ''}
                   {ev.createdAt ? ` · ${formatTs(ev.createdAt)}` : ''}
                 </li>

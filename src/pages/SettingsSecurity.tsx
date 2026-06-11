@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react'
+﻿import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { get, post, patch, del } from '@/api/client'
@@ -274,6 +274,17 @@ export const SettingsSecurity = () => {
       handleUnbindAfterStepUp(provider)
     }
   }, [pendingAction, navigate, handleUnbindAfterStepUp])
+
+  // Clean up TOTP sensitive data when leaving the TOTP tab (L4)
+  const prevTab = useRef<TabId>(activeTab)
+  useEffect(() => {
+    if (prevTab.current === 'totp' && activeTab !== 'totp') {
+      setTotpSetupData(null)
+      setRecoveryCodes(null)
+      setShowRecoveryCodes(false)
+    }
+    prevTab.current = activeTab
+  }, [activeTab])
 
   // ── 0. Profile Edit (api.md §2.2) ──
   const handleProfileUpdate = async () => {
@@ -1197,6 +1208,28 @@ export const SettingsSecurity = () => {
           )}
         </div>
       )}
+
+      {/* Delete account section (H2) */}
+      <div className={styles.detailCard} style={{ marginTop: '1rem', borderColor: '#ef9a9a' }}>
+        <h2 className={styles.detailTitle} style={{ color: '#c62828' }}>{t('settings.deleteAccount.heading')}</h2>
+        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+          {t('settings.deleteAccount.description')}
+        </p>
+        {cancelError && (
+          <p style={{ color: '#c62828', fontSize: '0.85rem', marginBottom: '0.5rem' }}>{cancelError}</p>
+        )}
+        <button
+          className={styles.btnSecondary}
+          onClick={() => {
+            if (!window.confirm(t('settings.deleteAccount.confirm'))) return
+            setPendingAction('delete-account')
+            setShowStepUp(true)
+          }}
+          style={{ color: '#c62828', borderColor: '#ef9a9a' }}
+        >
+          {t('settings.deleteAccount.button')}
+        </button>
+      </div>
 
       {/* Step-up dialog */}
       {showStepUp && (

@@ -20,7 +20,7 @@ const router: RouterType = Router()
 
 /** Grant extra roles (e.g. 'reviewer' from GitHub org check) to a user within a transaction. */
 async function grantExtraRoles(
-  conn: import('mysql2').PoolConnection,
+  conn: import('mysql2/promise').PoolConnection,
   userId: string,
   extraRoles?: string[],
   grantedBy?: string,

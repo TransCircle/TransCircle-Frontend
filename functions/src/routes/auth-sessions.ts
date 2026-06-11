@@ -152,8 +152,8 @@ router.delete('/me/sessions/:id', requireAuth, async (req, res) => {
     actorUserId: req.user!.userId,
     action: 'session.revoke',
     resourceType: 'session',
-    resourceId: id,
-    after: { revokedReason: 'user_revoked', sessionId: id },
+    resourceId: id as string,
+    after: { revokedReason: 'user_revoked', sessionId: id as string },
   }).catch((e: unknown) => console.error('audit error:', e))
 
   sendNoContent(res, req.requestId)
