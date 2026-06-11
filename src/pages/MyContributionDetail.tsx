@@ -99,7 +99,7 @@ export const MyContributionDetail = () => {
       expectedVersion: contrib.version,
     })
     if (result.ok) {
-      setContrib(prev => prev ? { ...prev, status: 'pending', version: (result.data as unknown as Record<string, number>).version } : prev)
+      setContrib(prev => prev ? { ...prev, status: 'pending', version: (result.data as unknown as Record<string, number>).version ?? prev.version } : prev)
     } else if (result.error.code === ERRORS.VERSION_CONFLICT) {
       setActionError('版本冲突，请刷新后重试')
     } else {
@@ -114,7 +114,7 @@ export const MyContributionDetail = () => {
       expectedVersion: contrib.version,
     })
     if (result.ok) {
-      setContrib(prev => prev ? { ...prev, status: 'withdrawn', version: (result.data as unknown as Record<string, number>).version } : prev)
+      setContrib(prev => prev ? { ...prev, status: 'withdrawn', version: (result.data as unknown as Record<string, number>).version ?? prev.version } : prev)
     } else if (result.error.code === ERRORS.VERSION_CONFLICT) {
       setActionError('版本冲突，请刷新后重试')
     } else {
