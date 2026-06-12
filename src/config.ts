@@ -1,5 +1,3 @@
-// API base URL — dev uses Vite proxy to Express backend, prod hits the real API domain
-// Set VITE_API_BASE at build time for custom deployment targets
-export const API_BASE: string = import.meta.env.PROD
-  ? (import.meta.env.VITE_API_BASE as string | undefined) || 'https://api.transcircle.org/v1'
-  : '/v1'
+// API base URL — 同源部署，生产与 dev 均使用相对路径
+// 生产时 Express serve 前端产物 + API，同域无跨域问题
+export const API_BASE: string = '/v1'

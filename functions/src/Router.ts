@@ -1,5 +1,6 @@
 import express, { type Express, type Request, type Response, type NextFunction } from 'express'
 import cookieParser from 'cookie-parser'
+import path from 'path'
 import { log } from './Logger'
 import { requestId } from './middleware/requestId'
 import { corsHandler } from './middleware/cors'
@@ -120,6 +121,10 @@ app.get('/readyz', async (req: Request, res: Response) => {
     checks,
   }, req.requestId, isReady ? 200 : 503)
 })
+
+// ── Serve frontend static files (同源部署 — api.md §1.6.2 CSRF/Cookie 模型)
+const distPath = path.join(__dirname, '../../dist')
+app.use(express.static(distPath))
 
 // ── API Routes ──────────────────────────────────
 app.use('/v1/auth', authRoutes)
@@ -294,6 +299,15 @@ app.get('/metrics', (req: Request, res: Response) => {
 
   res.setHeader('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
   res.status(200).end(lines.join('\n'))
+})
+
+// ── SPA fallback ────────────────────────────────
+// 非 API 请求返回 index.html，由前端路由处理
+app.get('*', (req: Request, res: Response, next: NextFunction) => {
+  if (req.path.startsWith('/v1/') || req.path === '/healthz' || req.path === '/readyz' || req.path === '/metrics') {
+    return next()
+  }
+  res.sendFile(path.join(distPath, 'index.html'))
 })
 
 // ── 404 handler ─────────────────────────────────
