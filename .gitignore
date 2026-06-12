@@ -24,3 +24,4 @@ functions/pnpm-lock.yaml
 
 # dev/plan documents
 docs/superpowers/
+*.toml
