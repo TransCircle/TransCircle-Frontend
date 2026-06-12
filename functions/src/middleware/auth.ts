@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express'
 import { verifyJwt } from '../utils/jwt'
 import { sendError, Errors } from '../utils/response'
-import { queryOne } from '../Database'
+import { exec, queryOne } from '../Database'
 import { conf } from '../Config'
 
 declare global {
@@ -22,6 +22,9 @@ declare global {
  * Requires a valid JWT Bearer token or TEMP_ADMIN_TOKEN.
  * Sets req.user on success.
  */
+// Lazy-ensure temp admin user exists in DB (for FK constraints in audit/review tables)
+let _tempAdminEnsured = false
+
 export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization
   if (!authHeader?.startsWith('Bearer ')) {
@@ -35,11 +38,18 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   const adminConf = conf.ADMIN as Record<string, string | undefined> | undefined
   const tempAdminToken = adminConf?.TEMP_ADMIN_TOKEN as string | undefined
   if (tempAdminToken && token === tempAdminToken) {
+    if (!_tempAdminEnsured) {
+      await exec(
+        `INSERT IGNORE INTO users (id, username, displayName, status, createdAt)
+         VALUES ('usr_temp_admin', 'temp_admin', '临时管理员', 'active', UNIX_TIMESTAMP(NOW()) * 1000)`,
+      )
+      _tempAdminEnsured = true
+    }
     req.user = {
       userId: 'usr_temp_admin',
       sessionId: 'sess_temp_admin',
       tokenVersion: 0,
-      roles: ['reviewer'],
+      roles: ['admin', 'reviewer'],
     }
     next()
     return
