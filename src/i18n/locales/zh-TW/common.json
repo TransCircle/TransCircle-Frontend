@@ -73,7 +73,7 @@
     "title": "審核後台",
     "description": "使用 GitHub OAuth 登入，或輸入臨時管理員令牌",
     "accessDenied": "存取被拒絕",
-    "accessDeniedDetail": "你的 GitHub 帳號 ({{username}}) 不是 TransCircle 組織成員，無權存取審核後台。",
+    "accessDeniedDetail": "使用者 ({{username}}) 無管理員權限，請聯絡管理員分配角色。",
     "loginWithGithub": "使用 GitHub 登入",
     "tempTokenDescription": "或使用臨時令牌登入（令牌僅保存在記憶體中，重新整理頁面後需重新輸入）",
     "tempTokenPlaceholder": "輸入臨時管理員令牌",

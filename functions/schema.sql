@@ -227,7 +227,7 @@ CREATE TABLE passkeys
     createdAt          BIGINT          NOT NULL DEFAULT (UNIX_TIMESTAMP(NOW()) * 1000),
     lastUsedAt         BIGINT          NULL,
 
-    UNIQUE (credentialIdB64),
+    UNIQUE (credentialIdB64(191)),
     UNIQUE (credentialId),
     INDEX idx_passkeys_user_status (userId, status),
 

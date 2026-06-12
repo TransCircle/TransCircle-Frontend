@@ -77,8 +77,16 @@ export async function requirePermission(userId: string, permission: string): Pro
  */
 export function requirePerm(...permissions: string[]) {
   return async (req: Request, res: Response, next: NextFunction) => {
+    // Check JWT roles first (covers temp admin tokens, DB-only roles, etc.)
+    const userRoles = req.user!.roles
     for (const perm of permissions) {
-      if (!(await requirePermission(req.user!.userId, perm))) {
+      // Quick check from JWT roles (in-memory, no DB hit)
+      const hasFromJwt = userRoles.some(r => ROLE_PERMISSIONS[r]?.includes(perm))
+      if (hasFromJwt) continue
+
+      // Fallback to DB check (for roles granted after token was issued)
+      const hasFromDb = await requirePermission(req.user!.userId, perm)
+      if (!hasFromDb) {
         sendError(res, Errors.FORBIDDEN.code, `缺少权限: ${perm}`, req.requestId, Errors.FORBIDDEN.status)
         return
       }

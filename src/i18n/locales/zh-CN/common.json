@@ -73,7 +73,7 @@
     "title": "审核后台",
     "description": "使用 GitHub OAuth 登录，或输入临时管理员令牌",
     "accessDenied": "访问被拒绝",
-    "accessDeniedDetail": "你的 GitHub 账号 ({{username}}) 不是 TransCircle 组织成员，无权访问审核后台。",
+    "accessDeniedDetail": "用户 ({{username}}) 无管理员权限，请联系管理员分配角色。",
     "loginWithGithub": "使用 GitHub 登录",
     "tempTokenDescription": "或使用临时令牌登录（令牌仅保存在内存中，刷新页面后需重新输入）",
     "tempTokenPlaceholder": "输入临时管理员令牌",
