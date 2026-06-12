@@ -72,8 +72,8 @@ export const reviewSchema = z.object({
   decision: z.enum(['approved', 'rejected']).optional(),
   toStatus: z.enum(['in_review']).optional(),
   expectedVersion: z.number().int().positive('version 必须为正整数'),
-  internalNote: z.string().refine((v) => [...v].length <= 1000, '最多 1000 个字符').optional(),
-  publicNote: z.string().refine((v) => [...v].length <= 500, '最多 500 个字符').optional(),
+  internalNote: z.string().refine((v) => [...v].length <= 1000, '最多 1000 个字符').nullable().optional(),
+  publicNote: z.string().refine((v) => [...v].length <= 500, '最多 500 个字符').nullable().optional(),
 }).refine(
   (data) => data.decision !== undefined || data.toStatus !== undefined,
   { message: 'decision 或 toStatus 必填一项', path: ['decision'] },
