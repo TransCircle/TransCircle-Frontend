@@ -92,7 +92,7 @@ router.get('/users/:id', requirePerm('user:read'), async (req, res) => {
   }
 
   const oauthAccounts = await query(
-    `SELECT provider, providerUsername, boundAt FROM oauth_accounts WHERE userId = ?`,
+    `SELECT provider, providerUsername, createdAt as boundAt FROM oauth_accounts WHERE userId = ?`,
     [req.params.id],
   ) as unknown as Array<Record<string, unknown>>
 
@@ -221,6 +221,12 @@ router.post('/users/:id/roles', requirePerm('role:grant'), async (req, res) => {
   const targetUser = await queryOne(`SELECT id FROM users WHERE id = ?`, [userId])
   if (!targetUser) {
     sendError(res, Errors.USER_NOT_FOUND.code, '用户不存在', req.requestId, Errors.USER_NOT_FOUND.status)
+    return
+  }
+
+  // 禁止给自己加角色（防误操作）
+  if (userId === req.user!.userId) {
+    sendError(res, 'CANNOT_GRANT_SELF', '不能给自己授予角色，请找其他管理员操作', req.requestId, 403)
     return
   }
 

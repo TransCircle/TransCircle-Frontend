@@ -158,9 +158,9 @@ export function requireRole(...allowedRoles: string[]) {
 }
 
 /**
- * 要求用户拥有 reviewer 角色（即 api.md 中的审核员）。
- * reviewer 是当前唯一的"管理"角色，对应 JWT roles 中的 `["reviewer"]`。
+ * 要求用户拥有 reviewer 或 admin 角色。
+ * admin 具有全部 reviewer 权限（api.md §15.10 权限映射）。
  */
-export const requireReviewer = requireRole('reviewer')
-/** @deprecated 使用 requireReviewer 代替 — reviewer 即审核员角色，非传统 admin */
+export const requireReviewer = requireRole('reviewer', 'admin')
+/** 同 requireReviewer — admin 角色也可通过 */
 export const requireAdmin = requireReviewer
