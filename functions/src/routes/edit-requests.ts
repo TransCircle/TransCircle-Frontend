@@ -43,7 +43,7 @@ const withdrawEditRequestSchema = z.object({
 
 const voteSchema = z.object({
   vote: z.enum(['approve', 'reject']),
-  note: z.string().refine((v) => [...v].length <= 500, '备注最多 500 个字符').optional(),
+  note: z.string().refine((v) => [...v].length <= 500, '备注最多 500 个字符').nullable().optional(),
   expectedVersion: z.number().int().positive('version 必须为正整数'),
 })
 

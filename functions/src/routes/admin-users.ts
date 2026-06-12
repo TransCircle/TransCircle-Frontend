@@ -314,6 +314,12 @@ router.delete('/users/:id/roles/:roleId', requirePerm('role:revoke'), async (req
     return
   }
 
+  // 禁止撤销自己的角色（防误操作锁死）
+  if (userId === req.user!.userId) {
+    sendError(res, 'CANNOT_REVOKE_SELF', '不能撤销自己的角色', req.requestId, 403)
+    return
+  }
+
   const now = Date.now()
   const conn = await getConnection()
   try {
