@@ -85,8 +85,8 @@ export function buildVerificationEmail(email: string, token: string): EmailOptio
   return {
     to: email,
     subject: '验证您的邮箱 — TransCircle',
-    text: `请点击以下链接验证您的邮箱（24 小时内有效）：\n\n${FRONTEND_URL}/auth/verify?token=${token}`,
-    html: `<p>请点击以下链接验证您的邮箱（24 小时内有效）：</p><p><a href="${FRONTEND_URL}/auth/verify?token=${token}">验证邮箱</a></p>`,
+    text: `请点击以下链接验证您的邮箱（24 小时内有效）：\n\n${FRONTEND_URL}/auth/email/verify?token=${token}`,
+    html: `<p>请点击以下链接验证您的邮箱（24 小时内有效）：</p><p><a href="${FRONTEND_URL}/auth/email/verify?token=${token}">验证邮箱</a></p>`,
   }
 }
 

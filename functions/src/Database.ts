@@ -21,8 +21,10 @@ export async function query<T extends mysql.RowDataPacket[]>(
   sql: string,
   params?: unknown[],
 ): Promise<T> {
-  const [rows] = await pool.execute<T>(sql, params as mysql.ExecuteValues);
-  return rows;
+  // Use query() instead of execute() to avoid "Incorrect arguments to mysqld_stmt_execute"
+  // with LIMIT ? in MySQL 8.4 + mysql2 3.x
+  const [rows] = await pool.query<T>(sql, params as mysql.ExecuteValues);
+  return rows as unknown as T;
 }
 
 /** Execute a query, return first row or null */
