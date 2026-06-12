@@ -219,6 +219,18 @@ router.get('/contributions/:id', requirePerm('contribution:read'), async (req, r
     review = { reviewerUserId: null, reviewedAt: null, decision: null, publicNote: null, internalNote: null }
   }
 
+  // Fetch hide/delete reason for hidden/deleted contributions
+  let hideReason: string | null = null
+  if (row.status === 'hidden' || row.status === 'deleted') {
+    const ev = await queryOne(
+      `SELECT publicNote FROM contribution_review_events
+       WHERE contributionId = ? AND action IN ('hide', 'delete')
+       ORDER BY createdAt DESC LIMIT 1`,
+      [id],
+    )
+    if (ev) hideReason = ev.publicNote as string | null
+  }
+
   sendSuccess(res, {
     id: row.id,
     title: row.title,
@@ -244,6 +256,7 @@ router.get('/contributions/:id', requirePerm('contribution:read'), async (req, r
     submittedAt: row.submittedAt || null,
     publishedAt: row.publishedAt || null,
     review,
+    hideReason,
   }, req.requestId)
 })
 
@@ -444,7 +457,7 @@ router.post('/contributions/:id/hide', requirePerm('contribution:hide'), async (
   await exec(
     `INSERT INTO contribution_review_events (id, contributionId, reviewerUserId, action, fromStatus, toStatus, publicNote, internalNote, createdAt, requestId)
      VALUES (?, ?, ?, 'hide', 'published', 'hidden', ?, ?, ?, ?)`,
-    [genId('rev_'), id, req.user!.userId, publicNote || null, internalNote || null, now, req.requestId],
+    [genId('rev_'), id, req.user!.userId, reason || null, internalNote || null, now, req.requestId],
   )
   await writeAuditLog(req, {
     actorUserId: req.user!.userId,

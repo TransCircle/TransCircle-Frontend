@@ -34,6 +34,7 @@ interface Submission {
   updatedAt?: number
   submittedAt?: number | null
   publishedAt?: number | null
+  hideReason?: string | null
   review?: {
     reviewerUserId: string | null
     reviewedAt: number | null
@@ -531,6 +532,14 @@ export const Admin = () => {
           <div className={styles.detailContact} style={{ borderLeft: '3px solid var(--accent-pink)', marginBottom: '1.25rem' }}>
             <strong style={{ color: 'var(--accent-pink)' }}>内部备注（仅管理员可见）</strong>
             <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem' }}>{selected.review.internalNote}</p>
+          </div>
+        )}
+
+        {/* Hide reason */}
+        {selected.hideReason && (
+          <div className={styles.detailContact} style={{ borderLeft: '3px solid #ef9a9a', marginBottom: '1.25rem' }}>
+            <strong style={{ color: '#c62828' }}>隐藏/删除原因</strong>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem' }}>{selected.hideReason}</p>
           </div>
         )}
 
