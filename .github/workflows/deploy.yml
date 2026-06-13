@@ -23,13 +23,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install pnpm
-        run: npm install -g pnpm@11.4.0
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'pnpm'
+
+      - name: Install pnpm
+        run: npm install -g pnpm@11.4.0
 
       - run: pnpm install --frozen-lockfile
 
@@ -51,6 +51,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
       - name: Install pnpm
         run: npm install -g pnpm@11.4.0
@@ -102,12 +106,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install pnpm
-        run: npm install -g pnpm@11.4.0
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      - name: Install pnpm
+        run: npm install -g pnpm@11.4.0
 
       - name: Run database setup
         working-directory: ./functions
