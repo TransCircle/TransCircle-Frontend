@@ -51,7 +51,7 @@ interface AuthContextValue {
   exchangeLoginCode: (loginCode: string) => Promise<User | null>
   completeRegistration: (provider: string, data: { username?: string; email?: string; password?: string; displayName?: string; emailMatchesProvider?: boolean }) => Promise<{ loginCode?: string; user: User | null; errorCode?: string }>
   /** MFA TOTP verification — saves token to context and fetches user profile (api.md §1.9.4) */
-  mfaVerify: (mfaChallengeToken: string, code: string) => Promise<User | null>
+  mfaVerify: (mfaChallengeToken: string, code: string) => Promise<{ user: User | null; errorCode?: string }>
   /** Passkey login — full WebAuthn flow (api.md §1.10.5) */
   loginWithPasskey: () => Promise<LoginResult>
 }
@@ -228,13 +228,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [exchangeLoginCode])
 
   // MFA TOTP verification (api.md §1.9.4): /v1/auth/mfa/totp/verify
-  const mfaVerify = useCallback(async (mfaChallengeToken: string, code: string): Promise<User | null> => {
+  const mfaVerify = useCallback(async (mfaChallengeToken: string, code: string): Promise<{ user: User | null; errorCode?: string }> => {
     const result = await post<{
       accessToken?: string
       user?: Record<string, unknown>
     }>('/auth/mfa/totp/verify', { mfaChallengeToken, code })
 
-    if (!result.ok || !result.data.accessToken) return null
+    if (!result.ok) {
+      return { user: null, errorCode: result.error.code }
+    }
+
+    if (!result.data.accessToken) {
+      return { user: null }
+    }
 
     setClientToken(result.data.accessToken)
     setAccessToken(result.data.accessToken)
@@ -244,16 +250,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (meResult.ok) {
       const u = normalizeUser(meResult.data)
       setUser(u)
-      return u
+      return { user: u }
     }
 
     // Fallback: minimal user
     if (result.data.user) {
       const u = normalizeUser(result.data.user)
       setUser(u)
-      return u
+      return { user: u }
     }
-    return null
+    return { user: null }
   }, [])
 
   // ── Passkey Login (api.md §1.10.5) ──

@@ -20,7 +20,12 @@ export const EditRequestForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!reason.trim()) { setError('请填写修改原因'); return }
-    if (!proposedTitle && !proposedContent && !proposedSummary) {
+    // Trim title/summary to match send logic — prevents whitespace-only input
+    // from passing validation but sending undefined (L9)
+    const hasTitle = proposedTitle.trim()
+    const hasContent = proposedContent
+    const hasSummary = proposedSummary.trim()
+    if (!hasTitle && !hasContent && !hasSummary) {
       setError('至少需要修改标题、内容或摘要中的一项')
       return
     }

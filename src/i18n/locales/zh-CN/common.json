@@ -184,6 +184,11 @@
     "oauthAlternative": "或使用第三方账号登录",
     "mfaTitle": "二步验证",
     "mfaDescription": "请输入 TOTP 验证码或恢复码完成登录",
+    "mfaExpired": "验证已过期，请返回重新登录",
+    "mfaExhausted": "验证失败次数过多，请返回重新登录",
+    "mfaInvalidCode": "验证码错误",
+    "mfaInvalidRecoveryCode": "恢复码错误",
+    "mfaVerifyFailed": "验证失败，请重试",
     "errors": {
       "invalidCredentials": "邮箱/用户名或密码错误",
       "emailNotVerified": "邮箱未验证，请先查看收件箱完成验证",

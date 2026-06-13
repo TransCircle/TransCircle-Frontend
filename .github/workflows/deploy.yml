@@ -100,8 +100,6 @@ jobs:
     name: Database Migration
     runs-on: ubuntu-latest
     needs: [backend]
-    # Only run if DB_HOST is configured as a GitHub secret
-    if: ${{ secrets.DB_HOST != '' }}
 
     steps:
       - uses: actions/checkout@v4

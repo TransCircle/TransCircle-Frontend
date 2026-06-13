@@ -64,11 +64,19 @@ export const Login = () => {
     setError('')
 
     try {
-      const user = await mfaVerify(mfaChallengeToken, mfaCode)
-      if (user) {
-        navigate((user.roles.includes('admin') || user.roles.includes('reviewer')) ? '/admin' : '/submit', { replace: true })
+      const result = await mfaVerify(mfaChallengeToken, mfaCode)
+      if (result.user) {
+        navigate((result.user.roles.includes('admin') || result.user.roles.includes('reviewer')) ? '/admin' : '/submit', { replace: true })
+      } else if (result.errorCode === 'TOKEN_INVALID_OR_EXPIRED') {
+        setError(t('login.mfaExpired', '验证已过期，请返回重新登录'))
+      } else if (result.errorCode === 'MFA_CHALLENGE_EXHAUSTED') {
+        setError(t('login.mfaExhausted', '验证失败次数过多，请返回重新登录'))
+      } else if (result.errorCode === 'INVALID_CODE' || result.errorCode === 'INVALID_MFA_CODE') {
+        setError(t('login.mfaInvalidCode', '验证码错误'))
+      } else if (result.errorCode === 'INVALID_RECOVERY_CODE') {
+        setError(t('login.mfaInvalidRecoveryCode', '恢复码错误'))
       } else {
-        setError(t('login.errors.invalidCredentials'))
+        setError(result.errorCode || t('login.mfaVerifyFailed', '验证失败，请重试'))
       }
     } catch {
       setError(t('login.errors.serverError'))
