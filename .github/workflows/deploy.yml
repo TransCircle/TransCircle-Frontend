@@ -23,10 +23,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install pnpm via Corepack
-        run: |
-          corepack enable
-          corepack prepare pnpm@11.4.0 --activate
+      - name: Install pnpm
+        run: npm install -g pnpm@11.4.0
 
       - uses: actions/setup-node@v4
         with:
@@ -54,10 +52,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install pnpm via Corepack
-        run: |
-          corepack enable
-          corepack prepare pnpm@11.4.0 --activate
+      - name: Install pnpm
+        run: npm install -g pnpm@11.4.0
 
       - uses: actions/setup-node@v4
         with:
@@ -106,10 +102,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install pnpm via Corepack
-        run: |
-          corepack enable
-          corepack prepare pnpm@11.4.0 --activate
+      - name: Install pnpm
+        run: npm install -g pnpm@11.4.0
 
       - uses: actions/setup-node@v4
         with:
