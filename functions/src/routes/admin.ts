@@ -106,7 +106,7 @@ router.get('/contributions', requirePerm('contribution:read'), async (req, res) 
   const submissions = rows.map((row: Record<string, unknown>) => ({
     id: row.id as string,
     title: row.title as string,
-    summary: (row.summary as string) || null,
+    summary: ((row.summary as string) || '').slice(0, 120) || null,
     status: row.status as string,
     createdAt: row.createdAt as number,
     updatedAt: row.updatedAt as number,
@@ -290,7 +290,7 @@ router.post('/contributions/:id/review', requirePerm('contribution:review'), (re
   }
 
   if (contribution.status !== 'pending' && contribution.status !== 'in_review') {
-    sendError(res, Errors.VERSION_CONFLICT.code, `投稿状态为 ${contribution.status}，不可审核`, req.requestId, Errors.VERSION_CONFLICT.status)
+    sendError(res, Errors.INVALID_STATE_TRANSITION.code, `投稿状态为 ${contribution.status}，不可审核`, req.requestId, Errors.INVALID_STATE_TRANSITION.status)
     return
   }
 
@@ -340,11 +340,6 @@ router.post('/contributions/:id/review', requirePerm('contribution:review'), (re
     before: { status: String(contribution.status), version: Number(expectedVersion) },
     after: { status: String(toStatusFinal), version: Number(newVersion) },
   })
-
-  // If approved, trigger story site rebuild
-  if (toStatusFinal === 'approved') {
-    triggerStoryRebuild(req).catch((err) => console.error('Story rebuild trigger failed:', err))
-  }
 
 sendSuccess(res, {
     id,
@@ -426,6 +421,12 @@ router.post('/contributions/:id/publish', requirePerm('contribution:publish'), a
   )
   await writeAuditLog(req, { actorUserId: req.user!.userId, action: 'contribution.publish', resourceType: 'contribution', resourceId: id, after: { status: 'published' } })
 
+  // CDN purge per api.md §6.4 (publishing fresh content — purge cache so it's immediately visible)
+  purgeContributionCache(id).catch((err) => console.error('[CDN] purge error:', err))
+
+  // Trigger story site rebuild on publish (api.md §6.5 — stories only serve published content)
+  triggerStoryRebuild(req).catch((err) => console.error('Story rebuild trigger failed:', err))
+
   sendSuccess(res, { id, status: 'published', version: newVersion, publishedAt: now }, req.requestId)
 })
 
@@ -457,7 +458,7 @@ router.post('/contributions/:id/hide', requirePerm('contribution:hide'), async (
   await exec(
     `INSERT INTO contribution_review_events (id, contributionId, reviewerUserId, action, fromStatus, toStatus, publicNote, internalNote, createdAt, requestId)
      VALUES (?, ?, ?, 'hide', 'published', 'hidden', ?, ?, ?, ?)`,
-    [genId('rev_'), id, req.user!.userId, reason || null, internalNote || null, now, req.requestId],
+    [genId('rev_'), id, req.user!.userId, publicNote || reason || null, internalNote || null, now, req.requestId],
   )
   await writeAuditLog(req, {
     actorUserId: req.user!.userId,

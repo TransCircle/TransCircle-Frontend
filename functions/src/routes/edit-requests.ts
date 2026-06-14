@@ -1,4 +1,5 @@
 import { Router, type Request } from 'express'
+import type mysql from 'mysql2'
 import { exec, queryOne, query } from '../Database'
 import { genId } from '../utils/ulid'
 import { sendSuccess, sendError, Errors, zodErrorsToDetails } from '../utils/response'
@@ -89,7 +90,7 @@ router.post('/contributions/:id/edit-requests', requireAuth, async (req, res) =>
     [contributionId, req.user!.userId],
   )
   if (existingPending) {
-    sendError(res, Errors.RATE_LIMITED.code, '您已有一项待处理的修改申请', req.requestId, 429)
+    sendError(res, Errors.CONFLICT.code, '您已有一项待处理的修改申请', req.requestId, Errors.CONFLICT.status)
     return
   }
 
@@ -390,151 +391,185 @@ router.post('/admin/edit-requests/:id/vote', requireAuth, requireReviewer, requi
   const { vote, note, expectedVersion } = parsed.data
   const now = Date.now()
 
-  const editReq = await queryOne(
-    `SELECT id, contributionId, requesterId, status, version FROM contribution_edit_requests WHERE id = ?`,
-    [id],
-  )
-  if (!editReq) {
-    sendError(res, Errors.EDIT_REQUEST_NOT_FOUND.code, '修改申请不存在', req.requestId, Errors.EDIT_REQUEST_NOT_FOUND.status)
-    return
-  }
-  if (editReq.status !== 'pending' && editReq.status !== 'in_review') {
-    sendError(res, Errors.INVALID_STATE_TRANSITION.code, '申请已结束', req.requestId, Errors.INVALID_STATE_TRANSITION.status)
-    return
-  }
-  if (editReq.requesterId === req.user!.userId) {
-    sendError(res, 'SELF_VOTE_FORBIDDEN', '不可对自己的申请投票', req.requestId, 409)
-    return
-  }
-  if (editReq.version !== expectedVersion) {
-    sendError(res, Errors.VERSION_CONFLICT.code, '版本冲突', req.requestId, Errors.VERSION_CONFLICT.status)
-    return
-  }
+  // Use transaction + SELECT FOR UPDATE for concurrency safety per api.md §10.6
+  const { getConnection } = await import('../Database')
+  const conn = await getConnection()
+  try {
+    await conn.beginTransaction()
 
-  // Check for duplicate vote
-  const existingVote = await queryOne(
-    `SELECT id FROM edit_request_votes WHERE editRequestId = ? AND reviewerUserId = ?`,
-    [id, req.user!.userId],
-  )
-  if (existingVote) {
-    sendError(res, 'ALREADY_VOTED', '已投过票', req.requestId, 409)
-    return
-  }
-
-  // Cast vote
-  await exec(
-    `INSERT INTO edit_request_votes (id, editRequestId, reviewerUserId, vote, note, createdAt)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [genId('erv_'), id, req.user!.userId, vote, note || null, now],
-  )
-
-  // Update version
-  const newVersion = editReq.version + 1
-  await exec(
-    `UPDATE contribution_edit_requests SET version = ?, updatedAt = ? WHERE id = ?`,
-    [newVersion, now, id],
-  )
-
-  // Check resolution: 2 approve or 2 reject
-  const approveCount = await queryOne(
-    `SELECT COUNT(*) as cnt FROM edit_request_votes WHERE editRequestId = ? AND vote = 'approve'`,
-    [id],
-  )
-  const rejectCount = await queryOne(
-    `SELECT COUNT(*) as cnt FROM edit_request_votes WHERE editRequestId = ? AND vote = 'reject'`,
-    [id],
-  )
-
-  const approve = (approveCount?.cnt as number) || 0
-  const reject = (rejectCount?.cnt as number) || 0
-
-  let resolvedStatus: string | null = null
-
-  if (approve >= 2) {
-    resolvedStatus = 'approved'
-
-    // Apply the edit to the original contribution
-    const editRow = await queryOne(
-      `SELECT contributionId, proposedTitle, proposedContent, proposedContentFormat, proposedSummary, proposedTags FROM contribution_edit_requests WHERE id = ?`,
+    const [editReqRows] = await conn.execute<mysql.RowDataPacket[]>(
+      `SELECT id, contributionId, requesterId, status, version FROM contribution_edit_requests WHERE id = ? FOR UPDATE`,
       [id],
     )
-    if (editRow) {
-      const updates: string[] = ['version = version + 1', 'updatedAt = ?']
-      const updateParams: unknown[] = [now]
 
-      if (editRow.proposedTitle) { updates.push('title = ?'); updateParams.push(editRow.proposedTitle) }
-      if (editRow.proposedContent) {
-        updates.push('contentRaw = ?')
-        updateParams.push(editRow.proposedContent)
-        const contentFormat = (editRow.proposedContentFormat as string) || 'markdown'
-        const contentHtml = contentFormat === 'plain_text'
-          ? plainTextToHtml(editRow.proposedContent as string)
-          : markdownToHtml(editRow.proposedContent as string)
-        updates.push('contentHtml = ?')
-        updateParams.push(contentHtml)
-        // Update contentFormat to match the approved edit's format
-        updates.push('contentFormat = ?')
-        updateParams.push(contentFormat)
+    const editReq = (editReqRows as unknown as Array<{ id: string; contributionId: string; requesterId: string; status: string; version: number }>)[0] ?? null
+
+    if (!editReq) {
+      await conn.rollback()
+      sendError(res, Errors.EDIT_REQUEST_NOT_FOUND.code, '修改申请不存在', req.requestId, Errors.EDIT_REQUEST_NOT_FOUND.status)
+      conn.release()
+      return
+    }
+    if (editReq.status !== 'pending' && editReq.status !== 'in_review') {
+      await conn.rollback()
+      sendError(res, Errors.INVALID_STATE_TRANSITION.code, '申请已结束', req.requestId, Errors.INVALID_STATE_TRANSITION.status)
+      conn.release()
+      return
+    }
+    if (editReq.requesterId === req.user!.userId) {
+      await conn.rollback()
+      sendError(res, 'SELF_VOTE_FORBIDDEN', '不可对自己的申请投票', req.requestId, 409)
+      conn.release()
+      return
+    }
+    if (editReq.version !== expectedVersion) {
+      await conn.rollback()
+      sendError(res, Errors.VERSION_CONFLICT.code, '版本冲突', req.requestId, Errors.VERSION_CONFLICT.status)
+      conn.release()
+      return
+    }
+
+    // Check for duplicate vote
+    const [existingVoteRows] = await conn.execute<mysql.RowDataPacket[]>(
+      `SELECT id FROM edit_request_votes WHERE editRequestId = ? AND reviewerUserId = ? FOR UPDATE`,
+      [id, req.user!.userId],
+    )
+    const existingVote = (existingVoteRows as Array<{ id: string }>)[0] ?? null
+    if (existingVote) {
+      await conn.rollback()
+      sendError(res, 'ALREADY_VOTED', '已投过票', req.requestId, 409)
+      conn.release()
+      return
+    }
+
+    // Cast vote
+    await conn.execute<mysql.ResultSetHeader>(
+      `INSERT INTO edit_request_votes (id, editRequestId, reviewerUserId, vote, note, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [genId('erv_'), id, req.user!.userId, vote, note || null, now],
+    )
+
+    // Optimistic version bump — only succeeds if version hasn't changed since our FOR UPDATE
+    const [versionResult] = await conn.execute<mysql.ResultSetHeader>(
+      `UPDATE contribution_edit_requests SET version = version + 1, updatedAt = ? WHERE id = ? AND version = ?`,
+      [now, id, editReq.version],
+    )
+    if (versionResult.affectedRows === 0) {
+      await conn.rollback()
+      sendError(res, Errors.VERSION_CONFLICT.code, '版本冲突，请刷新后重试', req.requestId, Errors.VERSION_CONFLICT.status)
+      conn.release()
+      return
+    }
+
+    const newVersion = editReq.version + 1
+
+    // Check resolution: 2 approve or 2 reject
+    const [approveRows] = await conn.execute<mysql.RowDataPacket[]>(
+      `SELECT COUNT(*) as cnt FROM edit_request_votes WHERE editRequestId = ? AND vote = 'approve'`,
+      [id],
+    )
+    const [rejectRows] = await conn.execute<mysql.RowDataPacket[]>(
+      `SELECT COUNT(*) as cnt FROM edit_request_votes WHERE editRequestId = ? AND vote = 'reject'`,
+      [id],
+    )
+
+    const approve = Number(approveRows[0]?.cnt ?? 0)
+    const reject = Number(rejectRows[0]?.cnt ?? 0)
+
+    let resolvedStatus: string | null = null
+
+    if (approve >= 2) {
+      resolvedStatus = 'approved'
+
+      // Apply the edit to the original contribution
+      const [editRows] = await conn.execute<mysql.RowDataPacket[]>(
+        `SELECT contributionId, proposedTitle, proposedContent, proposedContentFormat, proposedSummary, proposedTags FROM contribution_edit_requests WHERE id = ? FOR UPDATE`,
+        [id],
+      )
+      const editRow = (editRows as Array<{ contributionId: string; proposedTitle: string | null; proposedContent: string | null; proposedContentFormat: string | null; proposedSummary: string | null; proposedTags: string | null }>)[0] ?? null
+      if (editRow) {
+        const updates: string[] = ['version = version + 1', 'updatedAt = ?']
+        const updateParams: unknown[] = [now]
+
+        if (editRow.proposedTitle) { updates.push('title = ?'); updateParams.push(editRow.proposedTitle) }
+        if (editRow.proposedContent) {
+          updates.push('contentRaw = ?')
+          updateParams.push(editRow.proposedContent)
+          const contentFormat = (editRow.proposedContentFormat as string) || 'markdown'
+          const contentHtml = contentFormat === 'plain_text'
+            ? plainTextToHtml(editRow.proposedContent as string)
+            : markdownToHtml(editRow.proposedContent as string)
+          updates.push('contentHtml = ?')
+          updateParams.push(contentHtml)
+          updates.push('contentFormat = ?')
+          updateParams.push(contentFormat)
+        }
+        if (editRow.proposedSummary !== null) { updates.push('summary = ?'); updateParams.push(editRow.proposedSummary) }
+        if (editRow.proposedTags) { updates.push('tags = ?'); updateParams.push(JSON.stringify(editRow.proposedTags)) }
+
+        updateParams.push(editRow.contributionId)
+
+        await conn.execute<mysql.ResultSetHeader>(
+          `UPDATE contributions SET ${updates.join(', ')} WHERE id = ?`,
+          updateParams,
+        )
       }
-      if (editRow.proposedSummary !== undefined) { updates.push('summary = ?'); updateParams.push(editRow.proposedSummary) }
-      if (editRow.proposedTags) { updates.push('tags = ?'); updateParams.push(JSON.stringify(editRow.proposedTags)) }
+    } else if (reject >= 2) {
+      resolvedStatus = 'rejected'
+    }
 
-      updateParams.push(editRow.contributionId)
+    // Update edit request status if resolved
+    if (resolvedStatus) {
+      await conn.execute<mysql.ResultSetHeader>(
+        `UPDATE contribution_edit_requests SET status = ?, updatedAt = ? WHERE id = ?`,
+        [resolvedStatus, now, id],
+      )
 
-      await exec(
-        `UPDATE contributions SET ${updates.join(', ')} WHERE id = ?`,
-        updateParams,
+      await conn.execute<mysql.ResultSetHeader>(
+        `INSERT INTO contribution_review_events (id, contributionId, reviewerUserId, action, fromStatus, toStatus, createdAt, requestId)
+         VALUES (?, ?, ?, 'edit_request_resolve', ?, ?, ?, ?)`,
+        [genId('rev_'), editReq.contributionId, req.user!.userId, editReq.status, resolvedStatus, now, req.requestId],
       )
     }
-  } else if (reject >= 2) {
-    resolvedStatus = 'rejected'
-  }
 
-  // Update edit request status if resolved
-  if (resolvedStatus) {
-    await exec(
-      `UPDATE contribution_edit_requests SET status = ?, version = version + 1, updatedAt = ? WHERE id = ?`,
-      [resolvedStatus, now, id],
-    )
+    await conn.commit()
+    conn.release()
 
-    // Write review event
-    await exec(
-      `INSERT INTO contribution_review_events (id, contributionId, reviewerUserId, action, fromStatus, toStatus, createdAt, requestId)
-       VALUES (?, ?, ?, 'edit_request_resolve', ?, ?, ?, ?)`,
-      [genId('rev_'), editReq.contributionId, req.user!.userId, editReq.status, resolvedStatus, now, req.requestId],
-    )
-  }
-
-  // Audit logs
-  await writeAuditLog(req, {
-    actorUserId: req.user!.userId,
-    action: 'contribution.edit_request.vote',
-    resourceType: 'edit_request',
-    resourceId: id,
-    after: { vote, status: resolvedStatus || editReq.status },
-  })
-
-  if (resolvedStatus) {
+    // Audit logs (outside transaction — fire-and-forget safe after commit)
     await writeAuditLog(req, {
       actorUserId: req.user!.userId,
-      action: 'contribution.edit_request.resolve',
+      action: 'contribution.edit_request.vote',
       resourceType: 'edit_request',
       resourceId: id,
-      after: { resolution: resolvedStatus },
+      after: { vote, status: resolvedStatus || editReq.status },
     })
-  }
 
-  sendSuccess(res, {
-    id,
-    status: resolvedStatus || editReq.status,
-    version: newVersion,
-    votes: {
-      approve,
-      reject,
-      total: approve + reject,
-      required: REQUIRED_VOTES,
-    },
-  }, req.requestId)
+    if (resolvedStatus) {
+      await writeAuditLog(req, {
+        actorUserId: req.user!.userId,
+        action: 'contribution.edit_request.resolve',
+        resourceType: 'edit_request',
+        resourceId: id,
+        after: { resolution: resolvedStatus },
+      })
+    }
+
+    sendSuccess(res, {
+      id,
+      status: resolvedStatus || editReq.status,
+      version: newVersion,
+      votes: {
+        approve,
+        reject,
+        total: approve + reject,
+        required: REQUIRED_VOTES,
+      },
+    }, req.requestId)
+  } catch (err) {
+    try { await conn.rollback() } catch { /* ignore rollback error */ }
+    conn.release()
+    throw err
+  }
 })
 
 export default router

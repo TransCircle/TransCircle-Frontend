@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { get, post, del } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import styles from './Admin.module.css'
@@ -15,10 +16,19 @@ interface ManagedUser {
   lastLoginAt: number | null
 }
 
-interface DetailedUser extends ManagedUser {
+interface RoleEntry {
+  id: string
+  name: string
+  grantedBy: string
+  createdAt: number
+  expiresAt: number | null
+}
+
+interface DetailedUser extends Omit<ManagedUser, 'roles'> {
   avatarUrl: string | null
   oauthAccounts: Array<{ provider: string; providerUsername: string; boundAt: number }>
   security: { hasPassword: boolean; totpEnabled: boolean; passkeyCount: number }
+  roles: RoleEntry[]
 }
 
 function formatTs(ts: number | null | undefined): string {
@@ -27,7 +37,9 @@ function formatTs(ts: number | null | undefined): string {
 }
 
 export const AdminUsers = () => {
-  const { accessToken, loading: authLoading } = useAuth()
+  const { t } = useTranslation()
+  const { accessToken, loading: authLoading, user, isFullAdmin } = useAuth()
+  const loadedRef = useRef(false)
 
   const [users, setUsers] = useState<ManagedUser[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
@@ -56,7 +68,7 @@ export const AdminUsers = () => {
       else setUsers(result.data)
       setCursor(result.pagination?.nextCursor || null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败')
+      setError(err instanceof Error ? err.message : t('adminUsers.loadError'))
     } finally {
       setLoading(false)
     }
@@ -64,7 +76,8 @@ export const AdminUsers = () => {
 
   useEffect(() => {
     if (authLoading || !accessToken) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (loadedRef.current) return
+    loadedRef.current = true
     fetchUsers()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, accessToken])
@@ -79,7 +92,7 @@ export const AdminUsers = () => {
   }
 
   const handleBan = async (userId: string) => {
-    const reason = prompt('封禁原因：')
+    const reason = prompt(t('adminUsers.banReasonPrompt'))
     if (!reason) return
     const result = await post(`/admin/users/${userId}/ban`, { reason }, {
       headers: authHeaders(), skipRefresh: !accessToken,
@@ -89,7 +102,7 @@ export const AdminUsers = () => {
   }
 
   const handleUnban = async (userId: string) => {
-    const result = await post(`/admin/users/${userId}/unban`, { reason: '管理员解封' }, {
+      const result = await post(`/admin/users/${userId}/unban`, { reason: t('adminUsers.adminUnban') }, {
       headers: authHeaders(), skipRefresh: !accessToken,
     })
     if (result.ok) { fetchDetail(userId); fetchUsers() }
@@ -97,7 +110,7 @@ export const AdminUsers = () => {
   }
 
   const handleGrantRole = async (userId: string) => {
-    const roleId = prompt('角色 ID（如 role_reviewer）：')
+    const roleId = prompt(t('adminUsers.roleIdPrompt'))
     if (!roleId) return
     const result = await post(`/admin/users/${userId}/roles`, { roleId }, {
       headers: authHeaders(), skipRefresh: !accessToken,
@@ -114,41 +127,58 @@ export const AdminUsers = () => {
     else setError(result.error.message)
   }
 
+  if (!authLoading && (!user || !isFullAdmin)) {
+    return (
+      <main className={styles.container}>
+        <h1 className={styles.heading}>{t('adminUsers.accessDenied')}</h1>
+        <p className={styles.headingDesc}>{t('adminUsers.accessDeniedDetail')}</p>
+      </main>
+    )
+  }
+
+  if (authLoading) {
+    return (
+      <main className={styles.container}>
+        <div className={styles.loading}>{t('adminUsers.loading')}</div>
+      </main>
+    )
+  }
+
   if (selectedId && detail) {
     return (
       <main className={styles.container}>
         <button className={styles.back} onClick={() => { setSelectedId(null); setDetail(null) }}>
-          ← 返回列表
+          {t('adminUsers.backToList')}
         </button>
         <div className={styles.detailCard}>
           <h2 className={styles.detailTitle}>{detail.displayName} (@{detail.username})</h2>
           <div className={styles.detailMeta}>
-            <p>邮箱：{detail.email ?? '-'} {detail.emailVerified ? '✓' : '✗'}</p>
-            <p>状态：{detail.status}</p>
-            <p>注册时间：{formatTs(detail.createdAt)}</p>
-            <p>上次登录：{formatTs(detail.lastLoginAt)}</p>
-            <p>密码：{detail.security.hasPassword ? '已设置' : '未设置'} · TOTP：{detail.security.totpEnabled ? '已启用' : '未启用'} · Passkey：{detail.security.passkeyCount} 个</p>
+            <p>{t('adminUsers.email')}：{detail.email ?? '-'} {detail.emailVerified ? '✓' : '✗'}</p>
+            <p>{t('adminUsers.status')}：{detail.status}</p>
+            <p>{t('adminUsers.createdAt')}：{formatTs(detail.createdAt)}</p>
+            <p>{t('adminUsers.lastLogin')}：{formatTs(detail.lastLoginAt)}</p>
+            <p>{t('adminUsers.passwordLabel')}：{detail.security.hasPassword ? t('adminUsers.hasPassword') : t('adminUsers.noPassword')} · TOTP：{detail.security.totpEnabled ? t('adminUsers.totpEnabled') : t('adminUsers.totpDisabled')} · Passkey：{detail.security.passkeyCount}{t('adminUsers.passkeyUnit')}</p>
             {detail.oauthAccounts.map(oa => (
-              <p key={oa.provider}>OAuth {oa.provider}: @{oa.providerUsername}</p>
+              <p key={oa.provider}>{t('adminUsers.oauthAccount', { provider: oa.provider, username: oa.providerUsername })}</p>
             ))}
           </div>
-          <h3 style={{ marginTop: '1rem', fontWeight: 600 }}>角色</h3>
+          <h3 style={{ marginTop: '1rem', fontWeight: 600 }}>{t('adminUsers.roles')}</h3>
           <ul>
-            {(detail.roles as unknown as Array<{ id: string; name: string; expiresAt: number | null }>).map(r => (
+            {detail.roles.map(r => (
               <li key={r.id}>
-                {r.name}（{r.expiresAt ? `过期 ${formatTs(r.expiresAt)}` : '永久'}）
+                {r.name}（{r.expiresAt ? t('adminUsers.expiresAt', { time: formatTs(r.expiresAt) }) : t('adminUsers.permanent')}）
                 <button onClick={() => handleRevokeRole(detail.id, r.id)}
-                  style={{ marginLeft: '0.5rem', color: '#c62828', cursor: 'pointer', background: 'none', border: 'none' }}>
-                  撤销
+                  style={{ marginLeft: '0.5rem', color: 'var(--error-color)', cursor: 'pointer', background: 'none', border: 'none' }}>
+                  {t('adminUsers.revokeRole')}
                 </button>
               </li>
             ))}
           </ul>
           <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
-            <button className={styles.btnPrimary} onClick={() => handleGrantRole(detail.id)}>授予角色</button>
+            <button className={styles.btnPrimary} onClick={() => handleGrantRole(detail.id)}>{t('adminUsers.grantRole')}</button>
             {detail.status === 'banned'
-              ? <button className={styles.btnPrimary} onClick={() => handleUnban(detail.id)}>解封</button>
-              : <button className={styles.btnSecondary} onClick={() => handleBan(detail.id)} style={{ color: '#c62828' }}>封禁</button>
+              ? <button className={styles.btnPrimary} onClick={() => handleUnban(detail.id)}>{t('adminUsers.unban')}</button>
+              : <button className={styles.btnSecondary} onClick={() => handleBan(detail.id)} style={{ color: 'var(--error-color)' }}>{t('adminUsers.ban')}</button>
             }
           </div>
         </div>
@@ -158,16 +188,16 @@ export const AdminUsers = () => {
 
   return (
     <main className={styles.container}>
-      <header><h1 className={styles.heading}>用户管理</h1></header>
+      <header><h1 className={styles.heading}>{t('adminUsers.title')}</h1></header>
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
         <input type="text" value={keyword} onChange={e => setKeyword(e.target.value)}
-          placeholder="搜索用户名/邮箱/显示名称" className={styles.input} style={{ flex: 1 }}
+          placeholder={t('adminUsers.searchPlaceholder')} className={styles.input} style={{ flex: 1 }}
           onKeyDown={e => { if (e.key === 'Enter') fetchUsers() }} />
-        <button className={styles.btnSecondary} onClick={() => fetchUsers()}>搜索</button>
+        <button className={styles.btnSecondary} onClick={() => fetchUsers()}>{t('adminUsers.search')}</button>
       </div>
       {error && <div className={styles.errorBox}>{error}</div>}
       {loading && users.length === 0 ? (
-        <div className={styles.loading}>加载中...</div>
+        <div className={styles.loading}>{t('adminUsers.loading')}</div>
       ) : (
         <ul className={styles.list}>
           {users.map(u => (
@@ -184,7 +214,7 @@ export const AdminUsers = () => {
       {cursor && (
         <button className={styles.btnSecondary} onClick={() => fetchUsers(cursor)}
           disabled={loading} style={{ display: 'block', margin: '1rem auto' }}>
-          加载更多
+          {t('adminUsers.loadMore')}
         </button>
       )}
     </main>

@@ -1,7 +1,7 @@
 ﻿import { useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { post, tryRefreshToken, clearCsrfToken } from '@/api/client'
+import { post, clearAuth, tryRefreshToken, clearCsrfToken } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { useAuth } from '@/context/useAuth'
 import { StepUpDialog } from '@/components/StepUpDialog'
@@ -31,9 +31,9 @@ export const OAuthMerge = () => {
     try {
       let currentToken = accessToken
       if (!currentToken) {
-        const refreshed = await tryRefreshToken()
-        if (refreshed) {
-          currentToken = refreshed
+        const newToken = await tryRefreshToken()
+        if (newToken) {
+          currentToken = newToken
         } else {
           setErrorMsg(t('oauth.mergeStepUpRequired'))
           setStatus('error')
@@ -41,7 +41,7 @@ export const OAuthMerge = () => {
         }
       }
 
-      const result = await post('/auth/merge', { mergeToken, confirm: true })
+      const result = await post('/auth/merge', { mergeToken, confirm: true }, { csrf: true })
 
       if (!result.ok) {
         if (result.error.code === ERRORS.STEP_UP_REQUIRED) {
@@ -60,11 +60,9 @@ export const OAuthMerge = () => {
       }
 
       clearCsrfToken()
+      clearAuth()
       setStatus('success')
-      // Refresh token after account merge (api.md §1.8: merge increments tokenVersion,
-      // invalidating the current access token)
-      tryRefreshToken()
-      setTimeout(() => navigate('/submit?toast=merge_success', { replace: true }), 1500)
+      setTimeout(() => navigate('/login?toast=merge_success', { replace: true }), 1500)
     } catch {
       setErrorMsg(t('oauth.mergeError'))
       setStatus('error')
@@ -93,7 +91,7 @@ export const OAuthMerge = () => {
     return (
       <main style={containerStyle}>
         <h1 style={{ fontSize: '1.8rem', margin: '0 0 0.75rem', color: 'var(--text-main)' }}>{t('oauth.mergeTitle')}</h1>
-        <p style={{ fontSize: '1rem', color: '#c62828' }} role="alert">{t('oauth.mergeTokenExpired')}</p>
+        <p style={{ fontSize: '1rem', color: 'var(--error-color)' }} role="alert">{t('oauth.mergeTokenExpired')}</p>
       </main>
     )
   }
@@ -111,13 +109,13 @@ export const OAuthMerge = () => {
           </p>
         )}
         {status === 'error' && errorMsg && (
-          <p style={{ color: '#c62828', fontSize: '0.9rem', marginBottom: '1rem' }} role="alert">{errorMsg}</p>
+          <p style={{ color: 'var(--error-color)', fontSize: '0.9rem', marginBottom: '1rem' }} role="alert">{errorMsg}</p>
         )}
         <button
           onClick={handleMerge}
           disabled={status === 'submitting'}
           style={{
-            backgroundColor: '#d32f2f', color: 'white', border: 'none',
+            backgroundColor: 'var(--error-color)', color: 'white', border: 'none',
             padding: '0.65rem 2rem', borderRadius: '50px', fontSize: '0.95rem',
             fontWeight: 600, cursor: status === 'submitting' ? 'not-allowed' : 'pointer',
             opacity: status === 'submitting' ? 0.6 : 1, fontFamily: 'inherit',

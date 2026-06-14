@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { get, post, patch, del } from '@/api/client'
+import { get, post, patch, del, clearAuth, setAccessToken as setClientToken } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { useAuth } from '@/context/useAuth'
 import { StepUpDialog } from '@/components/StepUpDialog'
@@ -150,10 +150,12 @@ export const SettingsSecurity = () => {
   const [cancelMfaCode, setCancelMfaCode] = useState('')
   const [cancelStatus, setCancelStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
   const [cancelError, setCancelError] = useState('')
+  const [cancelPasskeyAssertion, setCancelPasskeyAssertion] = useState<Record<string, unknown> | null>(null)
+  const [cancelPasskeyProcessing, setCancelPasskeyProcessing] = useState(false)
 
   // ── Load profile on mount ──
   useEffect(() => {
-    if (authLoading || !accessToken) return
+    if (authLoading || !authUser) return
     const load = async () => {
       const result = await get<Record<string, unknown>>('/me')
       if (result.ok) {
@@ -175,7 +177,7 @@ export const SettingsSecurity = () => {
       }
     }
     load()
-  }, [authLoading, accessToken])
+  }, [authLoading, authUser])
 
   // ── Load OAuth accounts ──
   useEffect(() => {
@@ -261,19 +263,23 @@ export const SettingsSecurity = () => {
     if (action === 'delete-account') {
       const body: Record<string, unknown> = { confirmation: 'DELETE-MY-ACCOUNT' }
       if (profile?.security.hasPassword) {
-        const pw = prompt('请输入当前密码以确认删除账户：')
+        const pw = prompt(t('settings.deleteAccount.passwordPrompt'))
         if (!pw) return
         body.password = pw
       }
       post('/me/delete', body).then(r => {
-        if (r.ok) navigate('/?toast=deletion_scheduled')
-        else setCancelError(r.error?.message || '删除失败')
+        if (r.ok) {
+          clearAuth()
+          navigate('/?toast=deletion_scheduled', { replace: true })
+        } else {
+          setCancelError(r.error?.message || t('settings.serverError'))
+        }
       })
     } else if (action?.startsWith('unbind-')) {
       const provider = action.replace('unbind-', '') as 'github' | 'x'
       handleUnbindAfterStepUp(provider)
     }
-  }, [pendingAction, navigate, handleUnbindAfterStepUp])
+  }, [pendingAction, navigate, handleUnbindAfterStepUp, profile, t])
 
   // Clean up TOTP sensitive data when leaving the TOTP tab (L4)
   const prevTab = useRef<TabId>(activeTab)
@@ -293,7 +299,7 @@ export const SettingsSecurity = () => {
 
     const dn = profileDisplayName.trim()
     if (!dn || dn.length > 50) {
-      setProfileError('显示名称需 1-50 个字符')
+      setProfileError(t('settings.displayNameError'))
       return
     }
 
@@ -322,20 +328,103 @@ export const SettingsSecurity = () => {
     }
   }
 
+  // ── Passkey assertion for cancel deletion (api.md §2.5 OAuth-only) ──
+  const handleCancelPasskey = async () => {
+    setCancelPasskeyProcessing(true)
+    setCancelError('')
+    try {
+      const startResult = await post<{
+        challengeId: string
+        publicKey: {
+          challenge: string
+          rpId: string
+          userVerification: string
+          allowCredentials?: Array<{ type: string; id: string; transports: string[] }>
+        }
+      }>('/auth/passkey/login/start', { identifier: cancelIdentifier.trim() })
+
+      if (!startResult.ok) {
+        setCancelError(t('settings.cancelPasskeyError'))
+        setCancelPasskeyProcessing(false)
+        return
+      }
+
+      const { challengeId, publicKey } = startResult.data
+
+      const allowCreds = publicKey.allowCredentials?.map(c => ({
+        type: c.type as PublicKeyCredentialType,
+        id: Uint8Array.from(
+          atob(c.id.replace(/-/g, '+').replace(/_/g, '/')),
+          cc => cc.charCodeAt(0),
+        ).buffer as ArrayBuffer,
+        transports: c.transports as AuthenticatorTransport[],
+      }))
+
+      const credential = await navigator.credentials.get({
+        publicKey: {
+          challenge: Uint8Array.from(
+            atob(publicKey.challenge.replace(/-/g, '+').replace(/_/g, '/')),
+            c => c.charCodeAt(0),
+          ).buffer as ArrayBuffer,
+          rpId: publicKey.rpId,
+          userVerification: publicKey.userVerification as UserVerificationRequirement,
+          allowCredentials: allowCreds,
+        },
+      })
+
+      if (!credential) {
+        setCancelPasskeyProcessing(false)
+        return
+      }
+
+      const pkCred = credential as PublicKeyCredential
+      const response = pkCred.response as AuthenticatorAssertionResponse
+
+      setCancelPasskeyAssertion({
+        challengeId,
+        credential: {
+          id: pkCred.id,
+          rawId: pkCred.id,
+          type: pkCred.type,
+          response: {
+            clientDataJSON: arrayBufferToBase64url(response.clientDataJSON),
+            authenticatorData: arrayBufferToBase64url(response.authenticatorData),
+            signature: arrayBufferToBase64url(response.signature),
+            userHandle: response.userHandle ? arrayBufferToBase64url(response.userHandle) : null,
+          },
+          clientExtensionResults: pkCred.getClientExtensionResults(),
+        },
+      })
+    } catch {
+      setCancelError(t('settings.cancelPasskeyError'))
+    } finally {
+      setCancelPasskeyProcessing(false)
+    }
+  }
+
   // ── Cancel Account Deletion (api.md §2.5) ──
   const handleCancelDeletion = async () => {
     setCancelError('')
     if (!cancelToken.trim() || !cancelIdentifier.trim()) {
-      setCancelError('令牌和账号标识为必填项')
+      setCancelError(t('settings.cancelRequired'))
       return
     }
     setCancelStatus('submitting')
-    const result = await post('/me/delete/cancel', {
+    const body: Record<string, unknown> = {
       cancelToken: cancelToken.trim(),
       identifier: cancelIdentifier.trim(),
-      password: cancelPassword || undefined,
       mfaCode: cancelMfaCode || undefined,
-    })
+    }
+    // api.md §2.5: OAuth-only 账户传 null，密码账户传实际值
+    if (profile?.security.hasPassword === false) {
+      body.password = null
+    } else if (cancelPassword) {
+      body.password = cancelPassword
+    }
+    if (cancelPasskeyAssertion) {
+      body.passkeyAssertion = cancelPasskeyAssertion
+    }
+    const result = await post('/me/delete/cancel', body, { idempotent: true })
     if (result.ok) {
       setCancelStatus('success')
     } else {
@@ -350,27 +439,31 @@ export const SettingsSecurity = () => {
     setPasswordSuccess(false)
 
     if (newPassword !== confirmPassword) {
-      setPasswordError(t('settings.passwordMismatch') || '两次密码输入不一致')
+      setPasswordError(t('settings.passwordMismatch'))
       return
     }
 
     setPasswordSubmitting(true)
-    const result = await post('/me/password', {
+    const result = await post<{
+      passwordChanged?: boolean
+      revokedSessions?: number
+      accessToken?: string
+    }>('/me/password', {
       currentPassword: currentPassword || undefined,
       newPassword,
     })
     setPasswordSubmitting(false)
 
     if (result.ok) {
+      if (result.data.accessToken) setClientToken(result.data.accessToken)
       setPasswordSuccess(true)
       setCurrentPassword('')
       setNewPassword('')
-      setConfirmPassword('')
     } else {
       if (result.error.code === ERRORS.VALIDATION_ERROR) {
         setPasswordError(result.error.message)
       } else if (result.error.code === ERRORS.INVALID_CREDENTIALS) {
-        setPasswordError(t('settings.currentPasswordWrong') || '当前密码错误')
+        setPasswordError(t('settings.currentPasswordWrong'))
       } else {
         setPasswordError(result.error.message || t('settings.serverError'))
       }
@@ -443,7 +536,7 @@ export const SettingsSecurity = () => {
       const p = await get<Record<string, unknown>>('/me')
       if (p.ok) setProfile(prev => prev ? { ...prev, security: p.data.security as UserSecurity } : prev)
     } else {
-      setTotpError(dResult.error.message || '禁用失败')
+      setTotpError(dResult.error.message || t('settings.totpDisableError'))
     }
   }
 
@@ -519,7 +612,7 @@ export const SettingsSecurity = () => {
       const cred = await navigator.credentials.create({ publicKey })
 
       if (!cred) {
-        setPasskeyError('用户取消了操作')
+        setPasskeyError(t('settings.passkeyCancel'))
         setPasskeySubmitting(false)
         return
       }
@@ -554,7 +647,7 @@ export const SettingsSecurity = () => {
       }
     } catch (err) {
       setPasskeySubmitting(false)
-      setPasskeyError(err instanceof Error ? err.message : '注册失败')
+      setPasskeyError(err instanceof Error ? err.message : t('settings.passkeyRegisterError'))
     }
   }
 
@@ -575,7 +668,7 @@ export const SettingsSecurity = () => {
     } else if (!result.ok) {
       setOauthError(result.error.message)
     } else {
-      setOauthError('无法获取授权链接')
+      setOauthError(t('settings.oauthFetchLinkError'))
     }
   }
 
@@ -583,7 +676,7 @@ export const SettingsSecurity = () => {
     setOauthError('')
 
     if (!accessToken) {
-      setOauthError(t('settings.stepUpRequired') || '需要二次认证')
+      setOauthError(t('settings.stepUpRequired'))
       return
     }
 
@@ -599,7 +692,12 @@ export const SettingsSecurity = () => {
     return btoa(binary).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
   }
 
-  // ── Render ──
+  // Not loading and not logged in — redirect to login
+  useEffect(() => {
+    if (!authUser && !authLoading) {
+      navigate('/login', { replace: true })
+    }
+  }, [authUser, authLoading, navigate])
 
   if (!authUser) {
     if (authLoading) {
@@ -609,31 +707,31 @@ export const SettingsSecurity = () => {
         </main>
       )
     }
-    // Not loading and not logged in — redirect to login
-    navigate('/login', { replace: true })
     return null
   }
 
   const tabs = [
-    { key: 'profile' as TabId, label: '个人资料' },
-    { key: 'password' as TabId, label: '密码' },
-    { key: 'totp' as TabId, label: 'TOTP 验证' },
-    { key: 'passkey' as TabId, label: 'Passkey' },
-    { key: 'oauth' as TabId, label: 'OAuth 绑定' },
-    { key: 'sessions' as TabId, label: '活跃会话' },
+    { key: 'profile' as TabId, label: t('settings.tabProfile') },
+    { key: 'password' as TabId, label: t('settings.tabPassword') },
+    { key: 'totp' as TabId, label: t('settings.tabTotp') },
+    { key: 'passkey' as TabId, label: t('settings.tabPasskey') },
+    { key: 'oauth' as TabId, label: t('settings.tabOauth') },
+    { key: 'sessions' as TabId, label: t('settings.tabSessions') },
   ]
 
   return (
     <main className={styles.container}>
       <header>
-        <h1 className={styles.heading}>安全设置</h1>
-        <p className={styles.headingDesc}>管理密码、二步验证、Passkey 和 OAuth 绑定</p>
+        <h1 className={styles.heading}>{t('settings.pageTitle')}</h1>
+        <p className={styles.headingDesc}>{t('settings.pageDescription')}</p>
       </header>
 
-      <nav className={styles.tabs}>
+      <nav className={styles.tabs} role="tablist">
         {tabs.map(tab => (
           <button
             key={tab.key}
+            role="tab"
+            aria-selected={activeTab === tab.key}
             className={`${styles.tab} ${activeTab === tab.key ? styles.tabActive : ''}`}
             onClick={() => setActiveTab(tab.key)}
           >
@@ -646,19 +744,19 @@ export const SettingsSecurity = () => {
           TAB 0: PROFILE (api.md §2.2)
           ══════════════════════════════════════════ */}
       {activeTab === 'profile' && (
-        <div className={styles.detailCard}>
-          <h2 className={styles.detailTitle}>个人资料</h2>
+        <div className={styles.detailCard} role="tabpanel" aria-labelledby="tab-profile">
+          <h2 className={styles.detailTitle}>{t('settings.profileHeading')}</h2>
 
           {profile && (
             <div style={{ marginBottom: '1rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              <p>用户名：{profile.username}</p>
-              <p>邮箱：{profile.email ?? '-'}</p>
-              <p>邮箱已验证：{profile.emailVerified ? '是' : '否'}</p>
+              <p>{t('settings.username')}：{profile.username}</p>
+              <p>{t('settings.email')}：{profile.email ?? '-'}</p>
+              <p>{t('settings.emailVerified')}：{profile.emailVerified ? t('settings.yes') : t('settings.no')}</p>
             </div>
           )}
 
           <label className={styles.headingDesc} style={{ display: 'block', marginBottom: '0.75rem' }}>
-            显示名称（1-50 字符）
+            {t('settings.displayNameLabel')}
             <input
               type="text"
               value={profileDisplayName}
@@ -667,14 +765,15 @@ export const SettingsSecurity = () => {
               className={styles.input}
               maxLength={50}
               required
+              aria-describedby={profileError ? 'profile-error' : undefined}
             />
           </label>
 
           {profileSuccess && (
-            <p style={{ color: '#2e7d32', fontSize: '0.9rem', marginBottom: '0.75rem' }}>资料更新成功</p>
+            <p style={{ color: 'var(--success-color)', fontSize: '0.9rem', marginBottom: '0.75rem' }}>{t('settings.profileUpdated')}</p>
           )}
           {profileError && (
-            <p style={{ color: '#c62828', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{profileError}</p>
+            <p id="profile-error" style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{profileError}</p>
           )}
 
           <button
@@ -682,21 +781,21 @@ export const SettingsSecurity = () => {
             onClick={handleProfileUpdate}
             disabled={profileSubmitting || !profileDisplayName.trim()}
           >
-            {profileSubmitting ? '保存中...' : '保存修改'}
+            {profileSubmitting ? t('settings.saving') : t('settings.saveProfile')}
           </button>
 
           {/* GDPR 数据导出（api.md §2.3）*/}
           <div style={{ marginTop: '2rem', borderTop: '1px solid var(--divider-color)', paddingTop: '1.5rem' }}>
-            <h3 style={{ fontSize: '1rem', margin: '0 0 0.5rem' }}>导出我的数据</h3>
+            <h3 style={{ fontSize: '1rem', margin: '0 0 0.5rem' }}>{t('settings.exportHeading')}</h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
-              导出你的账号资料、投稿全文及所有关联数据。导出完成后将通过邮件下发下载链接。7 天内最多发起 2 次导出。
+              {t('settings.exportDescription')}
             </p>
 
             {exportStatus === 'done' && (
-              <p style={{ color: '#2e7d32', fontSize: '0.9rem', marginBottom: '0.5rem' }}>导出请求已受理，请查收邮件</p>
+              <p style={{ color: 'var(--success-color)', fontSize: '0.9rem', marginBottom: '0.5rem' }}>{t('settings.exportDone')}</p>
             )}
             {exportError && (
-              <p style={{ color: '#c62828', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{exportError}</p>
+              <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{exportError}</p>
             )}
 
             <button
@@ -704,41 +803,41 @@ export const SettingsSecurity = () => {
               onClick={handleExport}
               disabled={exportStatus === 'submitting'}
             >
-              {exportStatus === 'submitting' ? '请求中...' : '请求导出'}
+              {exportStatus === 'submitting' ? t('settings.requesting') : t('settings.requestExport')}
             </button>
           </div>
 
           {/* 撤销账户注销（api.md §2.5）*/}
           <div style={{ marginTop: '2rem', borderTop: '1px solid var(--divider-color)', paddingTop: '1.5rem' }}>
-            <h3 style={{ fontSize: '1rem', margin: '0 0 0.5rem' }}>撤销账户注销</h3>
+            <h3 style={{ fontSize: '1rem', margin: '0 0 0.5rem' }}>{t('settings.cancelDeletionHeading')}</h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
-              已在冷静期内？在收到注销邮件后，填入邮件中的撤销令牌和账号信息即可恢复账户。
+              {t('settings.cancelDeletionDescription')}
             </p>
 
             {cancelStatus === 'success' ? (
-              <p style={{ color: '#2e7d32', fontSize: '0.9rem', marginBottom: '0.5rem' }}>账户已成功撤销注销，请重新登录</p>
+              <p style={{ color: 'var(--success-color)', fontSize: '0.9rem', marginBottom: '0.5rem' }}>{t('settings.cancelSuccess')}</p>
             ) : (
               <>
                 <label className={styles.headingDesc} style={{ display: 'block', marginBottom: '0.5rem' }}>
-                  撤销令牌
+                  {t('settings.cancelToken')}
                   <input type="text" value={cancelToken} onChange={e => setCancelToken(e.target.value)}
                     className={styles.input} style={{ display: 'block', width: '100%', marginTop: '0.25rem' }}
-                    placeholder="邮件中的 cancelToken" />
+                    placeholder={t('settings.cancelTokenPlaceholder')} />
                 </label>
                 <label className={styles.headingDesc} style={{ display: 'block', marginBottom: '0.5rem' }}>
-                  用户名或邮箱
+                  {t('settings.cancelIdentifier')}
                   <input type="text" value={cancelIdentifier} onChange={e => setCancelIdentifier(e.target.value)}
                     className={styles.input} style={{ display: 'block', width: '100%', marginTop: '0.25rem' }}
-                    placeholder="alice@example.com" />
+                    placeholder={t('settings.cancelIdentifierPlaceholder')} />
                 </label>
                 <label className={styles.headingDesc} style={{ display: 'block', marginBottom: '0.5rem' }}>
-                  密码（选填）
+                  {t('settings.cancelPassword')}
                   <input type="password" value={cancelPassword} onChange={e => setCancelPassword(e.target.value)}
                     className={styles.input} style={{ display: 'block', width: '100%', marginTop: '0.25rem' }}
-                    placeholder="OAuth 账户可留空" />
+                    placeholder={t('settings.cancelPasswordPlaceholder')} />
                 </label>
                 <label className={styles.headingDesc} style={{ display: 'block', marginBottom: '0.75rem' }}>
-                  TOTP 验证码（选填）
+                  {t('settings.cancelMfa')}
                   <input type="text" inputMode="text" value={cancelMfaCode}
                     onChange={e => {
                       const raw = e.target.value.toUpperCase()
@@ -749,20 +848,39 @@ export const SettingsSecurity = () => {
                       }
                     }}
                     className={styles.input} style={{ display: 'block', width: '100%', marginTop: '0.25rem' }}
-                    placeholder="TOTP 6位数字 或 恢复码 XXXX-XXXX-XXXX" />
+                    placeholder={t('settings.cancelMfaPlaceholder')} />
                 </label>
 
+                {/* OAuth-only 账户：使用 Passkey 代替密码（api.md §2.5）*/}
+                {profile?.security.hasPassword === false && (
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    {cancelPasskeyAssertion ? (
+                      <p style={{ fontSize: '0.85rem', color: 'var(--success-color)' }}>{t('settings.cancelPasskeyReady')}</p>
+                    ) : (
+                      <button
+                        type="button"
+                        className={styles.btnSecondary}
+                        onClick={handleCancelPasskey}
+                        disabled={cancelPasskeyProcessing || !cancelIdentifier.trim()}
+                        style={{ color: 'var(--accent-pink)', borderColor: 'var(--accent-pink)' }}
+                      >
+                        {cancelPasskeyProcessing ? t('settings.cancelPasskeyProcessing') : t('settings.cancelPasskeyButton')}
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 {cancelError && (
-                  <p style={{ color: '#c62828', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{cancelError}</p>
+                  <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{cancelError}</p>
                 )}
 
                 <button
                   className={styles.btnSecondary}
                   onClick={handleCancelDeletion}
-                  disabled={cancelStatus === 'submitting' || !cancelToken.trim() || !cancelIdentifier.trim()}
-                  style={{ color: '#2e7d32', borderColor: '#81c784' }}
+                  disabled={cancelStatus === 'submitting' || !cancelToken.trim() || !cancelIdentifier.trim() || (!cancelPassword && !cancelPasskeyAssertion && profile?.security.hasPassword === false)}
+                  style={{ color: 'var(--success-color)', borderColor: 'var(--accent-pink)' }}
                 >
-                  {cancelStatus === 'submitting' ? '提交中...' : '撤销注销'}
+                  {cancelStatus === 'submitting' ? t('settings.submitting') : t('settings.cancelDeletionButton')}
                 </button>
               </>
             )}
@@ -774,36 +892,37 @@ export const SettingsSecurity = () => {
           TAB 1: PASSWORD
           ══════════════════════════════════════════ */}
       {activeTab === 'password' && (
-        <div className={styles.detailCard}>
-          <h2 className={styles.detailTitle}>修改密码</h2>
+        <div className={styles.detailCard} role="tabpanel" aria-labelledby="tab-password">
+          <h2 className={styles.detailTitle}>{t('settings.passwordHeading')}</h2>
 
           {profile?.security.hasPassword === false && (
             <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-              你当前未设置密码。请设置一个密码以增加账户安全性。
+              {t('settings.passwordNotSet')}
             </p>
           )}
 
           {passwordSuccess && (
-            <p style={{ color: '#2e7d32', fontSize: '0.9rem', marginBottom: '1rem' }}>
-              密码修改成功
+            <p style={{ color: 'var(--success-color)', fontSize: '0.9rem', marginBottom: '1rem' }}>
+              {t('settings.passwordChanged')}
             </p>
           )}
 
           {profile?.security.hasPassword && (
             <label className={styles.headingDesc} style={{ display: 'block', marginBottom: '0.5rem' }}>
-              当前密码
+              {t('settings.currentPassword')}
               <input
                 type="password"
                 value={currentPassword}
                 onChange={e => setCurrentPassword(e.target.value)}
                 style={{ display: 'block', width: '100%', marginTop: '0.25rem' }}
                 className={styles.input}
+                aria-describedby={passwordError ? 'password-error' : undefined}
               />
             </label>
           )}
 
           <label className={styles.headingDesc} style={{ display: 'block', marginBottom: '0.5rem' }}>
-            新密码（12-128 字符）
+            {t('settings.newPassword')}
             <input
               type="password"
               value={newPassword}
@@ -816,7 +935,7 @@ export const SettingsSecurity = () => {
           </label>
 
           <label className={styles.headingDesc} style={{ display: 'block', marginBottom: '0.75rem' }}>
-            确认新密码
+            {t('settings.confirmPassword')}
             <input
               type="password"
               value={confirmPassword}
@@ -827,7 +946,7 @@ export const SettingsSecurity = () => {
           </label>
 
           {passwordError && (
-            <p style={{ color: '#c62828', fontSize: '0.85rem', marginBottom: '0.5rem' }}>{passwordError}</p>
+            <p id="password-error" style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{passwordError}</p>
           )}
 
           <button
@@ -835,7 +954,7 @@ export const SettingsSecurity = () => {
             onClick={handlePasswordChange}
             disabled={passwordSubmitting || !newPassword}
           >
-            {passwordSubmitting ? '修改中...' : '修改密码'}
+            {passwordSubmitting ? t('settings.changing') : t('settings.changePassword')}
           </button>
         </div>
       )}
@@ -844,21 +963,21 @@ export const SettingsSecurity = () => {
           TAB 2: TOTP
           ══════════════════════════════════════════ */}
       {activeTab === 'totp' && (
-        <div className={styles.detailCard}>
-          <h2 className={styles.detailTitle}>TOTP 二步验证</h2>
+        <div className={styles.detailCard} role="tabpanel" aria-labelledby="tab-totp">
+          <h2 className={styles.detailTitle}>{t('settings.totpHeading')}</h2>
 
           {profile?.security.totpEnabled ? (
             <>
-              <p style={{ fontSize: '0.9rem', color: '#2e7d32', marginBottom: '1rem' }}>
-                ✅ TOTP 已启用
+              <p style={{ fontSize: '0.9rem', color: 'var(--success-color)', marginBottom: '1rem' }}>
+                {t('settings.totpEnabled')}
               </p>
 
               {/* Disable TOTP */}
-              <h3 style={{ fontSize: '1rem', margin: '0 0 0.75rem' }}>禁用 TOTP</h3>
+              <h3 style={{ fontSize: '1rem', margin: '0 0 0.75rem' }}>{t('settings.totpDisableTitle')}</h3>
               {profile?.security.hasPassword && (
                 <input
                   type="password"
-                  placeholder="当前密码（如已设置）"
+                  placeholder={t('settings.totpDisablePlaceholder')}
                   value={disableTotpPassword}
                   onChange={e => setDisableTotpPassword(e.target.value)}
                   className={styles.input}
@@ -868,7 +987,7 @@ export const SettingsSecurity = () => {
               <input
                 type="text"
                 inputMode="numeric"
-                placeholder="TOTP 验证码或恢复码"
+                placeholder={t('settings.totpCodePlaceholder')}
                 value={disableTotpCode}
                 onChange={e => setDisableTotpCode(e.target.value)}
                 className={styles.input}
@@ -879,16 +998,16 @@ export const SettingsSecurity = () => {
                 onClick={handleTotpDisable}
                 disabled={disableTotpSubmitting || !disableTotpCode}
               >
-                {disableTotpSubmitting ? '禁用中...' : '禁用 TOTP'}
+                {disableTotpSubmitting ? t('settings.totpDisabling') : t('settings.totpDisableButton')}
               </button>
 
               {/* Regenerate recovery codes */}
               <div style={{ marginTop: '2rem', borderTop: '1px solid var(--divider-color)', paddingTop: '1rem' }}>
-                <h3 style={{ fontSize: '1rem', margin: '0 0 0.75rem' }}>重新生成恢复码</h3>
+                <h3 style={{ fontSize: '1rem', margin: '0 0 0.75rem' }}>{t('settings.recoveryRegenerateHeading')}</h3>
                 <input
                   type="text"
                   inputMode="numeric"
-                  placeholder="TOTP 验证码或一个未使用的旧恢复码"
+                  placeholder={t('settings.recoveryRegeneratePlaceholder')}
                   value={regenerateCode}
                   onChange={e => setRegenerateCode(e.target.value)}
                   className={styles.input}
@@ -899,14 +1018,14 @@ export const SettingsSecurity = () => {
                   onClick={handleRegenerateRecoveryCodes}
                   disabled={regenerateSubmitting || !regenerateCode}
                 >
-                  {regenerateSubmitting ? '生成中...' : '重新生成'}
+                  {regenerateSubmitting ? t('settings.recoveryRegenerating') : t('settings.recoveryRegenerateButton')}
                 </button>
               </div>
             </>
           ) : (
             <>
               <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                TOTP 二步验证增加账户安全性。启用后登录时需要输入认证器应用中的 6 位验证码。
+                {t('settings.totpSetupDescription')}
               </p>
 
               {!totpSetupData ? (
@@ -915,12 +1034,12 @@ export const SettingsSecurity = () => {
                   onClick={handleTotpSetup}
                   disabled={totpSubmitting}
                 >
-                  {totpSubmitting ? '准备中...' : '开始设置 TOTP'}
+                  {totpSubmitting ? t('settings.totpPreparing') : t('settings.totpSetupButton')}
                 </button>
               ) : (
                 <div>
                   <p style={{ fontSize: '0.9rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>
-                    请在认证器应用中扫描此二维码或手动输入密钥：
+                    {t('settings.totpScanHint')}
                   </p>
 
                   {totpSetupData.qrCodeImage && (
@@ -934,23 +1053,24 @@ export const SettingsSecurity = () => {
                   )}
 
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', marginBottom: '1rem' }}>
-                    密钥：<code style={{ fontSize: '0.9rem', letterSpacing: '0.1em' }}>{totpSetupData.secret}</code>
+                    {t('settings.secretLabel')}<code style={{ fontSize: '0.9rem', letterSpacing: '0.1em' }}>{totpSetupData.secret}</code>
                   </p>
 
                   <input
                     type="text"
                     inputMode="numeric"
-                    placeholder="输入验证器中的 6 位验证码"
+                    placeholder={t('settings.totpCodeInputPlaceholder')}
                     value={totpCode}
                     onChange={e => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     className={styles.input}
                     style={{ display: 'block', width: '200px', margin: '0 auto 0.75rem', textAlign: 'center', fontSize: '1.2rem', letterSpacing: '0.3em' }}
                     maxLength={6}
                     autoFocus
+                    aria-describedby={totpError ? 'totp-error' : undefined}
                   />
 
                   {totpError && (
-                    <p style={{ color: '#c62828', fontSize: '0.85rem', textAlign: 'center', marginBottom: '0.5rem' }}>{totpError}</p>
+                    <p id="totp-error" style={{ color: 'var(--error-color)', fontSize: '0.85rem', textAlign: 'center', marginBottom: '0.5rem' }} role="alert">{totpError}</p>
                   )}
 
                   <div style={{ textAlign: 'center' }}>
@@ -959,7 +1079,7 @@ export const SettingsSecurity = () => {
                       onClick={handleTotpEnable}
                       disabled={totpSubmitting || totpCode.length < 6}
                     >
-                      {totpSubmitting ? '验证中...' : '确认并启用'}
+                      {totpSubmitting ? t('settings.totpVerifying') : t('settings.totpConfirmButton')}
                     </button>
                   </div>
                 </div>
@@ -971,18 +1091,18 @@ export const SettingsSecurity = () => {
           {showRecoveryCodes && recoveryCodes && recoveryCodes.length > 0 && (
             <div style={{
               position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(0,0,0,0.5)', zIndex: 1000,
+              background: 'var(--overlay-bg)', zIndex: 1000,
             }}>
-              <div style={{
+              <div role="dialog" aria-modal="true" aria-labelledby="recovery-codes-title" style={{
                 background: 'var(--bg-color, #fff)', padding: '2rem', borderRadius: '10px',
                 maxWidth: '500px', width: '90%',
               }}>
-                <h3 style={{ margin: '0 0 0.5rem' }}>恢复码</h3>
-                <p style={{ fontSize: '0.85rem', color: '#c62828', marginBottom: '0.75rem' }}>
-                  请立即安全保存这些恢复码。它们仅在此显示一次。
+                <h3 id="recovery-codes-title" style={{ margin: '0 0 0.5rem' }}>{t('settings.recoveryCodesTitle')}</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--error-color)', marginBottom: '0.75rem' }}>
+                  {t('settings.recoveryCodesHint')}
                 </p>
                 <div style={{
-                  background: '#f5f5f5', padding: '1rem', borderRadius: '8px',
+                  background: 'var(--hover-bg)', padding: '1rem', borderRadius: '8px',
                   fontFamily: 'monospace', fontSize: '0.9rem', lineHeight: 2,
                 }}>
                   {recoveryCodes.map((code, i) => (
@@ -994,14 +1114,14 @@ export const SettingsSecurity = () => {
                   onClick={() => { setShowRecoveryCodes(false); setRecoveryCodes(null) }}
                   style={{ marginTop: '1rem' }}
                 >
-                  我已保存
+                  {t('settings.recoveryCodesSaved')}
                 </button>
               </div>
             </div>
           )}
 
           {totpError && !totpSetupData && (
-            <p style={{ color: '#c62828', fontSize: '0.85rem', marginTop: '0.5rem' }}>{totpError}</p>
+            <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginTop: '0.5rem' }}>{totpError}</p>
           )}
         </div>
       )}
@@ -1010,17 +1130,17 @@ export const SettingsSecurity = () => {
           TAB 3: PASSKEY
           ══════════════════════════════════════════ */}
       {activeTab === 'passkey' && (
-        <div className={styles.detailCard}>
-          <h2 className={styles.detailTitle}>Passkey</h2>
+        <div className={styles.detailCard} role="tabpanel" aria-labelledby="tab-passkey">
+          <h2 className={styles.detailTitle}>{t('settings.passkeyHeading')}</h2>
           <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-            使用生物识别或设备 PIN 快速登录。
+            {t('settings.passkeyDescription')}
           </p>
 
           {/* Register new */}
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', alignItems: 'center' }}>
             <input
               type="text"
-              placeholder="Passkey 名称（如 我的 iPhone）"
+              placeholder={t('settings.passkeyNamePlaceholder')}
               value={passkeyName}
               onChange={e => setPasskeyName(e.target.value)}
               className={styles.input}
@@ -1032,19 +1152,19 @@ export const SettingsSecurity = () => {
               onClick={handlePasskeyRegister}
               disabled={passkeySubmitting || !passkeyName.trim()}
             >
-              {passkeySubmitting ? '注册中...' : '注册 Passkey'}
+              {passkeySubmitting ? t('settings.passkeyRegistering') : t('settings.passkeyRegisterButton')}
             </button>
           </div>
 
           {passkeyError && (
-            <p style={{ color: '#c62828', fontSize: '0.85rem', marginBottom: '0.5rem' }}>{passkeyError}</p>
+            <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{passkeyError}</p>
           )}
 
           {/* List */}
           {passkeyLoading ? (
-            <div className={styles.loading}>加载中...</div>
+            <div className={styles.loading}>{t('settings.loading')}</div>
           ) : passkeys.length === 0 ? (
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>尚未注册 Passkey</p>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('settings.passkeyEmpty')}</p>
           ) : (
             <ul className={styles.list}>
               {passkeys.map(pk => (
@@ -1052,18 +1172,18 @@ export const SettingsSecurity = () => {
                   <div className={styles.itemMain}>
                     <div className={styles.itemTitle}>{pk.name}</div>
                     <div className={styles.itemMeta}>
-                      {pk.status === 'frozen' ? `❄️ 已冻结 (${pk.frozenReason || '未知原因'}) · ` : ''}
-                      注册于 {formatTs(pk.createdAt)}
-                      {pk.lastUsedAt ? ` · 上次使用 ${formatTs(pk.lastUsedAt)}` : ''}
+                      {pk.status === 'frozen' ? `❄️ ${t('settings.passkeyFrozen')} (${pk.frozenReason || t('settings.passkeyUnknownReason')}) · ` : ''}
+                      {t('settings.passkeyRegisteredAt')} {formatTs(pk.createdAt)}
+                      {pk.lastUsedAt ? ` · ${t('settings.passkeyLastUsed')} ${formatTs(pk.lastUsedAt)}` : ''}
                     </div>
                   </div>
                   {pk.status === 'active' && (
                     <button
                       className={styles.btnSecondary}
                       onClick={() => handlePasskeyDelete(pk.id)}
-                      style={{ color: '#c62828', borderColor: '#ef9a9a' }}
+                      style={{ color: 'var(--error-color)', borderColor: 'var(--divider-color)' }}
                     >
-                      删除
+                      {t('settings.passkeyDelete')}
                     </button>
                   )}
                 </li>
@@ -1077,18 +1197,18 @@ export const SettingsSecurity = () => {
           TAB 4: OAUTH BINDING
           ══════════════════════════════════════════ */}
       {activeTab === 'oauth' && (
-        <div className={styles.detailCard}>
-          <h2 className={styles.detailTitle}>OAuth 账号绑定</h2>
+        <div className={styles.detailCard} role="tabpanel" aria-labelledby="tab-oauth">
+          <h2 className={styles.detailTitle}>{t('settings.oauthHeading')}</h2>
           <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-            绑定 GitHub 或 X（Twitter）账号以便快速登录。
+            {t('settings.oauthDescription')}
           </p>
 
           {oauthError && (
-            <p style={{ color: '#c62828', fontSize: '0.85rem', marginBottom: '0.5rem' }}>{oauthError}</p>
+            <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{oauthError}</p>
           )}
 
           {oauthLoading ? (
-            <div className={styles.loading}>加载中...</div>
+            <div className={styles.loading}>{t('settings.loading')}</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {/* GitHub */}
@@ -1100,14 +1220,14 @@ export const SettingsSecurity = () => {
                       const gh = oauthAccounts.find(a => a.provider === 'github')
                       return gh
                         ? <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0.25rem 0 0' }}>
-                            @{gh.providerUsername} · 绑定于 {formatTs(gh.boundAt)}
+                            @{gh.providerUsername} · {t('settings.oauthBoundAt')} {formatTs(gh.boundAt)}
                           </p>
-                        : <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>未绑定</p>
+                        : <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>{t('settings.oauthNotBound')}</p>
                     })()}
                   </div>
                   {oauthAccounts.find(a => a.provider === 'github')
-                    ? <button className={styles.btnSecondary} onClick={() => handleOAuthUnbind('github')} style={{ color: '#c62828' }}>解绑</button>
-                    : <button className={styles.btnPrimary} onClick={() => handleOAuthBind('github')}>绑定</button>
+                    ? <button className={styles.btnSecondary} onClick={() => handleOAuthUnbind('github')} style={{ color: 'var(--error-color)' }}>{t('settings.oauthUnbind')}</button>
+                    : <button className={styles.btnPrimary} onClick={() => handleOAuthBind('github')}>{t('settings.oauthBind')}</button>
                   }
                 </div>
               </div>
@@ -1121,14 +1241,14 @@ export const SettingsSecurity = () => {
                       const x = oauthAccounts.find(a => a.provider === 'x')
                       return x
                         ? <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0.25rem 0 0' }}>
-                            @{x.providerUsername} · 绑定于 {formatTs(x.boundAt)}
+                            @{x.providerUsername} · {t('settings.oauthBoundAt')} {formatTs(x.boundAt)}
                           </p>
-                        : <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>未绑定</p>
+                        : <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>{t('settings.oauthNotBound')}</p>
                     })()}
                   </div>
                   {oauthAccounts.find(a => a.provider === 'x')
-                    ? <button className={styles.btnSecondary} onClick={() => handleOAuthUnbind('x')} style={{ color: '#c62828' }}>解绑</button>
-                    : <button className={styles.btnPrimary} onClick={() => handleOAuthBind('x')}>绑定</button>
+                    ? <button className={styles.btnSecondary} onClick={() => handleOAuthUnbind('x')} style={{ color: 'var(--error-color)' }}>{t('settings.oauthUnbind')}</button>
+                    : <button className={styles.btnPrimary} onClick={() => handleOAuthBind('x')}>{t('settings.oauthBind')}</button>
                   }
                 </div>
               </div>
@@ -1138,50 +1258,50 @@ export const SettingsSecurity = () => {
       )}
 
       {activeTab === 'sessions' && (
-        <div className={styles.detailCard}>
-          <h2 className={styles.detailTitle}>活跃会话</h2>
+        <div className={styles.detailCard} role="tabpanel" aria-labelledby="tab-sessions">
+          <h2 className={styles.detailTitle}>{t('settings.sessionsHeading')}</h2>
           <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-            管理当前登录的设备
+            {t('settings.sessionsDescription')}
           </p>
           <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <button className={styles.btnSecondary} onClick={async () => {
-              if (!window.confirm('确定退出全部会话？包括当前会话在内的所有设备都将被登出，你需要重新登录。')) return
+              if (!window.confirm(t('settings.sessionsLogoutAllConfirm'))) return
               const result = await logoutAll()
               if (result) {
                 navigate('/login', { replace: true })
               } else {
-                setSessionError('退出全部会话失败')
+                setSessionError(t('settings.sessionsLogoutAllError'))
               }
-            }} style={{ color: '#c62828', borderColor: '#ef9a9a' }}>
-              退出全部会话
+            }} style={{ color: 'var(--error-color)', borderColor: 'var(--divider-color)' }}>
+              {t('settings.sessionsLogoutAll')}
             </button>
           </div>
           {sessionError && (
-            <p style={{ color: '#c62828', fontSize: '0.85rem', marginBottom: '0.5rem' }}>{sessionError}</p>
+            <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{sessionError}</p>
           )}
           {sessionLoading && sessions.length === 0 ? (
-            <div className={styles.loading}>加载中...</div>
+            <div className={styles.loading}>{t('settings.loading')}</div>
           ) : sessions.length === 0 ? (
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>无活跃会话</p>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('settings.sessionsEmpty')}</p>
           ) : (
             <ul className={styles.list}>
               {sessions.map(sess => (
                 <li key={sess.id} className={styles.item}>
                   <div className={styles.itemMain}>
                     <div className={styles.itemTitle}>
-                      {sess.current ? `🟢 当前会话` : `○ ${sess.device.browser || '-'}`}
+                      {sess.current ? `🟢 ${t('settings.sessionsCurrent')}` : `○ ${sess.device.browser || '-'}`}
                     </div>
                     <div className={styles.itemMeta}>
                       {sess.device.os ? `${sess.device.os} · ` : ''}
-                      IP 段: {sess.ipPrefix} · 登录: {formatTs(sess.createdAt)}
-                      {sess.lastUsedAt ? ` · 最后活跃: ${formatTs(sess.lastUsedAt)}` : ''}
+                      {t('settings.sessionsIpPrefix')}: {sess.ipPrefix} · {t('settings.sessionsLoggedIn')}: {formatTs(sess.createdAt)}
+                      {sess.lastUsedAt ? ` · ${t('settings.sessionsLastActive')}: ${formatTs(sess.lastUsedAt)}` : ''}
                     </div>
                   </div>
                   {!sess.current && (
                     <button
                       className={styles.btnSecondary}
                       onClick={async () => {
-                        if (!window.confirm('确定吊销该会话？')) return
+                        if (!window.confirm(t('settings.sessionsRevokeConfirm'))) return
                         setSessionRevoking(sess.id)
                         const result = await del(`/me/sessions/${sess.id}`)
                         if (result.ok) {
@@ -1192,9 +1312,9 @@ export const SettingsSecurity = () => {
                         setSessionRevoking(null)
                       }}
                       disabled={sessionRevoking === sess.id}
-                      style={{ color: '#c62828', borderColor: '#ef9a9a' }}
+                      style={{ color: 'var(--error-color)', borderColor: 'var(--divider-color)' }}
                     >
-                      {sessionRevoking === sess.id ? '吊销中...' : '吊销'}
+                      {sessionRevoking === sess.id ? t('settings.sessionsRevoking') : t('settings.sessionsRevoke')}
                     </button>
                   )}
                 </li>
@@ -1208,20 +1328,20 @@ export const SettingsSecurity = () => {
               disabled={sessionLoading}
               style={{ display: 'block', margin: '1rem auto' }}
             >
-              {sessionLoading ? '加载中...' : '加载更多会话'}
+              {sessionLoading ? t('settings.loading') : t('settings.sessionsLoadMore')}
             </button>
           )}
         </div>
       )}
 
       {/* Delete account section (H2) */}
-      <div className={styles.detailCard} style={{ marginTop: '1rem', borderColor: '#ef9a9a' }}>
-        <h2 className={styles.detailTitle} style={{ color: '#c62828' }}>{t('settings.deleteAccount.heading')}</h2>
+      <div className={styles.detailCard} style={{ marginTop: '1rem', borderColor: 'var(--divider-color)' }}>
+        <h2 className={styles.detailTitle} style={{ color: 'var(--error-color)' }}>{t('settings.deleteAccount.heading')}</h2>
         <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
           {t('settings.deleteAccount.description')}
         </p>
         {cancelError && (
-          <p style={{ color: '#c62828', fontSize: '0.85rem', marginBottom: '0.5rem' }}>{cancelError}</p>
+          <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{cancelError}</p>
         )}
         <button
           className={styles.btnSecondary}
@@ -1230,7 +1350,7 @@ export const SettingsSecurity = () => {
             setPendingAction('delete-account')
             setShowStepUp(true)
           }}
-          style={{ color: '#c62828', borderColor: '#ef9a9a' }}
+          style={{ color: 'var(--error-color)', borderColor: 'var(--divider-color)' }}
         >
           {t('settings.deleteAccount.button')}
         </button>

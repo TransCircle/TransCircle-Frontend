@@ -26,7 +26,7 @@ export const NotFound = () => {
         {t('notFound.title')}
       </p>
       <Link
-        to="/submit"
+        to="/"
         style={{
           color: 'var(--accent-pink)',
           textDecoration: 'none',

@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { get } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import styles from './Admin.module.css'
@@ -22,6 +23,7 @@ function formatTs(ts: number): string {
 }
 
 export const Home = () => {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -30,38 +32,45 @@ export const Home = () => {
   const [cursor, setCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const fetchList = async (cursorVal?: string | null) => {
+  const searchTerm = searchParams.get('search')?.toLowerCase()
+
+  const [error, setError] = useState('')
+
+  const fetchList = async (cursorVal?: string | null, search?: string | null) => {
     setLoading(true)
     try {
       const params = new URLSearchParams({ limit: '20' })
       if (cursorVal) params.set('cursor', cursorVal)
+      if (search) params.set('search', search)
       const result = await get<PublicContribution[]>(`/public/contributions?${params}`)
       if (result.ok) {
-        // Client-side search filtering
-        const searchTerm = searchParams.get('search')?.toLowerCase()
-        let data = result.data
-        if (searchTerm) {
-          data = data.filter(item =>
-            item.title.toLowerCase().includes(searchTerm) ||
-            item.summary?.toLowerCase().includes(searchTerm) ||
-            item.tags.some(t => t.toLowerCase().includes(searchTerm))
-          )
-        }
         if (cursorVal) {
-          setItems(prev => [...prev, ...data])
+          setItems(prev => [...prev, ...result.data])
         } else {
-          setItems(data)
+          setItems(result.data)
         }
         setCursor(result.pagination?.nextCursor || null)
+        setError('')
+      } else {
+        setError(result.error.message || t('home.errorLoad'))
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('home.errorLoad'))
     } finally {
       setLoading(false)
     }
   }
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { fetchList();  
-  }, [searchParams])
+  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
+  useEffect(() => { fetchList(null, searchTerm || null);  }, [searchTerm])
+
+  const filteredItems = searchTerm
+    ? items.filter(item =>
+        item.title.toLowerCase().includes(searchTerm) ||
+        item.summary?.toLowerCase().includes(searchTerm) ||
+        item.tags.some(t => t.toLowerCase().includes(searchTerm))
+      )
+    : items
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -75,38 +84,39 @@ export const Home = () => {
     <main className={styles.container}>
       <header style={{ marginBottom: '2rem' }}>
         <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+          <label htmlFor="search-input" style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{t('home.searchLabel')}</label>
           <input
+            id="search-input"
             name="search"
             type="text"
             defaultValue={searchParams.get('search') || ''}
-            placeholder="筛选当前已加载结果..."
+            placeholder={t('home.searchPlaceholder', { limit: 20 })}
             style={{ flex: 1, padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
           />
-          <button type="submit" style={{ padding: '0.4rem 0.75rem', cursor: 'pointer' }}>搜索</button>
+          <button type="submit" style={{ padding: '0.4rem 0.75rem', cursor: 'pointer' }}>{t('home.searchSubmit')}</button>
         </form>
         <h1 className={styles.heading}>TransCircle</h1>
-        <p className={styles.headingDesc}>社区翻译与协作平台</p>
+        <p className={styles.headingDesc}>TransCircle</p>
         {user && (
           <div style={{ marginTop: '0.75rem' }}>
-            <Link to="/submit" style={{ color: 'var(--accent-pink)' }}>去投稿</Link>
+            <Link to="/submit" style={{ color: 'var(--accent-pink)' }}>{t('home.submitLink')}</Link>
             {' · '}
-            <Link to="/me/contributions" style={{ color: 'var(--accent-pink)' }}>我的投稿</Link>
+            <Link to="/me/contributions" style={{ color: 'var(--accent-pink)' }}>{t('home.myContributions')}</Link>
           </div>
         )}
       </header>
 
-      {!loading && items.length === 0 ? (
-        <div className={styles.empty}>暂无已发布的投稿</div>
+      {error ? (
+        <div className={styles.empty} role="alert">{error}</div>
+      ) : !loading && filteredItems.length === 0 ? (
+        <div className={styles.empty}>{searchTerm ? t('home.noMatches') : t('home.empty')}</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {items.map(item => (
+          {filteredItems.map(item => (
             <div
               key={item.id}
               className={styles.detailCard}
-              role="button"
-              tabIndex={0}
               onClick={() => navigate(`/contributions/${item.id}`)}
-              onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/contributions/${item.id}`) }}
               style={{ cursor: 'pointer' }}
             >
               <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.25rem', color: 'var(--text-main)' }}>
@@ -135,7 +145,7 @@ export const Home = () => {
           disabled={loading}
           style={{ display: 'block', margin: '1.5rem auto' }}
         >
-          {loading ? '加载中...' : '加载更多'}
+          {loading ? t('home.loading') : t('home.loadMore')}
         </button>
       )}
     </main>

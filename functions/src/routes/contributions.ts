@@ -73,6 +73,19 @@ router.post('/', requireAuth, (req, _res, next) => { req.rateLimitAction = 'subm
     return
   }
 
+  // Rejected submission cooling period (api.md §3.1): users with ≥3 rejected submissions
+  // in the last 7 days are cooled for 24 hours
+  const recentRejections = await queryOne(
+    `SELECT COUNT(*) as cnt FROM contribution_review_events e
+     JOIN contributions c ON c.id = e.contributionId
+     WHERE c.authorUserId = ? AND e.action = 'review' AND e.toStatus = 'rejected' AND e.createdAt >= ?`,
+    [req.user!.userId, now - 7 * 86400_000],
+  )
+  if ((recentRejections?.cnt as number || 0) >= 3) {
+    sendError(res, Errors.RATE_LIMITED.code, '您的投稿多次被拒,请 24 小时后重试', req.requestId, 429)
+    return
+  }
+
   const parsed = contributionSchema.safeParse(req.body)
   if (!parsed.success) {
     sendError(res, Errors.VALIDATION_ERROR.code, '请求数据校验失败', req.requestId, Errors.VALIDATION_ERROR.status, zodErrorsToDetails(parsed.error.flatten()))
@@ -122,7 +135,7 @@ router.post('/', requireAuth, (req, _res, next) => { req.rateLimitAction = 'subm
   } catch (insertErr: unknown) {
     const mysqlErr = insertErr as { code?: string }
     if (mysqlErr.code === 'ER_DUP_ENTRY') {
-      sendError(res, Errors.IDEMPOTENCY_KEY_MISMATCH.code, '重复提交', req.requestId, 409)
+      sendError(res, Errors.DUPLICATE_SUBMISSION.code, '重复提交', req.requestId, 409)
       return
     }
     throw insertErr

@@ -10,8 +10,9 @@ import { conf } from '../Config'
 import { log } from '../Logger'
 
 const DEV_MODE = process.env.NODE_ENV !== 'production'
+const DEV_FRONTEND = process.env.DEV_FRONTEND_URL || 'http://localhost:5173'
 const FRONTEND_URL = DEV_MODE
-  ? 'http://localhost:1145'
+  ? DEV_FRONTEND
   : (conf.APP as Record<string, string | undefined> | undefined)?.FRONTEND_URL || 'https://submit.transcircle.org'
 const RESEND_API_KEY = process.env.RESEND_API_KEY
 const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@transcircle.org'

@@ -9,7 +9,7 @@ import { rateLimit } from './middleware/rateLimit'
 import { sendError, Errors } from './utils/response'
 import { sendSuccess } from './utils/response'
 import pool from './Database'
-import { metrics } from './utils/metrics'
+import { metrics, pushHistogramSample } from './utils/metrics'
 
 // Import route modules
 import authRoutes from './routes/auth'
@@ -51,7 +51,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   res.on('finish', () => {
     const duration = Date.now() - start
     // Record request duration histogram per api.md §13.2.2
-    metrics.httpRequestDurationSeconds.push(duration / 1000)
+    pushHistogramSample(metrics.httpRequestDurationSeconds, duration / 1000)
     const method = req.method.padEnd(6, ' ')
     const status = res.statusCode.toString().padStart(3, ' ')
     metrics.httpByStatus[res.statusCode] = (metrics.httpByStatus[res.statusCode] || 0) + 1

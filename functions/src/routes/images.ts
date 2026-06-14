@@ -7,7 +7,7 @@ import { metrics } from '../utils/metrics'
 import { requireAuth } from '../middleware/auth'
 import { rateLimitCheck } from '../middleware/rateLimit'
 import { writeAuditLog } from '../utils/audit'
-import { createHash } from 'node:crypto'
+import { createHash, createHmac } from 'node:crypto'
 import { readFileSync, existsSync, mkdirSync, writeFileSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
 import { conf } from '../Config'
@@ -471,6 +471,69 @@ const fsStorage: ImageStorageBackend = {
   },
 }
 
+/**
+ * AWS Signature V4 helpers for S3-compatible storage.
+ * Uses Node.js crypto for HMAC-SHA256 signing.
+ */
+function sha256Hash(data: string): string {
+  return createHash('sha256').update(data, 'utf-8').digest('hex')
+}
+
+function hmacSha256(key: Uint8Array | string, data: string): Uint8Array {
+  return createHmac('sha256', key).update(data, 'utf-8').digest()
+}
+
+async function s3Sign(
+  method: string,
+  host: string,
+  path: string,
+  queryString: string,
+  headers: Record<string, string>,
+  payloadHash: string,
+  region: string,
+  accessKey: string,
+  secretKey: string,
+): Promise<string> {
+  const amzDate = headers['x-amz-date']
+  const dateStamp = amzDate.slice(0, 8)
+  const credentialScope = `${dateStamp}/${region}/s3/aws4_request`
+
+  // Canonical request
+  const canonicalHeaders = Object.entries(headers)
+    .map(([k, v]) => `${k.toLowerCase()}:${v}\n`)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .join('')
+  const signedHeaders = Object.keys(headers).map(k => k.toLowerCase()).sort().join(';')
+  const canonicalRequest = [
+    method,
+    path,
+    queryString,
+    canonicalHeaders,
+    signedHeaders,
+    payloadHash,
+  ].join('\n')
+
+  // String to sign
+  const stringToSign = [
+    'AWS4-HMAC-SHA256',
+    amzDate,
+    credentialScope,
+    sha256Hash(canonicalRequest),
+  ].join('\n')
+
+  // Signing key
+  const dateKey = hmacSha256('AWS4' + secretKey, dateStamp)
+  const dateRegionKey = hmacSha256(dateKey, region)
+  const dateRegionServiceKey = hmacSha256(dateRegionKey, 's3')
+  const signingKey = hmacSha256(dateRegionServiceKey, 'aws4_request')
+
+  const signature = Buffer.from(hmacSha256(signingKey, stringToSign)).toString('hex')
+
+  return `AWS4-HMAC-SHA256 Credential=${accessKey}/${credentialScope},SignedHeaders=${signedHeaders},Signature=${signature}`
+}
+
+
+
 /** S3-compatible storage (R2 / MinIO / AWS S3) — enabled when S3_BUCKET is set */
 let _s3Storage: ImageStorageBackend | null = null
 
@@ -480,55 +543,72 @@ async function getS3Storage(): Promise<ImageStorageBackend | null> {
   const bucket = process.env.S3_BUCKET || process.env.R2_BUCKET
   if (!bucket) return null
 
-  try {
-    // Optional dependency — the SDK is only needed at runtime when S3_BUCKET is set.
-    // TypeScript cannot resolve the module at compile time without installing it.
-    // We use a barebones S3 client via fetch + AWS Signature V4 instead.
-    // If you prefer the full SDK, install @aws-sdk/client-s3 and replace this block.
-    interface S3Put { Body: BodyInit; Key: string; ContentType: string; CacheControl: string }
-    interface S3Get { Key: string }
-    interface S3Del { Key: string }
-    const s3Endpoint = process.env.S3_ENDPOINT || `https://${bucket}.s3.${process.env.S3_REGION || 'us-east-1'}.amazonaws.com`
-    async function s3Send(cmd: 'Put' | 'Get' | 'Del', args: S3Put | S3Get | S3Del): Promise<{ Body?: Uint8Array } | void> {
-      if (cmd === 'Put') {
-        const p = args as S3Put
-        const res = await fetch(`${s3Endpoint}/${encodeURIComponent(p.Key)}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': p.ContentType, 'Cache-Control': p.CacheControl },
-          body: p.Body,
-        })
-        if (!res.ok) throw new Error(`S3 PUT ${res.status}`)
-      } else if (cmd === 'Get') {
-        const g = args as S3Get
-        const res = await fetch(`${s3Endpoint}/${encodeURIComponent(g.Key)}`)
-        if (!res.ok) return
-        return { Body: new Uint8Array(await res.arrayBuffer()) }
-      } else if (cmd === 'Del') {
-        const d = args as S3Del
-        await fetch(`${s3Endpoint}/${encodeURIComponent(d.Key)}`, { method: 'DELETE' })
-      }
-    }
-
-    _s3Storage = {
-      async write(key: string, buffer: Buffer, mimeType: string): Promise<void> {
-        await s3Send('Put', { Body: new Uint8Array(buffer) as BodyInit, Key: key, ContentType: mimeType, CacheControl: 'public, max-age=31536000, immutable' })
-      },
-      async read(key: string): Promise<Buffer | null> {
-        try {
-          const resp = await s3Send('Get', { Key: key })
-          const body = resp as { Body?: Uint8Array } | undefined
-          return body?.Body ? Buffer.from(body.Body) : null
-        } catch { return null }
-      },
-      async delete(key: string): Promise<void> {
-        await s3Send('Del', { Key: key })
-      },
-    }
-    return _s3Storage
-  } catch {
-    console.warn('[images] S3 client init failed — falling back to filesystem storage')
+  const accessKey = process.env.S3_ACCESS_KEY || process.env.R2_ACCESS_KEY
+  const secretKey = process.env.S3_SECRET_KEY || process.env.R2_SECRET_KEY
+  if (!accessKey || !secretKey) {
+    console.warn('[images] S3 storage requires S3_ACCESS_KEY and S3_SECRET_KEY')
     return null
   }
+
+  const region = process.env.S3_REGION || 'us-east-1'
+  const s3Endpoint = process.env.S3_ENDPOINT || `https://${bucket}.s3.${region}.amazonaws.com`
+
+  async function s3Send(
+    method: string,
+    path: string,
+    body?: BodyInit,
+    extraHeaders?: Record<string, string>,
+  ): Promise<Response> {
+    const host = new URL(s3Endpoint).host
+    const amzDate = new Date().toISOString().replace(/[:-]/g, '').slice(0, 15) + 'Z'
+    const payloadHash = body ? createHash('sha256').update(Buffer.from(await new Response(body).arrayBuffer())).digest('hex') : sha256Hash('')
+
+    const headers: Record<string, string> = {
+      'host': host,
+      'x-amz-date': amzDate,
+      'x-amz-content-sha256': payloadHash,
+      ...extraHeaders,
+    }
+
+    const url = `${s3Endpoint}${path}`
+    const authorization = await s3Sign(
+      method, host, path, '', headers, payloadHash,
+      region, accessKey!, secretKey!,
+    )
+    headers['authorization'] = authorization
+
+    return fetch(url, {
+      method,
+      headers,
+      body: method === 'PUT' || method === 'POST' ? body : undefined,
+    })
+  }
+
+  _s3Storage = {
+    async write(key: string, buffer: Buffer, mimeType: string): Promise<void> {
+      const encodedKey = encodeURIComponent(key)
+      const res = await s3Send('PUT', `/${encodedKey}`, buffer, {
+        'Content-Type': mimeType,
+        'Cache-Control': 'public, max-age=31536000, immutable',
+      })
+      if (!res.ok) throw new Error(`S3 PUT ${res.status}`)
+    },
+    async read(key: string): Promise<Buffer | null> {
+      try {
+        const encodedKey = encodeURIComponent(key)
+        const res = await s3Send('GET', `/${encodedKey}`)
+        if (!res.ok) return null
+        return Buffer.from(await res.arrayBuffer())
+      } catch {
+        return null
+      }
+    },
+    async delete(key: string): Promise<void> {
+      const encodedKey = encodeURIComponent(key)
+      await s3Send('DELETE', `/${encodedKey}`)
+    },
+  }
+  return _s3Storage
 }
 
 /** Resolve storage backend based on environment */

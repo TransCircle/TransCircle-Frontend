@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { post } from '@/api/client'
+import { useTranslation } from 'react-i18next'
+import { post, setAccessToken } from '@/api/client'
 
 interface StepUpDialogProps {
   onSuccess: () => void
@@ -29,6 +30,8 @@ interface StartResponse {
 }
 
 export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogProps) => {
+  const { t } = useTranslation()
+  const dialogRef = useRef<HTMLDivElement>(null)
   const [challengeId, setChallengeId] = useState('')
   const [availableMethods, setAvailableMethods] = useState<StepUpMethod[]>([])
   const [passkeyChallenge, setPasskeyChallenge] = useState<StartResponse['passkey'] | null>(null)
@@ -43,6 +46,34 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
 
   const passkeyProcessed = useRef(false)
 
+  // Sync accessToken into client memory so step-up API calls use correct auth
+  useEffect(() => {
+    if (accessToken) setAccessToken(accessToken)
+  }, [accessToken])
+
+  // Focus trap: trap focus inside dialog when open
+  useEffect(() => {
+    const el = dialogRef.current
+    if (!el) return
+    const focusable = el.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    )
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    first?.focus()
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { onCancel(); return }
+      if (e.key !== 'Tab') return
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last?.focus() }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first?.focus() }
+      }
+    }
+    el.addEventListener('keydown', handler)
+    return () => el.removeEventListener('keydown', handler)
+  }, [onCancel])
+
   // Fetch available methods on mount
   useEffect(() => {
     const init = async () => {
@@ -51,7 +82,7 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
         {},
       )
       if (!result.ok || !result.data.challengeId) {
-        setError('无法发起验证')
+        setError(t('stepUp.errorInit'))
         return
       }
       setChallengeId(result.data.challengeId)
@@ -63,7 +94,7 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
       setSelectedMethod(methods.includes('password') ? 'password' : (methods[0] ?? null))
     }
     init()
-  }, [accessToken])
+  }, [accessToken, t])
 
   const handleSubmit = async () => {
     if (!challengeId || !selectedMethod) return
@@ -75,20 +106,19 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
 
       if (selectedMethod === 'password') {
         if (!password) {
-          setError('请输入密码')
+          setError(t('stepUp.errorPasswordEmpty'))
           setSubmitting(false)
           return
         }
         body.password = password
       } else if (selectedMethod === 'totp' || selectedMethod === 'recovery_code') {
         if (!code) {
-          setError('请输入验证码')
+          setError(t('stepUp.errorCodeEmpty'))
           setSubmitting(false)
           return
         }
         body.code = code
       } else if (selectedMethod === 'passkey') {
-        // passkey flow handled separately in handlePasskey
         setSubmitting(false)
         return
       }
@@ -96,12 +126,12 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
       const result = await post('/auth/step-up/verify', body)
 
       if (!result.ok) {
-        throw new Error(result.error.message || '验证失败')
+        throw new Error(result.error.message || t('stepUp.errorFailed'))
       }
 
       onSuccess()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '验证失败')
+      setError(err instanceof Error ? err.message : t('stepUp.errorFailed'))
     } finally {
       setSubmitting(false)
     }
@@ -137,7 +167,7 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
       const credential = await navigator.credentials.get({ publicKey: publicKeyCredOpts })
 
       if (!credential) {
-        setError('用户取消了操作')
+        setError(t('stepUp.errorUserCancel'))
         setSubmitting(false)
         return
       }
@@ -163,14 +193,14 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
       })
 
       if (!result.ok) {
-        throw new Error(result.error.message || 'Passkey 验证失败')
+        throw new Error(result.error.message || t('stepUp.errorPasskeyFailed'))
       }
 
       onSuccess()
     } catch (err) {
       passkeyProcessed.current = false  // Allow retry on cancel/error
       setPasskeyProcessing(false)
-      setError(err instanceof Error ? err.message : '验证失败')
+      setError(err instanceof Error ? err.message : t('stepUp.errorPasskeyFailed'))
     } finally {
       setSubmitting(false)
     }
@@ -201,33 +231,39 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
   }, [selectedMethod, challengeId, passkeyChallenge])
 
   const methodLabels: Record<StepUpMethod, string> = {
-    password: '密码',
-    passkey: 'Passkey（生物识别 / PIN）',
-    totp: 'TOTP 验证码',
-    recovery_code: '恢复码',
+    password: t('stepUp.methodPassword'),
+    passkey: t('stepUp.methodPasskey'),
+    totp: t('stepUp.methodTotp'),
+    recovery_code: t('stepUp.methodRecoveryCode'),
   }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, display: 'flex',
-      alignItems: 'center', justifyContent: 'center',
-      background: 'rgba(0,0,0,0.5)', zIndex: 1000,
-    }}>
+    <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="stepup-title"
+      style={{
+        position: 'fixed', inset: 0, display: 'flex',
+        alignItems: 'center', justifyContent: 'center',
+        background: 'var(--overlay-bg)', zIndex: 1000,
+      }}
+    >
       <div style={{
-        background: 'var(--bg-color, #fff)',
-        padding: '2rem', borderRadius: '10px',
+        background: 'var(--bg-color)',
+        padding: '2rem', borderRadius: 'var(--radius-lg)',
         maxWidth: '400px', width: '90%',
       }}>
-        <h3 style={{ margin: '0 0 0.5rem' }}>二次验证</h3>
+        <h3 style={{ margin: '0 0 0.5rem' }} id="stepup-title">{t('stepUp.title')}</h3>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-          此操作需要验证身份
+          {t('stepUp.description')}
         </p>
 
         {/* Method selector */}
         {availableMethods.length > 1 && (
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.35rem' }}>
-              验证方式
+              {t('stepUp.methodLabel')}
             </label>
             <select
               value={selectedMethod ?? ''}
@@ -246,7 +282,7 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}
-            placeholder="输入当前密码"
+            placeholder={t('stepUp.passwordPlaceholder')}
             style={{ width: '100%', padding: '0.5rem', marginBottom: '0.75rem' }}
             autoFocus
           />
@@ -258,7 +294,7 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
             inputMode={selectedMethod === 'totp' ? 'numeric' : 'text'}
             value={code}
             onChange={e => setCode(e.target.value)}
-            placeholder={selectedMethod === 'totp' ? '输入 6 位验证码' : '输入恢复码'}
+            placeholder={selectedMethod === 'totp' ? t('stepUp.totpPlaceholder') : t('stepUp.recoveryCodePlaceholder')}
             maxLength={selectedMethod === 'totp' ? 6 : undefined}
             style={{ width: '100%', padding: '0.5rem', marginBottom: '0.75rem' }}
             autoFocus
@@ -268,7 +304,7 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
         {selectedMethod === 'passkey' && (
           <div>
             <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
-              {passkeyProcessing ? '正在请求 Passkey 验证...' : '点击下方按钮进行 Passkey 验证'}
+              {passkeyProcessing ? t('stepUp.passkeyPrompting') : t('stepUp.passkeyPrompt')}
             </p>
             {!passkeyProcessing && (
               <button
@@ -278,23 +314,23 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
                   handlePasskey()
                 }}
                 disabled={submitting}
-                style={{ padding: '0.4rem 1rem', background: 'var(--accent-pink)', color: '#fff', border: 'none', borderRadius: '50px', cursor: 'pointer', fontFamily: 'inherit', width: '100%' }}
+                style={{ padding: '0.4rem 1rem', background: 'var(--accent-pink)', color: 'var(--surface-card)', border: 'none', borderRadius: '50px', cursor: 'pointer', fontFamily: 'inherit', width: '100%' }}
               >
-                {submitting ? '验证中...' : '开始 Passkey 验证'}
+                {submitting ? t('stepUp.verifying') : t('stepUp.passkeyStart')}
               </button>
             )}
           </div>
         )}
 
-        {error && <p style={{ color: '#c62828', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{error}</p>}
+        {error && <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{error}</p>}
 
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-          <button onClick={onCancel} disabled={submitting} style={{ padding: '0.4rem 1rem' }}>取消</button>
+          <button onClick={onCancel} disabled={submitting} style={{ padding: '0.4rem 1rem' }}>{t('stepUp.cancel')}</button>
           {selectedMethod !== 'passkey' && (
             <button onClick={handleSubmit} disabled={submitting || !selectedMethod} style={{
-              padding: '0.4rem 1rem', background: 'var(--accent-pink, #e91e63)', color: '#fff', border: 'none',
+              padding: '0.4rem 1rem', background: 'var(--accent-pink, #e91e63)', color: 'var(--surface-card)', border: 'none',
             }}>
-              {submitting ? '验证中...' : '确认'}
+              {submitting ? t('stepUp.verifying') : t('stepUp.confirm')}
             </button>
           )}
         </div>

@@ -14,7 +14,7 @@ function lazyNamed(
     const mod = await importFn()
     return { default: mod[name] as React.ComponentType<unknown> }
   })
-  return <Suspense fallback={<div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>加载中...</div>}>
+  return <Suspense fallback={<div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>{'Loading...'}</div>}>
     <LazyComponent />
   </Suspense>
 }
@@ -68,6 +68,10 @@ export const router = createBrowserRouter([
       {
         path: 'auth/oauth/merge',
         element: lazyNamed(() => import('../pages/OAuthMerge'), 'OAuthMerge'),
+      },
+      {
+        path: 'settings',
+        element: lazyNamed(() => import('../pages/SettingsSecurity'), 'SettingsSecurity'),
       },
       {
         path: 'settings/security',

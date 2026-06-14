@@ -68,7 +68,7 @@ export const ResetPassword = () => {
   if (success) {
     return (
       <main style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem', textAlign: 'center' }}>
-        <h1 style={{ fontSize: '1.5rem', color: '#2e7d32' }}>{t('resetPassword.success')}</h1>
+        <h1 style={{ fontSize: '1.5rem', color: 'var(--success-color)' }}>{t('resetPassword.success')}</h1>
         <Link to="/login" style={{ marginTop: '1rem', color: 'var(--accent-pink)' }}>{t('emailVerify.redirectToLogin')}</Link>
       </main>
     )

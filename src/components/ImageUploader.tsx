@@ -8,7 +8,7 @@ interface ImageUploaderProps {
 }
 
 export const ImageUploader = ({ onUploaded }: ImageUploaderProps) => {
-  void useTranslation()
+  const { t } = useTranslation()
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -20,12 +20,12 @@ export const ImageUploader = ({ onUploaded }: ImageUploaderProps) => {
 
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
     if (!allowedTypes.includes(file.type)) {
-      setError('仅支持 JPEG/PNG/GIF/WebP 格式')
+      setError(t('imageUploader.errorFormat'))
       setUploading(false)
       return
     }
     if (file.size > 2 * 1024 * 1024) {
-      setError('文件大小不能超过 2MB')
+      setError(t('imageUploader.errorSize'))
       setUploading(false)
       return
     }
@@ -38,15 +38,15 @@ export const ImageUploader = ({ onUploaded }: ImageUploaderProps) => {
         onUploaded(result.data.url)
       } else {
         const code = result.error.code
-        if (code === ERRORS.EMAIL_NOT_VERIFIED) setError('邮箱未验证，不能上传图片')
-        else if (code === ERRORS.CONTENT_TOO_LARGE) setError('文件超过 2MB')
-        else if (code === ERRORS.UNSUPPORTED_MEDIA_TYPE) setError('不支持的图片格式')
-        else if (code === ERRORS.INVALID_IMAGE) setError('图片损坏或不符合要求')
-        else setError(result.error.message || '上传失败')
+        if (code === ERRORS.EMAIL_NOT_VERIFIED) setError(t('imageUploader.errorEmailNotVerified'))
+        else if (code === ERRORS.CONTENT_TOO_LARGE) setError(t('imageUploader.errorTooLarge'))
+        else if (code === ERRORS.UNSUPPORTED_MEDIA_TYPE) setError(t('imageUploader.errorUnsupported'))
+        else if (code === ERRORS.INVALID_IMAGE) setError(t('imageUploader.errorInvalid'))
+        else setError(result.error.message || t('imageUploader.errorFallback'))
       }
     } catch {
       setUploading(false)
-      setError('上传失败，请检查网络连接')
+      setError(t('imageUploader.errorNetwork'))
     }
   }
 
@@ -68,9 +68,9 @@ export const ImageUploader = ({ onUploaded }: ImageUploaderProps) => {
         disabled={uploading}
         style={{ padding: '0.3rem 0.75rem', fontSize: '0.85rem', cursor: 'pointer' }}
       >
-        {uploading ? '上传中...' : '上传图片'}
+        {uploading ? t('imageUploader.uploading') : t('imageUploader.uploadButton')}
       </button>
-      {error && <p style={{ color: '#c62828', fontSize: '0.8rem', marginTop: '0.25rem' }}>{error}</p>}
+      {error && <p role="alert" style={{ color: 'var(--error-color)', fontSize: '0.8rem', marginTop: '0.25rem' }}>{error}</p>}
     </div>
   )
 }

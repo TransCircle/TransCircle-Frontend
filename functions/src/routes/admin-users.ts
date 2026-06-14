@@ -108,14 +108,14 @@ router.get('/users/:id', requirePerm('user:read'), async (req, res) => {
 
   // Fetch actual roles with grant metadata per api.md §7.2
   const userRoles = await query(
-    `SELECT r.name, ur.grantedBy, ur.createdAt, ur.expiresAt
+    `SELECT r.id, r.name, ur.grantedBy, ur.createdAt, ur.expiresAt
      FROM user_roles ur JOIN roles r ON r.id = ur.roleId
      WHERE ur.userId = ?`,
     [req.params.id],
   ) as unknown as Array<Record<string, unknown>>
 
   const roles = userRoles.map((ur) => ({
-    id: `role_${ur.name as string}`,
+    id: ur.id as string,
     name: ur.name,
     grantedBy: ur.grantedBy || '',
     createdAt: ur.createdAt || 0,
@@ -262,9 +262,9 @@ router.post('/users/:id/roles', requirePerm('role:grant'), async (req, res) => {
     await conn.execute(`UPDATE sessions SET revokedAt = ?, revokedReason = 'role_changed' WHERE userId = ? AND revokedAt IS NULL`, [now, userId])
     await conn.execute(
       `UPDATE refresh_token_events SET status = 'revoked'
-       WHERE sessionId IN (SELECT id FROM sessions WHERE userId = ? AND revokedAt = ?)
+       WHERE sessionId IN (SELECT id FROM sessions WHERE userId = ? AND revokedReason = 'role_changed')
          AND status IN ('active', 'rotated')`,
-      [userId, now],
+      [userId],
     )
 
     await conn.commit()
@@ -332,9 +332,9 @@ router.delete('/users/:id/roles/:roleId', requirePerm('role:revoke'), async (req
     await conn.execute(`UPDATE sessions SET revokedAt = ?, revokedReason = 'role_changed' WHERE userId = ? AND revokedAt IS NULL`, [now, userId])
     await conn.execute(
       `UPDATE refresh_token_events SET status = 'revoked'
-       WHERE sessionId IN (SELECT id FROM sessions WHERE userId = ? AND revokedAt = ?)
+       WHERE sessionId IN (SELECT id FROM sessions WHERE userId = ? AND revokedReason = 'role_changed')
          AND status IN ('active', 'rotated')`,
-      [userId, now],
+      [userId],
     )
 
     await conn.commit()

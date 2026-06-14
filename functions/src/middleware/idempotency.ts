@@ -56,7 +56,7 @@ export async function idempotencyKey(req: Request, res: Response, next: NextFunc
     }
     if (existing.responseBody) {
       try {
-        const parsed = existing.responseBody as { status?: number; body?: unknown }
+        const parsed = JSON.parse(existing.responseBody as string) as { status?: number; body?: unknown }
         if (parsed.body) {
           res.status(parsed.status || 200).json(parsed.body)
           return

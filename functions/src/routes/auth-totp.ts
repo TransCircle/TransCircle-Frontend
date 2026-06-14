@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { exec, queryOne, getConnection } from '../Database'
+import pool, { exec, queryOne, getConnection } from '../Database'
 import { ulid, genId } from '../utils/ulid'
 import { signJwt } from '../utils/jwt'
 import { sendSuccess, sendError, Errors, sendNoContent } from '../utils/response'
@@ -12,6 +12,7 @@ import { conf } from '../Config'
 import { verifyTotpCode } from '../utils/totp'
 import { encryptSecret, decryptSecret } from '../utils/crypto'
 import { writeAuditLog } from '../utils/audit'
+import argon2 from 'argon2'
 
 /**
  * Generate a cryptographically random recovery code in format XXXX-XXXX-XXXX (api.md §1.9.2).
@@ -155,7 +156,8 @@ router.post('/me/mfa/totp/enable', requireAuth, async (req, res) => {
 
 // DELETE /me/mfa/totp — api.md §1.9.3
 // 使用单事务 + FOR UPDATE 确保并发安全
-router.delete('/me/mfa/totp', requireAuth, async (req, res) => {
+// 同时注册 POST 路由以兼容前端（某些中间件可能拒绝 DELETE body）
+async function handleTotpDisable(req: import('express').Request, res: import('express').Response): Promise<void> {
   const now = Date.now()
   const conn = await getConnection()
   try {
@@ -261,7 +263,10 @@ router.delete('/me/mfa/totp', requireAuth, async (req, res) => {
   } finally {
     conn.release()
   }
-})
+}
+
+router.delete('/me/mfa/totp', requireAuth, handleTotpDisable)
+router.post('/me/mfa/totp', requireAuth, handleTotpDisable)
 
 // POST /auth/mfa/totp/verify — api.md §1.9.4
 router.post('/auth/mfa/totp/verify', (req, _res, next) => { req.rateLimitAction = 'auth'; next(); }, rateLimitCheck, async (req, res) => {
@@ -326,12 +331,24 @@ router.post('/auth/mfa/totp/verify', (req, _res, next) => { req.rateLimitAction 
     }
   }
 
-  // Try as recovery code (argon2id scan per api.md §15.7)
+  // Try as recovery code — use FOR UPDATE to prevent concurrent reuse (api.md §15.7)
   if (!validCode) {
-    const rcId = await findUnusedRecoveryCode(record.userId, code)
+    const [rcRows] = await pool.execute<import('mysql2').RowDataPacket[]>(
+      `SELECT id, codeHash FROM mfa_recovery_codes WHERE userId = ? AND usedAt IS NULL ORDER BY createdAt ASC LIMIT 10 FOR UPDATE`,
+      [record.userId],
+    )
+    let rcId: string | null = null
+    if (rcRows.length > 0) {
+      for (const row of rcRows) {
+        if (await argon2.verify(row.codeHash as string, code)) {
+          rcId = row.id as string
+          break
+        }
+      }
+    }
     if (rcId) {
       validCode = true
-      await exec(`UPDATE mfa_recovery_codes SET usedAt = ? WHERE id = ?`, [Date.now(), rcId])
+      await exec(`UPDATE mfa_recovery_codes SET usedAt = ? WHERE id = ? AND usedAt IS NULL`, [Date.now(), rcId])
     }
   }
 
@@ -443,13 +460,7 @@ router.post('/me/mfa/recovery-codes/regenerate', requireAuth, (req, _res, next) 
     )
   }
 
-  // Invalidate old recovery codes
-  await exec(
-    `UPDATE mfa_recovery_codes SET usedAt = ? WHERE userId = ? AND usedAt IS NULL`,
-    [Date.now(), req.user!.userId],
-  )
-
-  // Generate new recovery codes (argon2id per api.md §15.7)
+  // Generate new recovery codes FIRST to avoid losing access if crash occurs mid-operation
   const recoveryCodes = Array.from({ length: 10 }, () => generateRecoveryCode())
 
   for (const rc of recoveryCodes) {
@@ -460,6 +471,12 @@ router.post('/me/mfa/recovery-codes/regenerate', requireAuth, (req, _res, next) 
       [genId('mrc_'), req.user!.userId, codeHash, Date.now()],
     )
   }
+
+  // Then invalidate old recovery codes
+  await exec(
+    `UPDATE mfa_recovery_codes SET usedAt = ? WHERE userId = ? AND usedAt IS NULL`,
+    [Date.now(), req.user!.userId],
+  )
 
   // Audit log
   await writeAuditLog(req, {

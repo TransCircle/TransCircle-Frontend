@@ -1,3 +1,10 @@
+packages:
+  - 'functions'
 allowBuilds:
+  argon2: true
+  esbuild: true
   simple-git-hooks: set this to true or false
-onlyBuiltDependencies: simple-git-hooks
+onlyBuiltDependencies:
+  - simple-git-hooks
+  - argon2
+preferOffline: true

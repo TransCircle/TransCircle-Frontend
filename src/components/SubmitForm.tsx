@@ -31,6 +31,7 @@ interface FormErrors {
   summary?: string
   tags?: string
   agreement?: string
+  _fallback?: string
 }
 
 const INITIAL_FORM: FormData = {
@@ -53,7 +54,7 @@ const TAG_MAX_LENGTH = 32
 const validate = (data: FormData, t: (key: string, options?: Record<string, unknown>) => string): FormErrors => {
   const errors: FormErrors = {}
   if (!data.title.trim()) errors.title = t('submit.errors.titleRequired')
-  else if ([...data.title.trim()].length > 120) errors.title = '标题不超过 120 个字符'
+  else if ([...data.title.trim()].length > 120) errors.title = t('submit.errors.titleTooLong', { max: 120 })
   if (!data.content.trim()) errors.content = t('submit.errors.contentRequired')
   if ([...data.summary].length > 300) errors.summary = t('submit.errors.summaryTooLong')
   if (data.tags.length > TAG_MAX) errors.tags = t('submit.errors.tagsTooMany', { max: TAG_MAX })
@@ -123,6 +124,11 @@ export const SubmitForm = () => {
     }
 
     // 校验邮箱状态：pending_verification 用户不可提交投稿（api.md §概述 用户状态表）
+    if (user.status === 'banned') {
+      setServerError(t('login.errors.banned'))
+      setStatus('error')
+      return
+    }
     if (user.status !== 'active') {
       setServerError(t('submit.errors.emailNotVerified'))
       setStatus('error')
@@ -138,8 +144,8 @@ export const SubmitForm = () => {
     setStatus('submitting')
 
     try {
-      setIntentKey(crypto.randomUUID())  // Per-intent idempotency-key (M9)
-      const result = await post<{ id: string; status: string }>('/contributions', {
+      setIntentKey(crypto.randomUUID())
+      const body: Record<string, unknown> = {
         title: form.title,
         content: form.content,
         contentFormat: 'markdown',
@@ -147,8 +153,8 @@ export const SubmitForm = () => {
         tags: form.tags,
         language: form.language,
         submitMode: form.submitMode,
-        website: form.website, // honeypot: bots fill this, humans don't
-      }, { idempotent: true })
+      }
+      const result = await post<{ id: string; status: string }>('/contributions', body, { idempotent: true })
 
       if (!result.ok) {
         const code = result.error.code
@@ -168,7 +174,7 @@ export const SubmitForm = () => {
             else if (d.field === 'content') fieldErrors.content = d.reason
             else if (d.field === 'summary') fieldErrors.summary = d.reason
             else if (d.field === 'tags') fieldErrors.tags = d.reason
-            else fieldErrors.title = d.reason // fallback: show first unrecognized field's reason
+            else if (!fieldErrors._fallback) fieldErrors._fallback = d.reason // fallback for unrecognized fields
           }
           setErrors(fieldErrors)
         } else {
@@ -278,7 +284,7 @@ export const SubmitForm = () => {
           <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <ImageUploader onUploaded={handleImageUploaded} />
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              上传图片后自动在编辑器中插入 Markdown 引用
+              {t('submit.imageHint')}
             </span>
           </div>
         </div>

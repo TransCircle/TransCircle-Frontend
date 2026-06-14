@@ -17,6 +17,6 @@
 
 .error {
   font-size: 0.8rem;
-  color: #e74c3c;
+  color: var(--error-color);
   margin: 0;
 }

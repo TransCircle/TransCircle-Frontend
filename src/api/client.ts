@@ -110,7 +110,12 @@ export function clearCsrfToken(): void {
  * UUID v4 matches the required format (16-64 chars, UUID v4 or ULID).
  */
 export function newIdempotencyKey(): string {
-  return crypto.randomUUID()
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  // Safari 15.3- fallback: UUID v4
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16)
+  })
 }
 
 // ─── Per-Intent Idempotency-Key ──────────────────────────────
@@ -125,6 +130,10 @@ let _intentKey: string | null = null
  */
 export function setIntentKey(key: string | null): void {
   _intentKey = key
+}
+
+export function clearIntentKey(): void {
+  _intentKey = null
 }
 
 // ─── API Response Types ────────────────────────────────────────
@@ -235,9 +244,10 @@ export async function apiRequest<T = unknown>(
     if (tk) headers.set('Authorization', `Bearer ${tk}`)
   }
 
-  // CSRF
+  // CSRF — only set when token is non-empty to avoid sending a blank header
   if (options.csrf) {
-    headers.set('X-CSRF-Token', getCsrfToken())
+    const csrfToken = getCsrfToken()
+    if (csrfToken) headers.set('X-CSRF-Token', csrfToken)
   }
 
   // Idempotency-Key — 提升到业务意图层，超时重试复用同一 key（M9）
@@ -288,6 +298,8 @@ export async function apiRequest<T = unknown>(
   }
 
   // ── Parse response ──
+  // Clear intent key after any response to prevent cross-intent leakage
+  _intentKey = null
   const status = res.status
   const contentType = res.headers.get('content-type') || ''
 
@@ -341,7 +353,7 @@ export async function apiRequest<T = unknown>(
     const errorData = json.error as { code: string; message: string; details?: Array<{ field: string; reason: string }>; data?: Record<string, unknown> } | undefined
     return {
       ok: false,
-      error: errorData || { code: 'UNKNOWN', message: '未知错误' },
+      error: errorData || { code: 'UNKNOWN', message: 'Unknown error' },
       requestId: (json.requestId as string) || requestId,
       status,
       rateLimit,
@@ -396,6 +408,7 @@ export async function uploadFile<T = {
   const headers = new Headers()
   const tk = _memoryToken
   if (tk) headers.set('Authorization', `Bearer ${tk}`)
+  headers.set('X-Request-Id', newRequestId())
 
   let res = await fetch(`${API_BASE}/images`, {
     method: 'POST',
@@ -413,21 +426,34 @@ export async function uploadFile<T = {
         method: 'POST', headers, credentials: 'include', body: formData, signal,
       })
     } else {
-      _memoryToken = null
+      setAccessToken(null)
     }
   }
 
   const status = res.status
-  const json = await res.json() as Record<string, unknown>
-  const requestId = (json.requestId as string) || res.headers.get('X-Request-Id') || ''
+  const contentType = res.headers.get('content-type') || ''
+  const requestId = res.headers.get('X-Request-Id') || ''
 
   if (status >= 200 && status < 300) {
-    return { ok: true, data: json.data as T, requestId, status }
+    if (!contentType.includes('application/json')) {
+      return { ok: true, data: res as unknown as T, requestId, status }
+    }
+    const json = await res.json() as Record<string, unknown>
+    return { ok: true, data: json.data as T, requestId: (json.requestId as string) || requestId, status }
+  }
+
+  if (contentType.includes('application/json')) {
+    const json = await res.json() as Record<string, unknown>
+    return {
+      ok: false,
+      error: (json as { error?: { code: string; message: string } }).error || { code: 'UNKNOWN', message: 'Upload failed' },
+      requestId: (json.requestId as string) || requestId, status,
+    }
   }
 
   return {
     ok: false,
-    error: (json as { error?: { code: string; message: string } }).error || { code: 'UNKNOWN', message: '上传失败' },
+    error: { code: 'UPLOAD_ERROR', message: `HTTP ${status}` },
     requestId, status,
   }
 }

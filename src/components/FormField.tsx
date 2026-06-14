@@ -47,12 +47,13 @@ export const FormField = ({ label, required, error, children, htmlFor }: FormFie
       extra.id = fieldId
     }
 
-    // Inject aria-describedby on any element so screen readers associate
-    // the error message with the field, even when wrapped in a container div.
+    // Inject aria-describedby on labelable elements only, as screen readers
+    // associate aria-describedby with form controls per WCAG 4.1.2
     if (error) {
-      if (!props['aria-describedby']) extra['aria-describedby'] = errorId
-      // aria-invalid is only meaningful on actual form controls
-      if (isLabelableElement(child)) extra['aria-invalid'] = true
+      if (!props['aria-describedby'] && isLabelableElement(child)) {
+        extra['aria-describedby'] = errorId
+        extra['aria-invalid'] = true
+      }
     }
 
     return Object.keys(extra).length > 0 ? cloneElement(child, extra) : child

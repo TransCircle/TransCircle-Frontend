@@ -1,5 +1,5 @@
 ﻿import { useState, useMemo, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
 import { get, clearCsrfToken } from '@/api/client'
@@ -54,8 +54,7 @@ const Register = () => {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [suggestedEmail, setSuggestedEmail] = useState<string | null>(null)
-  // Tracks whether the OAuth provider has verified the user's email (e.g., GitHub verified=true)
-  const [providerEmailVerified, setProviderEmailVerified] = useState(false)
+  const [emailChangedConfirmed, setEmailChangedConfirmed] = useState(false)
 
   // Fetch OAuth pending profile to get suggested email for auto-detection
   useEffect(() => {
@@ -63,20 +62,31 @@ const Register = () => {
       const result = await get<{
         suggestedEmail?: string | null
         providerEmailVerified?: boolean
-      }>(`/auth/oauth/pending-profile?provider=${encodeURIComponent(provider)}`, { csrf: true })
+        mode?: string
+      }>(`/auth/oauth/pending-profile?provider=${encodeURIComponent(provider)}`, { csrf: true, noAuth: true })
 
       if (result.ok) {
+        // Per api.md §1.6.6: if mode is 'binding', redirect to binding page
+        if (result.data.mode === 'binding') {
+          navigate('/settings/security/oauth-bind/confirm?provider=' + encodeURIComponent(provider), { replace: true })
+          return
+        }
         if (result.data.suggestedEmail) {
           setSuggestedEmail(result.data.suggestedEmail)
           setEmail(result.data.suggestedEmail)
         }
-        setProviderEmailVerified(result.data.providerEmailVerified ?? false)
       } else if (result.error.code === 'TOKEN_INVALID_OR_EXPIRED') {
-        setError('注册会话已过期，请重新发起 OAuth 登录')
+        setError(t('register.errors.sessionExpired'))
+      } else if (result.error.code === 'MISSING_OAUTH_PENDING') {
+        setError(t('register.errors.sessionExpired'))
+      } else if (result.error.code === 'CSRF_TOKEN_INVALID') {
+        setError(t('register.errors.sessionExpired'))
+      } else if (result.error.code === 'RATE_LIMITED') {
+        setError(t('register.errors.failed'))
       }
     }
     fetchProfile()
-  }, [provider])
+  }, [provider, t, navigate])
 
   const fieldErrors = useMemo(() => {
     const errs: { username?: string; password?: string; email?: string; displayName?: string } = {}
@@ -138,11 +148,15 @@ const Register = () => {
       return
     }
 
+    const trimmedEmail = email.trim()
+    if (suggestedEmail && trimmedEmail.toLowerCase() !== suggestedEmail.toLowerCase() && !emailChangedConfirmed) {
+      setError(t('register.errors.emailChangeNotConfirmed'))
+      return
+    }
+
     setSubmitting(true)
     try {
-      const trimmedEmail = email.trim()
-      // emailMatchesProvider=true only if email matches AND provider has verified it
-      const emailMatchesProvider = providerEmailVerified && !!(suggestedEmail && trimmedEmail.toLowerCase() === suggestedEmail.toLowerCase())
+      const emailMatchesProvider = !!(suggestedEmail && trimmedEmail.toLowerCase() === suggestedEmail.toLowerCase())
 
       const result = await completeRegistration(provider, {
         username: username.trim(),
@@ -154,13 +168,17 @@ const Register = () => {
 
       if (result?.user) {
         clearCsrfToken()
-        navigate(result.user.roles.includes('reviewer') ? '/admin' : '/submit', { replace: true })
+        navigate((result.user.roles.includes('admin') || result.user.roles.includes('reviewer')) ? '/admin' : '/submit', { replace: true })
       } else {
         const code = result?.errorCode
-        if (code === ERRORS.USERNAME_TAKEN) setError('该用户名已被占用，请换一个')
-        else if (code === ERRORS.EMAIL_TAKEN) setError('该邮箱已被注册')
-        else if (code === ERRORS.TOKEN_INVALID_OR_EXPIRED) setError('注册会话已过期，请重新发起 OAuth 登录')
-        else if (code === ERRORS.VALIDATION_ERROR) setError('请检查输入信息')
+        if (code === ERRORS.USERNAME_TAKEN) setError(t('register.errors.usernameTaken'))
+        else if (code === ERRORS.EMAIL_TAKEN) setError(t('register.errors.emailTaken'))
+        else if (code === ERRORS.TOKEN_INVALID_OR_EXPIRED) setError(t('register.errors.sessionExpired'))
+        else if (code === ERRORS.OAUTH_ALREADY_LINKED) setError(t('register.errors.oauthAlreadyLinked'))
+        else if (code === ERRORS.VALIDATION_ERROR) setError(t('register.errors.validationFailed'))
+        else if (code === ERRORS.MISSING_OAUTH_PENDING) setError(t('register.errors.sessionExpired'))
+        else if (code === ERRORS.CSRF_TOKEN_INVALID) setError(t('register.errors.sessionExpired'))
+        else if (code === ERRORS.RATE_LIMITED) setError(t('register.errors.failed'))
         else setError(t('register.errors.failed'))
       }
     } catch {
@@ -224,7 +242,7 @@ const Register = () => {
             className={formStyles.input}
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => { setEmail(e.target.value); setEmailChangedConfirmed(false) }}
             placeholder={t('register.emailPlaceholder')}
             required
             maxLength={254}
@@ -234,6 +252,24 @@ const Register = () => {
             <span className={formStyles.error} role="alert">{fieldErrors.email}</span>
           )}
         </label>
+        {suggestedEmail && email.trim().toLowerCase() !== suggestedEmail.toLowerCase() && !fieldErrors.email && (
+          <div style={{
+            background: 'var(--hover-bg)', padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-sm)',
+            marginBottom: '0.75rem', fontSize: '0.85rem',
+          }}>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+              {t('register.emailChangeWarning', { suggested: suggestedEmail })}
+            </p>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={emailChangedConfirmed}
+                onChange={(e) => setEmailChangedConfirmed(e.target.checked)}
+              />
+              <span>{t('register.emailChangeConfirm')}</span>
+            </label>
+          </div>
+        )}
 
         <label className={formStyles.field}>
           <span className={formStyles.label}>{t('register.displayName')}</span>
@@ -264,6 +300,11 @@ const Register = () => {
           {submitting ? t('register.submitting') : t('register.submit')}
         </button>
       </form>
+
+      <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.85rem' }}>
+        {t('register.haveAccount')}{' '}
+        <Link to="/login" style={{ color: 'var(--accent-pink)' }}>{t('register.loginInstead')}</Link>
+      </p>
     </>
   )
 }

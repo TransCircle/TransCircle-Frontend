@@ -68,13 +68,9 @@ router.post('/auth/step-up/start', requireAuth, (req, _res, next) => { req.rateL
   const passkeyCount = (hasPasskey?.cnt as number) || 0
   if (passkeyCount > 0) availableMethods.push('passkey')
 
+  // Build challenge metadata before INSERT to avoid UPDATE race (api.md §1.12.1)
+  const challengeMeta: Record<string, unknown> = {}
   const passkeyChallengeMeta: Record<string, unknown> = {}
-
-  await exec(
-    `INSERT INTO auth_tokens (id, userId, type, tokenHash, metadata, expiresAt, createdAt)
-     VALUES (?, ?, 'step_up_challenge', ?, '{}', ?, ?)`,
-    [ulid(), req.user!.userId, challengeHash, Date.now() + 300_000, Date.now()],
-  )
 
   if (passkeyCount > 0) {
     const creds = await query(
@@ -83,6 +79,7 @@ router.post('/auth/step-up/start', requireAuth, (req, _res, next) => { req.rateL
     ) as unknown as Array<{ credentialIdB64: string; transports: string }>;
 
     const allowCredentials = creds.map((c) => ({
+      type: 'public-key' as const,
       id: c.credentialIdB64,
       transports: (() => { try { return JSON.parse(c.transports as string) as string[] } catch { return [] } })(),
     }))
@@ -91,14 +88,13 @@ router.post('/auth/step-up/start', requireAuth, (req, _res, next) => { req.rateL
     const authOptions = await generateAuthenticationOptions({
       rpID: 'transcircle.org',
       userVerification: 'required',
-      allowCredentials: allowCredentials as unknown as Parameters<typeof generateAuthenticationOptions>[0]['allowCredentials'],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      allowCredentials: allowCredentials as any,
       timeout: 60000,
     })
 
-    await exec(
-      `UPDATE auth_tokens SET metadata = ? WHERE tokenHash = ?`,
-      [JSON.stringify({ challenge: authOptions.challenge, passkey: true }), challengeHash],
-    )
+    challengeMeta.challenge = authOptions.challenge
+    challengeMeta.passkey = true
 
     passkeyChallengeMeta.publicKey = {
       challenge: authOptions.challenge,
@@ -107,6 +103,12 @@ router.post('/auth/step-up/start', requireAuth, (req, _res, next) => { req.rateL
       allowCredentials,
     }
   }
+
+  await exec(
+    `INSERT INTO auth_tokens (id, userId, type, tokenHash, metadata, expiresAt, createdAt)
+     VALUES (?, ?, 'step_up_challenge', ?, ?, ?, ?)`,
+    [ulid(), req.user!.userId, challengeHash, JSON.stringify(challengeMeta), Date.now() + 300_000, Date.now()],
+  )
 
   const responseData: Record<string, unknown> = {
     challengeId,
@@ -290,9 +292,9 @@ router.post('/auth/step-up/verify', requireAuth, (req, _res, next) => { req.rate
       }
 
       const pkHex = storedCred.publicKey as string
-      let credentialPublicKey: Uint8Array<ArrayBuffer>
+      let credentialPublicKey: Uint8Array
       try {
-        credentialPublicKey = new Uint8Array(Buffer.from(pkHex, 'hex')) as unknown as Uint8Array<ArrayBuffer>
+        credentialPublicKey = new Uint8Array(Buffer.from(pkHex, 'hex'))
       } catch {
         await conn.rollback()
         sendError(res, Errors.INTERNAL_ERROR.code, '凭证数据异常', req.requestId, 500)
@@ -338,9 +340,11 @@ router.post('/auth/step-up/verify', requireAuth, (req, _res, next) => { req.rate
       if (newSignCount > 0) {
         const sigCountSupported = storedCred.signCountSupported as boolean
         if (sigCountSupported && newSignCount <= currentSignCount) {
-          await conn.rollback()
-          // Freeze the passkey and audit outside the verification transaction
-          exec(`UPDATE passkeys SET status = 'frozen', frozenReason = 'signcount_replay' WHERE id = ?`, [storedCred.id]).catch(() => {})
+          // Freeze inside transaction, then commit atomically
+          await conn.execute(
+            `UPDATE passkeys SET status = 'frozen', frozenReason = 'signcount_replay' WHERE id = ?`,
+            [storedCred.id],
+          )
           writeAuditLog(req, {
             actorUserId: req.user!.userId,
             action: 'passkey.freeze',
@@ -348,6 +352,7 @@ router.post('/auth/step-up/verify', requireAuth, (req, _res, next) => { req.rate
             resourceId: storedCred.id,
             after: { reason: 'signcount_replay', previousSignCount: currentSignCount },
           }).catch((e: unknown) => console.error('audit error:', e))
+          await conn.commit()
           sendError(res, 'PASSKEY_REPLAY_DETECTED', 'Passkey 回放检测，已冻结', req.requestId, 422)
           return
         }

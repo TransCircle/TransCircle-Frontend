@@ -32,27 +32,32 @@ async function startBindFlow(provider: 'github' | 'x', userId: string, req: impo
   const stateIp = req.ip || req.socket.remoteAddress || 'unknown'
   const stateUa = req.headers['user-agent'] || 'unknown'
 
-  await exec(
-    `INSERT INTO auth_tokens (id, userId, type, tokenHash, metadata, expiresAt, createdAt)
-     VALUES (?, ?, 'oauth_state', ?, ?, ?, ?)`,
-    [ulid(), userId, stateHash,
-     JSON.stringify({ provider, mode: 'bind', userId, ipHash: await hmacToken(stateIp), uaHash: await hmacToken(stateUa) }),
-     Date.now() + 600_000, Date.now()],
-  )
-
   let authorizationUrl: string
+  let codeVerifier: string | undefined
   if (provider === 'github') {
     const githubScopes = 'read:user+user:email'
     authorizationUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(callbackUrl)}&scope=${githubScopes}&state=${state}`
   } else {
     const xScopes = encodeURIComponent('tweet.read users.read')
-    const codeVerifier = ulid() + ulid()
+    codeVerifier = ulid() + ulid()
     const ce = new TextEncoder()
     const cd = await crypto.subtle.digest('SHA-256', ce.encode(codeVerifier))
     const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(cd)))
       .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
     authorizationUrl = `https://twitter.com/i/oauth2/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(callbackUrl)}&scope=${xScopes}&state=${state}&code_challenge=${codeChallenge}&code_challenge_method=S256`
   }
+
+  await exec(
+    `INSERT INTO auth_tokens (id, userId, type, tokenHash, metadata, expiresAt, createdAt)
+     VALUES (?, ?, 'oauth_state', ?, ?, ?, ?)`,
+    [ulid(), userId, stateHash,
+     JSON.stringify({
+       provider, mode: 'bind', userId,
+       ...(codeVerifier ? { codeVerifier } : {}),
+       ipHash: await hmacToken(stateIp), uaHash: await hmacToken(stateUa),
+     }),
+     Date.now() + 600_000, Date.now()],
+  )
 
   sendSuccess(res, { authorizationUrl }, req.requestId)
 }
@@ -151,6 +156,15 @@ router.delete('/me/oauth/:provider', requireAuth, async (req, res) => {
       [req.user!.userId, `oauth:${provider}`, now],
     )
 
+    // 审计日志 (事务外写入,可见已提交的数据)
+    writeAuditLog(req, {
+      actorUserId: req.user!.userId,
+      action: 'oauth.unbind',
+      resourceType: 'oauth_account',
+      resourceId: req.user!.userId,
+      after: { provider, unbound: true },
+    }).catch((e: unknown) => console.error('audit error:', e))
+
     sendSuccess(res, {
       provider,
       unbound: true,
@@ -163,15 +177,6 @@ router.delete('/me/oauth/:provider', requireAuth, async (req, res) => {
   } finally {
     conn.release()
   }
-
-  // Audit log outside transaction (best-effort)
-  writeAuditLog(req, {
-    actorUserId: req.user!.userId,
-    action: 'oauth.unbind',
-    resourceType: 'oauth_account',
-    resourceId: req.user!.userId,
-    after: { provider, unbound: true },
-  }).catch((e: unknown) => console.error('audit error:', e))
 })
 
 // GET /me/oauth/github/bind/start — api.md §1.7.1

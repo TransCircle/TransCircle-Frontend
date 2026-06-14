@@ -1,4 +1,5 @@
-﻿import { useState, useEffect } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { get, post } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import styles from './Admin.module.css'
@@ -8,7 +9,10 @@ interface EditRequestItem {
   status: string
   version: number
   reason: string
-  requesterId: string
+  requester: {
+    id: string
+    displayName: string
+  }
   // Nested structure (api.md §10.5)
   contribution?: {
     id: string
@@ -50,7 +54,9 @@ function formatTs(ts: number | null | undefined): string {
 }
 
 export const AdminEditRequests = () => {
-  const { accessToken, loading: authLoading } = useAuth()
+  const { t } = useTranslation()
+  const { accessToken, loading: authLoading, user, isAdmin } = useAuth()
+  const loadedRef = useRef(false)
 
   const [items, setItems] = useState<EditRequestItem[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
@@ -78,7 +84,7 @@ export const AdminEditRequests = () => {
       else setItems(result.data)
       setCursor(result.pagination?.nextCursor || null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败')
+      setError(err instanceof Error ? err.message : t('adminEditRequests.loadError'))
     } finally {
       setLoading(false)
     }
@@ -86,7 +92,8 @@ export const AdminEditRequests = () => {
 
   useEffect(() => {
     if (authLoading || !accessToken) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (loadedRef.current) return
+    loadedRef.current = true
     fetchList()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, accessToken])
@@ -119,49 +126,66 @@ export const AdminEditRequests = () => {
     }
   }
 
+  if (!authLoading && (!user || !isAdmin)) {
+    return (
+      <main className={styles.container}>
+        <h1 className={styles.heading}>{t('adminEditRequests.accessDenied')}</h1>
+        <p className={styles.headingDesc}>{t('adminEditRequests.accessDeniedDetail')}</p>
+      </main>
+    )
+  }
+
+  if (authLoading) {
+    return (
+      <main className={styles.container}>
+        <div className={styles.loading}>{t('adminEditRequests.loading')}</div>
+      </main>
+    )
+  }
+
   if (selectedId && detail) {
     return (
       <main className={styles.container}>
         <button className={styles.back} onClick={() => { setSelectedId(null); setDetail(null) }}>
-          ← 返回列表
+          {t('adminEditRequests.backToList')}
         </button>
         <div className={styles.detailCard}>
-          <h2 className={styles.detailTitle}>修改申请详情</h2>
+          <h2 className={styles.detailTitle}>{t('adminEditRequests.detailTitle')}</h2>
           <div className={styles.detailMeta}>
-            <span>投稿 ID: {detail.contribution?.id ?? detail.contributionId ?? '—'}</span>
-            <span>状态: {detail.status}</span>
-            <span>版本: v{detail.version}</span>
-            <span>创建: {formatTs(detail.createdAt)}</span>
+            <span>{t('adminEditRequests.contributionId')}: {detail.contribution?.id ?? detail.contributionId ?? '—'}</span>
+            <span>{t('adminEditRequests.status')}: {detail.status}</span>
+            <span>{t('adminEditRequests.version')}: v{detail.version}</span>
+            <span>{t('adminEditRequests.created')}: {formatTs(detail.createdAt)}</span>
           </div>
-          <div className={styles.detailContent}><strong>原因：</strong>{detail.reason}</div>
+          <div className={styles.detailContent}><strong>{t('adminEditRequests.reason')}：</strong>{detail.reason}</div>
 
           {/* Votes progress */}
           {detail.votes && (
             <div style={{ margin: '1rem 0', padding: '0.75rem', background: 'var(--hover-bg)', borderRadius: '8px' }}>
-              <strong>投票进度：</strong>
-              赞成 {detail.votes.approve} · 反对 {detail.votes.reject}
-              · 总票数 {detail.votes.total} · 需要 {detail.votes.required} 票
-              {detail.myVote && <span> · 我的投票：{detail.myVote === 'approve' ? '赞成' : '反对'}</span>}
+              <strong>{t('adminEditRequests.voteProgress')}：</strong>
+              {t('adminEditRequests.voteApprove')} {detail.votes.approve} · {t('adminEditRequests.voteReject')} {detail.votes.reject}
+              · {t('adminEditRequests.votesTotal')} {detail.votes.total} · {t('adminEditRequests.votesRequired')} {detail.votes.required} 票
+              {detail.myVote && <span> · {t('adminEditRequests.myVote')}：{detail.myVote === 'approve' ? t('adminEditRequests.voteApprove') : t('adminEditRequests.voteReject')}</span>}
             </div>
           )}
 
           {/* Proposed changes — prefer nested fields, fall back to flat */}
           {(detail.proposed?.title ?? (detail as unknown as Record<string, string | null>).proposedTitle) && (
-            <p><strong>建议新标题：</strong>{detail.proposed?.title ?? (detail as unknown as Record<string, string | null>).proposedTitle}</p>
+            <p><strong>{t('adminEditRequests.proposedTitle')}：</strong>{detail.proposed?.title ?? (detail as unknown as Record<string, string | null>).proposedTitle}</p>
           )}
           {(detail.proposed?.summary ?? (detail as unknown as Record<string, string | null>).proposedSummary) && (
-            <p><strong>建议新摘要：</strong>{detail.proposed?.summary ?? (detail as unknown as Record<string, string | null>).proposedSummary}</p>
+            <p><strong>{t('adminEditRequests.proposedSummary')}：</strong>{detail.proposed?.summary ?? (detail as unknown as Record<string, string | null>).proposedSummary}</p>
           )}
           {(detail.proposed?.content ?? (detail as unknown as Record<string, string | null>).proposedContent) && (
             <div className={styles.detailContent}>
-              <strong>建议新内容：</strong>
+              <strong>{t('adminEditRequests.proposedContent')}：</strong>
               <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>
                 {detail.proposed?.content ?? (detail as unknown as Record<string, string | null>).proposedContent}
               </pre>
             </div>
           )}
           {(detail.proposed?.tags ?? (detail as unknown as Record<string, string[] | null>).proposedTags) && (
-            <p><strong>建议新标签：</strong>{(detail.proposed?.tags ?? (detail as unknown as Record<string, string[] | null>).proposedTags)!.join(', ')}</p>
+            <p><strong>{t('adminEditRequests.proposedTags')}：</strong>{(detail.proposed?.tags ?? (detail as unknown as Record<string, string[] | null>).proposedTags ?? []).join(', ')}</p>
           )}
 
           {error && <div className={styles.errorBox}>{error}</div>}
@@ -169,13 +193,13 @@ export const AdminEditRequests = () => {
           {detail.status === 'pending' && (
             <>
               <textarea className={styles.reviewTextarea} value={voteNote}
-                onChange={e => setVoteNote(e.target.value)} placeholder="投票备注（选填）" />
+                onChange={e => setVoteNote(e.target.value)} placeholder={t('adminEditRequests.voteNotePlaceholder')} />
               <div className={styles.reviewActions}>
                 <button className={styles.btnPrimary} onClick={() => handleVote('approve')} disabled={voteSubmitting}>
-                  {voteSubmitting ? '提交中...' : '赞成'}
+                  {voteSubmitting ? t('adminEditRequests.voteSubmitting') : t('adminEditRequests.voteApprove')}
                 </button>
                 <button className={styles.btnReject} onClick={() => handleVote('reject')} disabled={voteSubmitting}>
-                  {voteSubmitting ? '提交中...' : '反对'}
+                  {voteSubmitting ? t('adminEditRequests.voteSubmitting') : t('adminEditRequests.voteReject')}
                 </button>
               </div>
             </>
@@ -183,10 +207,10 @@ export const AdminEditRequests = () => {
 
           {detail.votes?.history && detail.votes.history.length > 0 && (
             <div style={{ marginTop: '1rem' }}>
-              <strong>投票记录</strong>
+              <strong>{t('adminEditRequests.voteHistory')}</strong>
               <ul style={{ margin: '0.5rem 0 0', padding: '0 0 0 1.2rem', fontSize: '0.85rem', lineHeight: 1.8 }}>
                 {detail.votes.history.map(v => (
-                  <li key={v.id}>{v.vote === 'approve' ? '✅' : '❌'} {v.vote} · {v.note || '无备注'} · {formatTs(v.createdAt)}</li>
+                  <li key={v.id}>{v.vote === 'approve' ? '✅' : '❌'} {v.vote} · {v.note || t('adminEditRequests.noNote')} · {formatTs(v.createdAt)}</li>
                 ))}
               </ul>
             </div>
@@ -198,12 +222,12 @@ export const AdminEditRequests = () => {
 
   return (
     <main className={styles.container}>
-      <header><h1 className={styles.heading}>编辑申请审核</h1></header>
+      <header><h1 className={styles.heading}>{t('adminEditRequests.title')}</h1></header>
       {error && <div className={styles.errorBox}>{error}</div>}
       {loading && items.length === 0 ? (
-        <div className={styles.loading}>加载中...</div>
+        <div className={styles.loading}>{t('adminEditRequests.loading')}</div>
       ) : items.length === 0 ? (
-        <div className={styles.empty}>暂无待处理的编辑申请</div>
+        <div className={styles.empty}>{t('adminEditRequests.empty')}</div>
       ) : (
         <ul className={styles.list}>
           {items.map(item => (
@@ -211,7 +235,7 @@ export const AdminEditRequests = () => {
               onClick={() => fetchDetail(item.id)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fetchDetail(item.id) } }}>
               <div className={styles.itemMain}>
-                <div className={styles.itemTitle}>投稿 {(item.contribution?.id ?? item.contributionId ?? '').slice(0, 20)}... · {item.status}</div>
+                <div className={styles.itemTitle}>{t('adminEditRequests.contribPrefix')} {(item.contribution?.id ?? item.contributionId ?? '').slice(0, 20)}... · {item.status}</div>
                 <div className={styles.itemMeta}>{item.reason.slice(0, 60)} · {formatTs(item.createdAt)}</div>
               </div>
             </li>
@@ -221,7 +245,7 @@ export const AdminEditRequests = () => {
       {cursor && (
         <button className={styles.btnSecondary} onClick={() => fetchList(cursor)}
           disabled={loading} style={{ display: 'block', margin: '1rem auto' }}>
-          加载更多
+          {t('adminEditRequests.loadMore')}
         </button>
       )}
     </main>

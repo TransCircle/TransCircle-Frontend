@@ -35,7 +35,7 @@ export const OAuthBinding = () => {
         }
       }
 
-      const result = await post(`/auth/oauth/complete-binding?provider=${encodeURIComponent(provider)}`, undefined, {
+      const result = await post('/auth/oauth/complete-binding', undefined, {
         csrf: true,
       })
 
@@ -45,20 +45,25 @@ export const OAuthBinding = () => {
           setStatus('idle')
           return
         }
-        if (result.error.code === 'OAUTH_ALREADY_LINKED') {
-          // Merge token is in error.data — navigate to merge page
+        if (result.error.code === ERRORS.OAUTH_ALREADY_LINKED) {
           const errorData = result.error.data as Record<string, string> | undefined
           if (errorData?.mergeToken) {
-            navigate(`/auth/oauth/merge?mergeToken=${encodeURIComponent(errorData.mergeToken)}`, { replace: true })
+            const params = new URLSearchParams({ mergeToken: errorData.mergeToken })
+            if (errorData.conflictUserId) params.set('conflictUserId', errorData.conflictUserId)
+            navigate(`/auth/oauth/merge?${params}`, { replace: true })
             return
           }
         }
-        if (result.error.code === 'TOKEN_INVALID_OR_EXPIRED') {
-          setErrorMsg('绑定会话已过期，请重新发起绑定')
-        } else if (result.error.code === 'PROVIDER_ALREADY_BOUND') {
-          setErrorMsg('该 OAuth 账号已绑定到其他用户')
-        } else if (result.error.code === 'EMAIL_NOT_VERIFIED') {
-          setErrorMsg('请先验证邮箱后再绑定 OAuth')
+        if (result.error.code === ERRORS.TOKEN_INVALID_OR_EXPIRED) {
+          setErrorMsg(t('oauth.bindSessionExpired'))
+        } else if (result.error.code === ERRORS.MISSING_OAUTH_PENDING) {
+          setErrorMsg(t('oauth.bindMissingPending'))
+        } else if (result.error.code === ERRORS.CSRF_TOKEN_INVALID) {
+          setErrorMsg(t('oauth.bindCsrfInvalid'))
+        } else if (result.error.code === ERRORS.PROVIDER_ALREADY_BOUND) {
+          setErrorMsg(t('oauth.bindProviderTaken'))
+        } else if (result.error.code === ERRORS.EMAIL_NOT_VERIFIED) {
+          setErrorMsg(t('oauth.bindEmailNotVerified'))
         } else {
           setErrorMsg(result.error.message || t('oauth.bindError'))
         }
@@ -107,7 +112,7 @@ export const OAuthBinding = () => {
         </p>
 
         {status === 'error' && errorMsg && (
-          <p style={{ color: '#c62828', fontSize: '0.9rem', marginBottom: '1rem' }} role="alert">{errorMsg}</p>
+          <p style={{ color: 'var(--error-color)', fontSize: '0.9rem', marginBottom: '1rem' }} role="alert">{errorMsg}</p>
         )}
 
         <button

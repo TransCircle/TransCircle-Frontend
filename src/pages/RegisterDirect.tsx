@@ -83,11 +83,19 @@ export const RegisterDirect = () => {
 
       if (!result.ok) {
         const code = result.error.code
-        if (code === ERRORS.USERNAME_TAKEN) setError(t('registerDirect.errors.usernameTaken'))
-        else if (code === ERRORS.EMAIL_TAKEN) setError(t('registerDirect.errors.emailTaken'))
-        else if (code === ERRORS.VALIDATION_ERROR && result.error.details) {
+        const nextAction = result.error.data?.nextAction as string | undefined
+        if (code === ERRORS.USERNAME_TAKEN) {
+          if (nextAction === 'choose_other_username') setError(t('registerDirect.errors.usernameTaken'))
+          else setError(t('registerDirect.errors.usernameTaken'))
+        } else if (code === ERRORS.EMAIL_TAKEN) {
+          if (nextAction === 'password_forgot') setError(t('registerDirect.errors.emailTaken') + ' ' + t('registerDirect.errors.tryForgotPassword'))
+          else if (nextAction === 'try_login') setError(t('registerDirect.errors.emailTaken') + ' ' + t('registerDirect.errors.tryLogin'))
+          else setError(t('registerDirect.errors.emailTaken'))
+        } else if (code === ERRORS.VALIDATION_ERROR && result.error.details) {
           const reasons = result.error.details.map(d => d.field + ': ' + d.reason).join('；')
           setError(reasons || result.error.message)
+        } else if (code === ERRORS.RATE_LIMITED) {
+          setError(t('registerDirect.errors.failed'))
         } else setError(result.error.message || t('registerDirect.errors.failed'))
         return
       }

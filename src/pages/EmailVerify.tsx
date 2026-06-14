@@ -45,7 +45,7 @@ export const EmailVerify = () => {
       )}
       {status === 'success' && (
         <>
-          <h1 style={{ fontSize: '1.5rem', color: '#2e7d32' }}>{t('emailVerify.success')}</h1>
+          <h1 style={{ fontSize: '1.5rem', color: 'var(--success-color)' }}>{t('emailVerify.success')}</h1>
           <Link to="/login" style={{ marginTop: '1rem', color: 'var(--accent-pink)' }}>
             {t('emailVerify.redirectToLogin')}
           </Link>
@@ -53,7 +53,7 @@ export const EmailVerify = () => {
       )}
       {status === 'error' && (
         <>
-          <h1 style={{ fontSize: '1.5rem', color: '#c62828' }}>{t('emailVerify.title')}</h1>
+          <h1 style={{ fontSize: '1.5rem', color: 'var(--error-color)' }}>{t('emailVerify.title')}</h1>
           <p style={{ fontSize: '1rem', color: 'var(--text-secondary)' }} role="alert">{errorMsg}</p>
           <Link to="/auth/email/resend" style={{ marginTop: '1rem', color: 'var(--accent-pink)' }}>
             {t('emailResend.title')}

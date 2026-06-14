@@ -13,9 +13,10 @@ import './styles/index.css'
 // Initialize i18n — side-effect import ensures language resources are loaded
 import './i18n/config'
 
-ReactDOM.createRoot(
-  document.getElementById('root') as HTMLElement,
-).render(
+const rootEl = document.getElementById('root')
+if (!rootEl) throw new Error('#root element not found')
+
+ReactDOM.createRoot(rootEl).render(
   <React.StrictMode>
     <ThemeProvider>
       <AuthProvider>

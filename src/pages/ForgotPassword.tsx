@@ -17,7 +17,7 @@ export const ForgotPassword = () => {
     e.preventDefault()
     setError('')
     if (!email.trim()) {
-      setError(t('registerDirect.errors.emailRequired'))
+      setError(t('forgotPassword.errors.emailRequired'))
       return
     }
     setSubmitting(true)
@@ -41,7 +41,10 @@ export const ForgotPassword = () => {
   if (success) {
     return (
       <main style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem', textAlign: 'center' }}>
-        <h1 style={{ fontSize: '1.5rem', color: '#2e7d32' }}>{t('forgotPassword.success')}</h1>
+        <h1 style={{ fontSize: '1.5rem', color: 'var(--success-color)' }}>{t('forgotPassword.success')}</h1>
+          <Link to="/login" style={{ marginTop: '1rem', color: 'var(--accent-pink)' }}>
+            {t('common.backToLogin')}
+          </Link>
       </main>
     )
   }
@@ -65,7 +68,7 @@ export const ForgotPassword = () => {
           {submitting ? t('forgotPassword.submitting') : t('forgotPassword.submit')}
         </button>
         <p style={{ textAlign: 'center', marginTop: '0.75rem', fontSize: '0.85rem' }}>
-          <Link to="/login" style={{ color: 'var(--text-muted)' }}>返回登录</Link>
+          <Link to="/login" style={{ color: 'var(--text-muted)' }}>{t('common.backToLogin')}</Link>
         </p>
       </form>
     </>

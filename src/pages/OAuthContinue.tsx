@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { saveCsrfToken } from '@/api/client'
 
 /**
@@ -9,17 +10,20 @@ import { saveCsrfToken } from '@/api/client'
 export const OAuthContinue = () => {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   useEffect(() => {
     const status = searchParams.get('status')
     const provider = searchParams.get('provider') || 'github'
+    const redirectAfter = searchParams.get('redirectAfter') || ''
 
     // Persist CSRF token to sessionStorage for registration page
     const csrfMatch = document.cookie.match(/oauth_pending_csrf=([^;]+)/)
     if (csrfMatch?.[1]) saveCsrfToken(csrfMatch[1])
 
     if (status === 'pending_registration') {
-      navigate(`/register?provider=${encodeURIComponent(provider)}`, { replace: true })
+      const target = `/register?provider=${encodeURIComponent(provider)}${redirectAfter ? `&redirectAfter=${encodeURIComponent(redirectAfter)}` : ''}`
+      navigate(target, { replace: true })
     } else {
       navigate('/submit', { replace: true })
     }
@@ -27,7 +31,7 @@ export const OAuthContinue = () => {
 
   return (
     <main style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
-      <p style={{ fontSize: '1.1rem', color: 'var(--text-muted)' }}>跳转中...</p>
+      <p style={{ fontSize: '1.1rem', color: 'var(--text-muted)' }}>{t('common.loading')}</p>
     </main>
   )
 }

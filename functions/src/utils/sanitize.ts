@@ -13,7 +13,6 @@ const purify = DOMPurify(dom.window as unknown as Parameters<typeof DOMPurify>[0
 const ALLOWED_IMAGE_DOMAINS = [
   'api.transcircle.org',
   'avatars.githubusercontent.com',
-  'avatars.',
 ]
 
 /**

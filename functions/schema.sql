@@ -145,6 +145,7 @@ CREATE TABLE refresh_token_events
 
     UNIQUE (tokenHash),
     INDEX idx_rt_events_session (sessionId, createdAt),
+    INDEX idx_rt_expiresAt (expiresAt),
 
     FOREIGN KEY (sessionId) REFERENCES sessions (id) ON DELETE CASCADE
 ) ENGINE = InnoDB

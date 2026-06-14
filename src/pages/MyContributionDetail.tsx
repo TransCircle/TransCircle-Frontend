@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import { get, post, patch } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
@@ -27,14 +28,6 @@ interface ContributionDetail {
   }
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  draft: '草稿', pending: '待审核', in_review: '审核中',
-  approved: '已通过', rejected: '未通过', published: '已发布',
-  hidden: '已隐藏', withdrawn: '已撤回',
-}
-
-const EDITABLE_STATUSES = ['draft', 'rejected', 'withdrawn']
-
 function formatTs(ts: number | null | undefined): string {
   if (!ts) return ''
   return new Date(ts).toISOString().slice(0, 16).replace('T', ' ')
@@ -44,6 +37,14 @@ export const MyContributionDetail = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { loading: authLoading } = useAuth()
+  const { t } = useTranslation()
+
+  const STATUS_LABELS: Record<string, string> = {
+    draft: t('myContributionDetail.statusDraft'), pending: t('myContributionDetail.statusPending'), in_review: t('myContributionDetail.statusInReview'),
+    approved: t('myContributionDetail.statusApproved'), rejected: t('myContributionDetail.statusRejected'), published: t('myContributionDetail.statusPublished'),
+    hidden: t('myContributionDetail.statusHidden'), withdrawn: t('myContributionDetail.statusWithdrawn'),
+  }
+  const EDITABLE_STATUSES = ['draft', 'rejected', 'withdrawn']
 
   const [contrib, setContrib] = useState<ContributionDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -52,6 +53,9 @@ export const MyContributionDetail = () => {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [summary, setSummary] = useState('')
+  const [tags, setTags] = useState<string[]>([])
+  const [language, setLanguage] = useState('zh-CN')
+  const [tagInput, setTagInput] = useState('')
   const [saving, setSaving] = useState(false)
   const [actionError, setActionError] = useState('')
   const busy = useRef(false)
@@ -65,6 +69,8 @@ export const MyContributionDetail = () => {
         setTitle(result.data.title)
         setContent(result.data.contentRaw)
         setSummary(result.data.summary || '')
+        setTags(result.data.tags || [])
+        setLanguage(result.data.language || 'zh-CN')
       } else {
         setError(result.error.message)
       }
@@ -80,6 +86,7 @@ export const MyContributionDetail = () => {
     const result = await patch(`/me/contributions/${contrib.id}`, {
       title, content, contentFormat: 'markdown',
       summary: summary || null,
+      tags, language,
       expectedVersion: contrib.version,
     })
     setSaving(false)
@@ -87,7 +94,7 @@ export const MyContributionDetail = () => {
       setContrib(result.data as unknown as ContributionDetail)
       setEditMode(false)
     } else if (result.error.code === ERRORS.VERSION_CONFLICT) {
-      setActionError('版本冲突，请刷新后重试')
+      setActionError(t('myContributionDetail.versionConflict'))
     } else {
       setActionError(result.error.message)
     }
@@ -97,7 +104,7 @@ export const MyContributionDetail = () => {
     if (busy.current || !contrib) return
     busy.current = true
     setActionError('')
-    if (!window.confirm('确定提交该草稿进行审核？')) { busy.current = false; return }
+    if (!window.confirm(t('myContributionDetail.confirmSubmit'))) { busy.current = false; return }
     const result = await post(`/me/contributions/${contrib.id}/submit`, {
       expectedVersion: contrib.version,
     })
@@ -105,7 +112,7 @@ export const MyContributionDetail = () => {
     if (result.ok) {
       setContrib(prev => prev ? { ...prev, status: 'pending', version: (result.data as unknown as Record<string, number>).version ?? prev.version } : prev)
     } else if (result.error.code === ERRORS.VERSION_CONFLICT) {
-      setActionError('版本冲突，请刷新后重试')
+      setActionError(t('myContributionDetail.versionConflict'))
     } else {
       setActionError(result.error.message)
     }
@@ -115,7 +122,7 @@ export const MyContributionDetail = () => {
     if (busy.current || !contrib) return
     busy.current = true
     setActionError('')
-    if (!window.confirm('确定撤回该投稿？')) { busy.current = false; return }
+    if (!window.confirm(t('myContributionDetail.confirmWithdraw'))) { busy.current = false; return }
     const result = await post(`/me/contributions/${contrib.id}/withdraw`, {
       expectedVersion: contrib.version,
     })
@@ -123,46 +130,83 @@ export const MyContributionDetail = () => {
     if (result.ok) {
       setContrib(prev => prev ? { ...prev, status: 'withdrawn', version: (result.data as unknown as Record<string, number>).version ?? prev.version } : prev)
     } else if (result.error.code === ERRORS.VERSION_CONFLICT) {
-      setActionError('版本冲突，请刷新后重试')
+      setActionError(t('myContributionDetail.versionConflict'))
     } else {
       setActionError(result.error.message)
     }
   }
 
-  if (loading) return <main className={styles.container}><div className={styles.loading}>加载中...</div></main>
-  if (error || !contrib) return <main className={styles.container}><div className={styles.errorBox}>{error || '投稿不存在'}</div></main>
+  if (loading) return <main className={styles.container}><div className={styles.loading}>{t('myContributionDetail.loading')}</div></main>
+  if (error || !contrib) return <main className={styles.container}><div className={styles.errorBox}>{error || t('myContributionDetail.notFound')}</div></main>
 
   const isEditable = EDITABLE_STATUSES.includes(contrib.status)
 
   return (
     <main className={styles.container}>
       <button className={styles.back} onClick={() => navigate('/me/contributions')}>
-        ← 返回列表
+        {t('myContributionDetail.backToList')}
       </button>
 
       <div className={styles.detailCard}>
         {editMode ? (
           <>
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>标题</label>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{t('myContributionDetail.fieldTitle')}</label>
               <input type="text" value={title} onChange={e => setTitle(e.target.value)}
                 className={styles.input} maxLength={120} style={{ width: '100%' }} />
             </div>
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>内容</label>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{t('myContributionDetail.fieldContent')}</label>
               <textarea value={content} onChange={e => setContent(e.target.value)}
                 className={styles.input} style={{ width: '100%', minHeight: '200px' }} />
             </div>
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>摘要</label>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{t('myContributionDetail.fieldSummary')}</label>
               <input type="text" value={summary} onChange={e => setSummary(e.target.value)}
                 className={styles.input} maxLength={300} style={{ width: '100%' }} />
             </div>
-            {actionError && <p style={{ color: '#c62828', marginBottom: '0.5rem' }}>{actionError}</p>}
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{t('myContributionDetail.fieldTags')}</label>
+              <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
+                {tags.map(tag => (
+                  <span key={tag} style={{ background: 'var(--hover-bg)', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.85rem' }}>
+                    {tag}
+                    <button type="button" onClick={() => setTags(prev => prev.filter(t => t !== tag))}
+                      style={{ marginLeft: '0.25rem', cursor: 'pointer', background: 'none', border: 'none', color: 'var(--error-color)', padding: 0 }}>&times;</button>
+                  </span>
+                ))}
+              </div>
+              <input type="text" value={tagInput}
+                onChange={e => setTagInput(e.target.value)}
+                onKeyDown={e => {
+                  if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
+                    e.preventDefault()
+                    const tag = tagInput.trim().slice(0, 32)
+                    if (!tags.includes(tag) && tags.length < 8) {
+                      setTags(prev => [...prev, tag])
+                    }
+                    setTagInput('')
+                  }
+                }}
+                placeholder={t('myContributionDetail.tagPlaceholder')} className={styles.input} maxLength={32}
+                style={{ width: '100%' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{t('myContributionDetail.fieldLanguage')}</label>
+              <select value={language} onChange={e => setLanguage(e.target.value)}
+                className={styles.input} style={{ width: '100%' }}>
+                <option value="zh-CN">zh-CN</option>
+                <option value="zh-TW">zh-TW</option>
+                <option value="en">en</option>
+                <option value="ja">ja</option>
+                <option value="other">other</option>
+              </select>
+            </div>
+            {actionError && <p style={{ color: 'var(--error-color)', marginBottom: '0.5rem' }}>{actionError}</p>}
             <button className={styles.btnPrimary} onClick={handleSave} disabled={saving}>
-              {saving ? '保存中...' : '保存修改'}
+              {saving ? t('myContributionDetail.saveSubmitting') : t('myContributionDetail.saveSubmit')}
             </button>
-            <button className={styles.btnSecondary} onClick={() => setEditMode(false)} style={{ marginLeft: '0.5rem' }}>取消</button>
+            <button className={styles.btnSecondary} onClick={() => setEditMode(false)} style={{ marginLeft: '0.5rem' }}>{t('myContributionDetail.cancel')}</button>
           </>
         ) : (
           <>
@@ -177,21 +221,21 @@ export const MyContributionDetail = () => {
               {contrib.contentRaw}
             </pre>
             {contrib.review.publicNote && (
-              <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#fff3e0', borderRadius: '8px' }}>
-                <strong>审核备注：</strong>{contrib.review.publicNote}
+              <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--hover-bg)', borderRadius: '8px' }}>
+                <strong>{t('myContributionDetail.reviewNote')}：</strong>{contrib.review.publicNote}
                 {contrib.review.reviewedAt && ` (${formatTs(contrib.review.reviewedAt)})`}
               </div>
             )}
-            {actionError && <p style={{ color: '#c62828', marginTop: '0.5rem' }}>{actionError}</p>}
+            {actionError && <p style={{ color: 'var(--error-color)', marginTop: '0.5rem' }}>{actionError}</p>}
             <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
               {isEditable && (
-                <button className={styles.btnPrimary} onClick={() => setEditMode(true)}>编辑</button>
+                <button className={styles.btnPrimary} onClick={() => setEditMode(true)}>{t('myContributionDetail.edit')}</button>
               )}
               {isEditable && (
-                <button className={styles.btnSecondary} onClick={handleSubmit}>提交审核</button>
+                <button className={styles.btnSecondary} onClick={handleSubmit}>{t('myContributionDetail.submitReview')}</button>
               )}
               {(contrib.status === 'pending' || contrib.status === 'in_review') && (
-                <button className={styles.btnSecondary} onClick={handleWithdraw} style={{ color: '#c62828' }}>撤回</button>
+                <button className={styles.btnSecondary} onClick={handleWithdraw} style={{ color: 'var(--error-color)' }}>{t('myContributionDetail.withdraw')}</button>
               )}
             </div>
           </>

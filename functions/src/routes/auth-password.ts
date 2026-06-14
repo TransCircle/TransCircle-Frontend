@@ -21,9 +21,9 @@ router.post('/auth/password/forgot', (req, _res, next) => { req.rateLimitAction 
 
   // Per-email rate limit: 3/h per api.md §1.4.1
   const now = Date.now()
-  const dayWindow = Math.floor(now / 3600_000) * 3600_000
-  const emailRateKey = `password:forgot:email:${email.toLowerCase()}:${dayWindow}`
-  const emailRate = await queryOne(`SELECT count FROM rate_limits WHERE bucketKey = ? AND windowStart = ?`, [emailRateKey, dayWindow])
+  const hourWindow = Math.floor(now / 3600_000) * 3600_000
+  const emailRateKey = `password:forgot:email:${email.toLowerCase()}:${hourWindow}`
+  const emailRate = await queryOne(`SELECT count FROM rate_limits WHERE bucketKey = ? AND windowStart = ?`, [emailRateKey, hourWindow])
   if ((emailRate?.count as number || 0) >= 3) {
     sendError(res, Errors.RATE_LIMITED.code, '该邮箱密码重置请求过于频繁', req.requestId, Errors.RATE_LIMITED.status)
     return
@@ -53,7 +53,7 @@ router.post('/auth/password/forgot', (req, _res, next) => { req.rateLimitAction 
   await exec(
     `INSERT INTO rate_limits (id, bucketKey, windowStart, count, createdAt) VALUES (?, ?, ?, 1, ?)
      ON DUPLICATE KEY UPDATE count = count + 1`,
-    [ulid(), emailRateKey, dayWindow, now],
+    [ulid(), emailRateKey, hourWindow, now],
   ).catch(() => {})
 
   sendSuccess(res, { sent: true }, req.requestId, 202)
@@ -164,7 +164,7 @@ router.post('/me/password', requireAuth, (req, _res, next) => { req.rateLimitAct
     [userId],
   )
   const signJwt = (await import('../utils/jwt')).signJwt
-  void signJwt({
+  const newAccessToken = await signJwt({
     sub: userId,
     sid: req.user!.sessionId,
     tokenVersion: (userAfterUpdate?.tokenVersion as number) || 0,
@@ -198,6 +198,10 @@ router.post('/me/password', requireAuth, (req, _res, next) => { req.rateLimitAct
   sendSuccess(res, {
     passwordChanged: true,
     revokedSessions: (revoked?.cnt as number) || 0,
+    accessToken: newAccessToken,
+    tokenType: 'Bearer',
+    expiresIn: 900,
+    refreshToken: newRefreshToken,
   }, req.requestId)
 })
 

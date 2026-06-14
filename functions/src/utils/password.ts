@@ -35,8 +35,13 @@ export async function hashRecoveryCode(code: string): Promise<string> {
  * Scans all unused codes and tries argon2id.verify on each.
  * Returns the matching record id, or null if none match.
  *
+ * Limits the number of verification attempts to prevent DOS via
+ * argon2's expensive verification loop.
+ *
  * Caller must mark usedAt in a transaction after this returns a match.
  */
+const MAX_RECOVERY_VERIFY_ATTEMPTS = 3
+
 export async function findUnusedRecoveryCode(userId: string, code: string): Promise<string | null> {
   const rows = await query(
     `SELECT id, codeHash FROM mfa_recovery_codes WHERE userId = ? AND usedAt IS NULL ORDER BY createdAt ASC`,
@@ -45,7 +50,10 @@ export async function findUnusedRecoveryCode(userId: string, code: string): Prom
 
   if (!rows || rows.length === 0) return null
 
+  let attempts = 0
   for (const row of rows) {
+    if (attempts >= MAX_RECOVERY_VERIFY_ATTEMPTS) break
+    attempts++
     if (await argon2.verify(row.codeHash, code)) {
       return row.id
     }

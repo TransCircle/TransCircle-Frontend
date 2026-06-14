@@ -2,7 +2,7 @@
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/context/useAuth'
-import { get, post, API_BASE } from '@/api/client'
+import { get, post } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import styles from './Admin.module.css'
 
@@ -34,7 +34,6 @@ interface Submission {
   updatedAt?: number
   submittedAt?: number | null
   publishedAt?: number | null
-  hideReason?: string | null
   review?: {
     reviewerUserId: string | null
     reviewedAt: number | null
@@ -63,8 +62,8 @@ const STATUS_LABEL_KEYS: Record<Status, string> = {
   approved: 'admin.statusApproved',
   rejected: 'admin.statusRejected',
   in_review: 'admin.statusInReview',
-  published: '已发布',
-  hidden: '已隐藏',
+  published: 'admin.statusPublished',
+  hidden: 'admin.statusHidden',
 }
 
 function formatTs(ts: number | string | null): string {
@@ -82,10 +81,12 @@ export const Admin = () => {
   const [activeTab, setActiveTab] = useState<Status>('pending')
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [hasMore, setHasMore] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [selected, setSelected] = useState<Submission | null>(null)
   const [reviewNotes, setReviewNotes] = useState('')
+  const [internalNote, setInternalNote] = useState('')
   const [reviewEvents, setReviewEvents] = useState<ReviewEvent[]>([])
   const [reviewEventsLoading, setReviewEventsLoading] = useState(false)
   const fetchSeq = useRef(0)
@@ -130,7 +131,9 @@ export const Admin = () => {
       } else {
         setSubmissions(items)
       }
-      setNextCursor(result.pagination?.nextCursor || null)
+      const pagination = result.pagination
+      setNextCursor(pagination?.nextCursor || null)
+      setHasMore(pagination?.hasMore ?? false)
     } catch (err) {
       if (seq !== fetchSeq.current) return
       setError(err instanceof Error ? err.message : t('admin.errorLoad'))
@@ -164,7 +167,9 @@ export const Admin = () => {
 
         const items = result.data
         setSubmissions(items)
-        setNextCursor(result.pagination?.nextCursor || null)
+        const pagination = result.pagination
+        setNextCursor(pagination?.nextCursor || null)
+        setHasMore(pagination?.hasMore ?? false)
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : t('admin.errorLoad'))
       } finally {
@@ -210,12 +215,13 @@ export const Admin = () => {
       const result = await post(`/admin/contributions/${selected.id}/review`, {
         decision: action,
         publicNote: reviewNotes || null,
+        internalNote: internalNote || null,
         expectedVersion: v,
       }, { headers: authHeaders(), skipRefresh: !accessToken })
 
       if (!result.ok) {
         if (result.error.code === ERRORS.VERSION_CONFLICT && selected) {
-          setError('数据已被修改，已自动刷新')
+          setError(t('admin.versionConflictRefreshed'))
           fetchDetail(selected.id)
         } else {
           setError(result.error.message || t('admin.errorReview'))
@@ -234,10 +240,11 @@ export const Admin = () => {
     const v = selected.version || 1
     const result = await post(`/admin/contributions/${selected.id}/publish`, {
       expectedVersion: v,
+      publicNote: null,
     }, { headers: authHeaders(), skipRefresh: !accessToken })
     if (!result.ok) {
       if (result.error.code === ERRORS.VERSION_CONFLICT && selected) {
-        setError('数据已被修改，已自动刷新')
+        setError(t('admin.versionConflictRefreshed'))
         fetchDetail(selected.id)
       } else {
         setError(result.error.message || t('admin.errorReview'))
@@ -250,19 +257,21 @@ export const Admin = () => {
 
   const handleHide = async () => {
     if (!selected) return
-    const reason = prompt('隐藏原因（必填，1-200 字符）：')
+    const reason = prompt(t('admin.hideReasonPrompt'))
     if (!reason || !reason.trim() || reason.trim().length > 200) {
-      setError('隐藏原因必填（1-200 字符）')
+      setError(t('admin.hideReasonRequired'))
       return
     }
     const v = selected.version || 1
     const result = await post(`/admin/contributions/${selected.id}/hide`, {
       expectedVersion: v,
       reason: reason.trim(),
+      publicNote: null,
+      internalNote: null,
     }, { headers: authHeaders(), skipRefresh: !accessToken })
     if (!result.ok) {
       if (result.error.code === ERRORS.VERSION_CONFLICT && selected) {
-        setError('数据已被修改，已自动刷新')
+        setError(t('admin.versionConflictRefreshed'))
         fetchDetail(selected.id)
       } else {
         setError(result.error.message || t('admin.errorReview'))
@@ -278,11 +287,13 @@ export const Admin = () => {
     const v = selected.version || 1
     const result = await post(`/admin/contributions/${selected.id}/restore`, {
       expectedVersion: v,
-      reason: '管理员恢复',
+      reason: t('admin.restoreReason'),
+      publicNote: null,
+      internalNote: null,
     }, { headers: authHeaders(), skipRefresh: !accessToken })
     if (!result.ok) {
       if (result.error.code === ERRORS.VERSION_CONFLICT && selected) {
-        setError('数据已被修改，已自动刷新')
+        setError(t('admin.versionConflictRefreshed'))
         fetchDetail(selected.id)
       } else {
         setError(result.error.message || t('admin.errorReview'))
@@ -295,12 +306,12 @@ export const Admin = () => {
 
   const handleDelete = async () => {
     if (!selected) return
-    const reason = prompt('删除原因（必填，1-200 字符）：')
+    const reason = prompt(t('admin.deleteReasonPrompt'))
     if (!reason || !reason.trim() || reason.trim().length > 200) {
-      setError('删除原因必填（1-200 字符）')
+      setError(t('admin.deleteReasonRequired'))
       return
     }
-    if (!window.confirm('确定要软删除该投稿？此操作可审计追溯。')) return
+    if (!window.confirm(t('admin.deleteConfirm'))) return
     const v = selected.version || 1
     const result = await post(`/admin/contributions/${selected.id}/delete`, {
       expectedVersion: v,
@@ -308,7 +319,7 @@ export const Admin = () => {
     }, { headers: authHeaders(), skipRefresh: !accessToken })
     if (!result.ok) {
       if (result.error.code === ERRORS.VERSION_CONFLICT && selected) {
-        setError('数据已被修改，已自动刷新')
+        setError(t('admin.versionConflictRefreshed'))
         fetchDetail(selected.id)
       } else {
         setError(result.error.message || t('admin.errorReview'))
@@ -338,20 +349,23 @@ export const Admin = () => {
 
       setLoading(true)
       setError('')
-      // Verify the token has reviewer role before showing admin UI
       try {
-        const res = await fetch(`${API_BASE}/admin/contributions?status=pending&limit=1`, {
+        // Verify the token has reviewer role by making an authenticated apiRequest
+        // with the manual Authorization header (apiRequest will not interfere since
+        // _memoryToken is null at this point for non-OAuth users).
+        const result = await get('/admin/contributions?status=pending&limit=1', {
           headers: { Authorization: `Bearer ${raw}` },
+          skipRefresh: true,
         })
-        if (res.ok) {
+        if (result.ok) {
           setTempToken(raw)
-        } else if (res.status === 403) {
-          setError(t('admin.accessDenied') || '权限不足，需要 reviewer 角色')
+        } else if (result.status === 403) {
+          setError(t('admin.accessDenied'))
         } else {
-          setError(t('admin.errorLoad') || '令牌无效')
+          setError(t('admin.errorLoad'))
         }
       } catch {
-        setError(t('admin.networkError') || '网络错误')
+        setError(t('admin.networkError'))
       }
       setLoading(false)
     }
@@ -415,11 +429,11 @@ export const Admin = () => {
       { key: 'approved', label: t('admin.tabs.approved') },
       { key: 'rejected', label: t('admin.tabs.rejected') },
       { key: 'in_review', label: t('admin.tabs.inReview') },
-      { key: 'published', label: '已发布' },
-      { key: 'hidden', label: '已隐藏' },
+      { key: 'published', label: t('admin.statusPublished') },
+      { key: 'hidden', label: t('admin.statusHidden') },
     ]
 
-    const countLabel = nextCursor
+    const countLabel = hasMore
       ? t('admin.countMore', { count: submissions.length })
       : t('admin.count', { count: submissions.length })
 
@@ -431,17 +445,17 @@ export const Admin = () => {
               {t('admin.title')}
             </h1>
             <span className={styles.userInfo}>
-              {user ? `${user.username} (${loginProvider ?? 'oauth'})` : `${t('admin.tempAdmin')}（仅内存，刷新页面需重新输入）`}
+              {user ? `${user.username} (${loginProvider ?? 'oauth'})` : `${t('admin.tempAdmin')} (${t('admin.tempAdminHint')})`}
             </span>
             {isAdmin && (
               <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.75rem', fontSize: '0.85rem', flexWrap: 'wrap' }}>
                 {isFullAdmin && (
                   <>
-                    <Link to="/admin/users" style={{ color: 'var(--accent-pink)' }}>用户管理</Link>
-                    <Link to="/admin/audit-logs" style={{ color: 'var(--accent-pink)' }}>审计日志</Link>
+                    <Link to="/admin/users" style={{ color: 'var(--accent-pink)' }}>{t('admin.usersLink')}</Link>
+                    <Link to="/admin/audit-logs" style={{ color: 'var(--accent-pink)' }}>{t('admin.auditLogsLink')}</Link>
                   </>
                 )}
-                <Link to="/admin/edit-requests" style={{ color: 'var(--accent-pink)' }}>编辑申请</Link>
+                <Link to="/admin/edit-requests" style={{ color: 'var(--accent-pink)' }}>{t('admin.editRequestsLink')}</Link>
               </div>
             )}
           </div>
@@ -494,7 +508,7 @@ export const Admin = () => {
                 </li>
               ))}
             </ul>
-            {nextCursor && (
+            {hasMore && (
               <button
                 className={`${styles.btnSecondary} ${styles.loadMoreBtn}`}
                 onClick={() => fetchSubmissions(nextCursor)}
@@ -540,33 +554,25 @@ export const Admin = () => {
         {/* Internal note — only visible with contribution:internal-note:read permission (api.md §15.10) */}
         {selected.review?.internalNote && (
           <div className={styles.detailContact} style={{ borderLeft: '3px solid var(--accent-pink)', marginBottom: '1.25rem' }}>
-            <strong style={{ color: 'var(--accent-pink)' }}>内部备注（仅管理员可见）</strong>
+            <strong style={{ color: 'var(--accent-pink)' }}>{t('admin.internalNoteLabel')}</strong>
             <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem' }}>{selected.review.internalNote}</p>
-          </div>
-        )}
-
-        {/* Hide reason */}
-        {selected.hideReason && (
-          <div className={styles.detailContact} style={{ borderLeft: '3px solid #ef9a9a', marginBottom: '1.25rem' }}>
-            <strong style={{ color: '#c62828' }}>隐藏/删除原因</strong>
-            <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem' }}>{selected.hideReason}</p>
           </div>
         )}
 
         {/* Review history (api.md §6.3: audit trail) */}
         {reviewEventsLoading ? (
           <div className={styles.detailContact} style={{ marginBottom: '1.25rem', fontSize: '0.85rem' }}>
-            加载审核历史...
+            {t('admin.reviewEventsLoading')}
           </div>
         ) : reviewEvents.length > 0 && (
           <div className={styles.detailContact} style={{ marginBottom: '1.25rem' }}>
-            <strong>审核历史</strong>
+            <strong>{t('admin.reviewEventsTitle')}</strong>
             <ul style={{ margin: '0.5rem 0 0', padding: '0 0 0 1.2rem', fontSize: '0.82rem', lineHeight: 1.8 }}>
               {reviewEvents.map(ev => (
                 <li key={ev.id}>
                   {ev.fromStatus} → {ev.toStatus}
-                  {ev.reviewer?.displayName ? ` · 审核员: ${ev.reviewer.displayName}` : ''}
-                  {ev.publicNote ? ` · 备注: ${ev.publicNote}` : ''}
+                  {ev.reviewer?.displayName ? ` · ${t('admin.reviewerPrefix')}${ev.reviewer.displayName}` : ''}
+                  {ev.publicNote ? ` · ${t('admin.notePrefix')}${ev.publicNote}` : ''}
                   {ev.createdAt ? ` · ${formatTs(ev.createdAt)}` : ''}
                 </li>
               ))}
@@ -592,6 +598,13 @@ export const Admin = () => {
               onChange={(e) => setReviewNotes(e.target.value)}
               placeholder={t('admin.reviewTextareaPlaceholder')}
             />
+            <textarea
+              className={styles.reviewTextarea}
+              value={internalNote}
+              onChange={(e) => setInternalNote(e.target.value)}
+              placeholder={t('admin.internalNotePlaceholder')}
+              style={{ marginTop: '0.5rem', minHeight: '3rem' }}
+            />
 
             <div className={styles.reviewActions}>
               <button className={styles.btnPrimary} onClick={() => handleReview('approved')}>
@@ -608,31 +621,34 @@ export const Admin = () => {
         {selected.status === 'approved' && (
           <div className={styles.reviewActions}>
             <button className={styles.btnPrimary} onClick={handlePublish}>
-              发布
+              {t('admin.publishButton')}
+            </button>
+            <button className={styles.btnReject} onClick={handleDelete}>
+              {t('admin.deleteButton')}
             </button>
           </div>
         )}
         {selected.status === 'published' && (
           <div className={styles.reviewActions}>
             <button className={styles.btnReject} onClick={handleHide}>
-              隐藏
+              {t('admin.hideButton')}
             </button>
           </div>
         )}
         {selected.status === 'hidden' && (
           <div className={styles.reviewActions}>
             <button className={styles.btnPrimary} onClick={handleRestore}>
-              恢复
+              {t('admin.restoreButton')}
             </button>
             <button className={styles.btnReject} onClick={handleDelete}>
-              删除
+              {t('admin.deleteButton')}
             </button>
           </div>
         )}
         {selected.status === 'rejected' && (
           <div className={styles.reviewActions}>
             <button className={styles.btnReject} onClick={handleDelete}>
-              删除
+              {t('admin.deleteButton')}
             </button>
           </div>
         )}

@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react'
+﻿import { useState, useMemo, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
@@ -8,7 +8,17 @@ import formStyles from './Register.module.css'
 export const Login = () => {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { loginWithPassword, loginWithGitHub, loginWithX, loginWithPasskey, mfaVerify } = useAuth()
+  const { loginWithPassword, loginWithGitHub, loginWithX, loginWithPasskey, mfaVerify, user: authUser, loading: authLoading } = useAuth()
+  const justLoggedInRef = useRef(false)
+
+  // Navigate after auth context loads full profile (with roles) from /v1/me
+  useEffect(() => {
+    if (justLoggedInRef.current && authUser && !authLoading) {
+      justLoggedInRef.current = false
+      const isAdmin = authUser.roles?.includes('admin') || authUser.roles?.includes('reviewer')
+      navigate(isAdmin ? '/admin' : '/submit', { replace: true })
+    }
+  }, [authUser, authLoading, navigate])
 
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
@@ -23,7 +33,7 @@ export const Login = () => {
   const [mfaSubmitting, setMfaSubmitting] = useState(false)
 
   const canSubmit = useMemo(() => {
-    return identifier.trim().length >= 3 && password.length >= 12
+    return identifier.trim().length >= 3 && password.length >= 12 && password.length <= 128
   }, [identifier, password])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,7 +45,7 @@ export const Login = () => {
       // Single login call (api.md §1.3) — LoginResult eliminates redundant second call
       const result = await loginWithPassword(identifier.trim(), password)
       if (result.user) {
-        navigate((result.user.roles.includes('admin') || result.user.roles.includes('reviewer')) ? '/admin' : '/submit', { replace: true })
+        justLoggedInRef.current = true
       } else if (result.mfaChallengeToken) {
         setMfaRequired(true)
         setMfaChallengeToken(result.mfaChallengeToken)
@@ -45,10 +55,9 @@ export const Login = () => {
         if (code === 'ACCOUNT_BANNED') setError(t('login.errors.banned'))
         else if (code === 'ACCOUNT_MERGED') setError(t('login.errors.merged'))
         else if (code === 'ACCOUNT_PENDING_DELETION') setError(t('login.errors.pendingDeletion'))
-        else if (code === 'ACCOUNT_LOCKED') setError(t('login.errors.locked') || '账户已锁定，请 15 分钟后重试')
-        else if (code === 'ACCOUNT_DELETED') setError(t('login.errors.deleted') || '该账号已被注销')
+        else if (code === 'ACCOUNT_LOCKED') setError(t('login.errors.locked'))
+        else if (code === 'ACCOUNT_DELETED') setError(t('login.errors.deleted'))
         else if (code === 'INVALID_CREDENTIALS') setError(t('login.errors.invalidCredentials'))
-        else if (code === 'EMAIL_NOT_VERIFIED') setError(t('login.errors.emailNotVerified'))
         else setError(t('login.errors.serverError'))
       }
     } catch {
@@ -66,19 +75,17 @@ export const Login = () => {
     try {
       const result = await mfaVerify(mfaChallengeToken, mfaCode)
       if (result.user) {
-        navigate((result.user.roles.includes('admin') || result.user.roles.includes('reviewer')) ? '/admin' : '/submit', { replace: true })
+        justLoggedInRef.current = true
       } else if (result.errorCode === 'TOKEN_INVALID_OR_EXPIRED') {
-        setError(t('login.mfaExpired', '验证已过期，请返回重新登录'))
+        setError(t('login.mfaExpired'))
       } else if (result.errorCode === 'MFA_CHALLENGE_EXHAUSTED') {
-        setError(t('login.mfaExhausted', '验证失败次数过多，请返回重新登录'))
+        setError(t('login.mfaExhausted'))
       } else if (result.errorCode === 'INVALID_TOTP_CODE') {
-        setError(t('login.mfaInvalidCode', '验证码错误'))
+        setError(t('login.mfaInvalidCode'))
       } else if (result.errorCode === 'TOTP_CODE_REPLAY') {
-        setError(t('login.mfaInvalidCode', '验证码已使用，请重新输入'))
-      } else if (result.errorCode === 'INVALID_RECOVERY_CODE') {
-        setError(t('login.mfaInvalidRecoveryCode', '恢复码错误'))
+        setError(t('login.mfaCodeReplay'))
       } else {
-        setError(result.errorCode || t('login.mfaVerifyFailed', '验证失败，请重试'))
+        setError(result.errorCode || t('login.mfaVerifyFailed'))
       }
     } catch {
       setError(t('login.errors.serverError'))
@@ -88,7 +95,7 @@ export const Login = () => {
   }
 
   if (mfaRequired) {
-    const hasTotp = mfaMethods.includes('totp') || mfaMethods.includes('recovery_code')
+    const hasTotp = mfaMethods.includes('totp')
     const hasPasskey = mfaMethods.includes('passkey')
 
     return (
@@ -105,25 +112,18 @@ export const Login = () => {
             onChange={(e) => {
               const raw = e.target.value.toUpperCase()
               if (/[A-Z-]/.test(raw)) {
-                // Recovery code: allow A-Z, digits, dashes, max 14 chars
                 setMfaCode(raw.replace(/[^A-Z0-9-]/g, '').slice(0, 14))
               } else {
-                // TOTP: numeric only, max 6 chars
                 setMfaCode(raw.replace(/\D/g, '').slice(0, 6))
               }
             }}
-            placeholder="123456 或 XXXX-XXXX-XXXX"
+            placeholder={t('login.totpPlaceholder')}
             style={{ width: '200px', padding: '0.5rem', textAlign: 'center', fontSize: '1.2rem', letterSpacing: '0.5em' }}
             maxLength={14}
             autoFocus
           />
         )}
-        {hasPasskey && !hasTotp && (
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.5rem', textAlign: 'center' }}>
-            当前账户仅启用了 Passkey 验证，请完成 Passkey 验证流程。
-          </p>
-        )}
-        {error && <p style={{ color: '#c62828', fontSize: '0.85rem', marginTop: '0.5rem' }}>{error}</p>}
+        {/* TOTP confirm button */}
         {hasTotp && (
           <button
             onClick={handleMfaSubmit}
@@ -133,11 +133,43 @@ export const Login = () => {
             {mfaSubmitting ? t('login.submitting') : t('login.submit')}
           </button>
         )}
+
+        {hasPasskey && (
+          <div style={{ textAlign: 'center', marginTop: '1rem', borderTop: hasTotp ? '1px solid var(--divider-color)' : 'none', paddingTop: hasTotp ? '1rem' : 0, width: '100%' }}>
+            {hasTotp && <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{t('login.mfaOrPasskey')}</p>}
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
+              {t('login.passkeyMfaDescription')}
+            </p>
+            <button
+              onClick={async () => {
+                setMfaSubmitting(true)
+                try {
+                  const result = await loginWithPasskey(mfaChallengeToken || undefined)
+                  if (result.user) {
+                    justLoggedInRef.current = true
+                  } else if (result.errorCode) {
+                    setError(result.errorCode === 'PASSKEY_CANCELLED' ? '' : t('login.errors.serverError'))
+                  }
+                } catch {
+                  setError(t('login.errors.serverError'))
+                } finally {
+                  setMfaSubmitting(false)
+                }
+              }}
+              disabled={mfaSubmitting}
+              style={{ padding: '0.5rem 2rem', background: 'var(--accent-pink)', color: '#fff', border: 'none', borderRadius: '50px', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              {mfaSubmitting ? t('login.submitting') : t('login.passkeyMfaButton')}
+            </button>
+          </div>
+        )}
+
+        {error && <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginTop: '0.5rem' }}>{error}</p>}
         <button
           onClick={() => { setMfaRequired(false); setMfaCode(''); setMfaMethods([]); setError('') }}
           style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
         >
-          返回登录
+          {t('login.backToLogin')}
         </button>
       </main>
     )
@@ -224,7 +256,11 @@ export const Login = () => {
             try {
               const result = await loginWithPasskey()
               if (result.user) {
-                navigate((result.user.roles.includes('admin') || result.user.roles.includes('reviewer')) ? '/admin' : '/submit', { replace: true })
+                justLoggedInRef.current = true
+              } else if (result.mfaChallengeToken) {
+                setMfaRequired(true)
+                setMfaChallengeToken(result.mfaChallengeToken)
+                setMfaMethods(result.mfaAvailableMethods || [])
               } else if (result.errorCode === 'PASSKEY_CANCELLED') {
                 // user cancelled
               } else {
@@ -236,7 +272,7 @@ export const Login = () => {
             background: 'none', border: '1px solid var(--primary-pink)',
             color: 'var(--primary-pink)', padding: '0.4rem 1rem', borderRadius: '50px',
             fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
-          }}>Passkey</button>
+          }}>{t('login.passkeyLogin')}</button>
         </div>
       </div>
     </>

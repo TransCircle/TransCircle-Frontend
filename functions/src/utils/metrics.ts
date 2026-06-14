@@ -19,8 +19,17 @@ export const metrics = {
   passkeyReplayDetectedTotal: 0,
   rateLimitedTotal: {} as Record<string, number>,        // route|dimension → count
   imageUploadTotal: {} as Record<string, number>,        // result|mime → count
-  contributionReviewLatencySeconds: [] as number[],      // sample array for histogram
-  httpRequestDurationSeconds: [] as number[],             // timing samples for api.md §13.2.2
+  contributionReviewLatencySeconds: [] as number[],      // sample array for histogram (max 10000 entries)
+  httpRequestDurationSeconds: [] as number[],             // timing samples for api.md §13.2.2 (max 10000 entries)
+  MAX_HISTOGRAM_SAMPLES: 10000,
+}
+
+/** Push a value into a histogram array, capping at MAX_HISTOGRAM_SAMPLES to prevent memory leak */
+export function pushHistogramSample(arr: number[], value: number, max = 10000): void {
+  if (arr.length >= max) {
+    arr.shift()
+  }
+  arr.push(value)
 }
 
 export function resetMetrics(): void {

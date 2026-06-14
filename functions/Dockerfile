@@ -17,8 +17,8 @@ RUN corepack enable && \
 COPY dist/ ./dist/
 COPY config.toml.example ./config.toml.example
 
-# Create runtime directories
-RUN mkdir -p logs image
+# Create runtime directories (logs for logging, image for uploads, .jwt-keys for Ed25519 key pair)
+RUN mkdir -p logs image .jwt-keys
 
 EXPOSE 1145
 

@@ -351,7 +351,7 @@ router.patch('/contributions/:id', requireAuth, async (req, res) => {
   updates.push('version = version + 1')
   updates.push('updatedAt = ?')
   const now = Date.now()
-  params.push(now, expectedVersion, id)
+  params.push(now)
 
   const result = await exec(
     `UPDATE contributions SET ${updates.join(', ')} WHERE id = ? AND version = ? AND authorUserId = ?`,
@@ -487,11 +487,14 @@ router.post('/export', requireAuth, (req, _res, next) => { req.rateLimitAction =
   // 7 天内最多 2 次
   const sevenDaysAgo = now - 7 * 86400_000
   const recentExports = await queryOne(
-    `SELECT COUNT(*) as cnt FROM audit_logs WHERE actorUserId = ? AND action = 'me.export' AND createdAt >= ?`,
+    `SELECT COUNT(*) as cnt, MIN(createdAt) as firstExport FROM audit_logs WHERE actorUserId = ? AND action = 'me.export' AND createdAt >= ?`,
     [req.user!.userId, sevenDaysAgo],
   )
   if ((recentExports?.cnt as number || 0) >= 2) {
-    const retryAfter = Math.ceil((sevenDaysAgo + 7 * 86400_000 - now) / 1000)
+    const firstExport = recentExports?.firstExport as number | undefined
+    const retryAfter = firstExport
+      ? Math.ceil(Math.max(0, firstExport + 7 * 86400_000 - now) / 1000)
+      : 7 * 86400
     res.setHeader('Retry-After', String(retryAfter))
     sendError(res, Errors.RATE_LIMITED.code, '7 天内最多导出 2 次', req.requestId, 429)
     return

@@ -58,6 +58,7 @@ export interface RotateResult extends SessionInfo {
 /**
  * Create a new session with refresh token for a user.
  * Returns the session record info and the raw refresh token string.
+ * If `conn` is provided, uses it for transactional atomicity.
  */
 export async function createSession(
   userId: string,
@@ -65,6 +66,7 @@ export async function createSession(
   loginMethod: string,
   ip: string,
   ua: string,
+  conn?: import('mysql2/promise').PoolConnection,
 ): Promise<{ sessionId: string; refreshToken: string }> {
   const sessionId = genId('sess_')
   const refreshToken = randomToken()
@@ -74,17 +76,22 @@ export async function createSession(
     hmacToken(ip || 'unknown'),  // hmac_sha256 per api.md §15.4 (was sha256)
     sha256(ua || 'unknown'),
   ])
-  const ipPrefix = (ip || 'unknown').split('.').slice(0, 3).join('.') + '.0'
+  const ipStr = ip || 'unknown'
+  const ipPrefix = ipStr.includes(':')
+    ? ipStr.split(':').slice(0, 4).join(':') + '::/48'
+    : ipStr.split('.').slice(0, 3).join('.') + '.0'
   const deviceInfo: DeviceInfo = parseUserAgent(ua || 'unknown')
   const now = Date.now()
 
-  await exec(
+  const run = conn ? conn.execute.bind(conn) : exec
+
+  await run(
     `INSERT INTO sessions (id, userId, createdAt, lastUsedAt, expiresAt, ipHash, ipPrefix, userAgentHash, deviceSummary, loginMethod)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [sessionId, userId, now, now, now + SESSION_MAX_AGE, ipHash, ipPrefix, uaHash, JSON.stringify(deviceInfo), loginMethod],
   )
 
-  await exec(
+  await run(
     `INSERT INTO refresh_token_events (id, sessionId, tokenHash, tokenPrefix, status, createdAt, expiresAt)
      VALUES (?, ?, ?, ?, 'active', ?, ?)`,
     [genId('rte_'), sessionId, tokenHash, tokenPrefix, now, now + SESSION_MAX_AGE],

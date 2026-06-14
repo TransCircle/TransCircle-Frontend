@@ -1,6 +1,8 @@
 ﻿import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { get } from '@/api/client'
+import DOMPurify from 'dompurify'
 import styles from './Admin.module.css'
 
 interface PublicDetail {
@@ -23,6 +25,7 @@ function formatTs(ts: number): string {
 }
 
 export const PublicContributionDetail = () => {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
 
   const [detail, setDetail] = useState<PublicDetail | null>(null)
@@ -36,25 +39,25 @@ export const PublicContributionDetail = () => {
       if (result.ok) {
         setDetail(result.data)
       } else {
-        setError('投稿不存在或未发布')
+        setError(t('publicContributionDetail.notFound'))
       }
       setLoading(false)
     }
     load()
-  }, [id])
+  }, [id, t])
 
-  if (loading) return <main className={styles.container}><div className={styles.loading}>加载中...</div></main>
-  if (error || !detail) return <main className={styles.container}><div className={styles.errorBox}>{error || '投稿不存在'}</div></main>
+  if (loading) return <main className={styles.container}><div className={styles.loading}>{t('publicContributionDetail.loading')}</div></main>
+  if (error || !detail) return <main className={styles.container}><div className={styles.errorBox}>{error || t('publicContributionDetail.notFound')}</div></main>
 
   return (
     <main className={styles.container}>
-      <Link to="/" className={styles.back}>← 返回首页</Link>
+        <Link to="/" className={styles.back}>← {t('publicContributionDetail.backToHome')}</Link>
 
       <article className={styles.detailCard}>
         <h1 style={{ fontSize: '1.5rem', margin: '0 0 0.5rem' }}>{detail.title}</h1>
 
         <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-          作者: {detail.author.displayName} · {formatTs(detail.publishedAt)} · {detail.language}
+          {t('publicContributionDetail.author')}: {detail.author.displayName} · {formatTs(detail.publishedAt)} · {detail.language}
           {detail.tags?.map(t => (
             <span key={t} style={{ marginLeft: '0.5rem', background: 'var(--hover-bg)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>{t}</span>
           ))}
@@ -66,12 +69,12 @@ export const PublicContributionDetail = () => {
 
         <div
           style={{ lineHeight: 1.8, fontSize: '1rem', overflowWrap: 'break-word', wordBreak: 'break-word' }}
-          dangerouslySetInnerHTML={{ __html: detail.contentHtml }}
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(detail.contentHtml) }}
         />
 
         <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--divider-color)' }}>
           <Link to={'/contributions/' + id + '/edit-request'} style={{ fontSize: '0.85rem', color: 'var(--accent-pink)' }}>
-            提交修改申请
+             {t('publicContributionDetail.submitEditRequest')}
           </Link>
         </div>
       </article>

@@ -40,7 +40,7 @@ export const EmailResend = () => {
   if (success) {
     return (
       <main style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem', textAlign: 'center' }}>
-        <h1 style={{ fontSize: '1.5rem', color: '#2e7d32' }}>{t('emailResend.success')}</h1>
+        <h1 style={{ fontSize: '1.5rem', color: 'var(--success-color)' }}>{t('emailResend.success')}</h1>
       </main>
     )
   }

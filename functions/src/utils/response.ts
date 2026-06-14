@@ -188,7 +188,7 @@ export const Errors = {
   ROLE_ALREADY_GRANTED: { code: 'ROLE_ALREADY_GRANTED', message: '用户已拥有该角色', status: 409 },
   ALREADY_VOTED: { code: 'ALREADY_VOTED', message: '已投过票', status: 409 },
   SELF_VOTE_FORBIDDEN: { code: 'SELF_VOTE_FORBIDDEN', message: '不可对自己的申请投票', status: 409 },
-  CONTRIBUTION_NOT_EDITABLE: { code: 'CONTRIBUTION_NOT_EDITABLE', message: '投稿不可编辑', status: 409 },
+  CONTRIBUTION_NOT_EDITABLE: { code: 'CONTRIBUTION_NOT_EDITABLE', message: '投稿当前状态不可被申请修改', status: 409 },
 
   // ── External ──
   OAUTH_PROVIDER_ERROR: { code: 'OAUTH_PROVIDER_ERROR', message: 'OAuth 提供商不可用', status: 502 },

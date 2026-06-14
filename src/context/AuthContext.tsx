@@ -52,8 +52,8 @@ interface AuthContextValue {
   completeRegistration: (provider: string, data: { username?: string; email?: string; password?: string; displayName?: string; emailMatchesProvider?: boolean }) => Promise<{ loginCode?: string; user: User | null; errorCode?: string }>
   /** MFA TOTP verification — saves token to context and fetches user profile (api.md §1.9.4) */
   mfaVerify: (mfaChallengeToken: string, code: string) => Promise<{ user: User | null; errorCode?: string }>
-  /** Passkey login — full WebAuthn flow (api.md §1.10.5) */
-  loginWithPasskey: () => Promise<LoginResult>
+  /** Passkey login — full WebAuthn flow (api.md §1.10.5); pass mfaChallengeToken for MFA context */
+  loginWithPasskey: (mfaChallengeToken?: string) => Promise<LoginResult>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -73,13 +73,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const token = await tryRefreshToken()
       if (token) {
         setAccessToken(token)
+        // Token obtained: fetch full user profile from /v1/me (api.md §2.1)
+        const meResult = await get<Record<string, unknown>>('/me')
+        if (meResult.ok) {
+          setUser(normalizeUser(meResult.data))
+        }
       }
-
-      // Get full user profile from /v1/me (per api.md §2.1)
-      const meResult = await get<Record<string, unknown>>('/me', { noAuth: false })
-      if (meResult.ok) {
-        setUser(normalizeUser(meResult.data))
-      }
+      // No token: user is not logged in, skip /me to avoid a pointless 401
 
       setLoading(false)
     }
@@ -133,7 +133,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setAccessToken(d.accessToken)
       setLoginProvider(null)
 
-      // Fetch full profile from /v1/me for roles/status/security
+      // Fetch full profile from /v1/me first to get accurate roles/security fields
       const meResult = await get<Record<string, unknown>>('/me')
       if (meResult.ok) {
         const u = normalizeUser(meResult.data)
@@ -141,6 +141,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { user: u }
       }
 
+      // Fallback: use minimal user data from login response
       const u = normalizeUser(d.user)
       setUser(u)
       return { user: u }
@@ -263,7 +264,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   // ── Passkey Login (api.md §1.10.5) ──
-  const loginWithPasskey = useCallback(async (): Promise<LoginResult> => {
+  const loginWithPasskey = useCallback(async (mfaChallengeToken?: string): Promise<LoginResult> => {
     const startResult = await post<{
       challengeId: string
       publicKey: {
@@ -274,7 +275,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         allowCredentials?: Array<{ type: string; id: string; transports: string[] }>
       }
       expiresIn: number
-    }>('/auth/passkey/login/start', {})
+    }>('/auth/passkey/login/start', { identifier: undefined })
 
     if (!startResult.ok) {
       return { user: null, errorCode: startResult.error.code }
@@ -310,10 +311,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const pkCred = credential as PublicKeyCredential
       const response = pkCred.response as AuthenticatorAssertionResponse
 
-      const finishResult = await post<{
-        accessToken?: string
-        user?: Record<string, unknown>
-      }>('/auth/passkey/login/finish', {
+      const finishBody: Record<string, unknown> = {
         challengeId,
         credential: {
           id: pkCred.id,
@@ -327,10 +325,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           },
           clientExtensionResults: pkCred.getClientExtensionResults(),
         },
-      })
+      }
+      if (mfaChallengeToken) finishBody.mfaChallengeToken = mfaChallengeToken
 
-      if (!finishResult.ok || !finishResult.data.accessToken) {
-        return { user: null, errorCode: finishResult.ok ? undefined : finishResult.error.code }
+      const finishResult = await post<{
+        accessToken?: string
+        user?: Record<string, unknown>
+        mfaRequired?: boolean
+        mfaChallengeToken?: string
+        availableMethods?: string[]
+      }>('/auth/passkey/login/finish', finishBody)
+
+      if (!finishResult.ok) {
+        return { user: null, errorCode: finishResult.error.code }
+      }
+
+      if (finishResult.data.mfaRequired) {
+        return {
+          user: null,
+          mfaChallengeToken: finishResult.data.mfaChallengeToken || '',
+          mfaAvailableMethods: finishResult.data.availableMethods || [],
+        }
+      }
+
+      if (!finishResult.data.accessToken) {
+        return { user: null }
       }
 
       setClientToken(finishResult.data.accessToken)

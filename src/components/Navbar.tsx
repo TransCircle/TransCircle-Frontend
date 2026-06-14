@@ -101,25 +101,25 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
             id="nav-menu"
             className={`${styles.navLinks} ${isOpen ? styles.active : ""}`}
           >
-            <li><a href="https://transcircle.org" onClick={closeMenu}>{t('nav.home')}</a></li>
+            <li><Link to="/" onClick={closeMenu}>{t('nav.home')}</Link></li>
             <li><Link to="/submit" onClick={closeMenu}>{t('nav.submit')}</Link></li>
-            <li><a href="#archive" onClick={closeMenu}>{t('nav.archive')}</a></li>
-            <li><a href="#community" onClick={closeMenu}>{t('nav.community')}</a></li>
+            <li><span style={{ opacity: 0.5, cursor: 'default' }}>{t('nav.archive')}</span></li>
+            <li><span style={{ opacity: 0.5, cursor: 'default' }}>{t('nav.community')}</span></li>
 
             {user && (
               <>
                 <li className={styles.mobileDivider}></li>
-                <li><Link to="/me/contributions" onClick={closeMenu}>我的投稿</Link></li>
-                <li><Link to="/settings/security" onClick={closeMenu}>安全设置</Link></li>
-                {isAdmin && <li><Link to="/admin" onClick={closeMenu}>管理后台</Link></li>}
-                <li><button onClick={() => { logout(); closeMenu(); navigate('/') }} style={{
+                <li><Link to="/me/contributions" onClick={closeMenu}>{t('nav.myContributions')}</Link></li>
+                <li><Link to="/settings/security" onClick={closeMenu}>{t('nav.securitySettings')}</Link></li>
+                {isAdmin && <li><Link to="/admin" onClick={closeMenu}>{t('nav.adminDashboard')}</Link></li>}
+                <li><button onClick={async () => { await logout(); closeMenu(); navigate('/') }} style={{
                   background: 'none', border: 'none', color: 'inherit', cursor: 'pointer',
                   fontSize: 'inherit', fontFamily: 'inherit', padding: 0
-                }}>退出登录</button></li>
+                }}>{t('nav.logout')}</button></li>
               </>
             )}
             {!user && (
-              <li><Link to="/login" onClick={closeMenu}>登录</Link></li>
+              <li><Link to="/login" onClick={closeMenu}>{t('nav.login')}</Link></li>
             )}
 
             {mobileLinks && (
@@ -151,13 +151,13 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
             <ThemeToggle />
             <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', marginLeft: '0.5rem' }}>
               {user ? (
-                <button onClick={() => { logout(); navigate('/') }} style={{
+                <button onClick={async () => { await logout(); navigate('/') }} style={{
                   fontSize: '0.8rem', background: 'none', border: '1px solid var(--text-muted)',
                   borderRadius: '50px', padding: '0.2rem 0.75rem', cursor: 'pointer', fontFamily: 'inherit',
                   color: 'var(--text-main)'
-                }}>退出</button>
+                }}>{t('nav.logoutShort')}</button>
               ) : (
-                <Link to="/login" style={{ fontSize: '0.85rem', color: 'var(--accent-pink)' }}>登录</Link>
+                <Link to="/login" style={{ fontSize: '0.85rem', color: 'var(--accent-pink)' }}>{t('nav.login')}</Link>
               )}
             </div>
           </div>

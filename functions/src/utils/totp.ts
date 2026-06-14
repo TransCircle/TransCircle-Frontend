@@ -10,25 +10,17 @@ const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
 
 function base32Decode(encoded: string): Uint8Array {
   const cleaned = encoded.replace(/=+$/, '').toUpperCase()
-  const bits: number[] = []
+  const bytes: number[] = []
+  let buffer = 0
+  let bitsLeft = 0
   for (const ch of cleaned) {
     const idx = BASE32.indexOf(ch)
     if (idx === -1) throw new Error(`Invalid Base32 character: ${ch}`)
-    bits.push(idx)
-  }
-  const bytes: number[] = []
-  for (let i = 0; i < bits.length; i += 8) {
-    if (i + 5 <= bits.length) {
-      bytes.push((bits[i] << 3) | (bits[i + 1] >> 2))
-    }
-    if (i + 4 <= bits.length) {
-      bytes.push(((bits[i + 1] & 0x3) << 6) | (bits[i + 2] << 1) | (bits[i + 3] >> 4))
-    }
-    if (i + 3 <= bits.length) {
-      bytes.push(((bits[i + 3] & 0xf) << 4) | (bits[i + 4] >> 1))
-    }
-    if (i + 2 <= bits.length && i + 5 > bits.length) {
-      bytes.push(((bits[i + 4] & 0x1) << 7) | (bits[i + 5] << 2) | (bits[i + 6] >> 3))
+    buffer = (buffer << 5) | idx
+    bitsLeft += 5
+    if (bitsLeft >= 8) {
+      bitsLeft -= 8
+      bytes.push((buffer >> bitsLeft) & 0xff)
     }
   }
   return new Uint8Array(bytes)

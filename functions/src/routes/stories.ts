@@ -26,7 +26,7 @@ router.get('/published', async (req, res) => {
     params.push(limit + 1)
 
     const rows = await query(
-      `SELECT c.id, c.title, c.summary, c.contentRaw as content, c.tags, c.language, c.publishedAt,
+      `SELECT c.id, c.title, c.summary, c.contentHtml as contentHtml_raw, c.tags, c.language, c.publishedAt,
               c.submittedAt as created_at,
               u.displayName as author_name, u.avatarUrl as author_avatar
        FROM contributions c
@@ -41,12 +41,13 @@ router.get('/published', async (req, res) => {
     if (hasMore) rows.pop()
 
     // Transform to nested author object + camelCase fields for api.md compliance
+    // Use contentHtml (sanitized) instead of contentRaw for security per api.md §5.2
     const data = (rows as Record<string, unknown>[]).map((row) => ({
       id: row.id,
       title: row.title,
       summary: row.summary,
-      contentRaw: row.content,  // api.md §5.2: use contentRaw for raw content
-      content: row.content,     // backward compat for story site
+      contentHtml: row.contentHtml_raw,  // api.md §5.2: use sanitized HTML
+      content: row.contentHtml_raw,       // backward compat for story site
       tags: typeof row.tags === 'string' ? JSON.parse(row.tags as string) : row.tags || [],
       language: row.language || 'zh-CN',
       author: {

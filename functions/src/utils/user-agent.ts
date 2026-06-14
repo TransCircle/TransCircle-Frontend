@@ -63,7 +63,8 @@ export function parseUserAgent(ua: string): DeviceInfo {
   if (lower.includes('ipad') || lower.includes('tablet') || lower.includes('playbook') || lower.includes('silk')) {
     type = 'tablet'
   } else if (lower.includes('mobile') || lower.includes('iphone') || lower.includes('ipod') ||
-             lower.includes('android.*mobile') || lower.includes('blackberry') || lower.includes('wpdesktop')) {
+             /android.*mobile/.test(lower) || lower.includes('blackberry') ||
+             (lower.includes('windows phone') && lower.includes('mobile'))) {
     type = 'mobile'
   }
 

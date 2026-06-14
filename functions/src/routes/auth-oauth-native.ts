@@ -19,6 +19,17 @@ const router: Router = Router()
 const oauthConf = conf.OAUTH as Record<string, string | undefined> | undefined
 const API_URL = (conf.APP as Record<string, string | undefined> | undefined)?.API_URL || 'https://api.transcircle.org'
 
+// Per api.md §1.6.7: redirectUri must be validated against allowlist
+const REDIRECT_URI_ALLOWLIST = [
+  'transcircle://oauth/callback',
+]
+// Also allow all loopback addresses (127.0.0.1:*) per OAuth native spec
+function isValidRedirectUri(uri: string): boolean {
+  if (REDIRECT_URI_ALLOWLIST.includes(uri)) return true
+  if (/^http:\/\/127\.0\.0\.1(?::\d+)?\/callback$/.test(uri)) return true
+  return false
+}
+
 // ─── 1.6.7 Native OAuth Start (PKCE) ────────────────────────────────
 router.post('/auth/oauth/native/start', (req, _res, next) => { req.rateLimitAction = 'auth'; next(); }, rateLimitCheck, async (req, res) => {
   const { provider, codeChallenge, codeChallengeMethod, redirectUri, mode } = req.body as {
@@ -39,6 +50,10 @@ router.post('/auth/oauth/native/start', (req, _res, next) => { req.rateLimitActi
   }
   if (codeChallengeMethod !== 'S256') {
     sendError(res, Errors.VALIDATION_ERROR.code, 'codeChallengeMethod 必须为 S256', req.requestId, 422)
+    return
+  }
+  if (!isValidRedirectUri(redirectUri)) {
+    sendError(res, Errors.VALIDATION_ERROR.code, 'redirectUri 不在 allowlist 中', req.requestId, 422)
     return
   }
   if (codeChallenge.length < 43 || codeChallenge.length > 128) {
@@ -552,7 +567,8 @@ router.post('/auth/oauth/native/complete-registration', (req, _res, next) => { r
     // Send verification email if needed per api.md §1.6.9
     let verificationEmailSent = false
     if (!emailVerified && normalizedEmail) {
-      const verifyHash = await hmacToken(genId('ev_'))
+      const rawVerifyToken = genId('ev_')
+      const verifyHash = await hmacToken(rawVerifyToken)
       await exec(
         `INSERT INTO auth_tokens (id, userId, type, tokenHash, metadata, expiresAt, createdAt)
          VALUES (?, ?, 'email_verify', ?, '{}', ?, ?)`,
@@ -560,7 +576,7 @@ router.post('/auth/oauth/native/complete-registration', (req, _res, next) => { r
       ).catch((e: unknown) =>
         console.error('verify token insert error:', (e as Error).message || e),
       )
-      verificationEmailSent = await sendEmail(buildVerificationEmail(normalizedEmail, verifyHash))
+      verificationEmailSent = await sendEmail(buildVerificationEmail(normalizedEmail, rawVerifyToken))
     }
 
     sendSuccess(res, {

@@ -309,8 +309,8 @@ router.post('/auth/passkey/login/start', (req, _res, next) => { req.rateLimitAct
       userVerification: 'required',
       allowCredentials: creds.map((c) => ({
         id: c.credentialIdB64,
-        transports: parseTransports(c.transports) as unknown as undefined,
-      })),
+        transports: parseTransports(c.transports),
+      })) as Parameters<typeof generateAuthenticationOptions>[0]['allowCredentials'],
       timeout: 60000,
     })
 
@@ -365,9 +365,9 @@ router.post('/auth/passkey/login/start', (req, _res, next) => { req.rateLimitAct
   }
 })
 
-// ─── 1.10.5 Passkey Login Finish ─────────────────────────────────────
+// ─── 1.10.5 Passkey Login Finish (also supports MFA via mfaChallengeToken) ──
 router.post('/auth/passkey/login/finish', (req, _res, next) => { req.rateLimitAction = 'auth'; next(); }, rateLimitCheck, async (req, res) => {
-  const { challengeId, credential } = req.body as {
+  const { challengeId, credential, mfaChallengeToken } = req.body as {
     challengeId?: string
     credential?: {
       id: string
@@ -381,11 +381,33 @@ router.post('/auth/passkey/login/finish', (req, _res, next) => { req.rateLimitAc
       }
       clientExtensionResults?: Record<string, unknown>
     }
+    /** MFA flow: passkey used as second factor — validate MFA challenge */
+    mfaChallengeToken?: string
   }
 
   if (!challengeId || !credential) {
     sendError(res, Errors.BAD_REQUEST.code, '缺少必要参数', req.requestId, 400)
     return
+  }
+
+  // Validate MFA challenge if provided (api.md §1.9.4) — read-only, do NOT consume yet
+  let mfaChalRecord: { id: string; userId: string } | null = null
+  if (mfaChallengeToken) {
+    const chalHash = await hmacToken(mfaChallengeToken)
+    const chalRecord = await queryOne(
+      `SELECT id, userId, failedAttempts FROM auth_tokens WHERE tokenHash = ? AND type = 'mfa_challenge' AND usedAt IS NULL AND expiresAt > ?`,
+      [chalHash, Date.now()],
+    ) as { id: string; userId: string; failedAttempts?: number } | null
+    if (!chalRecord) {
+      sendError(res, 'TOKEN_INVALID_OR_EXPIRED', 'MFA 挑战令牌无效或已过期', req.requestId, 410)
+      return
+    }
+    if ((chalRecord.failedAttempts as number || 0) >= 5) {
+      await exec(`UPDATE auth_tokens SET usedAt = ? WHERE id = ?`, [Date.now(), chalRecord.id])
+      sendError(res, 'MFA_CHALLENGE_EXHAUSTED', 'MFA 验证尝试次数过多', req.requestId, 429)
+      return
+    }
+    mfaChalRecord = chalRecord
   }
 
   const challengeHash = await hmacToken(challengeId)
@@ -401,20 +423,13 @@ router.post('/auth/passkey/login/finish', (req, _res, next) => { req.rateLimitAc
 
   const meta = typeof record.metadata === 'string' ? JSON.parse(record.metadata) : record.metadata
 
-  // ── 事务: 原子凭证查找 + signCount 校验 + 更新 ──
-  interface StoredPasskeyCredential {
-    id: string
-    userId: string
-    credentialId: string
-    publicKey: string
-    signCount: number
-    signCountSupported: boolean
-    status: string
-  }
-  let storedCred: StoredPasskeyCredential
-  let passkeyUserId: string
+  // ── 单个事务: 原子凭证查找 + signCount 校验 + 更新 + challenge 消费 ──
+  // Variables to carry data from the transaction to session creation
+  let storedCredUserId: string
+  let storedCredId: string
   {
     const conn = await getConnection()
+    let connReleased = false
     try {
       await conn.beginTransaction()
 
@@ -426,21 +441,23 @@ router.post('/auth/passkey/login/finish', (req, _res, next) => { req.rateLimitAc
       const row = lockRows[0] as Record<string, unknown> | undefined
       if (!row) {
         await conn.rollback()
-        conn.release()
-        await exec(`UPDATE auth_tokens SET usedAt = ? WHERE id = ?`, [Date.now(), record.id])
         sendError(res, 'INVALID_CREDENTIALS', '凭证未注册', req.requestId, 401)
         return
       }
 
       if (row.status === 'frozen') {
         await conn.rollback()
-        conn.release()
         sendError(res, 'PASSKEY_FROZEN', 'Passkey 已被冻结', req.requestId, 403)
         return
       }
 
-      storedCred = row as unknown as StoredPasskeyCredential
-      passkeyUserId = storedCred!.userId
+      const storedCred = row as unknown as {
+        id: string; userId: string; credentialId: string; publicKey: string
+        signCount: number; signCountSupported: boolean; status: string
+      }
+      const passkeyUserId = storedCred!.userId
+      storedCredUserId = storedCred!.userId
+      storedCredId = storedCred!.id
 
       // Check user status within transaction
       const [uRows] = await conn.execute<import('mysql2').RowDataPacket[]>(
@@ -450,135 +467,122 @@ router.post('/auth/passkey/login/finish', (req, _res, next) => { req.rateLimitAc
       const loginUser = uRows[0] as { id: string; status: string } | undefined
       if (!loginUser) {
         await conn.rollback()
-        conn.release()
         sendError(res, 'INVALID_CREDENTIALS', '用户不存在', req.requestId, 401)
         return
       }
       if (loginUser.status === 'banned') {
         await conn.rollback()
-        conn.release()
         sendError(res, Errors.ACCOUNT_BANNED.code, Errors.ACCOUNT_BANNED.message, req.requestId, Errors.ACCOUNT_BANNED.status)
         return
       }
       if (loginUser.status === 'merged') {
         await conn.rollback()
-        conn.release()
         sendError(res, Errors.ACCOUNT_MERGED.code, Errors.ACCOUNT_MERGED.message, req.requestId, Errors.ACCOUNT_MERGED.status)
         return
       }
       if (loginUser.status === 'pending_deletion' || loginUser.status === 'deleted') {
         await conn.rollback()
-        conn.release()
         sendError(res, 'INVALID_CREDENTIALS', '账户状态异常', req.requestId, 401)
         return
       }
 
-      // 验证成功后再释放事务锁（但不提交——后续 signCount 更新也在此事务内）
-      await conn.commit()
-    } finally {
-      conn.release()
-    }
-  }
+      // Verify passkey (pure computation, no DB I/O)
+      const pkHex = storedCred!.publicKey as string
+      let credentialPublicKey: Uint8Array
+      try {
+        credentialPublicKey = new Uint8Array(Buffer.from(pkHex, 'hex'))
+      } catch {
+        await conn.rollback()
+        sendError(res, Errors.INTERNAL_ERROR.code, '凭证数据异常', req.requestId, 500)
+        return
+      }
 
-  const pkHex = storedCred!.publicKey as string
-  let credentialPublicKey: Uint8Array<ArrayBuffer>
-  try {
-    credentialPublicKey = new Uint8Array(Buffer.from(pkHex, 'hex')) as unknown as Uint8Array<ArrayBuffer>
-  } catch {
-    sendError(res, Errors.INTERNAL_ERROR.code, '凭证数据异常', req.requestId, 500)
-    return
-  }
+      const { verifyAuthenticationResponse } = await import('@simplewebauthn/server')
+      let verification
+      try {
+        verification = await verifyAuthenticationResponse({
+          response: {
+            id: credential.id,
+            rawId: credential.rawId,
+            type: credential.type as 'public-key',
+            response: {
+              clientDataJSON: credential.response.clientDataJSON,
+              authenticatorData: credential.response.authenticatorData,
+              signature: credential.response.signature,
+              userHandle: credential.response.userHandle,
+            },
+            clientExtensionResults: credential.clientExtensionResults || {},
+          },
+          expectedChallenge: meta.challenge,
+          expectedOrigin: ORIGIN,
+          expectedRPID: RP_ID,
+          credential: {
+            id: storedCred!.id as string,
+            publicKey: credentialPublicKey,
+            counter: (storedCred!.signCount as number) || 0,
+          },
+          requireUserVerification: true,
+        })
+      } catch {
+        await conn.rollback()
+        sendError(res, 'PASSKEY_VERIFICATION_FAILED', '验证失败', req.requestId, 422)
+        return
+      }
 
-  const { verifyAuthenticationResponse } = await import('@simplewebauthn/server')
-  let verification
-  try {
-    verification = await verifyAuthenticationResponse({
-      response: {
-        id: credential.id,
-        rawId: credential.rawId,
-        type: credential.type as 'public-key',
-        response: {
-          clientDataJSON: credential.response.clientDataJSON,
-          authenticatorData: credential.response.authenticatorData,
-          signature: credential.response.signature,
-          userHandle: credential.response.userHandle,
-        },
-        clientExtensionResults: credential.clientExtensionResults || {},
-      },
-      expectedChallenge: meta.challenge,
-      expectedOrigin: ORIGIN,
-      expectedRPID: RP_ID,
-      credential: {
-        id: storedCred!.id as string,
-        publicKey: credentialPublicKey,
-        counter: (storedCred!.signCount as number) || 0,
-      },
-      requireUserVerification: true,
-    })
-  } catch {
-    sendError(res, 'PASSKEY_VERIFICATION_FAILED', '验证失败', req.requestId, 422)
-    return
-  }
+      if (!verification.verified) {
+        await conn.rollback()
+        sendError(res, 'PASSKEY_VERIFICATION_FAILED', '签名验证失败', req.requestId, 422)
+        return
+      }
 
-  if (!verification.verified) {
-    sendError(res, 'PASSKEY_VERIFICATION_FAILED', '签名验证失败', req.requestId, 422)
-    return
-  }
-
-  const { authenticationInfo } = verification
-
-  // ── 第二个事务: 原子 signCount 更新 ──
-  {
-    const conn = await getConnection()
-    try {
-      await conn.beginTransaction()
-
-      const [lockRows] = await conn.execute<import('mysql2').RowDataPacket[]>(
-        `SELECT signCount, signCountSupported FROM passkeys WHERE id = ? FOR UPDATE`,
-        [storedCred!.id],
-      )
-      const pkRow = lockRows[0] as { signCount: number; signCountSupported: boolean } | undefined
-      const currentSignCount = pkRow?.signCount ?? (storedCred!.signCount as number)
-      const sigCountSupported = pkRow?.signCountSupported ?? (storedCred!.signCountSupported as boolean)
+      const { authenticationInfo } = verification
+      const currentSignCount = storedCred!.signCount as number
+      const sigCountSupported = storedCred!.signCountSupported as boolean
       const newSignCount = authenticationInfo.newCounter
 
       if (newSignCount > 0) {
         if (sigCountSupported && newSignCount <= currentSignCount) {
-          // Replay detected — freeze credential
           await conn.execute(
             `UPDATE passkeys SET status = 'frozen', frozenReason = 'signcount_replay' WHERE id = ?`,
             [storedCred!.id],
           )
           await conn.commit()
+          connReleased = true
           sendError(res, 'PASSKEY_REPLAY_DETECTED', '凭证回放检测，已冻结', req.requestId, 422)
           return
         }
-        // Update signCount atomically
         await conn.execute(`UPDATE passkeys SET signCount = ? WHERE id = ?`, [newSignCount, storedCred!.id])
       }
 
-      // Mark challenge as used within same transaction
+      // Mark passkey challenge as used
       await conn.execute(`UPDATE auth_tokens SET usedAt = ? WHERE id = ? AND usedAt IS NULL`, [Date.now(), record.id])
 
+      // Consume MFA challenge within same transaction (fixes pre-consumption race)
+      if (mfaChalRecord) {
+        await conn.execute(`UPDATE auth_tokens SET usedAt = ? WHERE id = ? AND usedAt IS NULL`, [Date.now(), mfaChalRecord.id])
+      }
+
       await conn.commit()
+
+      // Update lastUsedAt (uses pool, not transaction connection)
+      await exec(`UPDATE passkeys SET lastUsedAt = ? WHERE id = ?`, [Date.now(), storedCredId])
     } catch (err) {
       await conn.rollback().catch(() => {})
-      console.error('passkey signcount update error:', err)
+      console.error('passkey login error:', err)
       sendError(res, Errors.INTERNAL_ERROR.code, '登录失败', req.requestId, 500)
       return
     } finally {
-      conn.release()
+      if (!connReleased) conn.release()
     }
   }
 
-  // Create session
+  // --- Transaction committed, proceed with session creation ---
   const ip = req.ip || req.socket.remoteAddress || 'unknown'
   const ua = req.headers['user-agent'] || 'unknown'
 
-  // Load user data for JWT
   const userRow = await queryOne(
     `SELECT id, username, displayName, avatarUrl, emailVerified, tokenVersion FROM users WHERE id = ?`,
-    [passkeyUserId],
+    [storedCredUserId],
   ) as Record<string, unknown> | null
 
   if (!userRow) {
@@ -586,23 +590,19 @@ router.post('/auth/passkey/login/finish', (req, _res, next) => { req.rateLimitAc
     return
   }
 
-  // Fetch roles from user_roles table (api.md §15.10)
   let roles: string[] = []
   try {
     const roleRows = await query(
       `SELECT r.name FROM user_roles ur JOIN roles r ON r.id = ur.roleId WHERE ur.userId = ?`,
-      [passkeyUserId],
+      [storedCredUserId],
     )
     roles = (roleRows as Array<{ name: string }>).map(r => r.name)
   } catch { /* no roles */ }
 
-  const { sessionId, refreshToken } = await createSession(passkeyUserId, roles, 'passkey', ip, ua)
-
-  // Update lastUsedAt
-  await exec(`UPDATE passkeys SET lastUsedAt = ? WHERE id = ?`, [Date.now(), storedCred!.id as string])
+  const { sessionId, refreshToken } = await createSession(storedCredUserId, roles, 'passkey', ip, ua)
 
   const accessToken = await signJwt({
-    sub: storedCred!.userId,
+    sub: storedCredUserId,
     sid: sessionId,
     tokenVersion: userRow.tokenVersion as number,
     roles,
@@ -616,7 +616,6 @@ router.post('/auth/passkey/login/finish', (req, _res, next) => { req.rateLimitAc
     sameSite: 'lax', path: '/v1/auth', maxAge: maxAge * 1000,
   })
 
-  // api.md §1.3: 浏览器场景通过 Cookie 下发时，响应体省略 refreshToken
   const nativeClient = isNativeClient(req)
   const pkResp: Record<string, unknown> = {
     mfaRequired: false,

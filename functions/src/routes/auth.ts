@@ -10,6 +10,7 @@ import { findUserById } from '../utils/users'
 import { loginCodeSchema, completeRegistrationSchema } from '../utils/validation'
 import { requireAuth } from '../middleware/auth'
 import { rateLimitCheck } from '../middleware/rateLimit'
+import { idempotencyKey } from '../middleware/idempotency'
 import { writeAuditLog, sha256base64url } from '../utils/audit'
 import { metrics } from '../utils/metrics'
 import { isPasswordNotLeaked } from '../utils/hibp'
@@ -71,12 +72,11 @@ const REDIRECT_ALLOWLIST = [
   '/auth/error',
 ]
 
-function validateRedirectAfter(url: string | undefined): string {
+function validateRedirectAfter(url: string | undefined): string | null {
   if (!url) return '/dashboard'
-  // Strip query params for allowlist matching
   const pathOnly = url.split('?')[0]?.split('#')[0] ?? url
   const allowed = REDIRECT_ALLOWLIST.includes(pathOnly)
-  if (!allowed) return '/dashboard'
+  if (!allowed) return null
   return url
 }
 
@@ -198,6 +198,10 @@ router.get('/oauth/github/start', (req, _res, next) => { req.rateLimitAction = '
   const state = genId('ost_')
   const callbackUrl = `${API_URL}/v1/auth/oauth/github/callback`
   const redirectAfter = validateRedirectAfter(req.query.redirectAfter as string | undefined)
+  if (redirectAfter === null) {
+    sendError(res, Errors.BAD_REQUEST.code, 'redirectAfter 不在 allowlist 中', req.requestId, 400)
+    return
+  }
 
   const stateHash = await hmacToken(state)
   const stateIp = req.ip || req.socket.remoteAddress || 'unknown'
@@ -233,32 +237,20 @@ router.get('/oauth/github/start', (req, _res, next) => { req.rateLimitAction = '
 // POST /auth/oauth/complete-binding — api.md §1.6.5
 // Bind pending OAuth identity to current logged-in user
 // ──────────────────────────────────────────────
-router.post('/oauth/complete-binding', (req, _res, next) => { req.rateLimitAction = 'auth'; next(); }, rateLimitCheck, async (req, res) => {
-  // Requires Bearer Token
-  const authHeader = req.headers.authorization
-  if (!authHeader?.startsWith('Bearer ')) {
-    sendError(res, Errors.UNAUTHORIZED.code, Errors.UNAUTHORIZED.message, req.requestId, Errors.UNAUTHORIZED.status)
+router.post('/oauth/complete-binding', requireAuth, (req, _res, next) => { req.rateLimitAction = 'auth'; next(); }, rateLimitCheck, async (req, res) => {
+  // requireAuth validates JWT, session, tokenVersion, and user status
+  // (allows active/pending_verification). Per api.md §1.6.5, binding
+  // requires active status, so reject pending_verification here.
+  const user = await findUserById(req.user!.userId)
+  if (!user || user.status === 'pending_verification') {
+    sendError(res, Errors.EMAIL_NOT_VERIFIED.code, '邮箱未验证，禁止绑定', req.requestId, Errors.EMAIL_NOT_VERIFIED.status)
     return
   }
 
-  const { verifyJwt } = await import('../utils/jwt')
-  const payload = await verifyJwt(authHeader.slice(7))
-  if (!payload) {
-    sendError(res, Errors.UNAUTHORIZED.code, '登录已过期', req.requestId, Errors.UNAUTHORIZED.status)
-    return
-  }
-
-  // 校验 user.status = 'active'
-  const user = await findUserById(payload.sub)
-  if (!user || user.status !== 'active') {
-    sendError(res, Errors.EMAIL_NOT_VERIFIED.code, '邮箱未验证', req.requestId, Errors.EMAIL_NOT_VERIFIED.status)
-    return
-  }
-
-  // 校验 step-up (5 分钟内)
+  // 校验 step-up (5 分钟内) — api.md §1.6.5
   const session = await queryOne(
-    `SELECT lastStepUpAt FROM sessions WHERE id = ? AND userId = ?`,
-    [payload.sid, payload.sub],
+    `SELECT lastStepUpAt FROM sessions WHERE id = ? AND userId = ? AND revokedAt IS NULL`,
+    [req.user!.sessionId, req.user!.userId],
   )
   if (!session || !session.lastStepUpAt || Date.now() - session.lastStepUpAt > 300_000) {
     sendError(res, 'STEP_UP_REQUIRED', '需要二次认证', req.requestId, 403)
@@ -327,7 +319,7 @@ router.post('/oauth/complete-binding', (req, _res, next) => { req.rateLimitActio
     // 检查当前用户在该 provider 下是否已有绑定 (行锁保护)
     const [lockBind] = await conn.execute<import('mysql2').RowDataPacket[]>(
       `SELECT id FROM oauth_accounts WHERE userId = ? AND provider = ? FOR UPDATE`,
-      [payload.sub, meta.provider],
+      [req.user!.userId, meta.provider],
     )
     if ((lockBind as unknown[]).length > 0) {
       await conn.rollback()
@@ -350,7 +342,7 @@ router.post('/oauth/complete-binding', (req, _res, next) => { req.rateLimitActio
         `INSERT INTO auth_tokens (id, userId, type, tokenHash, metadata, expiresAt, createdAt)
          VALUES (?, ?, 'merge', ?, ?, ?, ?)`,
         [ulid(), conflictUserId, mergeHash,
-         JSON.stringify({ primaryUserId: payload.sub, conflictUserId, provider: meta.provider }),
+         JSON.stringify({ primaryUserId: req.user!.userId, conflictUserId, provider: meta.provider }),
          Date.now() + 600_000, Date.now()],
       )
       sendError(res, Errors.OAUTH_ALREADY_LINKED.code, '该 OAuth 账号已关联到另一个账号，请走账号合并流程', req.requestId, 409, undefined, {
@@ -369,7 +361,7 @@ router.post('/oauth/complete-binding', (req, _res, next) => { req.rateLimitActio
       await conn.execute(
         `INSERT INTO oauth_accounts (id, userId, provider, providerUserId, providerUsername, providerDisplayName, providerAvatarUrl, providerEmail, createdAt, updatedAt)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [genId('oauth_'), payload.sub, meta.provider, meta.providerUserId, meta.providerUsername || null, meta.providerDisplayName || null, meta.providerAvatarUrl || null, meta.providerEmail || null, Date.now(), Date.now()],
+        [genId('oauth_'), req.user!.userId, meta.provider, meta.providerUserId, meta.providerUsername || null, meta.providerDisplayName || null, meta.providerAvatarUrl || null, meta.providerEmail || null, Date.now(), Date.now()],
       )
     } catch (insertErr: unknown) {
       const mysqlErr = insertErr as { code?: string }
@@ -383,10 +375,10 @@ router.post('/oauth/complete-binding', (req, _res, next) => { req.rateLimitActio
 
     // Audit log per api.md §1.6.5
     await writeAuditLog(req, {
-      actorUserId: payload.sub,
+      actorUserId: req.user!.userId,
       action: 'oauth.bind',
       resourceType: 'oauth_account',
-      resourceId: payload.sub,
+      resourceId: req.user!.userId,
       after: { provider: meta.provider },
     })
 
@@ -405,7 +397,7 @@ router.post('/oauth/complete-binding', (req, _res, next) => { req.rateLimitActio
   res.clearCookie('oauth_pending_csrf', { path: '/' })
 
   sendSuccess(res, {
-    userId: payload.sub,
+    userId: req.user!.userId,
     boundProvider: meta.provider,
     providerUsername: meta.providerUsername || null,
     boundAt: Date.now(),
@@ -677,7 +669,6 @@ async function handleOAuthCallback(
     const pendingToken = genId('opt_')
     const pendingHash = await hmacToken(pendingToken)
     const csrfToken = genId('ocs_')
-    const csrfHash = await hmacToken(csrfToken)
 
     const bindPii = await encryptOAuthPii({
       providerUsername: providerData.username,
@@ -700,12 +691,6 @@ async function handleOAuthCallback(
          userAgentHash: await hmacToken(cbUa),
        }),
        now + 600_000, now],
-    )
-
-    await exec(
-      `INSERT INTO auth_tokens (id, userId, type, tokenHash, metadata, expiresAt, createdAt)
-       VALUES (?, ?, 'oauth_pending_registration', ?, JSON_OBJECT('csrfFor', ?), ?, ?)`,
-      [ulid(), stateMeta.userId, csrfHash, pendingToken, now + 600_000, now],
     )
 
     // 设置 oauth_pending_{provider} HttpOnly Cookie（per api.md §1.6.1）
@@ -743,7 +728,6 @@ async function handleOAuthCallback(
   const pendingToken = genId('opt_')
   const pendingHash = await hmacToken(pendingToken)
   const csrfToken = genId('ocs_')
-  const csrfHash = await hmacToken(csrfToken)
 
   const loginPii = await encryptOAuthPii({
     providerUsername: providerData.username,
@@ -766,12 +750,6 @@ async function handleOAuthCallback(
        userAgentHash: await hmacToken(cbUa),
      }),
      now + 600_000, now],
-  )
-
-  await exec(
-    `INSERT INTO auth_tokens (id, userId, type, tokenHash, metadata, expiresAt, createdAt)
-     VALUES (?, NULL, 'oauth_pending_registration', ?, JSON_OBJECT('csrfFor', ?), ?, ?)`,
-    [ulid(), csrfHash, pendingToken, now + 600_000, now],
   )
 
   // Set oauth_pending_<provider> HttpOnly cookie
@@ -799,6 +777,13 @@ async function handleOAuthCallback(
 // GET /auth/oauth/github/callback — api.md §1.6.2
 // ──────────────────────────────────────────────
 router.get('/oauth/github/callback', async (req, res) => {
+  // Handle OAuth provider error (user denied authorization) — api.md §1.6.2
+  const oauthError = req.query.error as string | undefined
+  if (oauthError) {
+    res.clearCookie('oauth_state', { path: '/v1/auth/oauth' })
+    safeRedirect(res, `${APP_URL}/auth/error?status=oauth_error&code=OAUTH_ERROR&reason=user_denied`)
+    return
+  }
   const code = req.query.code as string | undefined
   if (!code) {
     res.clearCookie('oauth_state', { path: '/v1/auth/oauth' })
@@ -863,7 +848,7 @@ router.get('/oauth/github/callback', async (req, res) => {
       actorUserId: null,
       action: 'oauth.provider_token.discard',
       resourceType: 'oauth_account',
-      resourceId: '',
+      resourceId: String(githubUser?.id ?? ''),
       after: { provider: 'github', reason: 'callback_completed' },
     }).catch((e: unknown) => console.error('audit error:', e))
     tokenData.access_token = undefined
@@ -871,6 +856,7 @@ router.get('/oauth/github/callback', async (req, res) => {
     console.error('GitHub OAuth error:', err)
     res.clearCookie('oauth_state', { path: '/v1/auth/oauth' })
     safeRedirect(res, `${APP_URL}/auth/error?status=oauth_error`)
+    return
   }
 })
 
@@ -892,6 +878,10 @@ router.get('/oauth/x/start', (req, _res, next) => { req.rateLimitAction = 'auth'
     .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
   const callbackUrl = `${API_URL}/v1/auth/oauth/x/callback`
   const redirectAfter = validateRedirectAfter(req.query.redirectAfter as string | undefined)
+  if (redirectAfter === null) {
+    sendError(res, Errors.BAD_REQUEST.code, 'redirectAfter 不在 allowlist 中', req.requestId, 400)
+    return
+  }
 
   const stateHash = await hmacToken(state)
   const xStateIp = req.ip || req.socket.remoteAddress || 'unknown'
@@ -927,6 +917,13 @@ router.get('/oauth/x/start', (req, _res, next) => { req.rateLimitAction = 'auth'
 // GET /auth/oauth/x/callback — api.md §1.6.2
 // ──────────────────────────────────────────────
 router.get('/oauth/x/callback', async (req, res) => {
+  // Handle OAuth provider error (user denied authorization) — api.md §1.6.2
+  const oauthError = req.query.error as string | undefined
+  if (oauthError) {
+    res.clearCookie('oauth_state', { path: '/v1/auth/oauth' })
+    safeRedirect(res, `${APP_URL}/auth/error?status=oauth_error&code=OAUTH_ERROR&reason=user_denied`)
+    return
+  }
   const { code, state } = req.query as { code?: string; state?: string }
   if (!code) {
     res.clearCookie('oauth_state', { path: '/v1/auth/oauth' })
@@ -990,7 +987,7 @@ router.get('/oauth/x/callback', async (req, res) => {
       actorUserId: null,
       action: 'oauth.provider_token.discard',
       resourceType: 'oauth_account',
-      resourceId: '',
+      resourceId: String(id ?? ''),
       after: { provider: 'x', reason: 'callback_completed' },
     }).catch((e: unknown) => console.error('audit error:', e))
     if (typeof tokenData !== 'undefined') (tokenData as Record<string, unknown>).access_token = undefined
@@ -998,6 +995,7 @@ router.get('/oauth/x/callback', async (req, res) => {
     console.error('X OAuth error:', err)
     res.clearCookie('oauth_state', { path: '/v1/auth/oauth' })
     safeRedirect(res, `${APP_URL}/auth/error?status=oauth_error`)
+    return
   }
 })
 
@@ -1005,7 +1003,7 @@ router.get('/oauth/x/callback', async (req, res) => {
 // POST /auth/oauth/complete-registration — api.md §1.6.4
 // Complete OAuth registration with username/password etc.
 // ──────────────────────────────────────────────
-router.post('/oauth/complete-registration', (req, _res, next) => { req.rateLimitAction = 'auth'; next(); }, rateLimitCheck, async (req, res) => {
+router.post('/oauth/complete-registration', (req, _res, next) => { req.rateLimitAction = 'auth'; next(); }, rateLimitCheck, idempotencyKey, async (req, res) => {
   const provider = req.query.provider as string || 'github'
 
   // CSRF validation: X-CSRF-Token must match oauth_pending_csrf cookie
@@ -1142,16 +1140,18 @@ router.post('/oauth/complete-registration', (req, _res, next) => { req.rateLimit
         return
       }
 
-      // Create session
-      const { sessionId, refreshToken } = await createSession(user.id, user.roles, `oauth:${provider}`, ip, ua)
+      // Create session (use conn for transactional atomicity)
+      const { sessionId, refreshToken } = await createSession(user.id, user.roles, `oauth:${provider}`, ip, ua, conn)
 
       // Generate login code
       const loginCode = genId('oa_lc_')
       const loginCodeHash = await hmacToken(loginCode)
+      const loginCodeIpHash = await hmacToken(ip)
+      const loginCodeUaHash = await sha256base64url(ua)
       await conn.execute(
         `INSERT INTO auth_tokens (id, userId, type, tokenHash, metadata, expiresAt, createdAt)
-         VALUES (?, ?, 'oauth_login_code', ?, JSON_OBJECT('sessionId', ?, 'provider', ?), ?, ?)`,
-        [ulid(), user.id, loginCodeHash, sessionId, provider, now + 60_000, now],
+         VALUES (?, ?, 'oauth_login_code', ?, JSON_OBJECT('sessionId', ?, 'requestIpHash', ?, 'userAgentHash', ?, 'provider', ?), ?, ?)`,
+        [ulid(), user.id, loginCodeHash, sessionId, loginCodeIpHash, loginCodeUaHash, provider, now + 60_000, now],
       )
 
       // Audit logs
@@ -1231,16 +1231,18 @@ router.post('/oauth/complete-registration', (req, _res, next) => { req.rateLimit
         return
       }
 
-      // Create session
-      const { sessionId, refreshToken } = await createSession(user.id, user.roles, `oauth:${provider}`, ip, ua)
+      // Create session (use conn for transactional atomicity)
+      const { sessionId, refreshToken } = await createSession(user.id, user.roles, `oauth:${provider}`, ip, ua, conn)
 
       // Generate login code
       const loginCode = genId('oa_lc_')
       const loginCodeHash = await hmacToken(loginCode)
+      const loginCodeIpHash = await hmacToken(ip)
+      const loginCodeUaHash = await sha256base64url(ua)
       await conn.execute(
         `INSERT INTO auth_tokens (id, userId, type, tokenHash, metadata, expiresAt, createdAt)
-         VALUES (?, ?, 'oauth_login_code', ?, JSON_OBJECT('sessionId', ?, 'provider', ?), ?, ?)`,
-        [ulid(), user.id, loginCodeHash, sessionId, provider, now + 60_000, now],
+         VALUES (?, ?, 'oauth_login_code', ?, JSON_OBJECT('sessionId', ?, 'requestIpHash', ?, 'userAgentHash', ?, 'provider', ?), ?, ?)`,
+        [ulid(), user.id, loginCodeHash, sessionId, loginCodeIpHash, loginCodeUaHash, provider, now + 60_000, now],
       )
 
       // Audit logs
