@@ -7,6 +7,11 @@ import styles from '../App.module.css'
 import formStyles from './Register.module.css'
 import adminStyles from './Admin.module.css'
 
+// Unicode 感知的字符串截断（api.md §12 通用约定：按字符而非 UTF-16 码元计数）
+function limitByUnicode(str: string, max: number): string {
+  return [...str].slice(0, max).join('')
+}
+
 export const EditRequestForm = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -93,7 +98,7 @@ export const EditRequestForm = () => {
         </label>
         <label className={formStyles.field}>
           <span className={formStyles.label}>{t('editRequest.proposedTitle')}</span>
-          <input type="text" value={proposedTitle} onChange={e => setProposedTitle(e.target.value)}
+          <input type="text" value={proposedTitle} onChange={e => setProposedTitle(limitByUnicode(e.target.value, 120))}
             className={formStyles.input} maxLength={120} />
         </label>
         <label className={formStyles.field}>

@@ -2,7 +2,7 @@
 
 const CATEGORIES = ['全部', '个人经历', '观点评论', '资源指南']
 
-/** @type {Array<{ id: string; title: string; category: string; content: string; author_type: string; author_name: string | null; created_at: number | string }>} */
+/** @type {Array<{ id: string; title: string; category: string; content: string; author_name: string | null; created_at: number | string }>} */
 let submissions = []
 let activeCategory = '全部'
 
@@ -54,8 +54,7 @@ async function load() {
       title: item.title,
       category: item.tags?.[0] || '全部',
       content: item.summary || '',
-      author_type: 'real',
-      author_name: item.author?.displayName || '匿名',
+      author_name: item.author?.displayName || null,
       created_at: item.publishedAt,
     }))
   } catch (err) {
@@ -117,7 +116,7 @@ function renderGrid() {
 }
 
 function storyCard(s) {
-  const authorDisplay = s.author_type === 'anonymous' ? '匿名' : s.author_name || '匿名'
+  const authorDisplay = s.author_name || '匿名'
   const date = formatDate(s.created_at)
   const preview = (s.content || '')
     .replace(/[#*`>\[\]()]/g, '')
@@ -136,7 +135,7 @@ function storyCard(s) {
       <div class="cardFull" id="full-${html(s.id)}" hidden>
         <div class="cardContent">${renderMarkdown(s.content)}</div>
         <p class="cardAuthor">
-          作者：${html(authorDisplay)}${s.author_type !== 'anonymous' ? `（${s.author_type === 'real' ? '实名' : '笔名'}）` : ''}
+          作者：${html(authorDisplay)}
         </p>
       </div>
     </article>

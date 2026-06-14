@@ -153,6 +153,12 @@ export const SettingsSecurity = () => {
   const [cancelPasskeyAssertion, setCancelPasskeyAssertion] = useState<Record<string, unknown> | null>(null)
   const [cancelPasskeyProcessing, setCancelPasskeyProcessing] = useState(false)
 
+  // ── Delete account password input (替换原生 prompt()) ──
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deletePasswordNeeded, setDeletePasswordNeeded] = useState(false)
+  const [deletePasswordError, setDeletePasswordError] = useState('')
+  const [deletePasswordSubmitting, setDeletePasswordSubmitting] = useState(false)
+
   // ── Load profile on mount ──
   useEffect(() => {
     if (authLoading || !authUser) return
@@ -263,9 +269,10 @@ export const SettingsSecurity = () => {
     if (action === 'delete-account') {
       const body: Record<string, unknown> = { confirmation: 'DELETE-MY-ACCOUNT' }
       if (profile?.security.hasPassword) {
-        const pw = prompt(t('settings.deleteAccount.passwordPrompt'))
-        if (!pw) return
-        body.password = pw
+        setDeletePassword('')
+        setDeletePasswordNeeded(true)
+        setDeletePasswordError('')
+        return // render 中的内联密码输入框将接管
       }
       post('/me/delete', body).then(r => {
         if (r.ok) {
@@ -384,7 +391,7 @@ export const SettingsSecurity = () => {
         challengeId,
         credential: {
           id: pkCred.id,
-          rawId: pkCred.id,
+          rawId: arrayBufferToBase64url(pkCred.rawId),
           type: pkCred.type,
           response: {
             clientDataJSON: arrayBufferToBase64url(response.clientDataJSON),
@@ -402,7 +409,26 @@ export const SettingsSecurity = () => {
     }
   }
 
-  // ── Cancel Account Deletion (api.md §2.5) ──
+  // ── Delete account — confirm with password (replaces native prompt()) ──
+  const handleDeleteWithPassword = useCallback(async () => {
+    if (!deletePassword || deletePasswordSubmitting) return
+    setDeletePasswordSubmitting(true)
+    setDeletePasswordError("")
+    const body: Record<string, unknown> = { confirmation: "DELETE-MY-ACCOUNT", password: deletePassword }
+    try {
+      const r = await post("/me/delete", body)
+      if (r.ok) {
+        clearAuth()
+        navigate("/?toast=deletion_scheduled", { replace: true })
+      } else {
+        setDeletePasswordError(r.error?.message || t("settings.serverError"))
+        setDeletePasswordSubmitting(false)
+      }
+    } catch {
+      setDeletePasswordError(t("settings.serverError"))
+      setDeletePasswordSubmitting(false)
+    }
+  }, [deletePassword, deletePasswordSubmitting, t])
   const handleCancelDeletion = async () => {
     setCancelError('')
     if (!cancelToken.trim() || !cancelIdentifier.trim()) {
@@ -626,7 +652,7 @@ export const SettingsSecurity = () => {
         name: passkeyName.trim(),
         credential: {
           id: pkCred.id,
-          rawId: pkCred.id,
+          rawId: arrayBufferToBase64url(pkCred.rawId),
           type: pkCred.type,
           response: {
             clientDataJSON: arrayBufferToBase64url(pkCred.response.clientDataJSON),
@@ -1355,6 +1381,40 @@ export const SettingsSecurity = () => {
           {t('settings.deleteAccount.button')}
         </button>
       </div>
+
+      {/* Delete account password prompt (L10 — inline form replaces native prompt()) */}
+      {deletePasswordNeeded && !deletePasswordSubmitting && (
+        <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid var(--divider-color)', borderRadius: '8px', background: 'var(--hover-bg)' }}>
+          <p style={{ margin: '0 0 0.5rem', color: 'var(--text-main)', fontWeight: 500 }}>
+            {t('settings.deleteAccount.passwordPrompt')}
+          </p>
+          {deletePasswordError && <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{deletePasswordError}</p>}
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <input
+              type="password"
+              value={deletePassword}
+              onChange={e => setDeletePassword(e.target.value)}
+              placeholder={t('settings.passwordPlaceholder')}
+              autoFocus
+              style={{ flex: 1, padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
+              onKeyDown={e => { if (e.key === 'Enter') handleDeleteWithPassword() }}
+            />
+            <button
+              disabled={!deletePassword || deletePasswordSubmitting}
+              style={{ padding: '0.4rem 0.75rem', cursor: deletePassword ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}
+              onClick={handleDeleteWithPassword}
+            >
+              {deletePasswordSubmitting ? t('settings.submitting') : t('settings.confirm')}
+            </button>
+            <button
+              onClick={() => { setDeletePasswordNeeded(false); setDeletePassword(''); setDeletePasswordError('') }}
+              style={{ padding: '0.4rem 0.75rem', cursor: 'pointer', fontFamily: 'inherit', background: 'none', border: '1px solid var(--divider-color)', borderRadius: '8px' }}
+            >
+              {t('settings.cancel')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Step-up dialog */}
       {showStepUp && (

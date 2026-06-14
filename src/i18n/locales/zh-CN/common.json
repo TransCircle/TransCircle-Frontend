@@ -25,10 +25,10 @@
   "home": {
     "submitLink": "去投稿",
     "myContributions": "我的投稿",
-    "searchPlaceholder": "在已加载结果中筛选（仅限前 {{limit}} 条）",
-    "searchSubmit": "筛选",
+    "searchPlaceholder": "搜索标题、摘要与标签",
+    "searchSubmit": "搜索",
     "searchLabel": "搜索投稿",
-    "noMatches": "当前加载结果中无匹配项",
+    "noMatches": "无匹配的投稿",
     "empty": "暂无已发布的投稿",
     "loading": "加载中...",
     "loadMore": "加载更多",

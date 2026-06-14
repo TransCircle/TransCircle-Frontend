@@ -64,13 +64,8 @@ export const Home = () => {
   // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
   useEffect(() => { fetchList(null, searchTerm || null);  }, [searchTerm])
 
-  const filteredItems = searchTerm
-    ? items.filter(item =>
-        item.title.toLowerCase().includes(searchTerm) ||
-        item.summary?.toLowerCase().includes(searchTerm) ||
-        item.tags.some(t => t.toLowerCase().includes(searchTerm))
-      )
-    : items
+  // 搜索由服务端处理（search 参数已发送给后端），此处直接用 items 渲染
+  // 不再本地二次过滤，避免"仅当前页"的误导（api.md §5.1 暂无搜索契约，但服务端若支持则精确搜索）
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -90,7 +85,7 @@ export const Home = () => {
             name="search"
             type="text"
             defaultValue={searchParams.get('search') || ''}
-            placeholder={t('home.searchPlaceholder', { limit: 20 })}
+            placeholder={t('home.searchPlaceholder')}
             style={{ flex: 1, padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
           />
           <button type="submit" style={{ padding: '0.4rem 0.75rem', cursor: 'pointer' }}>{t('home.searchSubmit')}</button>
@@ -108,11 +103,11 @@ export const Home = () => {
 
       {error ? (
         <div className={styles.empty} role="alert">{error}</div>
-      ) : !loading && filteredItems.length === 0 ? (
+      ) : !loading && items.length === 0 ? (
         <div className={styles.empty}>{searchTerm ? t('home.noMatches') : t('home.empty')}</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {filteredItems.map(item => (
+          {items.map(item => (
             <div
               key={item.id}
               className={styles.detailCard}

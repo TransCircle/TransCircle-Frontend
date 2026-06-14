@@ -1,4 +1,5 @@
-﻿import { useState, type FormEvent } from 'react'
+﻿import type { FormEvent } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MdEditor } from 'md-editor-rt'
 import 'md-editor-rt/lib/style.css'
@@ -10,6 +11,11 @@ import { FormField } from './FormField'
 import { FieldErrorConsumer } from './FieldError'
 import { ImageUploader } from './ImageUploader'
 import styles from './SubmitForm.module.css'
+
+// Unicode 感知的字符串截断（api.md §12 通用约定：按字符而非 UTF-16 码元计数）
+function limitByUnicode(str: string, max: number): string {
+  return [...str].slice(0, max).join('')
+}
 
 type FormStatus = 'idle' | 'submitting' | 'success' | 'error'
 
@@ -265,7 +271,7 @@ export const SubmitForm = () => {
           className={styles.textInput}
           type="text"
           value={form.title}
-          onChange={(e) => set('title', e.target.value)}
+          onChange={(e) => set('title', limitByUnicode(e.target.value, 120))}
           placeholder={t('submit.titlePlaceholder')}
           maxLength={120}
         />

@@ -351,6 +351,12 @@ export async function apiRequest<T = unknown>(
     const errorCsrf = json.csrfToken as string | undefined
     if (errorCsrf) saveCsrfToken(errorCsrf)
     const errorData = json.error as { code: string; message: string; details?: Array<{ field: string; reason: string }>; data?: Record<string, unknown> } | undefined
+
+    // Append retry-after info to rate-limited error messages so pages display it automatically (L1)
+    if (status === 429 && rateLimit?.retryAfter && errorData?.message) {
+      errorData.message += ` (请在 ${rateLimit.retryAfter} 秒后重试)`
+    }
+
     return {
       ok: false,
       error: errorData || { code: 'UNKNOWN', message: 'Unknown error' },
