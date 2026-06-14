@@ -189,9 +189,24 @@ function renderMarkdown(md) {
 // ── Global ────────────────────────────────────────────
 
 /** @param {string} id */
-window.toggleStory = function (id) {
+window.toggleStory = async function (id) {
   const full = document.getElementById(`full-${id}`)
   const btn = document.querySelector(`#s-${id} .cardExpand`)
+  if (!full || !btn) return
+
+  if (!full.dataset.loaded) {
+    // Fetch full content from detail API (api.md §5.2)
+    try {
+      const res = await fetch(`/v1/public/contributions/${encodeURIComponent(id)}`)
+      if (res.ok) {
+        const body = await res.json()
+        const contentHtml = body.data?.contentHtml || ''
+        const contentEl = full.querySelector('.cardContent')
+        if (contentEl) contentEl.innerHTML = renderMarkdown(contentHtml)
+      }
+    } catch { /* keep summary as fallback */ }
+    full.dataset.loaded = '1'
+  }
   if (!full || !btn) return
 
   const wasHidden = full.hidden

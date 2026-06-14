@@ -25,6 +25,13 @@ interface EditRequestItem {
     reject: number
     total: number
     required: number
+    history?: Array<{
+      id: string
+      vote: string
+      note: string | null
+      reviewerId: string
+      createdAt: number
+    }>
   }
   myVote?: string | null
   // Legacy flat fields for backward compat during migration
@@ -35,15 +42,6 @@ interface EditRequestItem {
   proposedTags?: string[] | null
   createdAt: number
   updatedAt: number
-}
-
-interface VoteResult {
-  id: string
-  editRequestId: string
-  reviewerUserId: string
-  vote: string
-  note: string | null
-  createdAt: number
 }
 
 function formatTs(ts: number | null | undefined): string {
@@ -60,7 +58,6 @@ export const AdminEditRequests = () => {
   const [error, setError] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detail, setDetail] = useState<EditRequestItem | null>(null)
-  const [votes, setVotes] = useState<VoteResult[]>([])
   const [voteSubmitting, setVoteSubmitting] = useState(false)
   const [voteNote, setVoteNote] = useState('')
 
@@ -125,7 +122,7 @@ export const AdminEditRequests = () => {
   if (selectedId && detail) {
     return (
       <main className={styles.container}>
-        <button className={styles.back} onClick={() => { setSelectedId(null); setDetail(null); setVotes([]) }}>
+        <button className={styles.back} onClick={() => { setSelectedId(null); setDetail(null) }}>
           ← 返回列表
         </button>
         <div className={styles.detailCard}>
@@ -184,11 +181,11 @@ export const AdminEditRequests = () => {
             </>
           )}
 
-          {votes.length > 0 && (
+          {detail.votes?.history && detail.votes.history.length > 0 && (
             <div style={{ marginTop: '1rem' }}>
               <strong>投票记录</strong>
               <ul style={{ margin: '0.5rem 0 0', padding: '0 0 0 1.2rem', fontSize: '0.85rem', lineHeight: 1.8 }}>
-                {votes.map(v => (
+                {detail.votes.history.map(v => (
                   <li key={v.id}>{v.vote === 'approve' ? '✅' : '❌'} {v.vote} · {v.note || '无备注'} · {formatTs(v.createdAt)}</li>
                 ))}
               </ul>

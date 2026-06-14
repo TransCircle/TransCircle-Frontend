@@ -80,7 +80,7 @@
     "tempTokenLogin": "令牌登入",
     "tempAdmin": "臨時管理員",
     "tabs": {
-      "inReview": "???",
+      "inReview": "審核中",
       "pending": "待審核",
       "approved": "已通過",
       "rejected": "已拒絕"
