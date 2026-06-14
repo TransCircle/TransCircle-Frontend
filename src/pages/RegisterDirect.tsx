@@ -85,7 +85,10 @@ export const RegisterDirect = () => {
         const code = result.error.code
         if (code === ERRORS.USERNAME_TAKEN) setError(t('registerDirect.errors.usernameTaken'))
         else if (code === ERRORS.EMAIL_TAKEN) setError(t('registerDirect.errors.emailTaken'))
-        else setError(result.error.message || t('registerDirect.errors.failed'))
+        else if (code === ERRORS.VALIDATION_ERROR && result.error.details) {
+          const reasons = result.error.details.map(d => d.field + ': ' + d.reason).join('；')
+          setError(reasons || result.error.message)
+        } else setError(result.error.message || t('registerDirect.errors.failed'))
         return
       }
 

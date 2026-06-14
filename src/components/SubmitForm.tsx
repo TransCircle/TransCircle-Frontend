@@ -53,6 +53,7 @@ const TAG_MAX_LENGTH = 32
 const validate = (data: FormData, t: (key: string, options?: Record<string, unknown>) => string): FormErrors => {
   const errors: FormErrors = {}
   if (!data.title.trim()) errors.title = t('submit.errors.titleRequired')
+  else if ([...data.title.trim()].length > 120) errors.title = '标题不超过 120 个字符'
   if (!data.content.trim()) errors.content = t('submit.errors.contentRequired')
   if ([...data.summary].length > 300) errors.summary = t('submit.errors.summaryTooLong')
   if (data.tags.length > TAG_MAX) errors.tags = t('submit.errors.tagsTooMany', { max: TAG_MAX })

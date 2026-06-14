@@ -316,6 +316,11 @@ export async function apiRequest<T = unknown>(
     const json = (await res.json()) as Record<string, unknown>
     const requestId = (json.requestId as string) || res.headers.get('X-Request-Id') || ''
 
+    // Log rate limit info for 429 responses (L1)
+    if (status === 429 && rateLimit?.retryAfter) {
+      console.warn(`[api] Rate limited: retry after ${rateLimit.retryAfter}s (${rateLimit.limit} req/window)`)
+    }
+
     if (status >= 200 && status < 300) {
       logRequestId(`${method} ${path}`, json)
       // Persist CSRF token from response body if present (H1 — supports cross-origin OAuth flows)
@@ -405,7 +410,7 @@ export async function uploadFile<T = {
     if (newToken) {
       headers.set('Authorization', `Bearer ${newToken}`)
       res = await fetch(`${API_BASE}/images`, {
-        method: 'POST', headers, credentials: 'include', body: formData,
+        method: 'POST', headers, credentials: 'include', body: formData, signal,
       })
     } else {
       _memoryToken = null

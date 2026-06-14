@@ -42,7 +42,12 @@ export const EditRequestForm = () => {
     if (result.ok) {
       setSuccess(true)
     } else {
-      setError(result.error.message)
+      if (result.error.code === 'VALIDATION_ERROR' && result.error.details) {
+        const reasons = result.error.details.map(d => d.reason).join('；')
+        setError(reasons || result.error.message)
+      } else {
+        setError(result.error.message)
+      }
     }
     setIntentKey(null)
     setSubmitting(false)
