@@ -61,6 +61,9 @@ export const OAuthMerge = () => {
 
       clearCsrfToken()
       setStatus('success')
+      // Refresh token after account merge (api.md §1.8: merge increments tokenVersion,
+      // invalidating the current access token)
+      tryRefreshToken()
       setTimeout(() => navigate('/submit?toast=merge_success', { replace: true }), 1500)
     } catch {
       setErrorMsg(t('oauth.mergeError'))

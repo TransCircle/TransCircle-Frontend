@@ -214,7 +214,13 @@ export const Admin = () => {
       }, { headers: authHeaders(), skipRefresh: !accessToken })
 
       if (!result.ok) {
-        throw new Error(result.error.message || t('admin.errorReview'))
+        if (result.error.code === ERRORS.VERSION_CONFLICT && selected) {
+          setError('数据已被修改，已自动刷新')
+          fetchDetail(selected.id)
+        } else {
+          setError(result.error.message || t('admin.errorReview'))
+        }
+        return
       }
       setSelected(null)
       fetchSubmissions()
