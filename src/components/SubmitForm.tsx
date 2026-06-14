@@ -107,7 +107,7 @@ export const SubmitForm = () => {
   }
 
   const handleImageUploaded = (url: string) => {
-    set('content', form.content + `\n![image](${url})\n`)
+    setForm(prev => ({ ...prev, content: prev.content + `\n![image](${url})\n` }))
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -178,11 +178,12 @@ export const SubmitForm = () => {
       }
 
       setSubmitId(result.data.id)
-      setIntentKey(null)
       setStatus('success')
     } catch {
       setServerError(t('submit.networkError'))
       setStatus('error')
+    } finally {
+      setIntentKey(null)
     }
   }
 

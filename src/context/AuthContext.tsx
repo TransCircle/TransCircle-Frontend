@@ -111,7 +111,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       mfaRequired?: boolean
       mfaChallengeToken?: string
       availableMethods?: string[]
-    }>('/auth/login', { identifier, password }, { idempotent: true })
+    }>('/auth/login', { identifier, password })
 
     if (!result.ok) {
       return { user: null, errorCode: result.error.code }

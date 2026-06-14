@@ -39,13 +39,13 @@ export const EditRequestForm = () => {
       proposedContentFormat: proposedContent ? 'markdown' : undefined,
       proposedSummary: proposedSummary.trim() || undefined,
     }, { idempotent: true })
-    setSubmitting(false)
     if (result.ok) {
-      setIntentKey(null)
       setSuccess(true)
     } else {
       setError(result.error.message)
     }
+    setIntentKey(null)
+    setSubmitting(false)
   }
 
   if (success) {

@@ -521,7 +521,7 @@ router.post('/contributions/:id/delete', requirePerm('contribution:delete'), asy
   const reason = req.body?.reason as string | undefined
   if (!expectedVersion || !reason) { sendError(res, Errors.VALIDATION_ERROR.code, '缺少参数', req.requestId, 422); return }
 
-  const validFromStatuses = ['draft', 'rejected', 'withdrawn', 'hidden', 'approved', 'published']
+  const validFromStatuses = ['draft', 'rejected', 'withdrawn', 'hidden', 'approved']
   const contrib = await queryOne(`SELECT id, status, version FROM contributions WHERE id = ?`, [id])
   if (!contrib) { sendError(res, Errors.CONTRIBUTION_NOT_FOUND.code, '投稿不存在', req.requestId, 404); return }
   if (!validFromStatuses.includes(contrib.status)) { sendError(res, 'INVALID_STATE_TRANSITION', '当前状态不可删除', req.requestId, 409); return }

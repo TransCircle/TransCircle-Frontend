@@ -71,8 +71,10 @@ export const Login = () => {
         setError(t('login.mfaExpired', '验证已过期，请返回重新登录'))
       } else if (result.errorCode === 'MFA_CHALLENGE_EXHAUSTED') {
         setError(t('login.mfaExhausted', '验证失败次数过多，请返回重新登录'))
-      } else if (result.errorCode === 'INVALID_CODE' || result.errorCode === 'INVALID_MFA_CODE') {
+      } else if (result.errorCode === 'INVALID_TOTP_CODE') {
         setError(t('login.mfaInvalidCode', '验证码错误'))
+      } else if (result.errorCode === 'TOTP_CODE_REPLAY') {
+        setError(t('login.mfaInvalidCode', '验证码已使用，请重新输入'))
       } else if (result.errorCode === 'INVALID_RECOVERY_CODE') {
         setError(t('login.mfaInvalidRecoveryCode', '恢复码错误'))
       } else {

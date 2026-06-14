@@ -90,10 +90,10 @@ export const RegisterDirect = () => {
       }
 
       setSuccess(true)
-      setIntentKey(null)
     } catch {
       setError(t('registerDirect.errors.failed'))
     } finally {
+      setIntentKey(null)
       setSubmitting(false)
     }
   }

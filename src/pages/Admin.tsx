@@ -427,11 +427,15 @@ export const Admin = () => {
             <span className={styles.userInfo}>
               {user ? `${user.username} (${loginProvider ?? 'oauth'})` : `${t('admin.tempAdmin')}（仅内存，刷新页面需重新输入）`}
             </span>
-            {isFullAdmin && (
+            {isAdmin && (
               <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.75rem', fontSize: '0.85rem', flexWrap: 'wrap' }}>
-                <Link to="/admin/users" style={{ color: 'var(--accent-pink)' }}>用户管理</Link>
+                {isFullAdmin && (
+                  <>
+                    <Link to="/admin/users" style={{ color: 'var(--accent-pink)' }}>用户管理</Link>
+                    <Link to="/admin/audit-logs" style={{ color: 'var(--accent-pink)' }}>审计日志</Link>
+                  </>
+                )}
                 <Link to="/admin/edit-requests" style={{ color: 'var(--accent-pink)' }}>编辑申请</Link>
-                <Link to="/admin/audit-logs" style={{ color: 'var(--accent-pink)' }}>审计日志</Link>
               </div>
             )}
           </div>
@@ -606,9 +610,6 @@ export const Admin = () => {
           <div className={styles.reviewActions}>
             <button className={styles.btnReject} onClick={handleHide}>
               隐藏
-            </button>
-            <button className={styles.btnReject} onClick={handleDelete}>
-              删除
             </button>
           </div>
         )}

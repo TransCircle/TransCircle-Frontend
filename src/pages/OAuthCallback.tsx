@@ -43,6 +43,10 @@ export const OAuthCallback = () => {
           }
           {
             const user = await exchangeLoginCode(loginCode)
+            if (!user) {
+              navigate('/auth/error?status=login_blocked&reason=oauth.blockedUnknown', { replace: true })
+              return
+            }
             // Read redirectAfter from URL params and validate it's a safe relative path
             const redirectAfter = searchParams.get('redirectAfter') || ''
             const safeRedirect = redirectAfter.startsWith('/') && !redirectAfter.startsWith('//')

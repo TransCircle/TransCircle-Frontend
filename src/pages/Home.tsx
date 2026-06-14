@@ -79,7 +79,7 @@ export const Home = () => {
             name="search"
             type="text"
             defaultValue={searchParams.get('search') || ''}
-            placeholder="搜索已发布的投稿..."
+            placeholder="筛选当前已加载结果..."
             style={{ flex: 1, padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
           />
           <button type="submit" style={{ padding: '0.4rem 0.75rem', cursor: 'pointer' }}>搜索</button>

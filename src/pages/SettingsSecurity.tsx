@@ -602,11 +602,16 @@ export const SettingsSecurity = () => {
   // ── Render ──
 
   if (!authUser) {
-    return (
-      <main className={styles.container}>
-        <div className={styles.loading}>{t('admin.verifying')}</div>
-      </main>
-    )
+    if (authLoading) {
+      return (
+        <main className={styles.container}>
+          <div className={styles.loading}>{t('admin.verifying')}</div>
+        </main>
+      )
+    }
+    // Not loading and not logged in — redirect to login
+    navigate('/login', { replace: true })
+    return null
   }
 
   const tabs = [
