@@ -73,7 +73,7 @@ export const OAuthBinding = () => {
 
       clearCsrfToken()
       setStatus('success')
-      setTimeout(() => navigate('/submit?toast=bind_success', { replace: true }), 1500)
+      setTimeout(() => navigate('/settings/security?toast=bind_success&tab=oauth', { replace: true }), 1500)
     } catch {
       setErrorMsg(t('oauth.bindError'))
       setStatus('error')

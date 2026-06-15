@@ -118,14 +118,12 @@ export const MyContributions = () => {
         <>
           <ul className={styles.list}>
             {items.map(item => (
-              <li
-                key={item.id}
-                className={styles.item}
-                role="button"
-                tabIndex={0}
-                onClick={() => navigate(`/me/contributions/${item.id}`)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/me/contributions/${item.id}`) } }}
-              >
+              <li key={item.id}>
+                <button
+                  type="button"
+                  className={styles.itemButton}
+                  onClick={() => navigate(`/me/contributions/${item.id}`)}
+                >
                 <div className={styles.itemMain}>
                   <div className={styles.itemTitle}>{item.title}</div>
                   <div className={styles.itemMeta}>
@@ -142,6 +140,7 @@ export const MyContributions = () => {
                     {item.review.publicNote ? ` · ${item.review.publicNote}` : ''}
                   </div>
                 </div>
+                </button>
               </li>
             ))}
           </ul>

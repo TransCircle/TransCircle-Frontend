@@ -1,24 +1,28 @@
 import { useEffect, useState } from 'react'
 import { Outlet, useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 import { Navbar } from '../components/Navbar'
 import { LicenseFooter } from '../components/LicenseFooter'
 import styles from '../App.module.css'
 
-const TOAST_MESSAGES: Record<string, string> = {
-  bind_already_self: '该 OAuth 账号已绑定到你的账户，无需重复绑定',
-  bind_provider_taken: '该 OAuth 账号已绑定到其他用户',
-  bind_success: '绑定成功',
-  merge_success: '合并成功',
-  deletion_scheduled: '账户注销已受理',
+const TOAST_MESSAGE_KEYS: Record<string, string> = {
+  bind_already_self: 'common.toast.bindAlreadySelf',
+  bind_provider_taken: 'common.toast.bindProviderTaken',
+  bind_success: 'common.toast.bindSuccess',
+  merge_success: 'common.toast.mergeSuccess',
+  deletion_scheduled: 'common.toast.deletionScheduled',
 }
 
 export const RootLayout = () => {
+  const { t } = useTranslation()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
 
   const toastKey = searchParams.get('toast')
-  const initialMessage = (toastKey && TOAST_MESSAGES[toastKey]) || null
+  const initialMessage = (toastKey && TOAST_MESSAGE_KEYS[toastKey])
+    ? t(TOAST_MESSAGE_KEYS[toastKey])
+    : null
 
   const [toast, setToast] = useState<string | null>(initialMessage)
 
@@ -48,18 +52,21 @@ export const RootLayout = () => {
 
       {toast && (
         <div
+          role="status"
+          aria-live="polite"
           style={{
             position: 'fixed',
             top: '1rem',
             left: '50%',
             transform: 'translateX(-50%)',
-            background: '#e8f5e9',
-            color: '#2e7d32',
+            background: 'var(--surface-card)',
+            color: 'var(--text-main)',
+            border: '1px solid var(--divider-color)',
             padding: '0.75rem 1.5rem',
             borderRadius: '8px',
             fontSize: '0.9rem',
             zIndex: 9999,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            boxShadow: '0 2px 8px var(--shadow-color)',
           }}
         >
           {toast}

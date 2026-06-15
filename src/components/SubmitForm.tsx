@@ -266,14 +266,13 @@ export const SubmitForm = () => {
         onChange={(e) => set('website', e.target.value)}
       />
 
-      <FormField label={t('submit.title')} required error={errors.title}>
+        <FormField label={t('submit.title')} required error={errors.title}>
         <input
           className={styles.textInput}
           type="text"
           value={form.title}
           onChange={(e) => set('title', limitByUnicode(e.target.value, 120))}
           placeholder={t('submit.titlePlaceholder')}
-          maxLength={120}
         />
       </FormField>
 

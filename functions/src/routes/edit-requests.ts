@@ -511,7 +511,7 @@ router.post('/admin/edit-requests/:id/vote', requireAuth, requireReviewer, requi
 
         await conn.execute<mysql.ResultSetHeader>(
           `UPDATE contributions SET ${updates.join(', ')} WHERE id = ?`,
-          updateParams,
+          updateParams as mysql.ExecuteValues,
         )
       }
     } else if (reject >= 2) {

@@ -40,6 +40,8 @@ export const RegisterDirect = () => {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
+  // 服务端返回的字段级错误（L8）
+  const [serverFieldErrors, setServerFieldErrors] = useState<Record<string, string>>({})
 
   const fieldErrors = useMemo(() => {
     const errs: Record<string, string> = {}
@@ -64,10 +66,28 @@ export const RegisterDirect = () => {
     return errs
   }, [username, email, password, displayName, t])
 
+  // 合并客户端 + 服务端字段错误（服务端优先覆盖）
+  const allFieldErrors = useMemo(() => ({
+    ...fieldErrors,
+    ...serverFieldErrors,
+  }), [fieldErrors, serverFieldErrors])
+
+  // 用户编辑字段时清除该字段的服务端错误
+  const handleFieldChange = (field: string, setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setter(e.target.value)
+    if (serverFieldErrors[field]) {
+      setServerFieldErrors(prev => {
+        const next = { ...prev }
+        delete next[field]
+        return next
+      })
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    if (Object.keys(fieldErrors).length > 0) {
+    if (Object.keys(allFieldErrors).length > 0) {
       setError(t('registerDirect.errors.validationFailed'))
       return
     }
@@ -92,10 +112,20 @@ export const RegisterDirect = () => {
           else if (nextAction === 'try_login') setError(t('registerDirect.errors.emailTaken') + ' ' + t('registerDirect.errors.tryLogin'))
           else setError(t('registerDirect.errors.emailTaken'))
         } else if (code === ERRORS.VALIDATION_ERROR && result.error.details) {
-          const reasons = result.error.details.map(d => d.field + ': ' + d.reason).join('；')
-          setError(reasons || result.error.message)
+          // 映射服务端字段错误到表单字段（L8）
+          const newFieldErrors: Record<string, string> = {}
+          let genericMsg = ''
+          for (const d of result.error.details) {
+            if (['username', 'email', 'password', 'displayName'].includes(d.field)) {
+              newFieldErrors[d.field] = d.reason
+            } else {
+              genericMsg += (genericMsg ? '；' : '') + `${d.field}: ${d.reason}`
+            }
+          }
+          setServerFieldErrors(newFieldErrors)
+          setError(genericMsg || result.error.message || t('registerDirect.errors.validationFailed'))
         } else if (code === ERRORS.RATE_LIMITED) {
-          setError(t('registerDirect.errors.failed'))
+          setError(result.error.message || t('registerDirect.errors.failed'))
         } else setError(result.error.message || t('registerDirect.errors.failed'))
         return
       }
@@ -131,30 +161,30 @@ export const RegisterDirect = () => {
         <label className={formStyles.field}>
           <span className={formStyles.label}>{t('registerDirect.username')}</span>
           <input className={formStyles.input} type="text" value={username}
-            onChange={e => setUsername(e.target.value)} placeholder={t('registerDirect.usernamePlaceholder')}
-            required autoFocus maxLength={32} aria-invalid={!!fieldErrors.username} />
-          {fieldErrors.username && <span className={formStyles.error} role="alert">{fieldErrors.username}</span>}
+            onChange={handleFieldChange('username', setUsername)} placeholder={t('registerDirect.usernamePlaceholder')}
+            required autoFocus maxLength={32} aria-invalid={!!allFieldErrors.username} />
+          {allFieldErrors.username && <span className={formStyles.error} role="alert">{allFieldErrors.username}</span>}
         </label>
         <label className={formStyles.field}>
           <span className={formStyles.label}>{t('registerDirect.email')}</span>
           <input className={formStyles.input} type="email" value={email}
-            onChange={e => setEmail(e.target.value)} placeholder={t('registerDirect.emailPlaceholder')}
-            required maxLength={254} aria-invalid={!!fieldErrors.email} />
-          {fieldErrors.email && <span className={formStyles.error} role="alert">{fieldErrors.email}</span>}
+            onChange={handleFieldChange('email', setEmail)} placeholder={t('registerDirect.emailPlaceholder')}
+            required maxLength={254} aria-invalid={!!allFieldErrors.email} />
+          {allFieldErrors.email && <span className={formStyles.error} role="alert">{allFieldErrors.email}</span>}
         </label>
         <label className={formStyles.field}>
           <span className={formStyles.label}>{t('registerDirect.password')}</span>
           <input className={formStyles.input} type="password" value={password}
-            onChange={e => setPassword(e.target.value)} placeholder={t('registerDirect.passwordPlaceholder')}
-            required minLength={12} maxLength={128} aria-invalid={!!fieldErrors.password} />
-          {fieldErrors.password && <span className={formStyles.error} role="alert">{fieldErrors.password}</span>}
+            onChange={handleFieldChange('password', setPassword)} placeholder={t('registerDirect.passwordPlaceholder')}
+            required minLength={12} maxLength={128} aria-invalid={!!allFieldErrors.password} />
+          {allFieldErrors.password && <span className={formStyles.error} role="alert">{allFieldErrors.password}</span>}
         </label>
         <label className={formStyles.field}>
           <span className={formStyles.label}>{t('registerDirect.displayName')}</span>
           <input className={formStyles.input} type="text" value={displayName}
-            onChange={e => setDisplayName(e.target.value)} placeholder={t('registerDirect.displayNamePlaceholder')}
-            required maxLength={50} aria-invalid={!!fieldErrors.displayName} />
-          {fieldErrors.displayName && <span className={formStyles.error} role="alert">{fieldErrors.displayName}</span>}
+            onChange={handleFieldChange('displayName', setDisplayName)} placeholder={t('registerDirect.displayNamePlaceholder')}
+            required maxLength={50} aria-invalid={!!allFieldErrors.displayName} />
+          {allFieldErrors.displayName && <span className={formStyles.error} role="alert">{allFieldErrors.displayName}</span>}
         </label>
         {error && <p className={formStyles.error} role="alert">{error}</p>}
         <button type="submit" disabled={submitting}

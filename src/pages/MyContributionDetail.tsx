@@ -158,7 +158,7 @@ export const MyContributionDetail = () => {
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{t('myContributionDetail.fieldTitle')}</label>
               <input type="text" value={title} onChange={e => setTitle(limitByUnicode(e.target.value, 120))}
-                className={styles.input} maxLength={120} style={{ width: '100%' }} />
+                className={styles.input} style={{ width: '100%' }} />
             </div>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{t('myContributionDetail.fieldContent')}</label>
@@ -182,18 +182,18 @@ export const MyContributionDetail = () => {
                 ))}
               </div>
               <input type="text" value={tagInput}
-                onChange={e => setTagInput(e.target.value)}
+                onChange={e => setTagInput(limitByUnicode(e.target.value, 32))}
                 onKeyDown={e => {
                   if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
                     e.preventDefault()
-                    const tag = tagInput.trim().slice(0, 32)
+                    const tag = [...tagInput.trim()].slice(0, 32).join('')
                     if (!tags.includes(tag) && tags.length < 8) {
                       setTags(prev => [...prev, tag])
                     }
                     setTagInput('')
                   }
                 }}
-                placeholder={t('myContributionDetail.tagPlaceholder')} className={styles.input} maxLength={32}
+                placeholder={t('myContributionDetail.tagPlaceholder')} className={styles.input}
                 style={{ width: '100%' }} />
             </div>
             <div style={{ marginBottom: '1rem' }}>
@@ -219,7 +219,7 @@ export const MyContributionDetail = () => {
             <div className={styles.detailMeta}>
               {STATUS_LABELS[contrib.status] || contrib.status} · v{contrib.version}
               · {formatTs(contrib.createdAt)}
-              {contrib.submittedAt ? ` · 提交于 ${formatTs(contrib.submittedAt)}` : ''}
+              {contrib.submittedAt ? ` · ${t('myContributionDetail.submittedAt', { time: formatTs(contrib.submittedAt) })}` : ''}
             </div>
             {contrib.summary && <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>{contrib.summary}</p>}
             <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', background: 'var(--hover-bg)', padding: '1rem', borderRadius: '8px' }}>

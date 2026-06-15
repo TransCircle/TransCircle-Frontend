@@ -49,7 +49,7 @@ interface AuthContextValue {
   logout: () => Promise<void>
   logoutAll: () => Promise<{ revokedSessions: number } | null>
   exchangeLoginCode: (loginCode: string) => Promise<User | null>
-  completeRegistration: (provider: string, data: { username?: string; email?: string; password?: string; displayName?: string; emailMatchesProvider?: boolean }) => Promise<{ loginCode?: string; user: User | null; errorCode?: string }>
+  completeRegistration: (provider: string, data: { username?: string; email?: string; password?: string; displayName?: string; emailMatchesProvider?: boolean }) => Promise<{ loginCode?: string; user: User | null; errorCode?: string; errorMessage?: string }>
   /** MFA TOTP verification — saves token to context and fetches user profile (api.md §1.9.4) */
   mfaVerify: (mfaChallengeToken: string, code: string) => Promise<{ user: User | null; errorCode?: string }>
   /** Passkey login — full WebAuthn flow (api.md §1.10.5); pass mfaChallengeToken for MFA context */
@@ -218,7 +218,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     })
 
     if (!result.ok) {
-      return { user: null, errorCode: result.error.code }
+      return { user: null, errorCode: result.error.code, errorMessage: result.error.message }
     }
 
     if (result.data.loginCode) {

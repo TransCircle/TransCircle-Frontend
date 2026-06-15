@@ -28,6 +28,7 @@
     "searchPlaceholder": "搜尋標題、摘要與標籤",
     "searchSubmit": "搜尋",
     "searchLabel": "搜尋投稿",
+    "localSearchHint": "本機篩選",
     "noMatches": "無匹配的投稿",
     "empty": "暫無已發布的投稿",
     "loading": "載入中...",
@@ -310,7 +311,14 @@
     "success": "成功",
     "error": "失敗",
     "notFound": "未找到",
-    "loginRequired": "請先登入"
+    "loginRequired": "請先登入",
+    "toast": {
+      "bindAlreadySelf": "該 OAuth 帳號已綁定到你的帳戶，無需重複綁定",
+      "bindProviderTaken": "該 OAuth 帳號已綁定到其他使用者",
+      "bindSuccess": "綁定成功",
+      "mergeSuccess": "合併成功",
+      "deletionScheduled": "帳戶註銷已受理"
+    }
   },
   "registerDirect": {
     "title": "註冊新帳號",
@@ -374,7 +382,10 @@
     "success": "重設郵件已發送，請檢查收件匣",
     "emailNotFound": "該信箱未註冊",
     "accountBanned": "帳號已被封鎖，無法重設密碼",
-    "error": "發送失敗，請稍後重試"
+    "error": "發送失敗，請稍後重試",
+    "errors": {
+      "emailRequired": "請輸入信箱"
+    }
   },
   "resetPassword": {
     "title": "重設密碼",
@@ -582,7 +593,8 @@
     "confirmWithdraw": "確定撤回該投稿？",
     "versionConflict": "版本衝突，請重新整理後重試",
     "reviewNote": "審核備註",
-    "fieldLanguage": "語言"
+    "fieldLanguage": "語言",
+    "submittedAt": "提交於 {{time}}"
   },
   "publicContributionDetail": {
     "notFound": "投稿不存在或未發布",
@@ -611,7 +623,10 @@
     "networkError": "網路錯誤，請稍後重試",
     "contributionNotFound": "投稿不存在",
     "contributionNotEditable": "投稿當前狀態不可被申請修改",
-    "emailNotVerified": "郵箱未驗證，請先驗證郵箱"
+    "emailNotVerified": "郵箱未驗證，請先驗證郵箱",
+    "titleTooLong": "標題不超過 {{max}} 個字元",
+    "summaryTooLong": "摘要不超過 {{max}} 個字元",
+    "validationFailed": "請修正表單中的錯誤欄位"
   },
   "adminUsers": {
     "title": "使用者管理",
@@ -659,7 +674,9 @@
     "loadError": "載入失敗",
     "filterAction": "按操作類型過濾（如 auth.login.success）",
     "filterResource": "按資源類型過濾（如 contribution）",
-    "search": "搜尋"
+    "search": "搜尋",
+    "actorUser": "操作者 {{id}}",
+    "actorSystem": "系統"
   },
   "adminEditRequests": {
     "title": "編輯申請審核",

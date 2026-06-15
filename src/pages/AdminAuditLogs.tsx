@@ -116,7 +116,9 @@ export const AdminAuditLogs = () => {
                   <div className={styles.itemTitle}>{log.action}</div>
                   <div className={styles.itemMeta}>
                     {log.resourceType}{log.resourceId ? ` / ${log.resourceId.slice(0, 24)}...` : ''} ·
-                    {log.actorUserId ? ` 操作者 ${log.actorUserId.slice(0, 16)}... ·` : ' 系统 ·'}
+                    {log.actorUserId
+                      ? t('adminAuditLogs.actorUser', { id: `${log.actorUserId.slice(0, 16)}...` })
+                      : t('adminAuditLogs.actorSystem')} ·
                     {formatTs(log.createdAt)}
                   </div>
                 </div>

@@ -28,6 +28,7 @@
     "searchPlaceholder": "搜索标题、摘要与标签",
     "searchSubmit": "搜索",
     "searchLabel": "搜索投稿",
+    "localSearchHint": "本地筛选",
     "noMatches": "无匹配的投稿",
     "empty": "暂无已发布的投稿",
     "loading": "加载中...",
@@ -310,7 +311,14 @@
     "success": "成功",
     "error": "失败",
     "notFound": "未找到",
-    "loginRequired": "请先登录"
+    "loginRequired": "请先登录",
+    "toast": {
+      "bindAlreadySelf": "该 OAuth 账号已绑定到你的账户，无需重复绑定",
+      "bindProviderTaken": "该 OAuth 账号已绑定到其他用户",
+      "bindSuccess": "绑定成功",
+      "mergeSuccess": "合并成功",
+      "deletionScheduled": "账户注销已受理"
+    }
   },
   "registerDirect": {
     "title": "注册新账号",
@@ -585,7 +593,8 @@
     "confirmWithdraw": "确定撤回该投稿？",
     "versionConflict": "版本冲突，请刷新后重试",
     "reviewNote": "审核备注",
-    "fieldLanguage": "语言"
+    "fieldLanguage": "语言",
+    "submittedAt": "提交于 {{time}}"
   },
   "publicContributionDetail": {
     "notFound": "投稿不存在或未发布",
@@ -614,7 +623,10 @@
     "networkError": "网络错误，请稍后重试",
     "contributionNotFound": "投稿不存在",
     "contributionNotEditable": "投稿当前状态不可被申请修改",
-    "emailNotVerified": "邮箱未验证，请先验证邮箱"
+    "emailNotVerified": "邮箱未验证，请先验证邮箱",
+    "titleTooLong": "标题不超过 {{max}} 个字符",
+    "summaryTooLong": "摘要不超过 {{max}} 个字符",
+    "validationFailed": "请修正表单中的错误字段"
   },
   "adminUsers": {
     "title": "用户管理",
@@ -662,7 +674,9 @@
     "loadError": "加载失败",
     "filterAction": "按操作类型过滤（如 auth.login.success）",
     "filterResource": "按资源类型过滤（如 contribution）",
-    "search": "搜索"
+    "search": "搜索",
+    "actorUser": "操作者 {{id}}",
+    "actorSystem": "系统"
   },
   "adminEditRequests": {
     "title": "编辑申请审核",

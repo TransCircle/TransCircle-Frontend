@@ -485,19 +485,12 @@ export const Admin = () => {
           <>
             <ul className={styles.list}>
               {submissions.map((s) => (
-                <li
-                  key={s.id}
-                  className={styles.item}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => fetchDetail(s.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      fetchDetail(s.id)
-                    }
-                  }}
-                >
+                <li key={s.id}>
+                  <button
+                    type="button"
+                    className={styles.itemButton}
+                    onClick={() => fetchDetail(s.id)}
+                  >
                   <div className={styles.itemMain}>
                     <div className={styles.itemTitle}>{s.title}</div>
                     <div className={styles.itemMeta}>
@@ -505,6 +498,7 @@ export const Admin = () => {
                     </div>
                   </div>
                   <span className={styles.itemCategory}>{s.summary ? s.summary.slice(0, 20) : '-'}</span>
+                  </button>
                 </li>
               ))}
             </ul>

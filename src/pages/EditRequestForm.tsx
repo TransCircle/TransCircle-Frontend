@@ -26,18 +26,36 @@ export const EditRequestForm = () => {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  // 服务端字段级错误（L8）
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+
+  const clearFieldError = (field: string) => () => {
+    if (fieldErrors[field]) {
+      setFieldErrors(prev => { const n = { ...prev }; delete n[field]; return n })
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!reason.trim()) { setError(t('editRequest.reasonRequired')); return }
     // Trim title/summary to match send logic — prevents whitespace-only input
     // from passing validation but sending undefined (L9)
-    const hasTitle = proposedTitle.trim()
+    const trimmedTitle = proposedTitle.trim()
+    const hasTitle = trimmedTitle
     const hasContent = proposedContent
-    const hasSummary = proposedSummary.trim()
+    const trimmedSummary = proposedSummary.trim()
+    const hasSummary = trimmedSummary
     const hasTags = proposedTags.length > 0
     if (!hasTitle && !hasContent && !hasSummary && !hasTags) {
       setError(t('editRequest.atLeastOne'))
+      return
+    }
+    if ([...trimmedTitle].length > 120) {
+      setError(t('editRequest.titleTooLong', { max: 120 }))
+      return
+    }
+    if ([...trimmedSummary].length > 300) {
+      setError(t('editRequest.summaryTooLong', { max: 300 }))
       return
     }
     setSubmitting(true)
@@ -56,8 +74,18 @@ export const EditRequestForm = () => {
         setSuccess(true)
       } else {
         if (result.error.code === ERRORS.VALIDATION_ERROR && result.error.details) {
-          const reasons = result.error.details.map(d => d.reason).join('；')
-          setError(reasons || result.error.message)
+          // 映射服务端字段错误到表单字段（L8）
+          const newFieldErrors: Record<string, string> = {}
+          let genericMsg = ''
+          for (const d of result.error.details) {
+            if (['reason', 'proposedTitle', 'proposedContent', 'proposedSummary', 'proposedTags'].includes(d.field)) {
+              newFieldErrors[d.field] = d.reason
+            } else {
+              genericMsg += (genericMsg ? '；' : '') + `${d.field}: ${d.reason}`
+            }
+          }
+          setFieldErrors(newFieldErrors)
+          setError(genericMsg || result.error.message || t('editRequest.validationFailed'))
         } else if (result.error.code === ERRORS.CONTRIBUTION_NOT_FOUND) {
           setError(t('editRequest.contributionNotFound'))
         } else if (result.error.code === ERRORS.CONTRIBUTION_NOT_EDITABLE) {
@@ -93,23 +121,27 @@ export const EditRequestForm = () => {
       <form className={formStyles.form} onSubmit={handleSubmit}>
         <label className={formStyles.field}>
           <span className={formStyles.label}>{t('editRequest.reasonLabel')}</span>
-          <textarea value={reason} onChange={e => setReason(e.target.value)}
-            className={formStyles.input} rows={3} maxLength={500} required />
+          <textarea value={reason} onChange={e => { setReason(e.target.value); clearFieldError('reason')() }}
+            className={formStyles.input} rows={3} maxLength={500} required aria-invalid={!!fieldErrors.reason} />
+          {fieldErrors.reason && <span className={formStyles.error} role="alert">{fieldErrors.reason}</span>}
         </label>
         <label className={formStyles.field}>
           <span className={formStyles.label}>{t('editRequest.proposedTitle')}</span>
-          <input type="text" value={proposedTitle} onChange={e => setProposedTitle(limitByUnicode(e.target.value, 120))}
-            className={formStyles.input} maxLength={120} />
+          <input type="text" value={proposedTitle} onChange={e => { setProposedTitle(limitByUnicode(e.target.value, 120)); clearFieldError('proposedTitle')() }}
+            className={formStyles.input} aria-invalid={!!fieldErrors.proposedTitle} />
+          {fieldErrors.proposedTitle && <span className={formStyles.error} role="alert">{fieldErrors.proposedTitle}</span>}
         </label>
         <label className={formStyles.field}>
           <span className={formStyles.label}>{t('editRequest.proposedContent')}</span>
-          <textarea value={proposedContent} onChange={e => setProposedContent(e.target.value)}
-            className={formStyles.input} rows={10} />
+          <textarea value={proposedContent} onChange={e => { setProposedContent(e.target.value); clearFieldError('proposedContent')() }}
+            className={formStyles.input} rows={10} aria-invalid={!!fieldErrors.proposedContent} />
+          {fieldErrors.proposedContent && <span className={formStyles.error} role="alert">{fieldErrors.proposedContent}</span>}
         </label>
         <label className={formStyles.field}>
           <span className={formStyles.label}>{t('editRequest.proposedSummary')}</span>
-          <input type="text" value={proposedSummary} onChange={e => setProposedSummary(e.target.value)}
-            className={formStyles.input} maxLength={300} />
+          <input type="text" value={proposedSummary} onChange={e => { setProposedSummary(limitByUnicode(e.target.value, 300)); clearFieldError('proposedSummary')() }}
+            className={formStyles.input} maxLength={300} aria-invalid={!!fieldErrors.proposedSummary} />
+          {fieldErrors.proposedSummary && <span className={formStyles.error} role="alert">{fieldErrors.proposedSummary}</span>}
         </label>
         <label className={formStyles.field}>
           <span className={formStyles.label}>{t('editRequest.proposedTags')}</span>
@@ -123,18 +155,18 @@ export const EditRequestForm = () => {
             ))}
           </div>
           <input type="text" value={tagInput}
-            onChange={e => setTagInput(e.target.value)}
+            onChange={e => setTagInput(limitByUnicode(e.target.value, 32))}
             onKeyDown={e => {
               if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
                 e.preventDefault()
-                const tag = tagInput.trim().slice(0, 32)
+                const tag = [...tagInput.trim()].slice(0, 32).join('')
                 if (!proposedTags.includes(tag) && proposedTags.length < 8) {
                   setProposedTags(prev => [...prev, tag])
                 }
                 setTagInput('')
               }
             }}
-            placeholder={t('editRequest.tagPlaceholder')} className={formStyles.input} maxLength={32} />
+            placeholder={t('editRequest.tagPlaceholder')} className={formStyles.input} />
         </label>
         {error && <p className={formStyles.error}>{error}</p>}
         <button type="submit" disabled={submitting}

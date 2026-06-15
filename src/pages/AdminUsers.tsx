@@ -201,12 +201,17 @@ export const AdminUsers = () => {
       ) : (
         <ul className={styles.list}>
           {users.map(u => (
-            <li key={u.id} className={styles.item} role="button" tabIndex={0}
-              onClick={() => fetchDetail(u.id)}>
+            <li key={u.id}>
+              <button
+                type="button"
+                className={styles.itemButton}
+                onClick={() => fetchDetail(u.id)}
+              >
               <div className={styles.itemMain}>
                 <div className={styles.itemTitle}>{u.displayName}</div>
                 <div className={styles.itemMeta}>@{u.username} · {u.email ?? '-'} · {u.status}</div>
               </div>
+              </button>
             </li>
           ))}
         </ul>

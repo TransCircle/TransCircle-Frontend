@@ -298,8 +298,12 @@ export async function apiRequest<T = unknown>(
   }
 
   // ── Parse response ──
-  // Clear intent key after any response to prevent cross-intent leakage
-  _intentKey = null
+  // Clear intent key only after idempotent requests to prevent
+  // non-idempotent calls from accidentally wiping a key set for an upcoming
+  // idempotent request (M9 / N1).
+  if (options.idempotent) {
+    _intentKey = null
+  }
   const status = res.status
   const contentType = res.headers.get('content-type') || ''
 

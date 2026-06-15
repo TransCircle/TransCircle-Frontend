@@ -82,7 +82,7 @@ const Register = () => {
       } else if (result.error.code === 'CSRF_TOKEN_INVALID') {
         setError(t('register.errors.sessionExpired'))
       } else if (result.error.code === 'RATE_LIMITED') {
-        setError(t('register.errors.failed'))
+        setError(result.error.message || t('register.errors.failed'))
       }
     }
     fetchProfile()
@@ -178,7 +178,7 @@ const Register = () => {
         else if (code === ERRORS.VALIDATION_ERROR) setError(t('register.errors.validationFailed'))
         else if (code === ERRORS.MISSING_OAUTH_PENDING) setError(t('register.errors.sessionExpired'))
         else if (code === ERRORS.CSRF_TOKEN_INVALID) setError(t('register.errors.sessionExpired'))
-        else if (code === ERRORS.RATE_LIMITED) setError(t('register.errors.failed'))
+        else if (code === ERRORS.RATE_LIMITED) setError(result?.errorMessage || t('register.errors.failed'))
         else setError(t('register.errors.failed'))
       }
     } catch {

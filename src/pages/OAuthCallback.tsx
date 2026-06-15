@@ -24,6 +24,7 @@ export const OAuthCallback = () => {
     if (processed.current) return
     processed.current = true
     const handle = async () => {
+      try {
       const status = searchParams.get('status')
       const loginCode = searchParams.get('loginCode')
       const provider = searchParams.get('provider') || 'github'
@@ -108,9 +109,13 @@ export const OAuthCallback = () => {
           navigate('/submit', { replace: true })
           break
       }
+    } catch {
+      // 网络错误或解析异常时安全兜底（N4）
+      navigate('/auth/error?status=oauth_error', { replace: true })
     }
-    handle()
-  }, [searchParams, navigate, exchangeLoginCode])
+  }
+  handle()
+}, [searchParams, navigate, exchangeLoginCode])
 
   return (
     <main style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>

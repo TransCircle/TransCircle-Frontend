@@ -1,7 +1,6 @@
 // TransCircle Story — fetch approved submissions and render them
 
-const CATEGORIES = ['全部', '个人经历', '观点评论', '资源指南']
-
+// 分类列表从提交数据的 tags[0] 动态提取，"全部"为默认选项
 /** @type {Array<{ id: string; title: string; category: string; content: string; author_name: string | null; created_at: number | string }>} */
 let submissions = []
 let activeCategory = '全部'
@@ -79,7 +78,9 @@ function renderFilters() {
   }
   counts['全部'] = submissions.length
 
-  const available = CATEGORIES.filter(c => c === '全部' || counts[c])
+  // 从数据中动态提取分类（不依赖硬编码列表）
+  const categories = ['全部', ...new Set(submissions.map(s => s.category).filter(c => c !== '全部'))]
+  const available = categories.filter(c => c === '全部' || counts[c])
 
   nav.innerHTML = available.map(cat =>
     `<button class="filterBtn ${cat === activeCategory ? 'active' : ''}" data-cat="${cat}">
@@ -201,7 +202,7 @@ window.toggleStory = async function (id) {
         const body = await res.json()
         const contentHtml = body.data?.contentHtml || ''
         const contentEl = full.querySelector('.cardContent')
-        if (contentEl) contentEl.innerHTML = renderMarkdown(contentHtml)
+        if (contentEl) contentEl.innerHTML = contentHtml
       }
     } catch { /* keep summary as fallback */ }
     full.dataset.loaded = '1'

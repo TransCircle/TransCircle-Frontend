@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { get, post, patch, del, clearAuth, setAccessToken as setClientToken } from '@/api/client'
 import { ERRORS } from '@/api/errors'
@@ -78,10 +78,13 @@ function formatTs(ts: number | null | undefined): string {
 export const SettingsSecurity = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { user: authUser, accessToken, logoutAll, loading: authLoading } = useAuth()
 
   const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [activeTab, setActiveTab] = useState<TabId>('password')
+  // 从 URL ?tab= 读取初始标签（如 OAuth 绑定成功后跳转，#13b）
+  const initialTab = (searchParams.get('tab') as TabId) || 'password'
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab)
 
   // ── Password state ──
   const [currentPassword, setCurrentPassword] = useState('')
@@ -428,7 +431,7 @@ export const SettingsSecurity = () => {
       setDeletePasswordError(t("settings.serverError"))
       setDeletePasswordSubmitting(false)
     }
-  }, [deletePassword, deletePasswordSubmitting, t])
+  }, [deletePassword, deletePasswordSubmitting, t, navigate])
   const handleCancelDeletion = async () => {
     setCancelError('')
     if (!cancelToken.trim() || !cancelIdentifier.trim()) {

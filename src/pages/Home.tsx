@@ -36,12 +36,13 @@ export const Home = () => {
 
   const [error, setError] = useState('')
 
-  const fetchList = async (cursorVal?: string | null, search?: string | null) => {
+  const fetchList = async (cursorVal?: string | null) => {
     setLoading(true)
     try {
       const params = new URLSearchParams({ limit: '20' })
       if (cursorVal) params.set('cursor', cursorVal)
-      if (search) params.set('search', search)
+      // 搜索由前端本地过滤实现，不发送 search 参数到后端
+      // （api.md §5.1 未定义 search 查询参数，后端不保证支持）
       const result = await get<PublicContribution[]>(`/public/contributions?${params}`)
       if (result.ok) {
         if (cursorVal) {
@@ -61,11 +62,18 @@ export const Home = () => {
     }
   }
 
+  // 首次加载（不依赖 searchTerm，搜索为本地过滤）
   // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
-  useEffect(() => { fetchList(null, searchTerm || null);  }, [searchTerm])
+  useEffect(() => { fetchList(); }, [])
 
-  // 搜索由服务端处理（search 参数已发送给后端），此处直接用 items 渲染
-  // 不再本地二次过滤，避免"仅当前页"的误导（api.md §5.1 暂无搜索契约，但服务端若支持则精确搜索）
+  // 本地过滤：在整个已加载列表中进行匹配（不限当前页）
+  const displayItems = searchTerm
+    ? items.filter(item =>
+        item.title.toLowerCase().includes(searchTerm) ||
+        (item.summary?.toLowerCase().includes(searchTerm)) ||
+        item.tags?.some(t => t.toLowerCase().includes(searchTerm))
+      )
+    : items
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -78,7 +86,7 @@ export const Home = () => {
   return (
     <main className={styles.container}>
       <header style={{ marginBottom: '2rem' }}>
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <label htmlFor="search-input" style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{t('home.searchLabel')}</label>
           <input
             id="search-input"
@@ -86,9 +94,10 @@ export const Home = () => {
             type="text"
             defaultValue={searchParams.get('search') || ''}
             placeholder={t('home.searchPlaceholder')}
-            style={{ flex: 1, padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
+            style={{ flex: 1, minWidth: '160px', padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
           />
           <button type="submit" style={{ padding: '0.4rem 0.75rem', cursor: 'pointer' }}>{t('home.searchSubmit')}</button>
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{t('home.localSearchHint')}</span>
         </form>
         <h1 className={styles.heading}>TransCircle</h1>
         <p className={styles.headingDesc}>TransCircle</p>
@@ -103,16 +112,17 @@ export const Home = () => {
 
       {error ? (
         <div className={styles.empty} role="alert">{error}</div>
-      ) : !loading && items.length === 0 ? (
+      ) : !loading && displayItems.length === 0 ? (
         <div className={styles.empty}>{searchTerm ? t('home.noMatches') : t('home.empty')}</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {items.map(item => (
-            <div
+          {displayItems.map(item => (
+            <button
+              type="button"
               key={item.id}
               className={styles.detailCard}
               onClick={() => navigate(`/contributions/${item.id}`)}
-              style={{ cursor: 'pointer' }}
+              style={{ cursor: 'pointer', textAlign: 'left', width: '100%', border: 'none' }}
             >
               <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.25rem', color: 'var(--text-main)' }}>
                 {item.title}
@@ -128,7 +138,7 @@ export const Home = () => {
                   <span key={t} style={{ marginLeft: '0.5rem', background: 'var(--hover-bg)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>{t}</span>
                 ))}
               </div>
-            </div>
+            </button>
           ))}
         </div>
       )}

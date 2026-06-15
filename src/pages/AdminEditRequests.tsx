@@ -231,13 +231,17 @@ export const AdminEditRequests = () => {
       ) : (
         <ul className={styles.list}>
           {items.map(item => (
-            <li key={item.id} className={styles.item} role="button" tabIndex={0}
-              onClick={() => fetchDetail(item.id)}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fetchDetail(item.id) } }}>
+            <li key={item.id}>
+              <button
+                type="button"
+                className={styles.itemButton}
+                onClick={() => fetchDetail(item.id)}
+              >
               <div className={styles.itemMain}>
                 <div className={styles.itemTitle}>{t('adminEditRequests.contribPrefix')} {(item.contribution?.id ?? item.contributionId ?? '').slice(0, 20)}... · {item.status}</div>
                 <div className={styles.itemMeta}>{item.reason.slice(0, 60)} · {formatTs(item.createdAt)}</div>
               </div>
+              </button>
             </li>
           ))}
         </ul>
