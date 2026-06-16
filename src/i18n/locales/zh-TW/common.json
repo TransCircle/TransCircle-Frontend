@@ -1,4 +1,4 @@
-{
+﻿{
   "nav": {
     "ariaLabel": "主導航",
     "logo": "TransCircle",
@@ -474,7 +474,7 @@
     "submitting": "提交中...",
     "cancelPasskeyButton": "使用 Passkey 認證",
     "cancelPasskeyProcessing": "Passkey 認證中...",
-    "cancelPasskeyReady": "✅ Passkey 已验证",
+    "cancelPasskeyReady": "✅ Passkey 已驗證",
     "cancelPasskeyError": "Passkey 驗證失敗",
     "cancelDeletionButton": "撤銷刪除",
     "cancelRequired": "令牌和帳號識別為必填項",

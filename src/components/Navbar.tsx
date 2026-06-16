@@ -18,7 +18,7 @@ interface NavbarProps {
 const MOBILE_BREAKPOINT = 1200;
 
 export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { user, isAdmin, logout } = useAuth()
   const [isOpen, setIsOpen] = useState(false);
@@ -144,11 +144,33 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
             <li className={`${styles.mobileOnly} ${styles.mobileThemeToggle}`}>
               <div className={styles.mobileThemeLabel}>{t('nav.mobileThemeLabel')}</div>
               <ThemeToggle className={styles.mobileThemeToggleGroup} />
+              <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', justifyContent: 'center', marginTop: '0.25rem' }}>
+                <button
+                  onClick={() => { localStorage.setItem('transcircle-lang', 'zh-CN'); i18n.changeLanguage('zh-CN') }}
+                  style={{ fontSize: '0.8rem', fontWeight: i18n.language === 'zh-CN' ? 700 : 400, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-muted)' }}
+                >简体</button>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>/</span>
+                <button
+                  onClick={() => { localStorage.setItem('transcircle-lang', 'zh-TW'); i18n.changeLanguage('zh-TW') }}
+                  style={{ fontSize: '0.8rem', fontWeight: i18n.language === 'zh-TW' ? 700 : 400, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-muted)' }}
+                >繁體</button>
+              </div>
             </li>
           </ul>
 
           <div className={styles.rightSection}>
-            <ThemeToggle />
+                        <ThemeToggle />
+            <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', marginLeft: '0.5rem' }}>
+              <button
+                onClick={() => { localStorage.setItem('transcircle-lang', 'zh-CN'); i18n.changeLanguage('zh-CN') }}
+                style={{ fontSize: '0.75rem', fontWeight: i18n.language === 'zh-CN' ? 700 : 400, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-muted)', padding: '0.1rem 0.15rem' }}
+              >简体</button>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>/</span>
+              <button
+                onClick={() => { localStorage.setItem('transcircle-lang', 'zh-TW'); i18n.changeLanguage('zh-TW') }}
+                style={{ fontSize: '0.75rem', fontWeight: i18n.language === 'zh-TW' ? 700 : 400, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-muted)', padding: '0.1rem 0.15rem' }}
+              >繁體</button>
+            </div>
             <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', marginLeft: '0.5rem' }}>
               {user ? (
                 <button onClick={async () => { await logout(); navigate('/') }} style={{

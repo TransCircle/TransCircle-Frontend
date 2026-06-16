@@ -393,7 +393,7 @@ export const SettingsSecurity = () => {
       setCancelPasskeyAssertion({
         challengeId,
         credential: {
-          id: pkCred.id,
+          id: arrayBufferToBase64url(pkCred.rawId),
           rawId: arrayBufferToBase64url(pkCred.rawId),
           type: pkCred.type,
           response: {
@@ -654,7 +654,7 @@ export const SettingsSecurity = () => {
         registrationId,
         name: passkeyName.trim(),
         credential: {
-          id: pkCred.id,
+          id: arrayBufferToBase64url(pkCred.rawId),
           rawId: arrayBufferToBase64url(pkCred.rawId),
           type: pkCred.type,
           response: {

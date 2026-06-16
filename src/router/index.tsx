@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react'
 
 import { RootLayout } from '../layouts/RootLayout'
 import { ErrorBoundaryPage } from '../pages/ErrorBoundaryPage'
+import { RequireAdminLayout } from '../pages/RequireAdminLayout'
 
 import { Home } from '../pages/Home'
 
@@ -43,15 +44,13 @@ export const router = createBrowserRouter([
       },
       {
         path: 'admin',
-        element: lazyNamed(() => import('../pages/Admin'), 'Admin'),
-      },
-      {
-        path: 'admin/edit-requests',
-        element: lazyNamed(() => import('../pages/AdminEditRequests'), 'AdminEditRequests'),
-      },
-      {
-        path: 'admin/audit-logs',
-        element: lazyNamed(() => import('../pages/AdminAuditLogs'), 'AdminAuditLogs'),
+        element: <RequireAdminLayout />,
+        children: [
+          { index: true, element: lazyNamed(() => import('../pages/Admin'), 'Admin') },
+          { path: 'edit-requests', element: lazyNamed(() => import('../pages/AdminEditRequests'), 'AdminEditRequests') },
+          { path: 'audit-logs', element: lazyNamed(() => import('../pages/AdminAuditLogs'), 'AdminAuditLogs') },
+          { path: 'users', element: lazyNamed(() => import('../pages/AdminUsers'), 'AdminUsers') },
+        ],
       },
       {
         path: 'auth/callback',
@@ -100,10 +99,6 @@ export const router = createBrowserRouter([
       {
         path: 'auth/password/reset',
         element: lazyNamed(() => import('../pages/ResetPassword'), 'ResetPassword'),
-      },
-      {
-        path: 'admin/users',
-        element: lazyNamed(() => import('../pages/AdminUsers'), 'AdminUsers'),
       },
       {
         path: 'me/contributions',

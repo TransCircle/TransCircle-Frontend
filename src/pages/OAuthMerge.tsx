@@ -10,7 +10,7 @@ export const OAuthMerge = () => {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { accessToken } = useAuth()
+  const { accessToken, refreshUser } = useAuth()
 
   const mergeToken = searchParams.get('mergeToken') || ''
   const conflictUserId = searchParams.get('conflictUserId') || ''
@@ -60,9 +60,16 @@ export const OAuthMerge = () => {
       }
 
       clearCsrfToken()
-      clearAuth()
-      setStatus('success')
-      setTimeout(() => navigate('/login?toast=merge_success', { replace: true }), 1500)
+      // Try to refresh session — merge invalidates old access token (api.md §1.8)
+      const refreshedUser = await refreshUser()
+      if (refreshedUser) {
+        setStatus('success')
+        setTimeout(() => navigate('/?toast=merge_success', { replace: true }), 1500)
+      } else {
+        clearAuth()
+        setStatus('success')
+        setTimeout(() => navigate('/login?toast=merge_success', { replace: true }), 1500)
+      }
     } catch {
       setErrorMsg(t('oauth.mergeError'))
       setStatus('error')

@@ -25,6 +25,7 @@ export const RootLayout = () => {
     : null
 
   const [toast, setToast] = useState<string | null>(initialMessage)
+  const [rateLimitToast, setRateLimitToast] = useState<string | null>(null)
 
   // L15: Toast feedback for cross-page notifications (OAuth callback, etc.)
   useEffect(() => {
@@ -39,6 +40,20 @@ export const RootLayout = () => {
     const timer = setTimeout(() => setToast(null), 5000)
     return () => clearTimeout(timer)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // L1: Listen for API rate-limit events
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      const retryAfter = detail?.retryAfter
+      if (retryAfter) {
+        setRateLimitToast(`${t('admin.networkError')} — 请在 ${retryAfter} 秒后重试`)
+        setTimeout(() => setRateLimitToast(null), Math.min(retryAfter * 1000, 15000))
+      }
+    }
+    window.addEventListener('api:rate-limit', handler)
+    return () => window.removeEventListener('api:rate-limit', handler)
+  }, [t])
+
 
   return (
     <div className={styles.appContainer}>
@@ -50,6 +65,29 @@ export const RootLayout = () => {
 
       <LicenseFooter />
 
+
+      {rateLimitToast && (
+        <div
+          role="alert"
+          style={{
+            position: 'fixed',
+            top: '4rem',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'var(--error-color, #d32f2f)',
+            color: '#fff',
+            padding: '0.75rem 1.5rem',
+            borderRadius: '8px',
+            fontSize: '0.9rem',
+            zIndex: 9999,
+            boxShadow: '0 2px 8px var(--shadow-color)',
+            cursor: 'pointer',
+          }}
+          onClick={() => setRateLimitToast(null)}
+        >
+          {rateLimitToast}
+        </div>
+      )}
       {toast && (
         <div
           role="status"

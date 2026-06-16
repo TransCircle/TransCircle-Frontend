@@ -179,7 +179,7 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
         challengeId,
         method: 'passkey',
         passkeyAssertion: {
-          id: pkCred.id,
+          id: arrayBufferToBase64url(pkCred.rawId),
           rawId: arrayBufferToBase64url(pkCred.rawId),
           type: pkCred.type,
           response: {

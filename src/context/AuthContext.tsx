@@ -53,7 +53,9 @@ interface AuthContextValue {
   /** MFA TOTP verification — saves token to context and fetches user profile (api.md §1.9.4) */
   mfaVerify: (mfaChallengeToken: string, code: string) => Promise<{ user: User | null; errorCode?: string }>
   /** Passkey login — full WebAuthn flow (api.md §1.10.5); pass mfaChallengeToken for MFA context */
-  loginWithPasskey: (mfaChallengeToken?: string) => Promise<LoginResult>
+    loginWithPasskey: (mfaChallengeToken?: string) => Promise<LoginResult>
+  /** Refresh current user session — calls tryRefreshToken then fetches /v1/me. Returns User or null. */
+  refreshUser: () => Promise<User | null>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -314,7 +316,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const finishBody: Record<string, unknown> = {
         challengeId,
         credential: {
-          id: pkCred.id,
+          id: arrayBufferToBase64url(pkCred.rawId),
           rawId: arrayBufferToBase64url(pkCred.rawId),
           type: pkCred.type,
           response: {
@@ -378,6 +380,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [])
 
+  // Refresh current user session — calls tryRefreshToken then fetches /v1/me (api.md §1.11.3)
+  const refreshUser = useCallback(async (): Promise<User | null> => {
+    await tryRefreshToken()
+    const meResult = await get<Record<string, unknown>>('/me')
+    if (meResult.ok) {
+      const u = normalizeUser(meResult.data)
+      setUser(u)
+      return u
+    }
+    setUser(null)
+    return null
+  }, [])
+
   const logout = useCallback(async () => {
     const result = await post('/auth/logout', undefined, { skipRefresh: true })
     if (!result.ok) {
@@ -403,7 +418,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, loading, accessToken, loginProvider, isAdmin, isFullAdmin, loginWithPassword, loginWithGitHub, loginWithX, loginWithPasskey, logout, logoutAll, exchangeLoginCode, completeRegistration, mfaVerify }}>
+    <AuthContext.Provider value={{ user, loading, accessToken, loginProvider, isAdmin, isFullAdmin, loginWithPassword, loginWithGitHub, loginWithX, loginWithPasskey, logout, logoutAll, exchangeLoginCode, completeRegistration, mfaVerify, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )

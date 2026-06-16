@@ -335,6 +335,7 @@ export async function apiRequest<T = unknown>(
     // Log rate limit info for 429 responses (L1)
     if (status === 429 && rateLimit?.retryAfter) {
       console.warn(`[api] Rate limited: retry after ${rateLimit.retryAfter}s (${rateLimit.limit} req/window)`)
+      try { window.dispatchEvent(new CustomEvent('api:rate-limit', { detail: rateLimit })) } catch {/* noop */}
     }
 
     if (status >= 200 && status < 300) {
