@@ -1,12 +1,15 @@
-import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
 import styles from './Admin.module.css'
 
-export const RequireAdminLayout = () => {
+/**
+ * Route-level guard for admin-only sub-routes (users, audit-logs).
+ * Blocks reviewers who pass through RequireAdminLayout.
+ */
+export const AdminOnlyGuard = () => {
   const { t } = useTranslation()
   const { user, loading: authLoading } = useAuth()
-  const location = useLocation()
 
   if (authLoading) {
     return (
@@ -16,15 +19,11 @@ export const RequireAdminLayout = () => {
     )
   }
 
-  if (!user) {
-    return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname)}`} replace />
-  }
-
-  if (!user.roles?.includes('admin')) {
+  if (!user || !user.roles?.includes('admin')) {
     return (
       <main className={styles.container}>
-        <h1 className={styles.heading}>{t('admin.accessDenied')}</h1>
-        <p className={styles.headingDesc}>{t('admin.accessDeniedDetail', { username: user.username })}</p>
+        <h1 className={styles.heading}>{t('adminUsers.accessDenied')}</h1>
+        <p className={styles.headingDesc}>{t('adminUsers.accessDeniedDetail')}</p>
       </main>
     )
   }

@@ -26,7 +26,33 @@
   --overlay-bg: rgba(0, 0, 0, 0.3);
 }
 
-/* ── Dark Theme ────────────────────────────────── */
+/* ── Dark Theme (via system preference, JS-less fallback) ── */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --bg-color: #12121a;
+    --text-main: #f0f0f5;
+    --text-secondary: #a0a0b0;
+    --text-muted: #808090;
+    --text-body: #c0c0d0;
+
+    --primary-pink: #ff85a2;
+    --soft-pink: #3a2a35;
+    --accent-pink: #ff6b9d;
+    --nav-bg: rgba(24, 24, 35, 0.85);
+    --divider-color: #2a2a3a;
+    --surface-card: #1e1e2e;
+
+    --hover-bg: #2a1f25;
+    --hover-bg-mix: color-mix(in srgb, var(--primary-pink) 15%, #12121a);
+    --cta-hover: #cc537c;
+    --cta-hover-mix: color-mix(in srgb, var(--accent-pink) 85%, black);
+    --shadow-color: rgba(255, 107, 156, 0.098);
+    --shadow-color-hover: rgba(255, 107, 157, 0.4);
+    --overlay-bg: rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* ── Dark Theme (JS-controlled) ────────────────── */
 [data-theme="dark"] {
   --bg-color: #12121a;
   --text-main: #f0f0f5;

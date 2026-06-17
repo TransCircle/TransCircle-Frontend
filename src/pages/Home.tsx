@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+﻿import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { get } from '@/api/client'
@@ -22,6 +22,12 @@ function formatTs(ts: number): string {
   return new Date(ts).toISOString().slice(0, 16).replace('T', ' ')
 }
 
+async function fetchPage(cursorVal?: string | null) {
+  const params = new URLSearchParams({ limit: '20' })
+  if (cursorVal) params.set('cursor', cursorVal)
+  return get<PublicContribution[]>(`/public/contributions?${params}`)
+}
+
 export const Home = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -31,42 +37,57 @@ export const Home = () => {
   const [items, setItems] = useState<PublicContribution[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [expanding, setExpanding] = useState(false)
 
   const searchTerm = searchParams.get('search')?.toLowerCase()
 
   const [error, setError] = useState('')
+  const initialLoaded = useRef(false)
+  const expandAbort = useRef(false)
 
-  const fetchList = async (cursorVal?: string | null) => {
+  const doInitialLoad = useCallback(async () => {
     setLoading(true)
-    try {
-      const params = new URLSearchParams({ limit: '20' })
-      if (cursorVal) params.set('cursor', cursorVal)
-      // 搜索由前端本地过滤实现，不发送 search 参数到后端
-      // （api.md §5.1 未定义 search 查询参数，后端不保证支持）
-      const result = await get<PublicContribution[]>(`/public/contributions?${params}`)
-      if (result.ok) {
-        if (cursorVal) {
-          setItems(prev => [...prev, ...result.data])
-        } else {
-          setItems(result.data)
-        }
-        setCursor(result.pagination?.nextCursor || null)
-        setError('')
-      } else {
-        setError(result.error.message || t('home.errorLoad'))
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('home.errorLoad'))
-    } finally {
-      setLoading(false)
+    const result = await fetchPage()
+    if (result.ok) {
+      setItems(result.data)
+      setCursor(result.pagination?.nextCursor || null)
+      setError('')
+    } else {
+      setError(result.error.message || t('home.errorLoad'))
     }
-  }
+    setLoading(false)
+  }, [t])
 
-  // 首次加载（不依赖 searchTerm，搜索为本地过滤）
-  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
-  useEffect(() => { fetchList(); }, [])
+  useEffect(() => {
+    if (initialLoaded.current) return
+    initialLoaded.current = true
+    doInitialLoad()
+  }, [doInitialLoad])
 
-  // 本地过滤：在整个已加载列表中进行匹配（不限当前页）
+  useEffect(() => {
+    expandAbort.current = false
+    if (!searchTerm) return
+
+    const MAX_PAGES = 5
+    let pagesLoaded = 1
+
+    ;(async () => {
+      setExpanding(true)
+      let currentCursor = cursor
+      while (currentCursor && pagesLoaded < MAX_PAGES && !expandAbort.current) {
+        const result = await fetchPage(currentCursor)
+        if (!result.ok || expandAbort.current) break
+        setItems(prev => [...prev, ...result.data])
+        currentCursor = result.pagination?.nextCursor || null
+        pagesLoaded++
+      }
+      setExpanding(false)
+    })()
+
+    return () => { expandAbort.current = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm])
+
   const displayItems = searchTerm
     ? items.filter(item =>
         item.title.toLowerCase().includes(searchTerm) ||
@@ -81,6 +102,7 @@ export const Home = () => {
     const fd = new FormData(form)
     const q = (fd.get('search') as string || '').trim()
     setSearchParams(q ? { search: q } : {})
+    if (!q) window.scrollTo({ top: 0 })
   }
 
   return (
@@ -97,8 +119,17 @@ export const Home = () => {
             style={{ flex: 1, minWidth: '160px', padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
           />
           <button type="submit" style={{ padding: '0.4rem 0.75rem', cursor: 'pointer' }}>{t('home.searchSubmit')}</button>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{t('home.localSearchHint')}</span>
+          {searchTerm && (
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              {expanding ? t('home.searchExpanding') : t('home.localSearchHint', { count: displayItems.length })}
+            </span>
+          )}
         </form>
+        {searchTerm && displayItems.length === 0 && !loading && !expanding && (
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '-0.5rem', marginBottom: '0.5rem' }}>
+            {t('home.noMatches')}
+          </p>
+        )}
         <h1 className={styles.heading}>TransCircle</h1>
         <p className={styles.headingDesc}>TransCircle</p>
         {user && (
@@ -112,8 +143,8 @@ export const Home = () => {
 
       {error ? (
         <div className={styles.empty} role="alert">{error}</div>
-      ) : !loading && displayItems.length === 0 ? (
-        <div className={styles.empty}>{searchTerm ? t('home.noMatches') : t('home.empty')}</div>
+      ) : !loading && displayItems.length === 0 && !searchTerm ? (
+        <div className={styles.empty}>{t('home.empty')}</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {displayItems.map(item => (
@@ -143,10 +174,19 @@ export const Home = () => {
         </div>
       )}
 
-      {cursor && (
+      {cursor && !searchTerm && (
         <button
           className={styles.btnSecondary}
-          onClick={() => fetchList(cursor)}
+          onClick={() => {
+            setLoading(true)
+            fetchPage(cursor).then(result => {
+              if (result.ok) {
+                setItems(prev => [...prev, ...result.data])
+                setCursor(result.pagination?.nextCursor || null)
+              }
+              setLoading(false)
+            })
+          }}
           disabled={loading}
           style={{ display: 'block', margin: '1.5rem auto' }}
         >

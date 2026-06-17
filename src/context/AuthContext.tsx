@@ -382,7 +382,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Refresh current user session — calls tryRefreshToken then fetches /v1/me (api.md §1.11.3)
   const refreshUser = useCallback(async (): Promise<User | null> => {
-    await tryRefreshToken()
+    const newToken = await tryRefreshToken()
+    if (newToken) setAccessToken(newToken)
     const meResult = await get<Record<string, unknown>>('/me')
     if (meResult.ok) {
       const u = normalizeUser(meResult.data)

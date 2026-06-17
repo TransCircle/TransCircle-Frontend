@@ -104,7 +104,7 @@ export const Login = () => {
         <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
           {t('login.mfaDescription')}
         </p>
-        {hasTotp && (
+        {mfaMethods.length > 0 && (
           <input
             type="text"
             inputMode="text"
@@ -123,8 +123,8 @@ export const Login = () => {
             autoFocus
           />
         )}
-        {/* TOTP confirm button */}
-        {hasTotp && (
+        {/* TOTP/recovery code confirm button */}
+        {mfaMethods.length > 0 && (
           <button
             onClick={handleMfaSubmit}
             disabled={mfaSubmitting || (mfaCode.length !== 6 && mfaCode.length !== 14)}

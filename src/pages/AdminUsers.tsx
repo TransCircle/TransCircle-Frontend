@@ -40,6 +40,7 @@ export const AdminUsers = () => {
   const { t } = useTranslation()
   const { accessToken, loading: authLoading, user, isFullAdmin } = useAuth()
   const loadedRef = useRef(false)
+  const fetchSeq = useRef(0)
 
   const [users, setUsers] = useState<ManagedUser[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
@@ -54,6 +55,7 @@ export const AdminUsers = () => {
   }, [accessToken])
 
   const fetchUsers = async (cursorVal?: string | null) => {
+    const seq = ++fetchSeq.current
     setLoading(true)
     setError('')
     try {
@@ -63,6 +65,7 @@ export const AdminUsers = () => {
       const result = await get<ManagedUser[]>(`/admin/users?${params}`, {
         headers: authHeaders(), skipRefresh: !accessToken,
       })
+      if (seq !== fetchSeq.current) return
       if (!result.ok) throw new Error(result.error.message)
       if (cursorVal) setUsers(prev => [...prev, ...result.data])
       else setUsers(result.data)
@@ -70,7 +73,7 @@ export const AdminUsers = () => {
     } catch (err) {
       setError(err instanceof Error ? err.message : t('adminUsers.loadError'))
     } finally {
-      setLoading(false)
+      if (seq === fetchSeq.current) setLoading(false)
     }
   }
 

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
 import styles from './Admin.module.css'
 
-export const RequireAdminLayout = () => {
+export const RequireReviewerOrAdminLayout = () => {
   const { t } = useTranslation()
   const { user, loading: authLoading } = useAuth()
   const location = useLocation()
@@ -20,7 +20,8 @@ export const RequireAdminLayout = () => {
     return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname)}`} replace />
   }
 
-  if (!user.roles?.includes('admin')) {
+  const allowed = user.roles?.includes('admin') || user.roles?.includes('reviewer')
+  if (!allowed) {
     return (
       <main className={styles.container}>
         <h1 className={styles.heading}>{t('admin.accessDenied')}</h1>

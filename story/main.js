@@ -83,8 +83,8 @@ function renderFilters() {
   const available = categories.filter(c => c === '全部' || counts[c])
 
   nav.innerHTML = available.map(cat =>
-    `<button class="filterBtn ${cat === activeCategory ? 'active' : ''}" data-cat="${cat}">
-      ${cat}${counts[cat] ? ` (${counts[cat]})` : ''}
+    `<button class="filterBtn ${cat === activeCategory ? 'active' : ''}" data-cat="${html(cat)}">
+      ${html(cat)}${counts[cat] ? ` (${counts[cat]})` : ''}
     </button>`
   ).join('')
 
@@ -186,6 +186,37 @@ function renderMarkdown(md) {
   return result
 }
 
+/**
+ * Sanitize HTML — allow only safe tags (defense-in-depth; server already sanitizes).
+ * @param {string} html
+ * @returns {string}
+ */
+function sanitizeHtml(html) {
+  const template = document.createElement('template')
+  template.innerHTML = html
+  const allowed = new Set(['p','b','i','em','strong','a','ul','ol','li','br','h2','h3','blockquote','code','pre'])
+  const allElements = template.content.querySelectorAll('*')
+  for (let i = allElements.length - 1; i >= 0; i--) {
+    const el = allElements[i]
+    if (!allowed.has(el.tagName.toLowerCase())) {
+      const parent = el.parentNode
+      if (parent) {
+        while (el.firstChild) parent.insertBefore(el.firstChild, el)
+        parent.removeChild(el)
+      }
+    } else {
+      for (const attr of [...el.attributes]) {
+        if (attr.name.startsWith('on')) el.removeAttribute(attr.name)
+      }
+      if (el.tagName === 'A') {
+        const href = el.getAttribute('href') || ''
+        if (href.startsWith('javascript:')) el.removeAttribute('href')
+      }
+    }
+  }
+  return template.innerHTML
+}
+
 // ── Global ────────────────────────────────────────────
 
 /** @param {string} id */
@@ -202,7 +233,7 @@ window.toggleStory = async function (id) {
         const body = await res.json()
         const contentHtml = body.data?.contentHtml || ''
         const contentEl = full.querySelector('.cardContent')
-        if (contentEl) contentEl.innerHTML = contentHtml
+        if (contentEl) contentEl.innerHTML = sanitizeHtml(contentHtml)
       }
     } catch { /* keep summary as fallback */ }
     full.dataset.loaded = '1'

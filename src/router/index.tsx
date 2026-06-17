@@ -4,6 +4,8 @@ import { lazy, Suspense } from 'react'
 import { RootLayout } from '../layouts/RootLayout'
 import { ErrorBoundaryPage } from '../pages/ErrorBoundaryPage'
 import { RequireAdminLayout } from '../pages/RequireAdminLayout'
+import { RequireReviewerOrAdminLayout } from '../pages/RequireReviewerOrAdminLayout'
+import { AdminOnlyGuard } from '../pages/AdminOnlyGuard'
 
 import { Home } from '../pages/Home'
 
@@ -44,12 +46,26 @@ export const router = createBrowserRouter([
       },
       {
         path: 'admin',
-        element: <RequireAdminLayout />,
         children: [
-          { index: true, element: lazyNamed(() => import('../pages/Admin'), 'Admin') },
-          { path: 'edit-requests', element: lazyNamed(() => import('../pages/AdminEditRequests'), 'AdminEditRequests') },
-          { path: 'audit-logs', element: lazyNamed(() => import('../pages/AdminAuditLogs'), 'AdminAuditLogs') },
-          { path: 'users', element: lazyNamed(() => import('../pages/AdminUsers'), 'AdminUsers') },
+          {
+            element: <RequireReviewerOrAdminLayout />,
+            children: [
+              { index: true, element: lazyNamed(() => import('../pages/Admin'), 'Admin') },
+              { path: 'edit-requests', element: lazyNamed(() => import('../pages/AdminEditRequests'), 'AdminEditRequests') },
+            ],
+          },
+          {
+            element: <RequireAdminLayout />,
+            children: [
+              {
+                element: <AdminOnlyGuard />,
+                children: [
+                  { path: 'audit-logs', element: lazyNamed(() => import('../pages/AdminAuditLogs'), 'AdminAuditLogs') },
+                  { path: 'users', element: lazyNamed(() => import('../pages/AdminUsers'), 'AdminUsers') },
+                ],
+              },
+            ],
+          },
         ],
       },
       {

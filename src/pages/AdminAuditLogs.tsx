@@ -27,6 +27,7 @@ export const AdminAuditLogs = () => {
   const { t } = useTranslation()
   const { accessToken, loading: authLoading, user, isFullAdmin } = useAuth()
   const loadedRef = useRef(false)
+  const fetchSeq = useRef(0)
 
   const [logs, setLogs] = useState<AuditLogEntry[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
@@ -39,6 +40,7 @@ export const AdminAuditLogs = () => {
     accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
 
   const fetchLogs = async (cursorVal?: string | null) => {
+    const seq = ++fetchSeq.current
     setLoading(true)
     setError('')
     try {
@@ -49,6 +51,7 @@ export const AdminAuditLogs = () => {
       const result = await get<AuditLogEntry[]>(`/admin/audit-logs?${params}`, {
         headers: authHeaders(), skipRefresh: !accessToken,
       })
+      if (seq !== fetchSeq.current) return
       if (!result.ok) throw new Error(result.error.message)
       if (cursorVal) setLogs(prev => [...prev, ...result.data])
       else setLogs(result.data)
@@ -56,7 +59,7 @@ export const AdminAuditLogs = () => {
     } catch (err) {
       setError(err instanceof Error ? err.message : t('adminAuditLogs.loadError'))
     } finally {
-      setLoading(false)
+      if (seq === fetchSeq.current) setLoading(false)
     }
   }
 

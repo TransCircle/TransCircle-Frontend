@@ -28,7 +28,6 @@ interface FormData {
   language: string
   submitMode: string
   agreement: boolean
-  website: string
 }
 
 interface FormErrors {
@@ -49,7 +48,6 @@ const INITIAL_FORM: FormData = {
   language: 'zh-CN',
   submitMode: 'submit',
   agreement: false,
-  website: '',
 }
 
 const LANGUAGES = ['zh-CN', 'zh-TW', 'en', 'ja', 'other'] as const
@@ -183,6 +181,7 @@ export const SubmitForm = () => {
             else if (!fieldErrors._fallback) fieldErrors._fallback = d.reason // fallback for unrecognized fields
           }
           setErrors(fieldErrors)
+          if (fieldErrors._fallback) setServerError(fieldErrors._fallback)
         } else {
           setServerError(result.error.message || t('submit.serverError'))
         }
@@ -254,17 +253,6 @@ export const SubmitForm = () => {
           )}
         </div>
       )}
-
-      {/* Honeypot: hidden from users, filled by bots */}
-      <input
-        type="text"
-        name="website"
-        className={styles.honeypot}
-        tabIndex={-1}
-        autoComplete="off"
-        value={form.website}
-        onChange={(e) => set('website', e.target.value)}
-      />
 
         <FormField label={t('submit.title')} required error={errors.title}>
         <input

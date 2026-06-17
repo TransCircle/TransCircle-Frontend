@@ -57,6 +57,7 @@ export const AdminEditRequests = () => {
   const { t } = useTranslation()
   const { accessToken, loading: authLoading, user, isAdmin } = useAuth()
   const loadedRef = useRef(false)
+  const fetchSeq = useRef(0)
 
   const [items, setItems] = useState<EditRequestItem[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
@@ -71,6 +72,7 @@ export const AdminEditRequests = () => {
     accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
 
   const fetchList = async (cursorVal?: string | null) => {
+    const seq = ++fetchSeq.current
     setLoading(true)
     setError('')
     try {
@@ -79,6 +81,7 @@ export const AdminEditRequests = () => {
       const result = await get<EditRequestItem[]>(`/admin/edit-requests?${params}`, {
         headers: authHeaders(), skipRefresh: !accessToken,
       })
+      if (seq !== fetchSeq.current) return
       if (!result.ok) throw new Error(result.error.message)
       if (cursorVal) setItems(prev => [...prev, ...result.data])
       else setItems(result.data)
@@ -86,7 +89,7 @@ export const AdminEditRequests = () => {
     } catch (err) {
       setError(err instanceof Error ? err.message : t('adminEditRequests.loadError'))
     } finally {
-      setLoading(false)
+      if (seq === fetchSeq.current) setLoading(false)
     }
   }
 

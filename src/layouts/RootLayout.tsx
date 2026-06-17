@@ -46,7 +46,7 @@ export const RootLayout = () => {
       const detail = (e as CustomEvent).detail
       const retryAfter = detail?.retryAfter
       if (retryAfter) {
-        setRateLimitToast(`${t('admin.networkError')} — 请在 ${retryAfter} 秒后重试`)
+        setRateLimitToast(t('common.rateLimitHint', { seconds: retryAfter }))
         setTimeout(() => setRateLimitToast(null), Math.min(retryAfter * 1000, 15000))
       }
     }
