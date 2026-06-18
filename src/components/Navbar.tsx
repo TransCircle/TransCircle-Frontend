@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, type ReactNode } from "react";
-import { Link } from 'react-router-dom'
-import ThemeToggle from "./ThemeToggle";
+import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { ThemeToggle } from "./ThemeToggle";
+import { useAuth } from '@/context/useAuth'
 import styles from "./Navbar.module.css";
 
 interface MobileLink {
@@ -15,7 +17,10 @@ interface NavbarProps {
 
 const MOBILE_BREAKPOINT = 1200;
 
-const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
+export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
+  const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
+  const { user, isAdmin, logout } = useAuth()
   const [isOpen, setIsOpen] = useState(false);
 
   const hamburgerRef = useRef<HTMLButtonElement>(null);
@@ -71,7 +76,7 @@ const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
 
   return (
     <>
-      <nav className={styles.navbar} aria-label="主导航">
+      <nav className={styles.navbar} aria-label={t('nav.ariaLabel')}>
         <div className={styles.container}>
           <div className={styles.leftSection}>
             <button
@@ -79,7 +84,7 @@ const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
               type="button"
               className={styles.hamburger}
               onClick={() => (isOpen ? closeMenu() : openMenu())}
-              aria-label={isOpen ? "关闭菜单" : "打开菜单"}
+              aria-label={isOpen ? t('nav.closeMenu') : t('nav.openMenu')}
               aria-expanded={isOpen}
               aria-controls="nav-menu"
             >
@@ -88,7 +93,7 @@ const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
               <span className={styles.bar}></span>
             </button>
 
-            <div className={styles.logo}>TransCircle</div>
+            <div className={styles.logo}>{t('nav.logo')}</div>
           </div>
 
           <ul
@@ -96,10 +101,26 @@ const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
             id="nav-menu"
             className={`${styles.navLinks} ${isOpen ? styles.active : ""}`}
           >
-            <li><a href="https://transcircle.org" onClick={closeMenu}>首页</a></li>
-            <li><Link to="/submit" onClick={closeMenu}>故事征集</Link></li>
-            <li><a href="#archive" onClick={closeMenu}>人物归档（开发中）</a></li>
-            <li><a href="#community" onClick={closeMenu}>社群互助（开发中）</a></li>
+            <li><Link to="/" onClick={closeMenu}>{t('nav.home')}</Link></li>
+            <li><Link to="/submit" onClick={closeMenu}>{t('nav.submit')}</Link></li>
+            <li><span style={{ opacity: 0.5, cursor: 'default' }}>{t('nav.archive')}</span></li>
+            <li><span style={{ opacity: 0.5, cursor: 'default' }}>{t('nav.community')}</span></li>
+
+            {user && (
+              <>
+                <li className={styles.mobileDivider}></li>
+                <li><Link to="/me/contributions" onClick={closeMenu}>{t('nav.myContributions')}</Link></li>
+                <li><Link to="/settings/security" onClick={closeMenu}>{t('nav.securitySettings')}</Link></li>
+                {isAdmin && <li><Link to="/admin" onClick={closeMenu}>{t('nav.adminDashboard')}</Link></li>}
+                <li><button onClick={async () => { await logout(); closeMenu(); navigate('/') }} style={{
+                  background: 'none', border: 'none', color: 'inherit', cursor: 'pointer',
+                  fontSize: 'inherit', fontFamily: 'inherit', padding: 0
+                }}>{t('nav.logout')}</button></li>
+              </>
+            )}
+            {!user && (
+              <li><Link to="/login" onClick={closeMenu}>{t('nav.login')}</Link></li>
+            )}
 
             {mobileLinks && (
               <>
@@ -121,13 +142,46 @@ const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
 
             <li className={styles.mobileDivider}></li>
             <li className={`${styles.mobileOnly} ${styles.mobileThemeToggle}`}>
-              <div className={styles.mobileThemeLabel}>主题</div>
+              <div className={styles.mobileThemeLabel}>{t('nav.mobileThemeLabel')}</div>
               <ThemeToggle className={styles.mobileThemeToggleGroup} />
+              <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', justifyContent: 'center', marginTop: '0.25rem' }}>
+                <button
+                  onClick={() => { localStorage.setItem('transcircle-lang', 'zh-CN'); i18n.changeLanguage('zh-CN') }}
+                  style={{ fontSize: '0.8rem', fontWeight: i18n.language === 'zh-CN' ? 700 : 400, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-muted)' }}
+                >简体</button>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>/</span>
+                <button
+                  onClick={() => { localStorage.setItem('transcircle-lang', 'zh-TW'); i18n.changeLanguage('zh-TW') }}
+                  style={{ fontSize: '0.8rem', fontWeight: i18n.language === 'zh-TW' ? 700 : 400, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-muted)' }}
+                >繁體</button>
+              </div>
             </li>
           </ul>
 
           <div className={styles.rightSection}>
-            <ThemeToggle />
+                        <ThemeToggle />
+            <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', marginLeft: '0.5rem' }}>
+              <button
+                onClick={() => { localStorage.setItem('transcircle-lang', 'zh-CN'); i18n.changeLanguage('zh-CN') }}
+                style={{ fontSize: '0.75rem', fontWeight: i18n.language === 'zh-CN' ? 700 : 400, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-muted)', padding: '0.1rem 0.15rem' }}
+              >简体</button>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>/</span>
+              <button
+                onClick={() => { localStorage.setItem('transcircle-lang', 'zh-TW'); i18n.changeLanguage('zh-TW') }}
+                style={{ fontSize: '0.75rem', fontWeight: i18n.language === 'zh-TW' ? 700 : 400, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-muted)', padding: '0.1rem 0.15rem' }}
+              >繁體</button>
+            </div>
+            <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', marginLeft: '0.5rem' }}>
+              {user ? (
+                <button onClick={async () => { await logout(); navigate('/') }} style={{
+                  fontSize: '0.8rem', background: 'none', border: '1px solid var(--text-muted)',
+                  borderRadius: '50px', padding: '0.2rem 0.75rem', cursor: 'pointer', fontFamily: 'inherit',
+                  color: 'var(--text-main)'
+                }}>{t('nav.logoutShort')}</button>
+              ) : (
+                <Link to="/login" style={{ fontSize: '0.85rem', color: 'var(--accent-pink)' }}>{t('nav.login')}</Link>
+              )}
+            </div>
           </div>
         </div>
       </nav>
@@ -140,5 +194,3 @@ const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
     </>
   );
 };
-
-export default Navbar;

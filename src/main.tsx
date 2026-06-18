@@ -4,17 +4,24 @@ import ReactDOM from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
 
 import { ThemeProvider } from './context/ThemeContext'
+import { AuthProvider } from './context/AuthContext'
 
 import { router } from './router'
 
 import './styles/index.css'
 
-ReactDOM.createRoot(
-  document.getElementById('root') as HTMLElement,
-).render(
+// Initialize i18n — side-effect import ensures language resources are loaded
+import './i18n/config'
+
+const rootEl = document.getElementById('root')
+if (!rootEl) throw new Error('#root element not found')
+
+ReactDOM.createRoot(rootEl).render(
   <React.StrictMode>
     <ThemeProvider>
-      <RouterProvider router={router} />
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
     </ThemeProvider>
   </React.StrictMode>,
 )

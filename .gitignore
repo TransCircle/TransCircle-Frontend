@@ -1,0 +1,28 @@
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+story/.wrangler/
+
+# build outputs
+*.tsbuildinfo
+functions/dist/
+
+# logs
+functions/logs/
+
+# local config
+functions/config.toml
+config.toml
+
+# local env
+.env
+.env.local
+
+# generated lockfile (functions is standalone, lockfile created by CI)
+functions/pnpm-lock.yaml
+
+# dev/plan documents
+docs/superpowers/
+*.toml
+.jwt-keys/

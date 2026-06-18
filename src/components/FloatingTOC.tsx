@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import styles from './FloatingTOC.module.css';
 
 export interface TOCItem {
@@ -10,17 +11,20 @@ interface FloatingTOCProps {
   label?: string;
 }
 
-const FloatingTOC = ({ items, label = '目录' }: FloatingTOCProps) => (
-  <nav className={styles.toc} aria-label={label}>
-    <span className={styles.heading} aria-hidden="true">{label}</span>
-    <ul className={styles.list}>
-      {items.map((item) => (
-        <li key={item.href}>
-          <a href={item.href} className={styles.link}>{item.label}</a>
-        </li>
-      ))}
-    </ul>
-  </nav>
-);
+export const FloatingTOC = ({ items, label }: FloatingTOCProps) => {
+  const { t } = useTranslation()
+  const ariaLabel = label || t('toc.label')
 
-export default FloatingTOC;
+  return (
+    <nav className={styles.toc} aria-label={ariaLabel}>
+      <span className={styles.heading} aria-hidden="true">{ariaLabel}</span>
+      <ul className={styles.list}>
+        {items.map((item) => (
+          <li key={item.href}>
+            <a href={item.href} className={styles.link}>{item.label}</a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+};

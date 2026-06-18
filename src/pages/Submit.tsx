@@ -1,22 +1,20 @@
+import { useTranslation } from 'react-i18next'
+import { SubmitForm } from '@/components/SubmitForm'
 import styles from '../App.module.css'
 
-const Submit = () => {
+export const Submit = () => {
+  const { t } = useTranslation()
+
   return (
     <>
       <header className={styles.contentHeader}>
-        <h1 className={styles.mainTitle}>故事投稿</h1>
+        <h1 className={styles.mainTitle}>{t('submitPage.title')}</h1>
         <p className={styles.subTitle}>
-          分享你的经历与故事。
+          {t('submitPage.description')}
         </p>
       </header>
 
-      <section className={styles.introSection}>
-        <p className={styles.greeting}>
-          投稿系统正在开发中。
-        </p>
-      </section>
+      <SubmitForm />
     </>
   )
 }
-
-export default Submit
