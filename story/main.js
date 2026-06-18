@@ -187,30 +187,40 @@ function renderMarkdown(md) {
 }
 
 /**
- * Sanitize HTML — allow only safe tags (defense-in-depth; server already sanitizes).
+ * Sanitize HTML — allow only safe tags and attributes (defense-in-depth; server already sanitizes).
  * @param {string} html
  * @returns {string}
  */
 function sanitizeHtml(html) {
   const template = document.createElement('template')
   template.innerHTML = html
-  const allowed = new Set(['p','b','i','em','strong','a','ul','ol','li','br','h2','h3','blockquote','code','pre'])
+  const allowedTags = new Set(['p','b','i','em','strong','a','ul','ol','li','br','h2','h3','blockquote','code','pre'])
+  const allowedAttrs = new Set(['href']) // only href is permitted, style/class/id/on* etc stripped
+  const dangerousSchemes = /^(javascript|data|vbscript|file):/i
+
   const allElements = template.content.querySelectorAll('*')
   for (let i = allElements.length - 1; i >= 0; i--) {
     const el = allElements[i]
-    if (!allowed.has(el.tagName.toLowerCase())) {
+    const tag = el.tagName.toLowerCase()
+
+    if (!allowedTags.has(tag)) {
       const parent = el.parentNode
       if (parent) {
         while (el.firstChild) parent.insertBefore(el.firstChild, el)
         parent.removeChild(el)
       }
     } else {
+      // Strip any attribute not in the allowlist (removes style, class, id, on*, target, etc.)
       for (const attr of [...el.attributes]) {
-        if (attr.name.startsWith('on')) el.removeAttribute(attr.name)
+        if (!allowedAttrs.has(attr.name)) {
+          el.removeAttribute(attr.name)
+        }
       }
-      if (el.tagName === 'A') {
+      // Validate href on <a> — case-insensitive scheme check, strip control characters
+      if (tag === 'a') {
         const href = el.getAttribute('href') || ''
-        if (href.startsWith('javascript:')) el.removeAttribute('href')
+        const clean = href.replace(/[\x00-\x1f\x7f]/g, '').trim()
+        if (dangerousSchemes.test(clean)) el.removeAttribute('href')
       }
     }
   }

@@ -38,12 +38,13 @@ export const Home = () => {
   const [cursor, setCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [expanding, setExpanding] = useState(false)
+  const [initialDone, setInitialDone] = useState(false)
 
   const searchTerm = searchParams.get('search')?.toLowerCase()
 
   const [error, setError] = useState('')
   const initialLoaded = useRef(false)
-  const expandAbort = useRef(false)
+  const expandGen = useRef(0)
 
   const doInitialLoad = useCallback(async () => {
     setLoading(true)
@@ -56,6 +57,7 @@ export const Home = () => {
       setError(result.error.message || t('home.errorLoad'))
     }
     setLoading(false)
+    setInitialDone(true)
   }, [t])
 
   useEffect(() => {
@@ -65,8 +67,8 @@ export const Home = () => {
   }, [doInitialLoad])
 
   useEffect(() => {
-    expandAbort.current = false
-    if (!searchTerm) return
+    const gen = ++expandGen.current
+    if (!searchTerm || !initialDone) return
 
     const MAX_PAGES = 5
     let pagesLoaded = 1
@@ -74,19 +76,20 @@ export const Home = () => {
     ;(async () => {
       setExpanding(true)
       let currentCursor = cursor
-      while (currentCursor && pagesLoaded < MAX_PAGES && !expandAbort.current) {
+      while (currentCursor && pagesLoaded < MAX_PAGES && gen === expandGen.current) {
         const result = await fetchPage(currentCursor)
-        if (!result.ok || expandAbort.current) break
+        if (!result.ok || gen !== expandGen.current) break
         setItems(prev => [...prev, ...result.data])
         currentCursor = result.pagination?.nextCursor || null
         pagesLoaded++
       }
-      setExpanding(false)
+      if (gen === expandGen.current) {
+        setCursor(currentCursor)
+        setExpanding(false)
+      }
     })()
-
-    return () => { expandAbort.current = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm])
+  }, [searchTerm, initialDone])
 
   const displayItems = searchTerm
     ? items.filter(item =>
