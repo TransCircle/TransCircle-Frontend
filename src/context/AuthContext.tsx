@@ -1,5 +1,6 @@
-import { createContext, useEffect, useState, useCallback, type ReactNode } from 'react'
+import { createContext, useEffect, useState, useCallback, useMemo, type ReactNode } from 'react'
 import { get, post, setAccessToken as setClientToken, clearAuth, tryRefreshToken } from '@/api/client'
+import { computePermissions, type Permission } from '@/api/permissions'
 
 function arrayBufferToBase64url(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer)
@@ -43,6 +44,7 @@ interface AuthContextValue {
   loginProvider: string | null
   isAdmin: boolean
   isFullAdmin: boolean
+  permissions: Permission[]
   /** 手动更新 AuthContext 中的 accessToken（用于改密等需同步 token 的场景） */
   updateAccessToken: (token: string | null) => void
   loginWithPassword: (identifier: string, password: string) => Promise<LoginResult>
@@ -69,6 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loginProvider, setLoginProvider] = useState<string | null>(null)
   const isAdmin = user ? (user.roles.includes('admin') || user.roles.includes('reviewer')) : false
   const isFullAdmin = user ? user.roles.includes('admin') : false
+  const permissions = useMemo(() => computePermissions(user?.roles ?? []), [user])
   const updateAccessToken = useCallback((token: string | null) => {
     setAccessToken(token)
   }, [])
@@ -426,7 +429,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, loading, accessToken, loginProvider, isAdmin, isFullAdmin, updateAccessToken, loginWithPassword, loginWithGitHub, loginWithX, loginWithPasskey, logout, logoutAll, exchangeLoginCode, completeRegistration, mfaVerify, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, accessToken, loginProvider, isAdmin, isFullAdmin, permissions, updateAccessToken, loginWithPassword, loginWithGitHub, loginWithX, loginWithPasskey, logout, logoutAll, exchangeLoginCode, completeRegistration, mfaVerify, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )

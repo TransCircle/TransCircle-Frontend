@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Sanitize Test</title></head><body>
+<script>
+function sanitizeHtml(html) {
+  const template = document.createElement('template')
+  template.innerHTML = html
+  const allowedTags = new Set(['p','b','i','em','strong','a','ul','ol','li','br','h2','h3','blockquote','code','pre'])
+  const allowedAttrs = new Set(['href'])
+  const dangerousSchemes = /^(javascript|data|vbscript|file):/i
+
+  const allElements = template.content.querySelectorAll('*')
+  for (let i = allElements.length - 1; i >= 0; i--) {
+    const el = allElements[i]
+    const tag = el.tagName.toLowerCase()
+
+    if (!allowedTags.has(tag)) {
+      const parent = el.parentNode
+      if (parent) {
+        while (el.firstChild) parent.insertBefore(el.firstChild, el)
+        parent.removeChild(el)
+      }
+    } else {
+      for (const attr of [...el.attributes]) {
+        if (!allowedAttrs.has(attr.name)) el.removeAttribute(attr.name)
+      }
+      if (tag === 'a') {
+        const href = el.getAttribute('href') || ''
+        const clean = href.replace(/[\x00-\x1f\x7f]/g, '').trim()
+        if (dangerousSchemes.test(clean)) el.removeAttribute('href')
+      }
+    }
+  }
+  return template.innerHTML
+}
+
+const tests = [
+  // 1) style 属性是否保留
+  { name: 'style on <p>', input: '<p style="color:red;background:url(javascript:alert(1))">text</p>' },
+  // 2) onclick 事件
+  { name: 'onclick on <strong>', input: '<strong onclick="alert(1)">text</strong>' },
+  // 3) javascript: scheme 正常
+  { name: 'javascript: href', input: '<a href="javascript:alert(1)">click</a>' },
+  // 4) 大写 bypass
+  { name: 'JAVASCRIPT: scheme', input: '<a href="JAVASCRIPT:alert(1)">click</a>' },
+  // 5) 混合大小写
+  { name: 'JaVaScRiPt: scheme', input: '<a href="JaVaScRiPt:alert(1)">click</a>' },
+  // 6) 前导空白
+  { name: 'leading space before javascript:', input: '<a href=" javascript:alert(1)">click</a>' },
+  // 7) 前导 Tab
+  { name: 'leading tab before javascript:', input: '<a href="\tjavascript:alert(1)">click</a>' },
+  // 8) Tab 在 scheme 中间
+  { name: 'tab in javascript:', input: '<a href="jav\tascript:alert(1)">click</a>' },
+  // 9) 控制字符分离
+  { name: 'null byte before scheme', input: '<a href="java\x00script:alert(1)">click</a>' },
+  // 10) data: scheme
+  { name: 'data: html', input: '<a href="data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==">click</a>' },
+  // 11) vbscript: scheme
+  { name: 'vbscript: scheme', input: '<a href="vbscript:msgbox(1)">click</a>' },
+  // 12) file: scheme
+  { name: 'file: scheme', input: '<a href="file:///etc/passwd">click</a>' },
+  // 13) HTML entity encoded javascript
+  { name: 'entity encoded javascript', input: '<a href="&#106;avascript:alert(1)">click</a>' },
+  // 14) <script> 注入
+  { name: '<script> tag', input: '<p>text<script>alert(1)><</script></p>' },
+  // 15) <iframe> 嵌入
+  { name: '<iframe> tag', input: '<iframe src="javascript:alert(1)"></iframe>' },
+  // 16) <img onerror>
+  { name: '<img onerror>', input: '<img src=x onerror="alert(1)">' },
+  // 17) <svg onload>
+  { name: '<svg onload>', input: '<svg onload="alert(1)">' },
+  // 18) <a target=_blank> tabnabbing
+  { name: '<a target=_blank>', input: '<a href="http://evil.com" target="_blank" rel="noopener">link</a>' },
+  // 19) protocol-relative URL
+  { name: 'protocol-relative URL', input: '<a href="//evil.com/phish">link</a>' },
+  // 20) nested disallowed in allowed
+  { name: '<p><script> inside', input: '<p>hello<script>alert(1)</script>world</p>' },
+  // 21) empty href
+  { name: 'empty href', input: '<a href="">link</a>' },
+  // 22) safe href (https)
+  { name: 'safe https href', input: '<a href="https://example.com">link</a>' },
+  // 23) safe relative href
+  { name: 'safe relative href', input: '<a href="/page">link</a>' },
+  // 24) multiple attributes (href + class + id)
+  { name: 'multiple attrs', input: '<a href="https://x.com" class="big" id="x" style="color:red">link</a>' },
+  // 25) <code> with class
+  { name: '<code class>', input: '<code class="language-js">var x = 1</code>' },
+  // 26) <a> with target and rel
+  { name: 'target rel', input: '<a href="https://x.com" target="_blank" rel="noopener noreferrer">x</a>' },
+  // 27) &nbsp; bypass
+  { name: '&nbsp; scheme', input: '<a href="javas&#116;cript:alert(1)">click</a>' },
+  // 28) &#10; (newline entity) leading bypass
+  { name: 'entity newline leading', input: '<a href="&#10;javascript:alert(1)">click</a>' },
+  // 29) URL encoded scheme
+  { name: 'URL encoded', input: '<a href="javascript%3aalert(1)">click</a>' },
+  // 30) bare <a> no href
+  { name: 'bare <a> no href', input: '<a>text</a>' },
+]
+
+for (const t of tests) {
+  const result = sanitizeHtml(t.input)
+  const failed = result !== t.input.replace(/\s+/g, ' ').trim()
+    ? '(MODIFIED) ' : '(UNCHANGED) '
+  console.log((failed ? '⚠️' : '✅'), failed, t.name)
+  console.log('  IN: ', t.input)
+  console.log('  OUT:', result)
+  console.log('')
+}
+</script>
+</body></html>

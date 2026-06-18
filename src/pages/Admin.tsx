@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '@/context/useAuth'
 import { get, post } from '@/api/client'
 import { ERRORS } from '@/api/errors'
+import { hasPermission, PERMISSIONS } from '@/api/permissions'
+import { limitByUnicode } from '@/utils/string'
 import styles from './Admin.module.css'
 
 // Temp token is kept in memory only (per api.md §JWT Payload Structure:
@@ -75,7 +77,7 @@ function formatTs(ts: number | string | null): string {
 
 export const Admin = () => {
   const { t } = useTranslation()
-  const { user, loading: authLoading, accessToken, loginProvider, isAdmin, isFullAdmin, loginWithGitHub } = useAuth()
+  const { user, loading: authLoading, accessToken, loginProvider, isAdmin, isFullAdmin, permissions, loginWithGitHub } = useAuth()
   const [tempToken, setTempToken] = useState('')
   const [tokenInput, setTokenInput] = useState('')
   const [activeTab, setActiveTab] = useState<Status>('pending')
@@ -497,7 +499,7 @@ export const Admin = () => {
                       {s.author?.displayName || t('admin.authorAnonymous')} · {formatTs(s.createdAt)}
                     </div>
                   </div>
-                  <span className={styles.itemCategory}>{s.summary ? s.summary.slice(0, 20) : '-'}</span>
+                    <span className={styles.itemCategory}>{s.summary ? limitByUnicode(s.summary, 20) : '-'}</span>
                   </button>
                 </li>
               ))}
@@ -601,12 +603,16 @@ export const Admin = () => {
             />
 
             <div className={styles.reviewActions}>
-              <button className={styles.btnPrimary} onClick={() => handleReview('approved')}>
-                {t('admin.approve')}
-              </button>
-              <button className={styles.btnReject} onClick={() => handleReview('rejected')}>
-                {t('admin.reject')}
-              </button>
+              {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_REVIEW) && (
+                <button className={styles.btnPrimary} onClick={() => handleReview('approved')}>
+                  {t('admin.approve')}
+                </button>
+              )}
+              {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_REVIEW) && (
+                <button className={styles.btnReject} onClick={() => handleReview('rejected')}>
+                  {t('admin.reject')}
+                </button>
+              )}
             </div>
           </>
         )}
@@ -614,36 +620,48 @@ export const Admin = () => {
         {/* Post-review actions: publish for approved, hide/delete for published, restore/delete for hidden, delete for rejected (api.md §6.4, §6.5, §6.6) */}
         {selected.status === 'approved' && (
           <div className={styles.reviewActions}>
-            <button className={styles.btnPrimary} onClick={handlePublish}>
-              {t('admin.publishButton')}
-            </button>
-            <button className={styles.btnReject} onClick={handleDelete}>
-              {t('admin.deleteButton')}
-            </button>
+            {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_PUBLISH) && (
+              <button className={styles.btnPrimary} onClick={handlePublish}>
+                {t('admin.publishButton')}
+              </button>
+            )}
+            {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_DELETE) && (
+              <button className={styles.btnReject} onClick={handleDelete}>
+                {t('admin.deleteButton')}
+              </button>
+            )}
           </div>
         )}
         {selected.status === 'published' && (
           <div className={styles.reviewActions}>
-            <button className={styles.btnReject} onClick={handleHide}>
-              {t('admin.hideButton')}
-            </button>
+            {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_HIDE) && (
+              <button className={styles.btnReject} onClick={handleHide}>
+                {t('admin.hideButton')}
+              </button>
+            )}
           </div>
         )}
         {selected.status === 'hidden' && (
           <div className={styles.reviewActions}>
-            <button className={styles.btnPrimary} onClick={handleRestore}>
-              {t('admin.restoreButton')}
-            </button>
-            <button className={styles.btnReject} onClick={handleDelete}>
-              {t('admin.deleteButton')}
-            </button>
+            {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_RESTORE) && (
+              <button className={styles.btnPrimary} onClick={handleRestore}>
+                {t('admin.restoreButton')}
+              </button>
+            )}
+            {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_DELETE) && (
+              <button className={styles.btnReject} onClick={handleDelete}>
+                {t('admin.deleteButton')}
+              </button>
+            )}
           </div>
         )}
         {selected.status === 'rejected' && (
           <div className={styles.reviewActions}>
-            <button className={styles.btnReject} onClick={handleDelete}>
-              {t('admin.deleteButton')}
-            </button>
+            {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_DELETE) && (
+              <button className={styles.btnReject} onClick={handleDelete}>
+                {t('admin.deleteButton')}
+              </button>
+            )}
           </div>
         )}
       </div>

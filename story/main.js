@@ -114,6 +114,13 @@ function renderGrid() {
   }
 
   grid.innerHTML = filtered.map(storyCard).join('')
+
+  for (const btn of grid.querySelectorAll('.cardExpand')) {
+    const id = btn.dataset.id
+    if (id) {
+      btn.addEventListener('click', () => toggleStory(id))
+    }
+  }
 }
 
 function storyCard(s) {
@@ -121,7 +128,9 @@ function storyCard(s) {
   const date = formatDate(s.created_at)
   const preview = (s.content || '')
     .replace(/[#*`>\[\]()]/g, '')
+    .split('')
     .slice(0, 200)
+    .join('')
 
   return `
     <article class="card" id="s-${html(s.id)}">
@@ -132,7 +141,7 @@ function storyCard(s) {
         <span>${html(authorDisplay)}</span>
         <span>${html(date)}</span>
       </div>
-      <button class="cardExpand" onclick="toggleStory('${html(s.id)}')">阅读全文</button>
+      <button class="cardExpand" data-id="${html(s.id)}">阅读全文</button>
       <div class="cardFull" id="full-${html(s.id)}" hidden>
         <div class="cardContent">${renderMarkdown(s.content)}</div>
         <p class="cardAuthor">
@@ -230,7 +239,7 @@ function sanitizeHtml(html) {
 // ── Global ────────────────────────────────────────────
 
 /** @param {string} id */
-window.toggleStory = async function (id) {
+async function toggleStory(id) {
   const full = document.getElementById(`full-${id}`)
   const btn = document.querySelector(`#s-${id} .cardExpand`)
   if (!full || !btn) return

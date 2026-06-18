@@ -2,6 +2,8 @@
 import { useTranslation } from 'react-i18next'
 import { get, post } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
+import { hasPermission, PERMISSIONS } from '@/api/permissions'
+import { limitByUnicode } from '@/utils/string'
 import styles from './Admin.module.css'
 
 interface EditRequestItem {
@@ -54,7 +56,7 @@ function formatTs(ts: number | null | undefined): string {
 
 export const AdminEditRequests = () => {
   const { t } = useTranslation()
-  const { accessToken, loading: authLoading, user, isAdmin } = useAuth()
+  const { accessToken, loading: authLoading, user, isAdmin, permissions } = useAuth()
   const loadedRef = useRef(false)
   const fetchSeq = useRef(0)
 
@@ -192,7 +194,7 @@ export const AdminEditRequests = () => {
 
           {error && <div className={styles.errorBox}>{error}</div>}
 
-          {detail.status === 'pending' && (
+          {detail.status === 'pending' && hasPermission(permissions, PERMISSIONS.CONTRIBUTION_REVIEW) && (
             <>
               <textarea className={styles.reviewTextarea} value={voteNote}
                 onChange={e => setVoteNote(e.target.value)} placeholder={t('adminEditRequests.voteNotePlaceholder')} />
@@ -240,8 +242,8 @@ export const AdminEditRequests = () => {
                 onClick={() => fetchDetail(item.id)}
               >
               <div className={styles.itemMain}>
-                <div className={styles.itemTitle}>{t('adminEditRequests.contribPrefix')} {(item.contribution?.id ?? item.contributionId ?? '').slice(0, 20)}... · {item.status}</div>
-                <div className={styles.itemMeta}>{item.reason.slice(0, 60)} · {formatTs(item.createdAt)}</div>
+                <div className={styles.itemTitle}>{t('adminEditRequests.contribPrefix')} {limitByUnicode(item.contribution?.id ?? item.contributionId ?? '', 20)}... · {item.status}</div>
+                <div className={styles.itemMeta}>{limitByUnicode(item.reason, 60)} · {formatTs(item.createdAt)}</div>
               </div>
               </button>
             </li>

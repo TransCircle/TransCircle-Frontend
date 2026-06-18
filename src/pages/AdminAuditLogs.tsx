@@ -2,6 +2,7 @@
 import { useTranslation } from 'react-i18next'
 import { get } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
+import { limitByUnicode } from '@/utils/string'
 import styles from './Admin.module.css'
 
 interface AuditLogEntry {
@@ -118,9 +119,9 @@ export const AdminAuditLogs = () => {
                 <div className={styles.itemMain}>
                   <div className={styles.itemTitle}>{log.action}</div>
                   <div className={styles.itemMeta}>
-                    {log.resourceType}{log.resourceId ? ` / ${log.resourceId.slice(0, 24)}...` : ''} ·
+                    {log.resourceType}{log.resourceId ? ` / ${limitByUnicode(log.resourceId, 24)}...` : ''} ·
                     {log.actorUserId
-                      ? t('adminAuditLogs.actorUser', { id: `${log.actorUserId.slice(0, 16)}...` })
+                      ? t('adminAuditLogs.actorUser', { id: `${limitByUnicode(log.actorUserId, 16)}...` })
                       : t('adminAuditLogs.actorSystem')} ·
                     {formatTs(log.createdAt)}
                   </div>
