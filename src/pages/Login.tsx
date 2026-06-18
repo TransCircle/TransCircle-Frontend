@@ -1,5 +1,5 @@
 ﻿import { useState, useMemo, useEffect, useRef } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
 import styles from '../App.module.css'
@@ -7,18 +7,25 @@ import formStyles from './Register.module.css'
 
 export const Login = () => {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { t } = useTranslation()
   const { loginWithPassword, loginWithGitHub, loginWithX, loginWithPasskey, mfaVerify, user: authUser, loading: authLoading } = useAuth()
   const justLoggedInRef = useRef(false)
 
   // Navigate after auth context loads full profile (with roles) from /v1/me
+  // 优先消费 ?redirect= 深链参数（从 RequireAdminLayout 等守卫跳转而来）
   useEffect(() => {
     if (justLoggedInRef.current && authUser && !authLoading) {
       justLoggedInRef.current = false
+      const redirect = searchParams.get('redirect')
+      if (redirect) {
+        navigate(redirect, { replace: true })
+        return
+      }
       const isAdmin = authUser.roles?.includes('admin') || authUser.roles?.includes('reviewer')
       navigate(isAdmin ? '/admin' : '/submit', { replace: true })
     }
-  }, [authUser, authLoading, navigate])
+  }, [authUser, authLoading, navigate, searchParams])
 
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')

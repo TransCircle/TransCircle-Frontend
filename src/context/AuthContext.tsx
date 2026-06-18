@@ -43,6 +43,8 @@ interface AuthContextValue {
   loginProvider: string | null
   isAdmin: boolean
   isFullAdmin: boolean
+  /** 手动更新 AuthContext 中的 accessToken（用于改密等需同步 token 的场景） */
+  updateAccessToken: (token: string | null) => void
   loginWithPassword: (identifier: string, password: string) => Promise<LoginResult>
   loginWithGitHub: () => Promise<void>
   loginWithX: () => Promise<void>
@@ -67,23 +69,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loginProvider, setLoginProvider] = useState<string | null>(null)
   const isAdmin = user ? (user.roles.includes('admin') || user.roles.includes('reviewer')) : false
   const isFullAdmin = user ? user.roles.includes('admin') : false
+  const updateAccessToken = useCallback((token: string | null) => {
+    setAccessToken(token)
+  }, [])
 
   // Try to get current user via stored token or refresh
   useEffect(() => {
     const init = async () => {
-      // Try refresh to get an access token — cookie-based, must include credentials
-      const token = await tryRefreshToken()
-      if (token) {
-        setAccessToken(token)
-        // Token obtained: fetch full user profile from /v1/me (api.md §2.1)
-        const meResult = await get<Record<string, unknown>>('/me')
-        if (meResult.ok) {
-          setUser(normalizeUser(meResult.data))
+      try {
+        // Try refresh to get an access token — cookie-based, must include credentials
+        const token = await tryRefreshToken()
+        if (token) {
+          setAccessToken(token)
+          // Token obtained: fetch full user profile from /v1/me (api.md §2.1)
+          const meResult = await get<Record<string, unknown>>('/me')
+          if (meResult.ok) {
+            setUser(normalizeUser(meResult.data))
+          }
         }
+      } finally {
+        // No token: user is not logged in, skip /me to avoid a pointless 401
+        setLoading(false)
       }
-      // No token: user is not logged in, skip /me to avoid a pointless 401
-
-      setLoading(false)
     }
     init()
   }, [])
@@ -419,7 +426,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, loading, accessToken, loginProvider, isAdmin, isFullAdmin, loginWithPassword, loginWithGitHub, loginWithX, loginWithPasskey, logout, logoutAll, exchangeLoginCode, completeRegistration, mfaVerify, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, accessToken, loginProvider, isAdmin, isFullAdmin, updateAccessToken, loginWithPassword, loginWithGitHub, loginWithX, loginWithPasskey, logout, logoutAll, exchangeLoginCode, completeRegistration, mfaVerify, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )

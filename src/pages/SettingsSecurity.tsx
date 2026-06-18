@@ -79,7 +79,7 @@ export const SettingsSecurity = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { user: authUser, accessToken, logoutAll, loading: authLoading } = useAuth()
+  const { user: authUser, accessToken, logoutAll, loading: authLoading, updateAccessToken } = useAuth()
 
   const [profile, setProfile] = useState<UserProfile | null>(null)
   // 从 URL ?tab= 读取初始标签（如 OAuth 绑定成功后跳转，#13b）
@@ -484,7 +484,10 @@ export const SettingsSecurity = () => {
     setPasswordSubmitting(false)
 
     if (result.ok) {
-      if (result.data.accessToken) setClientToken(result.data.accessToken)
+      if (result.data.accessToken) {
+        setClientToken(result.data.accessToken)
+        updateAccessToken(result.data.accessToken)
+      }
       setPasswordSuccess(true)
       setCurrentPassword('')
       setNewPassword('')

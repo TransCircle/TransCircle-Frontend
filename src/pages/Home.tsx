@@ -83,8 +83,10 @@ export const Home = () => {
         currentCursor = result.pagination?.nextCursor || null
         pagesLoaded++
       }
+      // 始终推进 cursor，即使代次已失效（否则展开中途清空/切词后
+      // cursor 仍停在展开前，加载更多会重复拉取已加载的页）
+      setCursor(currentCursor)
       if (gen === expandGen.current) {
-        setCursor(currentCursor)
         setExpanding(false)
       }
     })()

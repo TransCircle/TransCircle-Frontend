@@ -30,7 +30,6 @@ interface EditRequestItem {
     total: number
     required: number
     history?: Array<{
-      id: string
       vote: string
       note: string | null
       reviewerId: string
@@ -213,7 +212,7 @@ export const AdminEditRequests = () => {
               <strong>{t('adminEditRequests.voteHistory')}</strong>
               <ul style={{ margin: '0.5rem 0 0', padding: '0 0 0 1.2rem', fontSize: '0.85rem', lineHeight: 1.8 }}>
                 {detail.votes.history.map(v => (
-                  <li key={v.id}>{v.vote === 'approve' ? '✅' : '❌'} {v.vote} · {v.note || t('adminEditRequests.noNote')} · {formatTs(v.createdAt)}</li>
+                  <li key={v.reviewerId}>{v.vote === 'approve' ? '✅' : '❌'} {v.vote} · {v.note || t('adminEditRequests.noNote')} · {formatTs(v.createdAt)}</li>
                 ))}
               </ul>
             </div>

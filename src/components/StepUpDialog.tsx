@@ -309,7 +309,6 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
             {!passkeyProcessing && (
               <button
                 onClick={() => {
-                  passkeyProcessed.current = true
                   setPasskeyProcessing(true)
                   handlePasskey()
                 }}

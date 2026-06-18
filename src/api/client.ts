@@ -339,7 +339,8 @@ export async function apiRequest<T = unknown>(
     }
 
     if (status >= 200 && status < 300) {
-      logRequestId(`${method} ${path}`, json)
+      // path 可能含敏感 query（如 /admin/users?keyword=email），仅记录路径部分（api.md 安全基线）
+      logRequestId(`${method} ${path.split('?')[0]!}`, json)
       // Persist CSRF token from response body if present (H1 — supports cross-origin OAuth flows)
       const responseCsrf = json.csrfToken as string | undefined
       if (responseCsrf) saveCsrfToken(responseCsrf)
