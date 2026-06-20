@@ -86,7 +86,6 @@ router.post('/register', (req, _res, next) => { req.rateLimitAction = 'register'
     if ((asnRate?.count as number || 0) >= 300) {
       setRateLimitHeaders(res, 300, 0, 3600_000)
       // Write audit log for ASN-level rate limit (风控审计 per api.md §1.1)
-      const { writeAuditLog } = await import('../utils/audit')
       writeAuditLog(req, {
         actorUserId: null,
         action: 'rate_limit.asn',

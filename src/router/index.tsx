@@ -117,6 +117,10 @@ export const router = createBrowserRouter([
         element: lazyNamed(() => import('../pages/ResetPassword'), 'ResetPassword'),
       },
       {
+        path: 'auth/cancel-deletion',
+        element: lazyNamed(() => import('../pages/CancelDeletion'), 'CancelDeletion'),
+      },
+      {
         path: 'me/contributions',
         element: lazyNamed(() => import('../pages/MyContributions'), 'MyContributions'),
       },

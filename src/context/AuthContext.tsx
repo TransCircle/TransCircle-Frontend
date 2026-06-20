@@ -1,13 +1,7 @@
 import { createContext, useEffect, useState, useCallback, useMemo, type ReactNode } from 'react'
 import { get, post, setAccessToken as setClientToken, clearAuth, tryRefreshToken } from '@/api/client'
 import { computePermissions, type Permission } from '@/api/permissions'
-
-function arrayBufferToBase64url(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer)
-  let binary = ''
-  for (const b of bytes) binary += String.fromCharCode(b)
-  return btoa(binary).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
-}
+import { arrayBufferToBase64url } from '@/utils/string'
 
 interface User {
   id: string

@@ -5,7 +5,7 @@ import { useAuth } from '@/context/useAuth'
 import { get, clearCsrfToken } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import styles from '../App.module.css'
-import formStyles from './Register.module.css'
+import formStyles from '../components/Form.module.css'
 
 // 用户名：3-32 字符，小写字母开头，仅允许小写字母/数字/下划线/短横线
 const USERNAME_RE = /^[a-z][a-z0-9_-]{2,31}$/

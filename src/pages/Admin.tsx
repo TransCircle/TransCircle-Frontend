@@ -113,7 +113,7 @@ export const Admin = () => {
         skipRefresh: !accessToken, // tempToken users can't auto-refresh
       })
       if (seq !== fetchSeq.current) return
-      if (result.status === 403) {
+      if (result.status === 403 || result.status === 401) {
         setTempToken('')
         setLoading(false)
         return
@@ -159,7 +159,7 @@ export const Admin = () => {
         })
         if (cancelled) return
 
-        if (result.status === 403) {
+        if (result.status === 403 || result.status === 401) {
           setTempToken('')
           return
         }
@@ -184,6 +184,7 @@ export const Admin = () => {
   }, [activeTab, isAdmin, tempToken, authHeaders, t, accessToken])
 
   const fetchDetail = async (id: string) => {
+    setError('')
     try {
       const result = await get<Submission>(`/admin/contributions/${id}`, {
         headers: authHeaders(),
@@ -260,7 +261,8 @@ export const Admin = () => {
   const handleHide = async () => {
     if (!selected) return
     const reason = prompt(t('admin.hideReasonPrompt'))
-    if (!reason || !reason.trim() || reason.trim().length > 200) {
+    if (reason === null) return // user cancelled
+    if (!reason.trim() || reason.trim().length > 200) {
       setError(t('admin.hideReasonRequired'))
       return
     }
@@ -309,7 +311,8 @@ export const Admin = () => {
   const handleDelete = async () => {
     if (!selected) return
     const reason = prompt(t('admin.deleteReasonPrompt'))
-    if (!reason || !reason.trim() || reason.trim().length > 200) {
+    if (reason === null) return // user cancelled
+    if (!reason.trim() || reason.trim().length > 200) {
       setError(t('admin.deleteReasonRequired'))
       return
     }
@@ -361,7 +364,7 @@ export const Admin = () => {
         })
         if (result.ok) {
           setTempToken(raw)
-        } else if (result.status === 403) {
+        } else if (result.status === 403 || result.status === 401) {
           setError(t('admin.accessDenied'))
         } else {
           setError(t('admin.errorLoad'))

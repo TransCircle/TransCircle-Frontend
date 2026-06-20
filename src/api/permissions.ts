@@ -16,7 +16,6 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   admin: Object.values(PERMISSIONS),
   reviewer: [
     PERMISSIONS.CONTRIBUTION_REVIEW,
-    PERMISSIONS.CONTRIBUTION_PUBLISH,
   ],
 }
 

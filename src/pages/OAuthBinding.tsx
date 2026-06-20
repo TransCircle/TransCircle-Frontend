@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+﻿import { useState, useRef, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { post, tryRefreshToken, clearCsrfToken } from '@/api/client'
@@ -12,6 +12,8 @@ export const OAuthBinding = () => {
   const { t } = useTranslation()
   const { accessToken } = useAuth()
 
+  const navigateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => { return () => { if (navigateTimerRef.current) clearTimeout(navigateTimerRef.current) } }, [])
   const provider = searchParams.get('provider') || 'github'
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
@@ -22,14 +24,11 @@ export const OAuthBinding = () => {
     setErrorMsg('')
 
     try {
-      let currentToken = accessToken
-      if (!currentToken) {
+      if (!accessToken) {
         // Token might be null in memory but refresh token cookie still valid — try refresh
         const refreshed = await tryRefreshToken()
-        if (refreshed) {
-          currentToken = refreshed
-        } else {
-          setErrorMsg(t('oauth.bindStepUpRequired'))
+        if (!refreshed) {
+          setErrorMsg(t('oauth.bindSessionExpired'))
           setStatus('error')
           return
         }
@@ -73,7 +72,7 @@ export const OAuthBinding = () => {
 
       clearCsrfToken()
       setStatus('success')
-      setTimeout(() => navigate('/settings/security?toast=bind_success&tab=oauth', { replace: true }), 1500)
+      navigateTimerRef.current = setTimeout(() => navigate('/settings/security?toast=bind_success&tab=oauth', { replace: true }), 1500)
     } catch {
       setErrorMsg(t('oauth.bindError'))
       setStatus('error')

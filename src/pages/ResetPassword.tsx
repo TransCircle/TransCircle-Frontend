@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { post } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import styles from '../App.module.css'
-import formStyles from './Register.module.css'
+import formStyles from '../components/Form.module.css'
 
 const UPPER_RE = /[A-Z]/
 const LOWER_RE = /[a-z]/

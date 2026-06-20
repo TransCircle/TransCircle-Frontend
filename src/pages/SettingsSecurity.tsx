@@ -5,6 +5,7 @@ import { get, post, patch, del, clearAuth, setAccessToken as setClientToken } fr
 import { ERRORS } from '@/api/errors'
 import { useAuth } from '@/context/useAuth'
 import { StepUpDialog } from '@/components/StepUpDialog'
+import { arrayBufferToBase64url } from '@/utils/string'
 import styles from './Admin.module.css'
 
 // ─── Types ───────────────────────────────────────────────────
@@ -252,6 +253,7 @@ export const SettingsSecurity = () => {
 
   // When step-up completes, proceed with unbinding
   const handleUnbindAfterStepUp = useCallback(async (provider: 'github' | 'x'): Promise<void> => {
+    setOauthError('')
     const result = await del<{ provider: string; unbound: boolean; revokedSessions: number }>(
       `/me/oauth/${provider}`,
     )
@@ -447,7 +449,12 @@ export const SettingsSecurity = () => {
     // api.md §2.5: OAuth-only 账户传 null，密码账户传实际值
     if (profile?.security.hasPassword === false) {
       body.password = null
-    } else if (cancelPassword) {
+    } else {
+      if (!cancelPassword) {
+        setCancelStatus('error')
+        setCancelError(t('settings.passwordRequired'))
+        return
+      }
       body.password = cancelPassword
     }
     if (cancelPasskeyAssertion) {
@@ -716,13 +723,7 @@ export const SettingsSecurity = () => {
     setPendingAction(`unbind-${provider}`)
   }
 
-  // ── Helper: ArrayBuffer → base64url ──
-  function arrayBufferToBase64url(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer)
-    let binary = ''
-    for (const b of bytes) binary += String.fromCharCode(b)
-    return btoa(binary).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
-  }
+  // ── Helper: ArrayBuffer → base64url (from shared utils/string.ts)
 
   // Not loading and not logged in — redirect to login
   useEffect(() => {

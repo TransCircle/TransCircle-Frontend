@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useRef, useCallback } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { get } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
@@ -19,18 +19,26 @@ interface PublicContribution {
 }
 
 function formatTs(ts: number): string {
-  return new Date(ts).toISOString().slice(0, 16).replace('T', ' ')
+  if (!ts) return ''
+  return new Date(ts).toLocaleString('zh-CN', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit',
+    hour12: false,
+  })
 }
 
 async function fetchPage(cursorVal?: string | null) {
-  const params = new URLSearchParams({ limit: '20' })
-  if (cursorVal) params.set('cursor', cursorVal)
-  return get<PublicContribution[]>(`/public/contributions?${params}`)
+  try {
+    const params = new URLSearchParams({ limit: '20' })
+    if (cursorVal) params.set('cursor', cursorVal)
+    return get<PublicContribution[]>(`/public/contributions?${params}`)
+  } catch {
+    return { ok: false, error: { code: 'NETWORK_ERROR', message: '' }, requestId: '', status: 0 }
+  }
 }
 
 export const Home = () => {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -153,12 +161,11 @@ export const Home = () => {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {displayItems.map(item => (
-            <button
-              type="button"
+            <Link
+              to={`/contributions/${item.id}`}
               key={item.id}
               className={styles.detailCard}
-              onClick={() => navigate(`/contributions/${item.id}`)}
-              style={{ cursor: 'pointer', textAlign: 'left', width: '100%', border: 'none' }}
+              style={{ cursor: 'pointer', textAlign: 'left', width: '100%', border: 'none', display: 'block', textDecoration: 'none', color: 'inherit' }}
             >
               <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.25rem', color: 'var(--text-main)' }}>
                 {item.title}
@@ -174,7 +181,7 @@ export const Home = () => {
                   <span key={t} style={{ marginLeft: '0.5rem', background: 'var(--hover-bg)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>{t}</span>
                 ))}
               </div>
-            </button>
+            </Link>
           ))}
         </div>
       )}
@@ -182,15 +189,19 @@ export const Home = () => {
       {cursor && !searchTerm && (
         <button
           className={styles.btnSecondary}
-          onClick={() => {
+          onClick={async () => {
             setLoading(true)
-            fetchPage(cursor).then(result => {
+            try {
+              const result = await fetchPage(cursor)
               if (result.ok) {
                 setItems(prev => [...prev, ...result.data])
                 setCursor(result.pagination?.nextCursor || null)
               }
+            } catch {
+              // handled in fetchPage
+            } finally {
               setLoading(false)
-            })
+            }
           }}
           disabled={loading}
           style={{ display: 'block', margin: '1.5rem auto' }}

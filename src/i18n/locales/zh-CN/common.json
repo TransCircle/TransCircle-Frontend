@@ -364,6 +364,7 @@
     "verifying": "正在验证邮箱...",
     "success": "邮箱验证成功！",
     "error": "验证链接无效或已过期",
+    "noToken": "缺少验证令牌",
     "redirectToLogin": "前往登录"
   },
   "emailResend": {
@@ -376,7 +377,10 @@
     "success": "验证邮件已发送，请检查收件箱",
     "emailNotFound": "该邮箱未注册",
     "alreadyVerified": "该邮箱已验证，无需重发",
-    "error": "发送失败，请稍后重试"
+    "error": "发送失败，请稍后重试",
+    "errors": {
+      "emailRequired": "请输入邮箱"
+    }
   },
   "forgotPassword": {
     "title": "忘记密码",
@@ -389,6 +393,9 @@
     "emailNotFound": "该邮箱未注册",
     "accountBanned": "账户已被封禁，无法重置密码",
     "error": "发送失败，请稍后重试",
+    "errors": {
+      "emailRequired": "请输入邮箱"
+    },
     "errors": {
       "emailRequired": "请输入邮箱"
     }
@@ -490,6 +497,7 @@
     "cancelPasskeyError": "Passkey 验证失败",
     "cancelDeletionButton": "撤销注销",
     "cancelRequired": "令牌和账号标识为必填项",
+    "passwordRequired": "请输入当前密码",
     "passwordHeading": "修改密码",
     "passwordNotSet": "你当前未设置密码。请设置一个密码以增加账户安全性。",
     "passwordChanged": "密码修改成功",

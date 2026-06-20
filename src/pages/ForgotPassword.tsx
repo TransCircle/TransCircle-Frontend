@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { post } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import styles from '../App.module.css'
-import formStyles from './Register.module.css'
+import formStyles from '../components/Form.module.css'
 
 export const ForgotPassword = () => {
   const { t } = useTranslation()

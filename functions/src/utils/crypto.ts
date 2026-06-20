@@ -16,7 +16,11 @@
 import { conf } from '../Config'
 
 const SESSION_SECRET =
-  ((conf.SESSION as Record<string, string | undefined>)?.SESS_SECRET) || 'default-secret-change-me'
+  (conf.SESSION as Record<string, string | undefined>)?.SESS_SECRET
+
+if (!SESSION_SECRET) {
+  throw new Error('SESSION.SESS_SECRET must be configured in config.toml (required for encryption)')
+}
 
 async function deriveKey(salt: Uint8Array): Promise<CryptoKey> {
   const enc = new TextEncoder()

@@ -172,5 +172,5 @@ export function requireRole(...allowedRoles: string[]) {
  * admin 具有全部 reviewer 权限（api.md §15.10 权限映射）。
  */
 export const requireReviewer = requireRole('reviewer', 'admin')
-/** 同 requireReviewer — admin 角色也可通过 */
-export const requireAdmin = requireReviewer
+/** 要求用户拥有 admin 角色（严格限制，仅 admin 可通过） */
+export const requireAdmin = requireRole('admin')

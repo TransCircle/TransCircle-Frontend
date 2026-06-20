@@ -6,7 +6,11 @@ import { parseUserAgent, type DeviceInfo } from './user-agent'
 const SESSION_MAX_AGE = 7 * 24 * 60 * 60 * 1000 // 7 days
 const REFRESH_TOKEN_BYTES = 32
 const SESSION_SECRET =
-  ((conf.SESSION as Record<string, string | undefined>)?.SESS_SECRET) || 'default-secret-change-me'
+  (conf.SESSION as Record<string, string | undefined>)?.SESS_SECRET
+
+if (!SESSION_SECRET) {
+  throw new Error('SESSION.SESS_SECRET must be configured in config.toml (required for HMAC signing)')
+}
 
 function randomToken(): string {
   const buf = crypto.getRandomValues(new Uint8Array(REFRESH_TOKEN_BYTES))

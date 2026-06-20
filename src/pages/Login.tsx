@@ -3,7 +3,7 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
 import styles from '../App.module.css'
-import formStyles from './Register.module.css'
+import formStyles from '../components/Form.module.css'
 
 export const Login = () => {
   const navigate = useNavigate()
@@ -114,7 +114,7 @@ export const Login = () => {
         {hasTotp && (
           <input
             type="text"
-            inputMode="text"
+            inputMode={mfaCode.length > 0 && /[A-Z-]/.test(mfaCode) ? 'text' : 'numeric'}
             value={mfaCode}
             onChange={(e) => {
               const raw = e.target.value.toUpperCase()
@@ -201,6 +201,7 @@ export const Login = () => {
             required
             autoFocus
             minLength={3}
+            autoComplete="username"
             maxLength={254}
           />
         </label>
@@ -216,6 +217,7 @@ export const Login = () => {
             required
             minLength={12}
             maxLength={128}
+            autoComplete="current-password"
           />
           <div style={{ textAlign: 'right', marginTop: '0.25rem' }}>
             <Link to="/auth/password/forgot" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>

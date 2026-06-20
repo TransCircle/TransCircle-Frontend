@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { post, setIntentKey, newIdempotencyKey } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import styles from '../App.module.css'
-import formStyles from './Register.module.css'
+import formStyles from '../components/Form.module.css'
 import adminStyles from './Admin.module.css'
 
 // Unicode 感知的字符串截断（api.md §12 通用约定：按字符而非 UTF-16 码元计数）

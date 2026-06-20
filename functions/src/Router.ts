@@ -5,7 +5,6 @@ import { fileURLToPath } from 'url'
 import { log } from './Logger'
 import { requestId } from './middleware/requestId'
 import { corsHandler } from './middleware/cors'
-import { rateLimit } from './middleware/rateLimit'
 import { sendError, Errors } from './utils/response'
 import { sendSuccess } from './utils/response'
 import pool from './Database'
@@ -42,7 +41,6 @@ app.use(corsHandler)
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(cookieParser())
-app.use(rateLimit)
 
 // ── Request logging + metrics ───────────────────
 app.use((req: Request, res: Response, next: NextFunction) => {
