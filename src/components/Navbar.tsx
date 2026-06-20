@@ -5,6 +5,13 @@ import { ThemeToggle } from "./ThemeToggle";
 import { useAuth } from '@/context/useAuth'
 import styles from "./Navbar.module.css";
 
+const ExternalLinkIcon = () => (
+  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginLeft: 4, verticalAlign: -1 }}>
+    <path d="M6 2h8v8" />
+    <path d="M14 2 4 12" />
+  </svg>
+);
+
 interface MobileLink {
   key: string;
   node: ReactNode;
@@ -17,21 +24,15 @@ interface NavbarProps {
 
 const MOBILE_BREAKPOINT = 1200;
 
-const EXTERNAL_LINKS = [
-  { label: 'GitHub', url: 'https://github.com/TransCircle/TransCircle', desc: 'github.com/TransCircle/TransCircle' },
-  { label: 'X (Twitter)', url: 'https://x.com/TransCircleOrg', desc: '@TransCircleOrg' },
-  { label: 'Bluesky', url: 'https://bsky.app/profile/TransCircle.org', desc: 'TransCircle.org' },
-] as const;
-
 export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
   const { t, i18n } = useTranslation()
   const { user, isAdmin, logout } = useAuth()
   const [isOpen, setIsOpen] = useState(false);
-  const [linksOpen, setLinksOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const hamburgerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLUListElement>(null);
-  const linksRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLButtonElement>(null);
 
   const closeMenu = () => setIsOpen(false);
 
@@ -55,42 +56,58 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
   }, [isOpen]);
 
   useEffect(() => {
+    if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) {
+      if (e.key === "Escape") {
         closeMenu();
         hamburgerRef.current?.focus();
       }
-      if (e.key === "Escape" && linksOpen) {
-        setLinksOpen(false);
-      }
     };
-
     const handleResize = () => {
-      if (window.innerWidth > MOBILE_BREAKPOINT) {
-        closeMenu();
-        const main = document.querySelector<HTMLElement>("main");
-        if (main) main.inert = false;
-      }
+      if (window.innerWidth > MOBILE_BREAKPOINT) closeMenu();
     };
-
-    const handleClickOutside = (e: MouseEvent) => {
-      if (linksRef.current && !linksRef.current.contains(e.target as Node)) {
-        setLinksOpen(false);
-      }
-    };
-
     document.addEventListener("keydown", handleKeyDown);
     window.addEventListener("resize", handleResize);
-    document.addEventListener("mousedown", handleClickOutside);
-
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("resize", handleResize);
-      document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isOpen, linksOpen]);
+  }, [isOpen]);
 
   const mobileLinks = customMobileLinks?.(closeMenu);
+
+  const handleDropdownToggle = () => {
+    setDropdownOpen((prev) => !prev);
+  };
+
+  const handleDropdownKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+      e.preventDefault();
+      setDropdownOpen(true);
+      requestAnimationFrame(() => {
+        dropdownRef.current
+          ?.closest(`.${styles.dropdown}`)
+          ?.querySelector<HTMLElement>('.dropdown-menu-link')
+          ?.focus();
+      });
+    } else if (e.key === "Escape") {
+      setDropdownOpen(false);
+      dropdownRef.current?.focus();
+    }
+  };
+
+  const handleDropdownMenuKeyDown = (e: React.KeyboardEvent<HTMLUListElement>) => {
+    if (e.key === "Escape") {
+      setDropdownOpen(false);
+      dropdownRef.current?.focus();
+    }
+  };
+
+  const handleDropdownBlur = (e: React.FocusEvent<HTMLElement>) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDropdownOpen(false);
+    }
+  };
 
   return (
     <>
@@ -111,7 +128,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
               <span className={styles.bar}></span>
             </button>
 
-            <a href="https://transcircle.org" className={styles.logo}>{t('nav.logo')}</a>
+            <div className={styles.logo}><a href="https://transcircle.org">{t('nav.logo')}</a></div>
           </div>
 
           <ul
@@ -120,37 +137,46 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
             className={`${styles.navLinks} ${isOpen ? styles.active : ""}`}
           >
             <li><a href="https://transcircle.org" onClick={closeMenu}>{t('nav.home')}</a></li>
-            <li><Link to="/submit" onClick={closeMenu}>{t('nav.submit')}</Link></li>
-            <li className={styles.linkDropdown}>
+            <li
+              className={`${styles.dropdown} ${dropdownOpen ? styles.dropdownOpen : ""}`}
+              onBlur={handleDropdownBlur}
+            >
               <button
+                ref={dropdownRef}
                 type="button"
-                className={styles.linkBtn}
-                onClick={() => setLinksOpen(!linksOpen)}
+                className={styles.dropdownTrigger}
                 aria-haspopup="menu"
-                aria-expanded={linksOpen}
+                aria-expanded={dropdownOpen}
+                onClick={handleDropdownToggle}
+                onKeyDown={handleDropdownKeyDown}
               >
                 {t('nav.links')}
+                <svg
+                  className={styles.chevron}
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
               </button>
-              <div
-                className={`${styles.linksMenu} ${linksOpen ? styles.linksMenuActive : ''}`}
+              <ul
+                className={styles.dropdownMenu}
+                aria-label="外部链接"
                 role="menu"
+                onKeyDown={handleDropdownMenuKeyDown}
               >
-                {EXTERNAL_LINKS.map(link => (
-                  <a
-                    key={link.label}
-                    href={link.url}
-                    className={styles.linksMenuItem}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    role="menuitem"
-                    onClick={() => setLinksOpen(false)}
-                  >
-                    <span className={styles.linksMenuLabel}>{link.label}</span>
-                    <span className={styles.linksMenuDesc}>{link.desc}</span>
-                  </a>
-                ))}
-              </div>
+                <li role="none"><a role="menuitem" className="dropdown-menu-link" href="https://blog.transcircle.org/" target="_blank" rel="noopener noreferrer" onClick={closeMenu}>博客<ExternalLinkIcon /></a></li>
+                <li role="none"><a role="menuitem" className="dropdown-menu-link" href="https://search.transcircle.org/" target="_blank" rel="noopener noreferrer" onClick={closeMenu}>探索<ExternalLinkIcon /></a></li>
+              </ul>
             </li>
+            <li><Link to="/submit" onClick={closeMenu}>{t('nav.submit')}</Link></li>
             <li><span className={styles.disabled}>{t('nav.archive')}</span></li>
             <li><span className={styles.disabled}>{t('nav.community')}</span></li>
 
@@ -208,28 +234,6 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
 
           <div className={styles.rightSection}>
                         <ThemeToggle />
-            <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', marginLeft: '0.5rem' }}>
-              <button
-                onClick={() => { localStorage.setItem('transcircle-lang', 'zh-CN'); i18n.changeLanguage('zh-CN') }}
-                style={{ fontSize: '0.75rem', fontWeight: i18n.language === 'zh-CN' ? 700 : 400, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-muted)', padding: '0.1rem 0.15rem' }}
-              >简体</button>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>/</span>
-              <button
-                onClick={() => { localStorage.setItem('transcircle-lang', 'zh-TW'); i18n.changeLanguage('zh-TW') }}
-                style={{ fontSize: '0.75rem', fontWeight: i18n.language === 'zh-TW' ? 700 : 400, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-muted)', padding: '0.1rem 0.15rem' }}
-              >繁體</button>
-            </div>
-            <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', marginLeft: '0.5rem' }}>
-              {user ? (
-                <button onClick={async () => { await logout(); window.location.href = 'https://transcircle.org' }} style={{
-                  fontSize: '0.8rem', background: 'none', border: '1px solid var(--text-muted)',
-                  borderRadius: '50px', padding: '0.2rem 0.75rem', cursor: 'pointer', fontFamily: 'inherit',
-                  color: 'var(--text-main)'
-                }}>{t('nav.logoutShort')}</button>
-              ) : (
-                <Link to="/login" style={{ fontSize: '0.85rem', color: 'var(--accent-pink)' }}>{t('nav.login')}</Link>
-              )}
-            </div>
           </div>
         </div>
       </nav>
