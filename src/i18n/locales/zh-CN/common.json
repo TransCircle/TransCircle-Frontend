@@ -73,6 +73,7 @@
     "loginWithGithub": "GitHub",
     "loginWithX": "X",
     "loggedInAs": "已登录 · 投稿将关联到你的账号",
+    "back": "后退",
     "errors": {
       "titleRequired": "请输入标题",
       "contentRequired": "请输入正文",
