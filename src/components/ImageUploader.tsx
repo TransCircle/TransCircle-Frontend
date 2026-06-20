@@ -66,7 +66,14 @@ export const ImageUploader = ({ onUploaded }: ImageUploaderProps) => {
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={uploading}
-        style={{ padding: '0.3rem 0.75rem', fontSize: '0.85rem', cursor: 'pointer' }}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+          border: '1.5px solid var(--divider-color)', color: 'var(--text-main)',
+          background: 'var(--bg-color)', padding: '0.55rem 1.25rem',
+          borderRadius: '50px', fontSize: '0.88rem', fontWeight: 500,
+          cursor: 'pointer', fontFamily: 'inherit',
+          transition: 'border-color 0.15s ease'
+        }}
       >
         {uploading ? t('imageUploader.uploading') : t('imageUploader.uploadButton')}
       </button>

@@ -123,7 +123,7 @@ export const Home = () => {
             placeholder={t('home.searchPlaceholder')}
             style={{ flex: 1, minWidth: '160px', padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
           />
-          <button type="submit" style={{ padding: '0.4rem 0.75rem', cursor: 'pointer' }}>{t('home.searchSubmit')}</button>
+          <button type="submit" className={`${styles.btnSecondary}`}>{t('home.searchSubmit')}</button>
           {searchTerm && (
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
               {expanding ? t('home.searchExpanding') : t('home.localSearchHint', { count: displayItems.length })}
