@@ -65,6 +65,93 @@
   font-weight: 600;
   color: var(--text-main);
   letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.logo:hover {
+  color: var(--accent-pink);
+}
+
+.disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.linkDropdown {
+  position: relative;
+}
+
+.linkBtn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.linkBtn:hover {
+  color: var(--text-main);
+  background-color: var(--hover-bg);
+}
+
+@supports (background-color: color-mix(in srgb, red 15%, white)) {
+  .linkBtn:hover {
+    background-color: var(--hover-bg-mix);
+  }
+}
+
+.linksMenu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 220px;
+  background-color: var(--bg-color);
+  border: 1px solid var(--divider-color);
+  border-radius: 10px;
+  box-shadow: 0 4px 20px var(--shadow-color);
+  padding: 0.5rem;
+  z-index: 1001;
+}
+
+.linksMenuActive {
+  display: block;
+}
+
+.linksMenuItem {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--text-main);
+  transition: background-color 0.15s ease;
+}
+
+.linksMenuItem:hover {
+  background-color: var(--hover-bg);
+}
+
+@supports (background-color: color-mix(in srgb, red 15%, white)) {
+  .linksMenuItem:hover {
+    background-color: var(--hover-bg-mix);
+  }
+}
+
+.linksMenuLabel {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.linksMenuDesc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.1rem;
 }
 
 .navLinks {

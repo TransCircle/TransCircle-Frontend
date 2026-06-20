@@ -17,13 +17,21 @@ interface NavbarProps {
 
 const MOBILE_BREAKPOINT = 1200;
 
+const EXTERNAL_LINKS = [
+  { label: 'GitHub', url: 'https://github.com/TransCircle/TransCircle', desc: 'github.com/TransCircle/TransCircle' },
+  { label: 'X (Twitter)', url: 'https://x.com/TransCircleOrg', desc: '@TransCircleOrg' },
+  { label: 'Bluesky', url: 'https://bsky.app/profile/TransCircle.org', desc: 'TransCircle.org' },
+] as const;
+
 export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
   const { t, i18n } = useTranslation()
   const { user, isAdmin, logout } = useAuth()
   const [isOpen, setIsOpen] = useState(false);
+  const [linksOpen, setLinksOpen] = useState(false);
 
   const hamburgerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLUListElement>(null);
+  const linksRef = useRef<HTMLDivElement>(null);
 
   const closeMenu = () => setIsOpen(false);
 
@@ -52,6 +60,9 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
         closeMenu();
         hamburgerRef.current?.focus();
       }
+      if (e.key === "Escape" && linksOpen) {
+        setLinksOpen(false);
+      }
     };
 
     const handleResize = () => {
@@ -62,14 +73,22 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
       }
     };
 
+    const handleClickOutside = (e: MouseEvent) => {
+      if (linksRef.current && !linksRef.current.contains(e.target as Node)) {
+        setLinksOpen(false);
+      }
+    };
+
     document.addEventListener("keydown", handleKeyDown);
     window.addEventListener("resize", handleResize);
+    document.addEventListener("mousedown", handleClickOutside);
 
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("resize", handleResize);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isOpen]);
+  }, [isOpen, linksOpen]);
 
   const mobileLinks = customMobileLinks?.(closeMenu);
 
@@ -92,7 +111,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
               <span className={styles.bar}></span>
             </button>
 
-            <div className={styles.logo}>{t('nav.logo')}</div>
+            <a href="https://transcircle.org" className={styles.logo}>{t('nav.logo')}</a>
           </div>
 
           <ul
@@ -102,8 +121,38 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
           >
             <li><a href="https://transcircle.org" onClick={closeMenu}>{t('nav.home')}</a></li>
             <li><Link to="/submit" onClick={closeMenu}>{t('nav.submit')}</Link></li>
-            <li><span style={{ opacity: 0.5, cursor: 'default' }}>{t('nav.archive')}</span></li>
-            <li><span style={{ opacity: 0.5, cursor: 'default' }}>{t('nav.community')}</span></li>
+            <li className={styles.linkDropdown}>
+              <button
+                type="button"
+                className={styles.linkBtn}
+                onClick={() => setLinksOpen(!linksOpen)}
+                aria-haspopup="menu"
+                aria-expanded={linksOpen}
+              >
+                {t('nav.links')}
+              </button>
+              <div
+                className={`${styles.linksMenu} ${linksOpen ? styles.linksMenuActive : ''}`}
+                role="menu"
+              >
+                {EXTERNAL_LINKS.map(link => (
+                  <a
+                    key={link.label}
+                    href={link.url}
+                    className={styles.linksMenuItem}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    role="menuitem"
+                    onClick={() => setLinksOpen(false)}
+                  >
+                    <span className={styles.linksMenuLabel}>{link.label}</span>
+                    <span className={styles.linksMenuDesc}>{link.desc}</span>
+                  </a>
+                ))}
+              </div>
+            </li>
+            <li><span className={styles.disabled}>{t('nav.archive')}</span></li>
+            <li><span className={styles.disabled}>{t('nav.community')}</span></li>
 
             {user && (
               <>

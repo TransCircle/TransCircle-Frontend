@@ -14,7 +14,8 @@
     "adminDashboard": "管理后台",
     "logout": "退出登录",
     "logoutShort": "退出",
-    "login": "登录"
+    "login": "登录",
+    "links": "链接"
   },
   "theme": {
     "light": "亮色模式",

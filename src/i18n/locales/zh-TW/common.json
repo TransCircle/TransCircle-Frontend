@@ -14,7 +14,8 @@
     "adminDashboard": "管理後台",
     "logout": "登出",
     "logoutShort": "登出",
-    "login": "登入"
+    "login": "登入",
+    "links": "連結"
   },
   "theme": {
     "light": "亮色模式",
