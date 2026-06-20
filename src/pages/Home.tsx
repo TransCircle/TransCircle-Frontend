@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { get } from '@/api/client'
+import { get, type ApiResult } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import styles from './Admin.module.css'
 
@@ -27,13 +27,13 @@ function formatTs(ts: number): string {
   })
 }
 
-async function fetchPage(cursorVal?: string | null) {
+async function fetchPage(cursorVal?: string | null): Promise<ApiResult<PublicContribution[]>> {
   try {
     const params = new URLSearchParams({ limit: '20' })
     if (cursorVal) params.set('cursor', cursorVal)
     return get<PublicContribution[]>(`/public/contributions?${params}`)
   } catch {
-    return { ok: false, error: { code: 'NETWORK_ERROR', message: '' }, requestId: '', status: 0 }
+    return { ok: false as const, error: { code: 'NETWORK_ERROR', message: '' }, requestId: '', status: 0 }
   }
 }
 
