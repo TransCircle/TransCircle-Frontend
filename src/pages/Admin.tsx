@@ -225,18 +225,28 @@ export const Admin = () => {
     fetchSubmissions()
   }
 
+  const [actionReason, setActionReason] = useState('')
+  const [actionType, setActionType] = useState<'hide' | 'delete' | null>(null)
+
   const handleHide = async () => {
     if (!selected) return
-    const reason = prompt(t('admin.hideReasonPrompt'))
-    if (reason === null) return // user cancelled
-    if (!reason.trim() || reason.trim().length > 200) {
+    if (actionType !== 'hide') {
+      setActionType('hide')
+      setActionReason('')
+      setError('')
+      return
+    }
+    const reason = actionReason.trim()
+    if (!reason || reason.length > 200) {
       setError(t('admin.hideReasonRequired'))
       return
     }
+    setActionType(null)
+    setActionReason('')
     const v = selected.version || 1
     const result = await post(`/admin/contributions/${selected.id}/hide`, {
       expectedVersion: v,
-      reason: reason.trim(),
+      reason,
       publicNote: null,
       internalNote: null,
     }, { headers: authHeaders(), skipRefresh: !accessToken })
@@ -277,17 +287,28 @@ export const Admin = () => {
 
   const handleDelete = async () => {
     if (!selected) return
-    const reason = prompt(t('admin.deleteReasonPrompt'))
-    if (reason === null) return // user cancelled
-    if (!reason.trim() || reason.trim().length > 200) {
+    if (actionType !== 'delete') {
+      setActionType('delete')
+      setActionReason('')
+      setError('')
+      return
+    }
+    const reason = actionReason.trim()
+    if (!reason || reason.length > 200) {
       setError(t('admin.deleteReasonRequired'))
       return
     }
-    if (!window.confirm(t('admin.deleteConfirm'))) return
+    if (!window.confirm(t('admin.deleteConfirm'))) {
+      setActionType(null)
+      setActionReason('')
+      return
+    }
+    setActionType(null)
+    setActionReason('')
     const v = selected.version || 1
     const result = await post(`/admin/contributions/${selected.id}/delete`, {
       expectedVersion: v,
-      reason: reason.trim(),
+      reason,
     }, { headers: authHeaders(), skipRefresh: !accessToken })
     if (!result.ok) {
       if (result.error.code === ERRORS.VERSION_CONFLICT && selected) {
@@ -555,6 +576,39 @@ export const Admin = () => {
         )}
 
         {error && <div className={styles.errorBox} role="alert">{error}</div>}
+
+        {actionType && (
+          <div style={{ margin: '1rem 0', padding: '0.75rem', border: '1px solid var(--divider-color)', borderRadius: '8px', background: 'var(--hover-bg)' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+              {actionType === 'hide' ? t('admin.hideReasonPrompt') : t('admin.deleteReasonPrompt')}
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                type="text"
+                value={actionReason}
+                onChange={e => setActionReason(e.target.value)}
+                placeholder={t('admin.reasonPlaceholder')}
+                autoFocus
+                style={{ flex: 1, padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    if (actionType === 'hide') handleHide()
+                    else handleDelete()
+                  }
+                  if (e.key === 'Escape') { setActionType(null); setActionReason('') }
+                }}
+              />
+              <button className={styles.btnPrimary} onClick={actionType === 'hide' ? handleHide : handleDelete}
+                style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>
+                {t('admin.confirmReason')}
+              </button>
+              <button className={styles.btnSecondary} onClick={() => { setActionType(null); setActionReason('') }}
+                style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>
+                {t('admin.cancelReason')}
+              </button>
+            </div>
+          </div>
+        )}
 
         {(selected.status === 'pending' || selected.status === 'in_review') && (
           <>

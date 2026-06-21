@@ -79,9 +79,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (token) {
           setAccessToken(token)
           // Token obtained: fetch full user profile from /v1/me (api.md §2.1)
+          // If /me fails transiently, user stays null and auth-required pages redirect
+          // to login — acceptable degradation. Do NOT clear the token, as the session
+          // is still valid.
           const meResult = await get<Record<string, unknown>>('/me')
           if (meResult.ok) {
             setUser(normalizeUser(meResult.data))
+          } else {
+            // /me failed even with a valid token — likely a transient server issue.
+            // The user will be redirected to login by guards, but the token remains
+            // valid so a subsequent page load may succeed.
+            console.warn('[auth] /me failed after successful refresh, user profile not loaded')
           }
         }
       } finally {
@@ -271,6 +279,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // ── Passkey Login (api.md §1.10.5) ──
   const loginWithPasskey = useCallback(async (mfaChallengeToken?: string): Promise<LoginResult> => {
+    // No identifier sent for anonymous passkey login — omit field entirely to avoid
+    // JSON.stringify producing `{}` (undefined keys are dropped). If identifier is
+    // needed in the future, pass it conditionally.
     const startResult = await post<{
       challengeId: string
       publicKey: {
@@ -281,7 +292,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         allowCredentials?: Array<{ type: string; id: string; transports: string[] }>
       }
       expiresIn: number
-    }>('/auth/passkey/login/start', { identifier: undefined })
+    }>('/auth/passkey/login/start', {})
 
     if (!startResult.ok) {
       return { user: null, errorCode: startResult.error.code }

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
@@ -19,32 +19,27 @@ export const RootLayout = () => {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
 
+  const [rateLimitToast, setRateLimitToast] = useState<string | null>(null)
+  const [dismissedToastKey, setDismissedToastKey] = useState<string | null>(null)
+
   const toastKey = searchParams.get('toast')
-  const initialMessage = (toastKey && TOAST_MESSAGE_KEYS[toastKey])
+  const toastMessage = (toastKey && TOAST_MESSAGE_KEYS[toastKey] && dismissedToastKey !== toastKey)
     ? t(TOAST_MESSAGE_KEYS[toastKey])
     : null
 
-  const [toast, setToast] = useState<string | null>(initialMessage)
-  const [rateLimitToast, setRateLimitToast] = useState<string | null>(null)
-
-  // Capture initial searchParams + navigate in refs so the effect can
-  // safely read them once on mount without enumerating deps.
-  const initialSearchParamsRef = useRef(searchParams.toString())
-  const navigateRef = useRef(navigate)
-
-  // L15: Toast feedback for cross-page notifications (OAuth callback, etc.)
+  // L15/A: Auto-dismiss and URL cleanup for ?toast= (supports SPA navigation)
   useEffect(() => {
-    if (!toast) return
+    if (!toastKey || !TOAST_MESSAGE_KEYS[toastKey]) return
 
-    // Clear the URL param after reading
-    const params = new URLSearchParams(initialSearchParamsRef.current)
-    params.delete('toast')
-    navigateRef.current({ search: params.toString() }, { replace: true })
+    const timer = setTimeout(() => {
+      setDismissedToastKey(toastKey)
+      const params = new URLSearchParams(searchParams.toString())
+      params.delete('toast')
+      navigate({ search: params.toString() }, { replace: true })
+    }, 5000)
 
-    // Auto-dismiss after 5 seconds
-    const timer = setTimeout(() => setToast(null), 5000)
     return () => clearTimeout(timer)
-  }, [toast])
+  }, [searchParams, navigate, toastKey])
   // L1: Listen for API rate-limit events
   useEffect(() => {
     const handler = (e: Event) => {
@@ -76,7 +71,7 @@ export const RootLayout = () => {
           role="alert"
           style={{
             position: 'fixed',
-            top: '4rem',
+            top: '1rem',
             left: '50%',
             transform: 'translateX(-50%)',
             background: 'var(--error-color, #d32f2f)',
@@ -84,7 +79,7 @@ export const RootLayout = () => {
             padding: '0.75rem 1.5rem',
             borderRadius: '8px',
             fontSize: '0.9rem',
-            zIndex: 9999,
+            zIndex: 10000,
             boxShadow: '0 2px 8px var(--shadow-color)',
             cursor: 'pointer',
           }}
@@ -93,13 +88,13 @@ export const RootLayout = () => {
           {rateLimitToast}
         </div>
       )}
-      {toast && (
+      {toastMessage && (
         <div
           role="status"
           aria-live="polite"
           style={{
             position: 'fixed',
-            top: '1rem',
+            top: '4rem',
             left: '50%',
             transform: 'translateX(-50%)',
             background: 'var(--surface-card)',
@@ -112,7 +107,7 @@ export const RootLayout = () => {
             boxShadow: '0 2px 8px var(--shadow-color)',
           }}
         >
-          {toast}
+          {toastMessage}
         </div>
       )}
     </div>

@@ -56,6 +56,7 @@ const validate = (data: FormData, t: (key: string, options?: Record<string, unkn
   if (!data.title.trim()) errors.title = t('submit.errors.titleRequired')
   else if ([...data.title.trim()].length > 120) errors.title = t('submit.errors.titleTooLong', { max: 120 })
   if (!data.content.trim()) errors.content = t('submit.errors.contentRequired')
+  else if ([...data.content.trim()].length > 50000) errors.content = t('submit.errors.contentTooLarge')
   if ([...data.summary].length > 300) errors.summary = t('submit.errors.summaryTooLong')
   if (data.tags.length > TAG_MAX) errors.tags = t('submit.errors.tagsTooMany', { max: TAG_MAX })
   for (const tag of data.tags) {

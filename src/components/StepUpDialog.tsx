@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { post, setAccessToken } from '@/api/client'
+import { arrayBufferToBase64url } from '@/utils/string'
 
 interface StepUpDialogProps {
   onSuccess: () => void
@@ -204,13 +205,6 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
     } finally {
       setSubmitting(false)
     }
-  }
-
-  function arrayBufferToBase64url(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer)
-    let binary = ''
-    for (const b of bytes) binary += String.fromCharCode(b)
-    return btoa(binary).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
   }
 
   // Reset passkey guard when method switches away from passkey (M7)

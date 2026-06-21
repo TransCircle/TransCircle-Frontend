@@ -284,7 +284,14 @@ export async function apiRequest<T = unknown>(
     }
   }
 
-  let res = await fetch(url, init)
+  let res: Response
+  try {
+    res = await fetch(url, init)
+  } catch (e) {
+    // Network error — clear intent key to prevent stale key from blocking retry
+    if (options.idempotent) _intentKey = null
+    throw e
+  }
 
   // ── Auto-refresh on 401 ──
   if (res.status === 401 && !options.skipRefresh && _memoryToken) {

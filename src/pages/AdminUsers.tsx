@@ -94,9 +94,23 @@ export const AdminUsers = () => {
     else setError(result.error.message)
   }
 
+  const [banReason, setBanReason] = useState('')
+  const [banUserId, setBanUserId] = useState<string | null>(null)
+
   const handleBan = async (userId: string) => {
-    const reason = prompt(t('adminUsers.banReasonPrompt'))
-    if (!reason || !reason.trim()) return // reject whitespace-only per Admin.tsx pattern (L2)
+    if (banUserId !== userId) {
+      setBanUserId(userId)
+      setBanReason('')
+      setError('')
+      return
+    }
+    const reason = banReason.trim()
+    if (!reason || reason.length > 200) {
+      setError(t('adminUsers.banReasonRequired'))
+      return
+    }
+    setBanUserId(null)
+    setBanReason('')
     const result = await post(`/admin/users/${userId}/ban`, { reason }, {
       headers: authHeaders(), skipRefresh: !accessToken,
     })
@@ -112,9 +126,23 @@ export const AdminUsers = () => {
     else setError(result.error.message)
   }
 
+  const [roleInput, setRoleInput] = useState('')
+  const [roleUserId, setRoleUserId] = useState<string | null>(null)
+
   const handleGrantRole = async (userId: string) => {
-    const roleId = prompt(t('adminUsers.roleIdPrompt'))
-    if (!roleId) return
+    if (roleUserId !== userId) {
+      setRoleUserId(userId)
+      setRoleInput('')
+      setError('')
+      return
+    }
+    const roleId = roleInput.trim()
+    if (!roleId) {
+      setError(t('adminUsers.roleIdRequired'))
+      return
+    }
+    setRoleUserId(null)
+    setRoleInput('')
     const result = await post(`/admin/users/${userId}/roles`, { roleId }, {
       headers: authHeaders(), skipRefresh: !accessToken,
     })
@@ -177,6 +205,52 @@ export const AdminUsers = () => {
               </li>
             ))}
           </ul>
+          {error && <div className={styles.errorBox} role="alert">{error}</div>}
+
+          {/* Inline ban reason input */}
+          {banUserId === detail.id && (
+            <div style={{ margin: '1rem 0', padding: '0.75rem', border: '1px solid var(--divider-color)', borderRadius: '8px', background: 'var(--hover-bg)' }}>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                {t('adminUsers.banReasonPrompt')}
+              </p>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input type="text" value={banReason} onChange={e => setBanReason(e.target.value)}
+                  placeholder={t('adminUsers.banReasonPlaceholder')} autoFocus
+                  style={{ flex: 1, padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') handleBan(detail.id)
+                    if (e.key === 'Escape') { setBanUserId(null); setBanReason('') }
+                  }} />
+                <button className={styles.btnPrimary} onClick={() => handleBan(detail.id)}
+                  style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>{t('admin.confirmReason')}</button>
+                <button className={styles.btnSecondary} onClick={() => { setBanUserId(null); setBanReason('') }}
+                  style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>{t('admin.cancelReason')}</button>
+              </div>
+            </div>
+          )}
+
+          {/* Inline role ID input */}
+          {roleUserId === detail.id && (
+            <div style={{ margin: '1rem 0', padding: '0.75rem', border: '1px solid var(--divider-color)', borderRadius: '8px', background: 'var(--hover-bg)' }}>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                {t('adminUsers.roleIdPrompt')}
+              </p>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input type="text" value={roleInput} onChange={e => setRoleInput(e.target.value)}
+                  placeholder={t('adminUsers.roleIdPlaceholder')} autoFocus
+                  style={{ flex: 1, padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') handleGrantRole(detail.id)
+                    if (e.key === 'Escape') { setRoleUserId(null); setRoleInput('') }
+                  }} />
+                <button className={styles.btnPrimary} onClick={() => handleGrantRole(detail.id)}
+                  style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>{t('admin.confirmReason')}</button>
+                <button className={styles.btnSecondary} onClick={() => { setRoleUserId(null); setRoleInput('') }}
+                  style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>{t('admin.cancelReason')}</button>
+              </div>
+            </div>
+          )}
+
           <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
             <button className={styles.btnPrimary} onClick={() => handleGrantRole(detail.id)}>{t('adminUsers.grantRole')}</button>
             {detail.status === 'banned'

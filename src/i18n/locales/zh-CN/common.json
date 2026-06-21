@@ -174,7 +174,10 @@
     "publishButton": "发布",
     "hideButton": "隐藏",
     "restoreButton": "恢复",
-    "deleteButton": "删除"
+    "deleteButton": "删除",
+    "reasonPlaceholder": "输入原因...",
+    "confirmReason": "确认",
+    "cancelReason": "取消"
   },
   "register": {
     "title": "完成注册",
@@ -665,6 +668,10 @@
     "grantRole": "授予角色",
     "revokeRole": "撤销",
     "banReasonPrompt": "封禁原因：",
+    "banReasonRequired": "请输入封禁原因",
+    "banReasonPlaceholder": "输入封禁原因...",
+    "roleIdRequired": "请输入角色 ID",
+    "roleIdPlaceholder": "输入角色 ID...",
     "adminUnban": "管理员解封",
     "userBanned": "用户已被封禁",
     "userUnbanned": "用户已解封",

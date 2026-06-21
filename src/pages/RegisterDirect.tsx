@@ -120,9 +120,9 @@ export const RegisterDirect = () => {
       <main className={styles.standalonePage}>
         <h1 style={{ fontSize: '1.5rem', color: 'var(--text-main)' }}>{t('registerDirect.success')}</h1>
         <p className={styles.statusMuted} style={{ marginTop: '0.5rem' }}>
-          {t('emailVerify.redirectToLogin')}
+          {t('registerDirect.successHint')}
         </p>
-        <Link to="/login" className={styles.accentLink} style={{ marginTop: '1rem' }}>{t('emailVerify.redirectToLogin')}</Link>
+        <Link to="/login" className={styles.accentLink} style={{ marginTop: '1rem' }}>{t('registerDirect.goToLogin')}</Link>
       </main>
     )
   }

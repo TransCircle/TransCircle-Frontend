@@ -21,11 +21,7 @@ interface PublicDetail {
 }
 
 function formatTs(ts: number): string {
-  return new Date(ts).toLocaleString('zh-CN', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit',
-    hour12: false,
-  })
+  return new Date(ts).toISOString().slice(0, 16).replace('T', ' ')
 }
 
 export const PublicContributionDetail = () => {

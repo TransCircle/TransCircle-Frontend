@@ -174,7 +174,10 @@
     "publishButton": "發布",
     "hideButton": "隱藏",
     "restoreButton": "復原",
-    "deleteButton": "刪除"
+    "deleteButton": "刪除",
+    "reasonPlaceholder": "輸入原因...",
+    "confirmReason": "確認",
+    "cancelReason": "取消"
   },
   "register": {
     "title": "完成註冊",
@@ -660,6 +663,10 @@
     "grantRole": "授予角色",
     "revokeRole": "撤銷",
     "banReasonPrompt": "封鎖原因：",
+    "banReasonRequired": "請輸入封鎖原因",
+    "banReasonPlaceholder": "輸入封鎖原因...",
+    "roleIdRequired": "請輸入角色 ID",
+    "roleIdPlaceholder": "輸入角色 ID...",
     "adminUnban": "管理員解除封鎖",
     "userBanned": "使用者已被封鎖",
     "userUnbanned": "使用者已解除封鎖",
