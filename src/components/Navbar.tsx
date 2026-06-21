@@ -177,7 +177,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
                 <li role="none"><a role="menuitem" className="dropdown-menu-link" href="https://search.transcircle.org/" target="_blank" rel="noopener noreferrer" onClick={closeMenu}>探索<ExternalLinkIcon /></a></li>
               </ul>
             </li>
-            <li><Link to={location.pathname === '/submit' ? '/' : '/submit'} onClick={closeMenu}>{location.pathname === '/submit' ? t('nav.submitView') as string : t('nav.submit') as string}</Link></li>
+            <li><Link to={location.pathname === '/submit' ? '/' : '/submit'} onClick={closeMenu}>{location.pathname === '/submit' ? t('nav.submitView') : t('nav.submit')}</Link></li>
             <li><span className={styles.disabled}>{t('nav.archive')}</span></li>
             <li><span className={styles.disabled}>{t('nav.community')}</span></li>
 

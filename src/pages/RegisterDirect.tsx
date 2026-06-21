@@ -1,7 +1,7 @@
 ﻿import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { post, setIntentKey } from '@/api/client'
+import { post, setIntentKey, newIdempotencyKey } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { USERNAME_RE, checkPasswordStrength, validateEmail } from '@/utils/string'
 import styles from '../App.module.css'
@@ -32,10 +32,10 @@ export const RegisterDirect = () => {
     else {
       // api.md §1.1: password must not contain username or email local part (case-insensitive)
       const lowerPw = pw.toLowerCase()
-      if (username.trim() && lowerPw.includes(username.trim().toLowerCase())) errs.password = t('registerDirect.errors.passwordContainsUsername') || '密码不能包含用户名'
+      if (username.trim() && lowerPw.includes(username.trim().toLowerCase())) errs.password = t('registerDirect.errors.passwordContainsUsername')
       else if (email.trim()) {
         const emailLocal = email.trim().split('@')[0]
-        if (emailLocal && lowerPw.includes(emailLocal.toLowerCase())) errs.password = t('registerDirect.errors.passwordContainsEmail') || '密码不能包含邮箱地址'
+        if (emailLocal && lowerPw.includes(emailLocal.toLowerCase())) errs.password = t('registerDirect.errors.passwordContainsEmail')
       }
     }
     if (!displayName.trim()) errs.displayName = t('registerDirect.errors.displayNameRequired')
@@ -70,7 +70,7 @@ export const RegisterDirect = () => {
     }
     setSubmitting(true)
     try {
-      setIntentKey(crypto.randomUUID())  // Per-intent idempotency-key (M9)
+      setIntentKey(newIdempotencyKey())  // Per-intent idempotency-key (M9)
       const result = await post('/auth/register', {
         username: username.trim(),
         email: email.trim(),
@@ -82,8 +82,7 @@ export const RegisterDirect = () => {
         const code = result.error.code
         const nextAction = result.error.data?.nextAction as string | undefined
         if (code === ERRORS.USERNAME_TAKEN) {
-          if (nextAction === 'choose_other_username') setError(t('registerDirect.errors.usernameTaken'))
-          else setError(t('registerDirect.errors.usernameTaken'))
+          setError(t('registerDirect.errors.usernameTaken'))
         } else if (code === ERRORS.EMAIL_TAKEN) {
           if (nextAction === 'password_forgot') setError(t('registerDirect.errors.emailTaken') + ' ' + t('registerDirect.errors.tryForgotPassword'))
           else if (nextAction === 'try_login') setError(t('registerDirect.errors.emailTaken') + ' ' + t('registerDirect.errors.tryLogin'))

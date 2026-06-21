@@ -5,7 +5,7 @@ import { MdEditor } from 'md-editor-rt'
 import 'md-editor-rt/lib/style.css'
 import { useTheme } from '@/context/useTheme'
 import { useAuth } from '@/context/useAuth'
-import { post, setIntentKey } from '@/api/client'
+import { post, setIntentKey, newIdempotencyKey } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { limitByUnicode } from '@/utils/string'
 import { FormField } from './FormField'
@@ -143,7 +143,7 @@ export const SubmitForm = () => {
     setStatus('submitting')
 
     try {
-      setIntentKey(crypto.randomUUID())
+      setIntentKey(newIdempotencyKey())
       const body: Record<string, unknown> = {
         title: form.title,
         content: form.content,
