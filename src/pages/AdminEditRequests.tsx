@@ -66,7 +66,9 @@ function getProposedField(
 ): string | null | undefined {
   if (!detail) return undefined
   const nested = detail.proposed?.[nestedKey]
-  if (nested !== undefined && nested !== null) return nested
+  // nested can be string or string[] — only return string values here
+  if (typeof nested === 'string') return nested
+  if (nested === null) return null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (detail as any)[flatKey]
 }
@@ -78,7 +80,8 @@ function getProposedFieldArray(
 ): string[] | null | undefined {
   if (!detail) return undefined
   const nested = detail.proposed?.[nestedKey]
-  if (nested !== undefined && nested !== null) return nested as string[] | null | undefined
+  if (Array.isArray(nested)) return nested
+  if (nested === null) return null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (detail as any)[flatKey]
 }
