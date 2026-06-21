@@ -15,7 +15,11 @@ export default {
       });
     }
 
-    // Serve static assets
-    return env.ASSETS.fetch(request);
+    // Try static asset first; fall back to index.html for SPA routes
+    const response = await env.ASSETS.fetch(request);
+    if (response.status === 404 && !url.pathname.match(/\.\w+$/)) {
+      return env.ASSETS.fetch(new Request(url.origin + '/index.html', request));
+    }
+    return response;
   },
 };
