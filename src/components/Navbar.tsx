@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type ReactNode } from "react";
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ThemeToggle } from "./ThemeToggle";
 import { useAuth } from '@/context/useAuth'
@@ -27,6 +27,7 @@ const MOBILE_BREAKPOINT = 1200;
 export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
   const { t, i18n } = useTranslation()
   const { user, isAdmin, logout } = useAuth()
+  const location = useLocation()
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
@@ -176,7 +177,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
                 <li role="none"><a role="menuitem" className="dropdown-menu-link" href="https://search.transcircle.org/" target="_blank" rel="noopener noreferrer" onClick={closeMenu}>探索<ExternalLinkIcon /></a></li>
               </ul>
             </li>
-            <li><Link to="/submit" onClick={closeMenu}>{t('nav.submit')}</Link></li>
+            <li><Link to="/submit" onClick={closeMenu}>{location.pathname === '/submit' ? t('nav.submitView') as string : t('nav.submit') as string}</Link></li>
             <li><span className={styles.disabled}>{t('nav.archive')}</span></li>
             <li><span className={styles.disabled}>{t('nav.community')}</span></li>
 

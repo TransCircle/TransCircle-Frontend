@@ -1,9 +1,9 @@
-﻿{
+{
   "nav": {
     "ariaLabel": "主導航",
     "logo": "TransCircle",
     "home": "首頁",
-    "submit": "故事徵集",
+    "submit": "故事投稿",
     "archive": "人物歸檔（開發中）",
     "community": "社群互助（開發中）",
     "openMenu": "打開選單",
@@ -15,7 +15,8 @@
     "logout": "登出",
     "logoutShort": "登出",
     "login": "登入",
-    "links": "連結"
+    "links": "連結",
+    "submitView": "投稿展示"
   },
   "theme": {
     "light": "亮色模式",
@@ -442,11 +443,10 @@
       "heading": "刪除帳戶",
       "description": "刪除後帳戶將被註銷，所有投稿將被匿名化。提交後有 30 天冷靜期，期間可以撤銷。",
       "button": "刪除我的帳戶",
-      "confirm": "確定要刪除帳戶？之後需要重新完成 OAuth 授權流程。",
+      "confirm": "確認",
       "passwordPrompt": "請輸入目前密碼以確認刪除帳戶：",
       "success": "刪除請求已提交，帳戶將在 30 天後自動註銷",
       "passwordPlaceholder": "輸入目前密碼",
-      "confirm": "確認",
       "cancel": "取消"
     },
     "tabProfile": "個人資料",

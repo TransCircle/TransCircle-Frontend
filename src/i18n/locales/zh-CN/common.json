@@ -3,7 +3,7 @@
     "ariaLabel": "主导航",
     "logo": "TransCircle",
     "home": "首页",
-    "submit": "故事征集",
+    "submit": "故事投稿",
     "archive": "人物归档（开发中）",
     "community": "社群互助（开发中）",
     "openMenu": "打开菜单",
@@ -15,7 +15,8 @@
     "logout": "退出登录",
     "logoutShort": "退出",
     "login": "登录",
-    "links": "链接"
+    "links": "链接",
+    "submitView": "投稿展示"
   },
   "theme": {
     "light": "亮色模式",
@@ -396,9 +397,6 @@
     "error": "发送失败，请稍后重试",
     "errors": {
       "emailRequired": "请输入邮箱"
-    },
-    "errors": {
-      "emailRequired": "请输入邮箱"
     }
   },
   "resetPassword": {
@@ -449,11 +447,10 @@
       "heading": "删除账户",
       "description": "删除后账户将被注销，所有投稿将被匿名化。提交后有 30 天冷静期，期间可以撤销。",
       "button": "删除我的账户",
-      "confirm": "确定要删除账户？之后需要重新完成 OAuth 授权流程。",
+      "confirm": "确认",
       "passwordPrompt": "请输入当前密码以确认删除账户：",
       "success": "删除请求已提交，账户将在 30 天后自动注销",
       "passwordPlaceholder": "输入当前密码",
-      "confirm": "确认",
       "cancel": "取消"
     },
     "tabProfile": "个人资料",
