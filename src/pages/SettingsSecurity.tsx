@@ -635,7 +635,7 @@ export const SettingsSecurity = () => {
         pubKeyCredParams: creationOptions.pubKeyCredParams as PublicKeyCredentialParameters[],
         excludeCredentials: rawExclude?.map(c => ({
           type: c.type as PublicKeyCredentialType,
-          id: base64urlToUint8Array(c.id).buffer as ArrayBuffer,
+          id: base64urlToArrayBuffer(c.id),
           transports: c.transports,
         })),
       }
