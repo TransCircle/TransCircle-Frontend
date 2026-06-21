@@ -367,6 +367,7 @@
     }
   },
   "emailVerify": {
+    "noToken": "缺少驗證令牌",
     "title": "驗證信箱",
     "verifying": "正在驗證信箱...",
     "success": "信箱驗證成功！",
@@ -383,7 +384,10 @@
     "success": "驗證郵件已發送，請檢查收件匣",
     "emailNotFound": "該信箱未註冊",
     "alreadyVerified": "該信箱已驗證，無需重發",
-    "error": "發送失敗，請稍後重試"
+    "error": "發送失敗，請稍後重試",
+    "errors": {
+      "emailRequired": "請輸入信箱"
+    }
   },
   "forgotPassword": {
     "title": "忘記密碼",
@@ -496,6 +500,7 @@
     "cancelPasskeyError": "Passkey 驗證失敗",
     "cancelDeletionButton": "撤銷刪除",
     "cancelRequired": "令牌和帳號識別為必填項",
+    "passwordRequired": "請輸入當前密碼",
     "passwordHeading": "修改密碼",
     "passwordNotSet": "你目前未設定密碼。請設定一個密碼以增加帳戶安全性。",
     "passwordChanged": "密碼修改成功",
