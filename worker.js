@@ -17,8 +17,15 @@ export default {
 
     // Try static asset first; fall back to index.html for SPA routes
     const response = await env.ASSETS.fetch(request);
-    if (response.status === 404 && !url.pathname.match(/\.\w+$/)) {
-      return env.ASSETS.fetch(new Request(url.origin + '/index.html', request));
+    // Cloudflare Assets redirects non-file paths to / with 307 when no
+    // matching asset exists; also handle explicit 404s.
+    if (!url.pathname.match(/\.\w+$/)) {
+      if (response.status >= 300 && response.status < 400) {
+        return env.ASSETS.fetch(new Request(url.origin + '/index.html', request));
+      }
+      if (response.status === 404) {
+        return env.ASSETS.fetch(new Request(url.origin + '/index.html', request));
+      }
     }
     return response;
   },
