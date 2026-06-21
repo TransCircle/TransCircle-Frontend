@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { get, post, patch, del, clearAuth, setAccessToken as setClientToken } from '@/api/client'
 import { ERRORS } from '@/api/errors'
@@ -148,7 +148,10 @@ export const SettingsSecurity = () => {
   const [exportError, setExportError] = useState('')
 
   // ── Cancel deletion state (api.md §2.5) ──
-  const [cancelToken, setCancelToken] = useState('')
+  const location = useLocation()
+  const [cancelToken, setCancelToken] = useState<string>(
+    (location.state as Record<string, unknown> | null)?.cancelToken as string ?? ''
+  )
   const [cancelIdentifier, setCancelIdentifier] = useState('')
   const [cancelPassword, setCancelPassword] = useState('')
   const [cancelMfaCode, setCancelMfaCode] = useState('')

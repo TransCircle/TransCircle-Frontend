@@ -1,6 +1,7 @@
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useEffect } from 'react'
+import styles from '../App.module.css'
 
 const ERROR_MESSAGES: Record<string, string> = {
   bad_state: 'oauth.errorBadState',
@@ -45,17 +46,7 @@ export const AuthError = () => {
     : (ERROR_MESSAGES[status] || (ALLOWED_REASONS.has(reasonKey) ? reasonKey : 'oauth.errorDescription'))
 
   return (
-    <main
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '50vh',
-        textAlign: 'center',
-        padding: '2rem',
-      }}
-    >
+    <main className={styles.standalonePage}>
       <h1 style={{ fontSize: '1.8rem', margin: '0 0 0.75rem', color: 'var(--accent-pink)' }}>
         {t('oauth.errorTitle')}
       </h1>
@@ -72,23 +63,14 @@ export const AuthError = () => {
         {t(messageKey)}
       </p>
       {code && (
-        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 1.5rem' }}>
+        <p className={styles.statusMuted}>
           ({code})
         </p>
       )}
       <button
         onClick={() => navigate('/', { replace: true })}
-        style={{
-          color: 'var(--accent-pink)',
-          background: 'none',
-          border: '1px solid var(--accent-pink)',
-          padding: '0.5rem 1.25rem',
-          borderRadius: '50px',
-          fontSize: '0.9rem',
-          fontWeight: 500,
-          cursor: 'pointer',
-          fontFamily: 'inherit',
-        }}
+        className={styles.ctaSecondary}
+        style={{ border: '1.5px solid var(--accent-pink)', color: 'var(--accent-pink)' }}
       >
         {t('oauth.errorBackToHome')}
       </button>

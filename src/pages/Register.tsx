@@ -4,40 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
 import { get, clearCsrfToken } from '@/api/client'
 import { ERRORS } from '@/api/errors'
+import { USERNAME_RE, checkPasswordStrength, validateEmail } from '@/utils/string'
 import styles from '../App.module.css'
 import formStyles from '../components/Form.module.css'
-
-// 用户名：3-32 字符，小写字母开头，仅允许小写字母/数字/下划线/短横线
-const USERNAME_RE = /^[a-z][a-z0-9_-]{2,31}$/
-
-// 密码强度检查：至少满足 4 类中的 3 类
-const UPPER_RE = /[A-Z]/
-const LOWER_RE = /[a-z]/
-const DIGIT_RE = /\d/
-// ASCII 标点或 Unicode 标点（\p{P}）
-const SYMBOL_RE = /[!-/:-@[-`{-~]|[\p{P}\p{S}]/u
-
-function checkPasswordStrength(password: string): number {
-  let score = 0
-  if (UPPER_RE.test(password)) score++
-  if (LOWER_RE.test(password)) score++
-  if (DIGIT_RE.test(password)) score++
-  if (SYMBOL_RE.test(password)) score++
-  return score
-}
-
-function validateEmail(email: string): boolean {
-  // 简单 RFC 5322 近似校验
-  const parts = email.split('@')
-  if (parts.length !== 2) return false
-  const [local, domain] = parts
-  if (!local || !domain) return false
-  if (local.length > 64) return false
-  if (email.length > 254) return false
-  const domainRe = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$/
-  if (!domainRe.test(domain)) return false
-  return true
-}
 
 const Register = () => {
   const [searchParams] = useSearchParams()
@@ -58,34 +27,44 @@ const Register = () => {
 
   // Fetch OAuth pending profile to get suggested email for auto-detection
   useEffect(() => {
+    const abortCtrl = new AbortController()
     const fetchProfile = async () => {
-      const result = await get<{
-        suggestedEmail?: string | null
-        providerEmailVerified?: boolean
-        mode?: string
-      }>(`/auth/oauth/pending-profile?provider=${encodeURIComponent(provider)}`, { csrf: true, noAuth: true })
+      try {
+        const result = await get<{
+          suggestedEmail?: string | null
+          providerEmailVerified?: boolean
+          mode?: string
+        }>(`/auth/oauth/pending-profile?provider=${encodeURIComponent(provider)}`, { csrf: true, noAuth: true, signal: abortCtrl.signal })
 
-      if (result.ok) {
-        // Per api.md §1.6.6: if mode is 'binding', redirect to binding page
-        if (result.data.mode === 'binding') {
-          navigate('/settings/security/oauth-bind/confirm?provider=' + encodeURIComponent(provider), { replace: true })
-          return
+        if (abortCtrl.signal.aborted) return
+        if (result.ok) {
+          // Per api.md §1.6.6: if mode is 'binding', redirect to binding page
+          if (result.data.mode === 'binding') {
+            navigate('/settings/security/oauth-bind/confirm?provider=' + encodeURIComponent(provider), { replace: true })
+            return
+          }
+          if (result.data.suggestedEmail) {
+            setSuggestedEmail(result.data.suggestedEmail)
+            setEmail(result.data.suggestedEmail)
+          }
+        } else if (result.error.code === 'TOKEN_INVALID_OR_EXPIRED') {
+          setError(t('register.errors.sessionExpired'))
+        } else if (result.error.code === 'MISSING_OAUTH_PENDING') {
+          setError(t('register.errors.sessionExpired'))
+        } else if (result.error.code === 'CSRF_TOKEN_INVALID') {
+          setError(t('register.errors.sessionExpired'))
+        } else if (result.error.code === 'RATE_LIMITED') {
+          setError(result.error.message || t('register.errors.failed'))
         }
-        if (result.data.suggestedEmail) {
-          setSuggestedEmail(result.data.suggestedEmail)
-          setEmail(result.data.suggestedEmail)
+      } catch {
+        // AbortError on unmount — gracefully ignore (H2)
+        if (!abortCtrl.signal.aborted) {
+          setError(t('register.errors.failed'))
         }
-      } else if (result.error.code === 'TOKEN_INVALID_OR_EXPIRED') {
-        setError(t('register.errors.sessionExpired'))
-      } else if (result.error.code === 'MISSING_OAUTH_PENDING') {
-        setError(t('register.errors.sessionExpired'))
-      } else if (result.error.code === 'CSRF_TOKEN_INVALID') {
-        setError(t('register.errors.sessionExpired'))
-      } else if (result.error.code === 'RATE_LIMITED') {
-        setError(result.error.message || t('register.errors.failed'))
       }
     }
     fetchProfile()
+    return () => { abortCtrl.abort() }
   }, [provider, t, navigate])
 
   const fieldErrors = useMemo(() => {

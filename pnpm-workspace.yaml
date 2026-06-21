@@ -1,5 +1,5 @@
 packages:
-  - 'functions'
+  - 'src'
 allowBuilds:
   argon2: true
   esbuild: true

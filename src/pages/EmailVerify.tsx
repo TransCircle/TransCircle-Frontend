@@ -1,21 +1,26 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { post } from '@/api/client'
+import styles from '../App.module.css'
 
 export const EmailVerify = () => {
   const [searchParams] = useSearchParams()
   const { t } = useTranslation()
-  const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying')
-  const [errorMsg, setErrorMsg] = useState('')
+
+  // Determine initial state from URL params synchronously (H4)
+  const token = searchParams.get('token')
+  const [status, setStatus] = useState<'verifying' | 'success' | 'error'>(
+    token ? 'verifying' : 'error',
+  )
+  const [errorMsg, setErrorMsg] = useState<string>(
+    token ? '' : t('emailVerify.noToken'),
+  )
   const processed = useRef<string | null>(null)
 
   useEffect(() => {
     const token = searchParams.get('token')
-    if (!token) {
-      // Missing token is a non-actionable state
-      return
-    }
+    if (!token) return // already handled via initial state
     if (processed.current === token) return
     processed.current = token
 
@@ -47,7 +52,7 @@ export const EmailVerify = () => {
   }, [searchParams, t])
 
   return (
-    <main style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', textAlign: 'center', padding: '2rem' }}>
+    <main className={styles.standalonePage}>
       {status === 'verifying' && (
         <h1 style={{ fontSize: '1.5rem', color: 'var(--text-main)' }}>{t('emailVerify.verifying')}</h1>
       )}

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { post } from '@/api/client'
+import styles from '../App.module.css'
 import { ERRORS } from '@/api/errors'
 import styles from '../App.module.css'
 import formStyles from '../components/Form.module.css'
@@ -40,9 +41,9 @@ export const EmailResend = () => {
 
   if (success) {
     return (
-      <main style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem', textAlign: 'center' }}>
-        <h1 style={{ fontSize: '1.5rem', color: 'var(--success-color)' }}>{t('emailResend.success')}</h1>
-          <Link to="/login" style={{ marginTop: '1rem', color: 'var(--accent-pink)' }}>
+      <main className={styles.standalonePage}>
+        <h1 className={styles.statusSuccess} style={{ fontSize: '1.5rem' }}>{t('emailResend.success')}</h1>
+          <Link to="/login" className={styles.accentLink} style={{ marginTop: '1rem' }}>
             {t('login.title')}
           </Link>
       </main>

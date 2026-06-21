@@ -5,6 +5,7 @@ import { post, tryRefreshToken, clearCsrfToken } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { useAuth } from '@/context/useAuth'
 import { StepUpDialog } from '@/components/StepUpDialog'
+import styles from '../App.module.css'
 
 export const OAuthBinding = () => {
   const [searchParams] = useSearchParams()
@@ -85,14 +86,10 @@ export const OAuthBinding = () => {
   }
 
   const providerLabel = provider === 'x' ? 'X' : 'GitHub'
-  const containerStyle: React.CSSProperties = {
-    display: 'flex', flexDirection: 'column', alignItems: 'center',
-    justifyContent: 'center', minHeight: '50vh', textAlign: 'center', padding: '2rem',
-  }
 
   if (status === 'success') {
     return (
-      <main style={containerStyle}>
+      <main className={styles.standalonePage}>
         <p style={{ fontSize: '1.1rem', color: 'var(--text-main)' }}>
           {t('oauth.bindSuccess', { provider: providerLabel })}
         </p>
@@ -102,7 +99,7 @@ export const OAuthBinding = () => {
 
   return (
     <>
-      <main style={containerStyle}>
+      <main className={styles.standalonePage}>
         <h1 style={{ fontSize: '1.8rem', margin: '0 0 0.75rem', color: 'var(--text-main)' }}>
           {t('oauth.bindTitle')}
         </h1>

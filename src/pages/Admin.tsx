@@ -146,42 +146,9 @@ export const Admin = () => {
 
   useEffect(() => {
     if (!isAdmin && !tempToken) return
-    let cancelled = false
-
-    const load = async () => {
-      setLoading(true)
-      setError('')
-      try {
-        const params = new URLSearchParams({ status: activeTab, limit: '50' })
-        const result = await get<Submission[]>(`/admin/contributions?${params}`, {
-          headers: authHeaders(),
-          skipRefresh: !accessToken,
-        })
-        if (cancelled) return
-
-        if (result.status === 403 || result.status === 401) {
-          setTempToken('')
-          return
-        }
-        if (!result.ok) {
-          throw new Error(result.error.message || t('admin.errorLoad'))
-        }
-
-        const items = result.data
-        setSubmissions(items)
-        const pagination = result.pagination
-        setNextCursor(pagination?.nextCursor || null)
-        setHasMore(pagination?.hasMore ?? false)
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : t('admin.errorLoad'))
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    load()
-    return () => { cancelled = true }
-  }, [activeTab, isAdmin, tempToken, authHeaders, t, accessToken])
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchSubmissions()
+  }, [activeTab, isAdmin, tempToken, authHeaders, t, accessToken]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchDetail = async (id: string) => {
     setError('')
@@ -232,7 +199,7 @@ export const Admin = () => {
         return
       }
       setSelected(null)
-      fetchSubmissions()
+      fetchSubmissions(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : t('admin.errorReview'))
     }

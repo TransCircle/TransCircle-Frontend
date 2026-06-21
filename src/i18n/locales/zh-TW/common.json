@@ -268,6 +268,7 @@
     "passkeyMfaDescription": "使用裝置生物辨識或 PIN 完成驗證",
     "passkeyMfaOnly": "該帳戶僅啟用了 Passkey 驗證，請使用 Passkey 直接登入",
     "passkeyMfaButton": "使用 Passkey 登入",
+    "passkeyAwaiting": "正在等待安全金鑰互動…",
     "passkeyLogin": "Passkey",
     "backToLogin": "返回登入",
     "totpPlaceholder": "123456 或 XXXX-XXXX-XXXX",

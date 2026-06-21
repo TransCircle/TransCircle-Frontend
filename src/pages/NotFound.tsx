@@ -1,21 +1,12 @@
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
+import styles from '../App.module.css'
 
 export const NotFound = () => {
   const { t } = useTranslation()
 
   return (
-    <main
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '50vh',
-        textAlign: 'center',
-        padding: '2rem',
-      }}
-    >
+    <main className={styles.standalonePage}>
       <h1 style={{ fontSize: '4rem', margin: '0', color: 'var(--accent-pink)' }} aria-hidden="true">
         404
       </h1>
@@ -27,12 +18,7 @@ export const NotFound = () => {
       </p>
       <Link
         to="/"
-        style={{
-          color: 'var(--accent-pink)',
-          textDecoration: 'none',
-          fontSize: '0.95rem',
-          fontWeight: 500,
-        }}
+        className={styles.accentLink}
         aria-label={t('notFound.backToHome')}
       >
         ← {t('notFound.backToHome')}

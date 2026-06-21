@@ -6,16 +6,13 @@
   "packageManager": "pnpm@11.4.0",
   "scripts": {
     "dev": "vite",
-    "dev:backend": "cd functions && npx tsx watch src/Index.ts",
-    "dev:all": "concurrently \"npm run dev\" \"npm run dev:backend\"",
     "build": "tsc -b tsconfig.app.json tsconfig.node.json && vite build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\" \"functions/src/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "typecheck": "tsc -b tsconfig.app.json tsconfig.node.json --noEmit",
     "test": "echo \"no tests configured\"",
     "preview": "vite preview",
-    "db:setup": "cd functions && npx tsx src/setup.ts",
     "prepare": "simple-git-hooks"
   },
   "simple-git-hooks": {

@@ -3,14 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { post, setIntentKey, newIdempotencyKey } from '@/api/client'
 import { ERRORS } from '@/api/errors'
+import { limitByUnicode } from '@/utils/string'
 import styles from '../App.module.css'
 import formStyles from '../components/Form.module.css'
 import adminStyles from './Admin.module.css'
-
-// Unicode 感知的字符串截断（api.md §12 通用约定：按字符而非 UTF-16 码元计数）
-function limitByUnicode(str: string, max: number): string {
-  return [...str].slice(0, max).join('')
-}
 
 export const EditRequestForm = () => {
   const { id } = useParams<{ id: string }>()

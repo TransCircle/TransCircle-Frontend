@@ -1,5 +1,6 @@
 import { useRouteError, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import styles from '../App.module.css'
 
 export const ErrorBoundaryPage = () => {
   const error = useRouteError()
@@ -13,17 +14,7 @@ export const ErrorBoundaryPage = () => {
     : t('common.errorBoundaryDescription', '页面发生了意外错误，请稍后重试。')
 
   return (
-    <main
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '50vh',
-        textAlign: 'center',
-        padding: '2rem',
-      }}
-    >
+    <main className={styles.standalonePage}>
       <h1 style={{ fontSize: '1.8rem', margin: '0 0 0.75rem', color: 'var(--accent-pink)' }}>
         {title}
       </h1>
@@ -41,17 +32,8 @@ export const ErrorBoundaryPage = () => {
       </p>
       <button
         onClick={() => navigate('/', { replace: true })}
-        style={{
-          color: 'var(--accent-pink)',
-          background: 'none',
-          border: '1px solid var(--accent-pink)',
-          padding: '0.5rem 1.25rem',
-          borderRadius: '50px',
-          fontSize: '0.9rem',
-          fontWeight: 500,
-          cursor: 'pointer',
-          fontFamily: 'inherit',
-        }}
+        className={styles.ctaSecondary}
+        style={{ border: '1.5px solid var(--accent-pink)', color: 'var(--accent-pink)' }}
       >
         {t('common.backToHome', '返回首页')}
       </button>

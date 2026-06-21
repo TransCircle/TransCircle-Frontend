@@ -3,32 +3,9 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { post, setIntentKey } from '@/api/client'
 import { ERRORS } from '@/api/errors'
+import { USERNAME_RE, checkPasswordStrength, validateEmail } from '@/utils/string'
 import styles from '../App.module.css'
 import formStyles from '../components/Form.module.css'
-
-const USERNAME_RE = /^[a-z][a-z0-9_-]{2,31}$/
-const UPPER_RE = /[A-Z]/
-const LOWER_RE = /[a-z]/
-const DIGIT_RE = /\d/
-const SYMBOL_RE = /[!-/:-@[-`{-~]|[\p{P}\p{S}]/u
-
-function checkPasswordStrength(pw: string): number {
-  let s = 0
-  if (UPPER_RE.test(pw)) s++
-  if (LOWER_RE.test(pw)) s++
-  if (DIGIT_RE.test(pw)) s++
-  if (SYMBOL_RE.test(pw)) s++
-  return s
-}
-
-function validateEmail(email: string): boolean {
-  const parts = email.split('@')
-  if (parts.length !== 2) return false
-  const [local, domain] = parts
-  if (!local || !domain) return false
-  if (email.length > 254) return false
-  return true
-}
 
 export const RegisterDirect = () => {
   const { t } = useTranslation()
@@ -141,12 +118,12 @@ export const RegisterDirect = () => {
 
   if (success) {
     return (
-      <main style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem', textAlign: 'center' }}>
+      <main className={styles.standalonePage}>
         <h1 style={{ fontSize: '1.5rem', color: 'var(--text-main)' }}>{t('registerDirect.success')}</h1>
-        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+        <p className={styles.statusMuted} style={{ marginTop: '0.5rem' }}>
           {t('emailVerify.redirectToLogin')}
         </p>
-        <Link to="/login" style={{ marginTop: '1rem', color: 'var(--accent-pink)' }}>{t('emailVerify.redirectToLogin')}</Link>
+        <Link to="/login" className={styles.accentLink} style={{ marginTop: '1rem' }}>{t('emailVerify.redirectToLogin')}</Link>
       </main>
     )
   }

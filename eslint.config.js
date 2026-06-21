@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'functions/dist']),
+  globalIgnores(['dist']),
   // Frontend source: browser + React
   {
     files: ['src/**/*.{ts,tsx}'],
@@ -18,21 +18,6 @@ export default defineConfig([
     ],
     languageOptions: {
       globals: globals.browser,
-    },
-  },
-  // Backend (functions): Node.js, no React
-  {
-    files: ['functions/**/*.ts'],
-    extends: [
-      js.configs.recommended,
-      tseslint.configs.recommended,
-    ],
-    languageOptions: {
-      globals: globals.node,
-    },
-    rules: {
-      // Allow Node.js require-style where needed
-      '@typescript-eslint/no-require-imports': 'off',
     },
   },
 ])

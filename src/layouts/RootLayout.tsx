@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Outlet, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
@@ -27,19 +27,24 @@ export const RootLayout = () => {
   const [toast, setToast] = useState<string | null>(initialMessage)
   const [rateLimitToast, setRateLimitToast] = useState<string | null>(null)
 
+  // Capture initial searchParams + navigate in refs so the effect can
+  // safely read them once on mount without enumerating deps.
+  const initialSearchParamsRef = useRef(searchParams.toString())
+  const navigateRef = useRef(navigate)
+
   // L15: Toast feedback for cross-page notifications (OAuth callback, etc.)
   useEffect(() => {
     if (!toast) return
 
     // Clear the URL param after reading
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(initialSearchParamsRef.current)
     params.delete('toast')
-    navigate({ search: params.toString() }, { replace: true })
+    navigateRef.current({ search: params.toString() }, { replace: true })
 
     // Auto-dismiss after 5 seconds
     const timer = setTimeout(() => setToast(null), 5000)
     return () => clearTimeout(timer)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [toast])
   // L1: Listen for API rate-limit events
   useEffect(() => {
     const handler = (e: Event) => {

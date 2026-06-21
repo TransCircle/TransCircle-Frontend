@@ -96,7 +96,7 @@ export const AdminUsers = () => {
 
   const handleBan = async (userId: string) => {
     const reason = prompt(t('adminUsers.banReasonPrompt'))
-    if (!reason) return
+    if (!reason || !reason.trim()) return // reject whitespace-only per Admin.tsx pattern (L2)
     const result = await post(`/admin/users/${userId}/ban`, { reason }, {
       headers: authHeaders(), skipRefresh: !accessToken,
     })

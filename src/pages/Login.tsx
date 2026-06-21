@@ -38,6 +38,10 @@ export const Login = () => {
   const [mfaMethods, setMfaMethods] = useState<string[]>([])
   const [mfaCode, setMfaCode] = useState('')
   const [mfaSubmitting, setMfaSubmitting] = useState(false)
+  // Tracks whether the current input contains recovery-code characters.
+  // Updated in onChange; React handles the re-render so the keyboard switches
+  // before the next paint (M2).
+  const [isRecoveryCode, setIsRecoveryCode] = useState(false)
 
   const canSubmit = useMemo(() => {
     return identifier.trim().length >= 3 && password.length >= 12 && password.length <= 128
@@ -114,15 +118,18 @@ export const Login = () => {
         {hasTotp && (
           <input
             type="text"
-            inputMode={mfaCode.length > 0 && /[A-Z-]/.test(mfaCode) ? 'text' : 'numeric'}
+            inputMode={isRecoveryCode ? 'text' : 'numeric'}
             value={mfaCode}
             onChange={(e) => {
               const raw = e.target.value.toUpperCase()
-              if (/[A-Z-]/.test(raw)) {
+              const hasLetters = /[A-Z-]/.test(raw)
+              if (hasLetters) {
                 setMfaCode(raw.replace(/[^A-Z0-9-]/g, '').slice(0, 14))
               } else {
                 setMfaCode(raw.replace(/\D/g, '').slice(0, 6))
               }
+              // Update isRecoveryCode on next render so inputMode is correct (M2)
+              if (hasLetters !== isRecoveryCode) setIsRecoveryCode(hasLetters)
             }}
             placeholder={t('login.totpPlaceholder')}
             style={{ width: '200px', padding: '0.5rem', textAlign: 'center', fontSize: '1.2rem', letterSpacing: '0.5em' }}
@@ -147,6 +154,11 @@ export const Login = () => {
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
               {t('login.passkeyMfaDescription')}
             </p>
+            {mfaSubmitting && (
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                {t('login.passkeyAwaiting')}
+              </p>
+            )}
             <button
               onClick={async () => {
                 setMfaSubmitting(true)
@@ -173,7 +185,7 @@ export const Login = () => {
 
         {error && <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginTop: '0.5rem' }}>{error}</p>}
         <button
-          onClick={() => { setMfaRequired(false); setMfaCode(''); setMfaMethods([]); setError('') }}
+          onClick={() => { setMfaRequired(false); setMfaCode(''); setMfaMethods([]); setError(''); setIsRecoveryCode(false) }}
           style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
         >
           {t('login.backToLogin')}
