@@ -15,18 +15,8 @@ export default {
       });
     }
 
-    // Try static asset first; fall back to index.html for SPA routes
-    const response = await env.ASSETS.fetch(request);
-    // Cloudflare Assets redirects non-file paths to / with 307 when no
-    // matching asset exists; also handle explicit 404s.
-    if (!url.pathname.match(/\.\w+$/)) {
-      if (response.status >= 300 && response.status < 400) {
-        return env.ASSETS.fetch(new Request(url.origin + '/index.html', request));
-      }
-      if (response.status === 404) {
-        return env.ASSETS.fetch(new Request(url.origin + '/index.html', request));
-      }
-    }
-    return response;
+    // SPA fallback is handled by wrangler.jsonc asset config
+    // (not_found_handling: single_page_application)
+    return env.ASSETS.fetch(request);
   },
 };
