@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ThemeToggle } from "./ThemeToggle";
 import { useAuth } from '@/context/useAuth'
+import { LOGOUT_REDIRECT } from '@/config'
 import styles from "./Navbar.module.css";
 
 const ExternalLinkIcon = () => (
@@ -187,7 +188,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
                 <li><Link to="/me/contributions" onClick={closeMenu}>{t('nav.myContributions')}</Link></li>
                 <li><Link to="/settings/security" onClick={closeMenu}>{t('nav.securitySettings')}</Link></li>
                 {isAdmin && <li><Link to="/admin" onClick={closeMenu}>{t('nav.adminDashboard')}</Link></li>}
-                <li><Link to="/" onClick={async (e) => { e.preventDefault(); await logout(); closeMenu(); window.location.href = 'https://story.transcircle.org' }}>{t('nav.logout')}</Link></li>
+                <li><Link to="/" onClick={async (e) => { e.preventDefault(); await logout(); closeMenu(); window.location.href = LOGOUT_REDIRECT }}>{t('nav.logout')}</Link></li>
               </>
             )}
             {!user && (

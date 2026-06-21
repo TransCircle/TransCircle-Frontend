@@ -101,6 +101,8 @@ export function saveCsrfToken(token: string): void {
 /** Clean up CSRF token after use */
 export function clearCsrfToken(): void {
   sessionStorage.removeItem('oauth_pending_csrf')
+  // 同时清除同名 cookie，避免下次 getCsrfToken() 从 cookie 读到过期值
+  document.cookie = 'oauth_pending_csrf=; Max-Age=0; path=/; SameSite=Lax'
 }
 
 // ─── Idempotency-Key Helper ────────────────────────────────────

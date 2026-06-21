@@ -68,21 +68,8 @@ export const RootLayout = () => {
 
       {rateLimitToast && (
         <div
+          className={styles.toastError}
           role="alert"
-          style={{
-            position: 'fixed',
-            top: '1rem',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            background: 'var(--error-color, #d32f2f)',
-            color: '#fff',
-            padding: '0.75rem 1.5rem',
-            borderRadius: '8px',
-            fontSize: '0.9rem',
-            zIndex: 10000,
-            boxShadow: '0 2px 8px var(--shadow-color)',
-            cursor: 'pointer',
-          }}
           onClick={() => setRateLimitToast(null)}
         >
           {rateLimitToast}
@@ -90,22 +77,9 @@ export const RootLayout = () => {
       )}
       {toastMessage && (
         <div
+          className={styles.toastInfo}
           role="status"
           aria-live="polite"
-          style={{
-            position: 'fixed',
-            top: '4rem',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            background: 'var(--surface-card)',
-            color: 'var(--text-main)',
-            border: '1px solid var(--divider-color)',
-            padding: '0.75rem 1.5rem',
-            borderRadius: '8px',
-            fontSize: '0.9rem',
-            zIndex: 9999,
-            boxShadow: '0 2px 8px var(--shadow-color)',
-          }}
         >
           {toastMessage}
         </div>

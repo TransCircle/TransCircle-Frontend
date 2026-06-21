@@ -165,6 +165,8 @@ export const SettingsSecurity = () => {
   const [deletePasswordNeeded, setDeletePasswordNeeded] = useState(false)
   const [deletePasswordError, setDeletePasswordError] = useState('')
   const [deletePasswordSubmitting, setDeletePasswordSubmitting] = useState(false)
+  /** Delete-account API 错误（用于无密码用户的步骤升级流程）*/
+  const [deleteAccountError, setDeleteAccountError] = useState('')
 
   // ── Load profile on mount ──
   useEffect(() => {
@@ -287,7 +289,7 @@ export const SettingsSecurity = () => {
           clearAuth()
           navigate('/?toast=deletion_scheduled', { replace: true })
         } else {
-          setCancelError(r.error?.message || t('settings.serverError'))
+          setDeleteAccountError(r.error?.message || t('settings.serverError'))
         }
       })
     } else if (action?.startsWith('unbind-')) {
@@ -1378,6 +1380,9 @@ export const SettingsSecurity = () => {
         </p>
         {cancelError && (
           <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{cancelError}</p>
+        )}
+        {deleteAccountError && (
+          <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{deleteAccountError}</p>
         )}
         <button
           className={styles.btnSecondary}

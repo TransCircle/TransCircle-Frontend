@@ -345,6 +345,8 @@
     "submit": "註冊",
     "submitting": "註冊中...",
     "success": "註冊成功！請查收驗證郵件",
+    "successHint": "請查看收件匣中的驗證郵件，點擊連結完成信箱驗證。",
+    "goToLogin": "前往登入",
     "errors": {
       "usernameRequired": "請輸入使用者名稱",
       "usernameInvalid": "使用者名稱需3-32字元，以小寫字母開頭，僅含小寫字母/數字/底線/連字號",
