@@ -109,8 +109,8 @@ export const OAuthCallback = () => {
           navigate('/submit', { replace: true })
           break
       }
-    } catch {
-      // 网络错误或解析异常时安全兜底（N4）
+    } catch (err) {
+      console.error('[OAuthCallback] 处理 OAuth 回调时出错:', err)
       navigate('/auth/error?status=oauth_error', { replace: true })
     }
   }

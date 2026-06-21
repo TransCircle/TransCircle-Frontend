@@ -16,7 +16,10 @@
     "logoutShort": "退出",
     "login": "登录",
     "links": "链接",
-    "submitView": "投稿展示"
+    "submitView": "投稿展示",
+    "externalLinks": "外部链接",
+    "blog": "博客",
+    "explore": "探索"
   },
   "theme": {
     "light": "亮色模式",
@@ -118,6 +121,9 @@
     "tempTokenLogin": "令牌登录",
     "tempAdmin": "临时管理员",
     "tempAdminHint": "临时令牌",
+    "provider_oauth": "第三方登录",
+    "provider_github": "GitHub",
+    "provider_x": "X (Twitter)",
     "tabs": {
       "inReview": "审核中",
       "pending": "待审核",

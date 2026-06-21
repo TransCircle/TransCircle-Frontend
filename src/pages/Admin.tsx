@@ -438,7 +438,7 @@ export const Admin = () => {
               {t('admin.title')}
             </h1>
             <span className={styles.userInfo}>
-              {user ? `${user.username} (${loginProvider ?? 'oauth'})` : `${t('admin.tempAdmin')} (${t('admin.tempAdminHint')})`}
+              {user ? `${user.username} (${t(`admin.provider_${loginProvider ?? 'oauth'}`)})` : `${t('admin.tempAdmin')} (${t('admin.tempAdminHint')})`}
             </span>
             {isAdmin && (
               <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.75rem', fontSize: '0.85rem', flexWrap: 'wrap' }}>

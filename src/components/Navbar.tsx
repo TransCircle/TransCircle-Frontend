@@ -170,12 +170,12 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
               </button>
               <ul
                 className={styles.dropdownMenu}
-                aria-label="外部链接"
+                aria-label={t('nav.externalLinks')}
                 role="menu"
                 onKeyDown={handleDropdownMenuKeyDown}
               >
-                <li role="none"><a role="menuitem" className="dropdown-menu-link" href="https://blog.transcircle.org/" target="_blank" rel="noopener noreferrer" onClick={closeMenu}>博客<ExternalLinkIcon /></a></li>
-                <li role="none"><a role="menuitem" className="dropdown-menu-link" href="https://search.transcircle.org/" target="_blank" rel="noopener noreferrer" onClick={closeMenu}>探索<ExternalLinkIcon /></a></li>
+                <li role="none"><a role="menuitem" className="dropdown-menu-link" href="https://blog.transcircle.org/" target="_blank" rel="noopener noreferrer" onClick={closeMenu}>{t('nav.blog')}<ExternalLinkIcon /></a></li>
+                <li role="none"><a role="menuitem" className="dropdown-menu-link" href="https://search.transcircle.org/" target="_blank" rel="noopener noreferrer" onClick={closeMenu}>{t('nav.explore')}<ExternalLinkIcon /></a></li>
               </ul>
             </li>
             <li><Link to={location.pathname === '/submit' ? '/' : '/submit'} onClick={closeMenu}>{location.pathname === '/submit' ? t('nav.submitView') : t('nav.submit')}</Link></li>

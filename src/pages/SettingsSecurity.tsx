@@ -84,7 +84,7 @@ export const SettingsSecurity = () => {
 
   const [profile, setProfile] = useState<UserProfile | null>(null)
   // 从 URL ?tab= 读取初始标签（如 OAuth 绑定成功后跳转，#13b）
-  const initialTab = (searchParams.get('tab') as TabId) || 'password'
+  const initialTab = (searchParams.get('tab') as TabId) || 'profile'
   const [activeTab, setActiveTab] = useState<TabId>(initialTab)
 
   // ── Password state ──
@@ -448,10 +448,8 @@ export const SettingsSecurity = () => {
       identifier: cancelIdentifier.trim(),
       mfaCode: cancelMfaCode || undefined,
     }
-    // api.md §2.5: OAuth-only 账户传 null，密码账户传实际值
-    if (profile?.security.hasPassword === false) {
-      body.password = null
-    } else {
+    // api.md §2.5: OAuth-only 账户省略 password，密码账户传实际值
+    if (profile?.security.hasPassword !== false) {
       if (!cancelPassword) {
         setCancelStatus('error')
         setCancelError(t('settings.passwordRequired'))

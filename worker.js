@@ -6,7 +6,7 @@
  * - SPA fallback 由 wrangler.jsonc 的 single_page_application 处理
  *
  * API_BACKEND_URL 通过 wrangler.jsonc 的 [env.*.vars] 或 Cloudflare Dashboard 配置。
- * 如未配置，fallback 到生产地址。
+ * 未配置时抛错而非回退到生产地址，防止开发环境意外写入生产数据。
  */
 
 /** @param {Request} request */
@@ -17,7 +17,10 @@ export default {
 
     // Proxy API requests to backend server
     if (url.pathname.startsWith('/v1/')) {
-      const backend = env.API_BACKEND_URL || 'https://api.transcircle.org';
+      const backend = env.API_BACKEND_URL;
+      if (!backend) {
+        return new Response('API_BACKEND_URL not configured', { status: 502 });
+      }
       return fetch(`${backend}${url.pathname}${url.search}`, {
         method: request.method,
         headers: request.headers,

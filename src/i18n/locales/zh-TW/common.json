@@ -16,7 +16,10 @@
     "logoutShort": "登出",
     "login": "登入",
     "links": "連結",
-    "submitView": "投稿展示"
+    "submitView": "投稿展示",
+    "externalLinks": "外部連結",
+    "blog": "部落格",
+    "explore": "探索"
   },
   "theme": {
     "light": "亮色模式",
@@ -118,6 +121,9 @@
     "tempTokenLogin": "令牌登入",
     "tempAdmin": "臨時管理員",
     "tempAdminHint": "臨時令牌",
+    "provider_oauth": "第三方登入",
+    "provider_github": "GitHub",
+    "provider_x": "X (Twitter)",
     "tabs": {
       "inReview": "審核中",
       "pending": "待審核",

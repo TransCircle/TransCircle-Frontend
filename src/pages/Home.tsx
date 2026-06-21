@@ -27,10 +27,11 @@ function formatTs(ts: number): string {
   })
 }
 
-async function fetchPage(cursorVal?: string | null): Promise<ApiResult<PublicContribution[]>> {
+async function fetchPage(cursorVal?: string | null, keywordVal?: string): Promise<ApiResult<PublicContribution[]>> {
   try {
     const params = new URLSearchParams({ limit: '20' })
     if (cursorVal) params.set('cursor', cursorVal)
+    if (keywordVal) params.set('keyword', keywordVal)
     return get<PublicContribution[]>(`/public/contributions?${params}`)
   } catch {
     return { ok: false as const, error: { code: 'NETWORK_ERROR', message: '' }, requestId: '', status: 0 }
@@ -45,18 +46,15 @@ export const Home = () => {
   const [items, setItems] = useState<PublicContribution[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [expanding, setExpanding] = useState(false)
-  const [initialDone, setInitialDone] = useState(false)
 
-  const searchTerm = searchParams.get('search')?.toLowerCase()
+  const searchTerm = searchParams.get('search') || ''
 
   const [error, setError] = useState('')
   const initialLoaded = useRef(false)
-  const expandGen = useRef(0)
 
-  const doInitialLoad = useCallback(async () => {
+  const doLoad = useCallback(async (keyword?: string) => {
     setLoading(true)
-    const result = await fetchPage()
+    const result = await fetchPage(undefined, keyword || undefined)
     if (result.ok) {
       setItems(result.data)
       setCursor(result.pagination?.nextCursor || null)
@@ -65,49 +63,18 @@ export const Home = () => {
       setError(result.error.message || t('home.errorLoad'))
     }
     setLoading(false)
-    setInitialDone(true)
   }, [t])
+
+  // 初始加载（无搜索词）或搜索词变化时重新加载
+  useEffect(() => {
+    initialLoaded.current = false
+  }, [searchTerm])
 
   useEffect(() => {
     if (initialLoaded.current) return
     initialLoaded.current = true
-    doInitialLoad()
-  }, [doInitialLoad])
-
-  useEffect(() => {
-    const gen = ++expandGen.current
-    if (!searchTerm || !initialDone) return
-
-    const MAX_PAGES = 5
-    let pagesLoaded = 1
-
-    ;(async () => {
-      setExpanding(true)
-      let currentCursor = cursor
-      while (currentCursor && pagesLoaded < MAX_PAGES && gen === expandGen.current) {
-        const result = await fetchPage(currentCursor)
-        if (!result.ok || gen !== expandGen.current) break
-        setItems(prev => [...prev, ...result.data])
-        currentCursor = result.pagination?.nextCursor || null
-        pagesLoaded++
-      }
-      // 只在代次仍然有效时推进 cursor。
-      // 如果代次已失效，不更新 cursor，避免旧展开覆盖当前搜索的翻页位置（C2）。
-      if (gen === expandGen.current) {
-        setCursor(currentCursor)
-        setExpanding(false)
-      }
-    })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm, initialDone])
-
-  const displayItems = searchTerm
-    ? items.filter(item =>
-        item.title.toLowerCase().includes(searchTerm) ||
-        (item.summary?.toLowerCase().includes(searchTerm)) ||
-        item.tags?.some(t => t.toLowerCase().includes(searchTerm))
-      )
-    : items
+    doLoad(searchTerm || undefined)
+  }, [doLoad, searchTerm])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -134,11 +101,11 @@ export const Home = () => {
           <button type="submit" className={`${styles.btnSecondary}`}>{t('home.searchSubmit')}</button>
           {searchTerm && (
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              {expanding ? t('home.searchExpanding') : t('home.localSearchHint', { count: displayItems.length })}
+              {loading ? t('home.searchExpanding') : t('home.localSearchHint', { count: items.length })}
             </span>
           )}
         </form>
-        {searchTerm && displayItems.length === 0 && !loading && !expanding && (
+        {searchTerm && items.length === 0 && !loading && (
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '-0.5rem', marginBottom: '0.5rem' }}>
             {t('home.noMatches')}
           </p>
@@ -156,13 +123,13 @@ export const Home = () => {
 
       {error ? (
         <div className={styles.empty} role="alert">{error}</div>
-      ) : loading && displayItems.length === 0 ? (
+      ) : loading && items.length === 0 ? (
         <div className={styles.empty} role="status" aria-live="polite">{t('home.loading')}</div>
-      ) : !loading && displayItems.length === 0 && !searchTerm ? (
+      ) : !loading && items.length === 0 && !searchTerm ? (
         <div className={styles.empty}>{t('home.empty')}</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {displayItems.map(item => (
+          {items.map(item => (
             <Link
               to={`/contributions/${item.id}`}
               key={item.id}
@@ -188,7 +155,7 @@ export const Home = () => {
         </div>
       )}
 
-      {cursor && !searchTerm && (
+      {cursor && (
         <button
           className={styles.btnSecondary}
           onClick={async () => {

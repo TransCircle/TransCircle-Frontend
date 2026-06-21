@@ -63,6 +63,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true)
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [loginProvider, setLoginProvider] = useState<string | null>(null)
+  /**
+   * 是否有管理后台访问权限（admin 或 reviewer）。
+   * 注意：此变量命名虽含 "Admin"，但 reviewer 也返回 true，
+   * 与 RequireReviewerOrAdminLayout 的路由守卫逻辑一致。
+   * 如需仅 admin 的判断，使用 isFullAdmin 变量。
+   */
   const isAdmin = user ? (user.roles.includes('admin') || user.roles.includes('reviewer')) : false
   const isFullAdmin = user ? user.roles.includes('admin') : false
   const permissions = useMemo(() => computePermissions(user?.roles ?? []), [user])
