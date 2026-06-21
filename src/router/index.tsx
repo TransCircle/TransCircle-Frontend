@@ -17,7 +17,7 @@ function lazyNamed(
     const mod = await importFn()
     return { default: mod[name] as React.ComponentType<unknown> }
   })
-  return <Suspense fallback={<div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>{'Loading...'}</div>}>
+  return <Suspense fallback={<div role="status" aria-live="polite" aria-busy="true" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>{'Loading...'}</div>}>
     <LazyComponent />
   </Suspense>
 }

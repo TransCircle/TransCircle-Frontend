@@ -19,5 +19,8 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      quotes: ['warn', 'single', { avoidEscape: true }],
+    },
   },
 ])

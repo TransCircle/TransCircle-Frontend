@@ -156,6 +156,8 @@ export const Home = () => {
 
       {error ? (
         <div className={styles.empty} role="alert">{error}</div>
+      ) : loading && displayItems.length === 0 ? (
+        <div className={styles.empty} role="status" aria-live="polite">{t('home.loading')}</div>
       ) : !loading && displayItems.length === 0 && !searchTerm ? (
         <div className={styles.empty}>{t('home.empty')}</div>
       ) : (

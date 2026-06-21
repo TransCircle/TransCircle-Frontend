@@ -25,7 +25,9 @@ i18n.use(initReactI18next).init({
   lng: detectedLang,
   fallbackLng: 'zh-CN',
   interpolation: {
-    escapeValue: false,
+    // React 的 JSX 默认转义 HTML，escapeValue: true 提供双层防御。
+    // 若未来启用 Trans 组件或远程翻译加载，此设置可防止 XSS。
+    escapeValue: true,
   },
 })
 

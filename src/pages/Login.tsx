@@ -14,11 +14,12 @@ export const Login = () => {
 
   // Navigate after auth context loads full profile (with roles) from /v1/me
   // 优先消费 ?redirect= 深链参数（从 RequireAdminLayout 等守卫跳转而来）
+  // 注意：redirect 必须通过白名单校验，防止开放重定向
   useEffect(() => {
     if (justLoggedInRef.current && authUser && !authLoading) {
       justLoggedInRef.current = false
       const redirect = searchParams.get('redirect')
-      if (redirect) {
+      if (redirect && isValidRedirect(redirect)) {
         navigate(redirect, { replace: true })
         return
       }
@@ -298,4 +299,17 @@ export const Login = () => {
       </div>
     </>
   )
+}
+
+/** 校验重定向 URL 防止开放重定向：仅允许站内相对路径 */
+function isValidRedirect(url: string): boolean {
+  if (!url.startsWith('/')) return false
+  if (url.startsWith('//')) return false
+  try {
+    // 用 URL 确保不包含非法协议结构
+    new URL(url, 'http://localhost')
+    return true
+  } catch {
+    return false
+  }
 }
