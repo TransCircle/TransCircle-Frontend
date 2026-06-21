@@ -187,10 +187,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
                 <li><Link to="/me/contributions" onClick={closeMenu}>{t('nav.myContributions')}</Link></li>
                 <li><Link to="/settings/security" onClick={closeMenu}>{t('nav.securitySettings')}</Link></li>
                 {isAdmin && <li><Link to="/admin" onClick={closeMenu}>{t('nav.adminDashboard')}</Link></li>}
-                <li><button onClick={async () => { await logout(); closeMenu(); window.location.href = 'https://transcircle.org' }} style={{
-                  background: 'none', border: 'none', color: 'inherit', cursor: 'pointer',
-                  fontSize: 'inherit', fontFamily: 'inherit', padding: 0
-                }}>{t('nav.logout')}</button></li>
+                <li><Link to="/" onClick={async (e) => { e.preventDefault(); await logout(); closeMenu(); window.location.href = 'https://story.transcircle.org' }}>{t('nav.logout')}</Link></li>
               </>
             )}
             {!user && (
