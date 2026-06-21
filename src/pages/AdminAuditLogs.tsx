@@ -95,11 +95,15 @@ export const AdminAuditLogs = () => {
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
         <input type="text" value={actionFilter} onChange={e => setActionFilter(e.target.value)}
-          placeholder={t('adminAuditLogs.filterAction')} className={styles.input}
+          placeholder={t('adminAuditLogs.filterAction')}
+          aria-label={t('adminAuditLogs.filterActionAria', '操作类型筛选')}
+          className={styles.input}
           style={{ flex: 1, minWidth: '200px', padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
           onKeyDown={e => { if (e.key === 'Enter') fetchLogs() }} />
         <input type="text" value={resourceFilter} onChange={e => setResourceFilter(e.target.value)}
-          placeholder={t('adminAuditLogs.filterResource')} className={styles.input}
+          placeholder={t('adminAuditLogs.filterResource')}
+          aria-label={t('adminAuditLogs.filterResourceAria', '资源类型筛选')}
+          className={styles.input}
           style={{ flex: 1, minWidth: '150px', padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
           onKeyDown={e => { if (e.key === 'Enter') fetchLogs() }} />
         <button className={styles.btnSecondary} onClick={() => fetchLogs()}>{t('adminAuditLogs.search')}</button>

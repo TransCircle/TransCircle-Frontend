@@ -215,7 +215,9 @@ export const AdminUsers = () => {
               </p>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <input type="text" value={banReason} onChange={e => setBanReason(e.target.value)}
-                  placeholder={t('adminUsers.banReasonPlaceholder')} autoFocus
+                  placeholder={t('adminUsers.banReasonPlaceholder')}
+                  aria-label={t('adminUsers.banReasonAriaLabel', '封禁原因')}
+                  autoFocus
                   style={{ flex: 1, padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
                   onKeyDown={e => {
                     if (e.key === 'Enter') handleBan(detail.id)
@@ -268,7 +270,9 @@ export const AdminUsers = () => {
       <header><h1 className={styles.heading}>{t('adminUsers.title')}</h1></header>
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
         <input type="text" value={keyword} onChange={e => setKeyword(e.target.value)}
-          placeholder={t('adminUsers.searchPlaceholder')} className={styles.input} style={{ flex: 1 }}
+          placeholder={t('adminUsers.searchPlaceholder')}
+          aria-label={t('adminUsers.searchAriaLabel', '搜索用户')}
+          className={styles.input} style={{ flex: 1 }}
           onKeyDown={e => { if (e.key === 'Enter') fetchUsers() }} />
         <button className={styles.btnSecondary} onClick={() => fetchUsers()}>{t('adminUsers.search')}</button>
       </div>

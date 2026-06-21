@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { post, setAccessToken } from '@/api/client'
+import { post, setAccessToken, getAccessToken } from '@/api/client'
 import { arrayBufferToBase64url, base64urlToArrayBuffer } from '@/utils/string'
 
 interface StepUpDialogProps {
@@ -47,9 +47,13 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
 
   const passkeyProcessed = useRef(false)
 
-  // Sync accessToken into client memory so step-up API calls use correct auth
+  // Sync accessToken into client memory so step-up API calls use correct auth.
+  // Restore the previous token on unmount to avoid leaking the dialog's token
+  // to subsequent API calls from other components.
   useEffect(() => {
+    const prevToken = getAccessToken()
     if (accessToken) setAccessToken(accessToken)
+    return () => setAccessToken(prevToken)
   }, [accessToken])
 
   // Focus trap: trap focus inside dialog when open
@@ -77,11 +81,15 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
 
   // Fetch available methods on mount
   useEffect(() => {
+    const ac = new AbortController()
+    let cancelled = false
     const init = async () => {
       const result = await post<StartResponse>(
         '/auth/step-up/start',
         {},
+        { signal: ac.signal },
       )
+      if (cancelled) return
       if (!result.ok || !result.data.challengeId) {
         setError(t('stepUp.errorInit'))
         return
@@ -95,6 +103,7 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
       setSelectedMethod(methods.includes('password') ? 'password' : (methods[0] ?? null))
     }
     init()
+    return () => { cancelled = true; ac.abort() }
   }, [accessToken, t])
 
   const handleSubmit = async () => {

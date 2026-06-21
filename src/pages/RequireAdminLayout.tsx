@@ -20,7 +20,7 @@ export const RequireAdminLayout = () => {
     return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname)}`} replace />
   }
 
-  if (!user.roles?.includes('admin')) {
+  if (!user.roles.includes('admin')) {
     return (
       <main className={styles.container}>
         <h1 className={styles.heading}>{t('admin.accessDenied')}</h1>

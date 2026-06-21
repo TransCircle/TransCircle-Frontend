@@ -127,6 +127,18 @@
   }
 }
 
+.oauthBtn {
+  background: none;
+  border: 1px solid var(--primary-pink);
+  color: var(--primary-pink);
+  padding: 0.4rem 1rem;
+  border-radius: 50px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+}
+
 .ctaSecondary {
   display: inline-block;
   border: 1.5px solid var(--primary-pink);

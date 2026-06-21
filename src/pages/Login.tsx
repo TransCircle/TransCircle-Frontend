@@ -263,16 +263,8 @@ export const Login = () => {
           {t('login.oauthAlternative')}
         </p>
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-          <button type="button" onClick={loginWithGitHub} style={{
-            background: 'none', border: '1px solid var(--primary-pink)',
-            color: 'var(--primary-pink)', padding: '0.4rem 1rem', borderRadius: '50px',
-            fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
-          }}>{t('submit.loginWithGithub')}</button>
-          <button type="button" onClick={loginWithX} style={{
-            background: 'none', border: '1px solid var(--primary-pink)',
-            color: 'var(--primary-pink)', padding: '0.4rem 1rem', borderRadius: '50px',
-            fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
-          }}>{t('submit.loginWithX')}</button>
+          <button type="button" onClick={loginWithGitHub} className={styles.oauthBtn}>{t('submit.loginWithGithub')}</button>
+          <button type="button" onClick={loginWithX} className={styles.oauthBtn}>{t('submit.loginWithX')}</button>
           <button type="button" onClick={async () => {
             setSubmitting(true); setError('')
             try {
@@ -290,11 +282,7 @@ export const Login = () => {
               }
             } catch { setError(t('login.errors.serverError')) }
             finally { setSubmitting(false) }
-          }} style={{
-            background: 'none', border: '1px solid var(--primary-pink)',
-            color: 'var(--primary-pink)', padding: '0.4rem 1rem', borderRadius: '50px',
-            fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
-          }}>{t('login.passkeyLogin')}</button>
+          }} className={styles.oauthBtn}>{t('login.passkeyLogin')}</button>
         </div>
       </div>
     </>

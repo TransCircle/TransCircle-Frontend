@@ -179,7 +179,7 @@ export const MyContributionDetail = () => {
                 {tags.map(tag => (
                   <span key={tag} style={{ background: 'var(--hover-bg)', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.85rem' }}>
                     {tag}
-                    <button type="button" aria-label={t('myContributionDetail.removeTag') || 'Remove tag'} onClick={() => setTags(prev => prev.filter(t => t !== tag))}
+                    <button type="button" aria-label={t('myContributionDetail.removeTag', { tag })} onClick={() => setTags(prev => prev.filter(t => t !== tag))}
                       style={{ marginLeft: '0.25rem', cursor: 'pointer', background: 'none', border: 'none', color: 'var(--error-color)', padding: 0 }}>&times;</button>
                   </span>
                 ))}
@@ -203,11 +203,11 @@ export const MyContributionDetail = () => {
               <label htmlFor={fieldLangId} style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{t('myContributionDetail.fieldLanguage')}</label>
               <select id={fieldLangId} value={language} onChange={e => setLanguage(e.target.value)}
                 className={styles.input} style={{ width: '100%' }}>
-                <option value="zh-CN">zh-CN</option>
-                <option value="zh-TW">zh-TW</option>
-                <option value="en">en</option>
-                <option value="ja">ja</option>
-                <option value="other">other</option>
+                <option value="zh-CN">{t('submit.languages.zh-CN')}</option>
+                <option value="zh-TW">{t('submit.languages.zh-TW')}</option>
+                <option value="en">{t('submit.languages.en')}</option>
+                <option value="ja">{t('submit.languages.ja')}</option>
+                <option value="other">{t('submit.languages.other')}</option>
               </select>
             </div>
             {actionError && <p style={{ color: 'var(--error-color)', marginBottom: '0.5rem' }}>{actionError}</p>}

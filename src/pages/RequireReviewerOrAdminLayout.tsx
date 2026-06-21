@@ -20,7 +20,7 @@ export const RequireReviewerOrAdminLayout = () => {
     return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname)}`} replace />
   }
 
-  const allowed = user.roles?.includes('admin') || user.roles?.includes('reviewer')
+  const allowed = user.roles.includes('admin') || user.roles.includes('reviewer')
   if (!allowed) {
     return (
       <main className={styles.container}>

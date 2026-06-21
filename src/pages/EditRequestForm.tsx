@@ -112,7 +112,7 @@ export const EditRequestForm = () => {
 
   return (
     <main className={adminStyles.container}>
-      <button className={adminStyles.back} onClick={() => navigate(-1)}>{t('editRequest.back')}</button>
+      <button className={adminStyles.back} onClick={() => window.history.length > 1 ? navigate(-1) : navigate('/')}>{t('editRequest.back')}</button>
       <h1 className={adminStyles.heading}>{t('editRequest.title')}</h1>
       <form className={formStyles.form} onSubmit={handleSubmit}>
         <label className={formStyles.field}>
@@ -145,7 +145,7 @@ export const EditRequestForm = () => {
             {proposedTags.map(tag => (
               <span key={tag} style={{ background: 'var(--hover-bg)', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.85rem' }}>
                 {tag}
-                <button type="button" onClick={() => setProposedTags(prev => prev.filter(t => t !== tag))}
+                <button type="button" aria-label={t('editRequest.removeTag', { tag })} onClick={() => setProposedTags(prev => prev.filter(t => t !== tag))}
                   style={{ marginLeft: '0.25rem', cursor: 'pointer', background: 'none', border: 'none', color: 'var(--error-color)', padding: 0 }}>&times;</button>
               </span>
             ))}

@@ -454,11 +454,13 @@ export const Admin = () => {
           </div>
         </div>
 
-        <nav className={styles.tabs}>
+        <nav className={styles.tabs} role="tablist" aria-label={t('admin.tabsAriaLabel', '投稿审核')}>
           {tabs.map((tab) => (
             <button
               key={tab.key}
+              role="tab"
               className={`${styles.tab} ${activeTab === tab.key ? styles.tabActive : ''}`}
+              aria-selected={activeTab === tab.key}
               onClick={() => setActiveTab(tab.key)}
             >
               {tab.label}
@@ -588,6 +590,7 @@ export const Admin = () => {
                 value={actionReason}
                 onChange={e => setActionReason(e.target.value)}
                 placeholder={t('admin.reasonPlaceholder')}
+                aria-label={t('admin.reasonAriaLabel', '操作原因')}
                 autoFocus
                 style={{ flex: 1, padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
                 onKeyDown={e => {

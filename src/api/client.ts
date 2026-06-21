@@ -105,6 +105,22 @@ export function clearCsrfToken(): void {
   document.cookie = 'oauth_pending_csrf=; Max-Age=0; path=/; SameSite=Lax'
 }
 
+/**
+ * 401 自动刷新并重试：如果响应是 401 且内存中有 token，尝试 refresh 后重试。
+ * 返回重试后的 Response，或原始 Response（若 refresh 失败或无需刷新）。
+ */
+async function autoRefreshOn401(res: Response, url: string, init: RequestInit, headers: Headers): Promise<Response> {
+  if (res.status === 401 && _memoryToken) {
+    const newToken = await doRefresh()
+    if (newToken) {
+      headers.set('Authorization', `Bearer ${newToken}`)
+      return fetch(url, { ...init, headers })
+    }
+    _memoryToken = null
+  }
+  return res
+}
+
 // ─── Idempotency-Key Helper ────────────────────────────────────
 
 /**
@@ -296,14 +312,8 @@ export async function apiRequest<T = unknown>(
   }
 
   // ── Auto-refresh on 401 ──
-  if (res.status === 401 && !options.skipRefresh && _memoryToken) {
-    const newToken = await doRefresh()
-    if (newToken) {
-      headers.set('Authorization', `Bearer ${newToken}`)
-      res = await fetch(url, { ...init, headers })
-    } else {
-      setAccessToken(null)
-    }
+  if (!options.skipRefresh) {
+    res = await autoRefreshOn401(res, url, init, headers)
   }
 
   // ── Parse response ──
@@ -439,17 +449,10 @@ export async function uploadFile<T = {
     signal,
   })
 
-  if (res.status === 401 && _memoryToken) {
-    const newToken = await doRefresh()
-    if (newToken) {
-      headers.set('Authorization', `Bearer ${newToken}`)
-      res = await fetch(`${API_BASE}/images`, {
-        method: 'POST', headers, credentials: 'include', body: formData, signal,
-      })
-    } else {
-      setAccessToken(null)
-    }
-  }
+  // 401 时自动刷新重试（共享逻辑，与 apiRequest 一致）
+  res = await autoRefreshOn401(res, `${API_BASE}/images`, {
+    method: 'POST', headers, credentials: 'include', body: formData, signal,
+  }, headers)
 
   const status = res.status
   const contentType = res.headers.get('content-type') || ''

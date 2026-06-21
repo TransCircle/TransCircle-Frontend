@@ -19,7 +19,7 @@ export const AdminOnlyGuard = () => {
     )
   }
 
-  if (!user || !user.roles?.includes('admin')) {
+  if (!user || !user.roles.includes('admin')) {
     return (
       <main className={styles.container}>
         <h1 className={styles.heading}>{t('adminUsers.accessDenied')}</h1>

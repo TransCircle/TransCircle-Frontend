@@ -171,8 +171,10 @@ export const SettingsSecurity = () => {
   // ── Load profile on mount ──
   useEffect(() => {
     if (authLoading || !authUser) return
+    let cancelled = false
     const load = async () => {
       const result = await get<Record<string, unknown>>('/me')
+      if (cancelled) return
       if (result.ok) {
         const d = result.data
         setProfile({
@@ -192,6 +194,7 @@ export const SettingsSecurity = () => {
       }
     }
     load()
+    return () => { cancelled = true }
   }, [authLoading, authUser])
 
   // ── Load OAuth accounts ──
