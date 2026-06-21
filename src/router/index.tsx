@@ -1,4 +1,4 @@
-﻿import { createBrowserRouter } from 'react-router-dom'
+﻿import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 
 import { RootLayout } from '../layouts/RootLayout'
@@ -86,7 +86,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'settings',
-        element: lazyNamed(() => import('../pages/SettingsSecurity'), 'SettingsSecurity'),
+        element: <Navigate to="/settings/security" replace />,
       },
       {
         path: 'settings/security',

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { post, setAccessToken } from '@/api/client'
-import { arrayBufferToBase64url } from '@/utils/string'
+import { arrayBufferToBase64url, base64urlToArrayBuffer } from '@/utils/string'
 
 interface StepUpDialogProps {
   onSuccess: () => void
@@ -150,17 +150,11 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
       const allowCreds: PublicKeyCredentialDescriptor[] | undefined =
         passkeyChallenge.publicKey.allowCredentials?.map((c: { id: string; type: 'public-key'; transports: string[] }) => ({
           type: 'public-key' as const,
-          id: Uint8Array.from(
-            atob(c.id.replace(/-/g, '+').replace(/_/g, '/')),
-            (cc: string) => cc.charCodeAt(0),
-          ).buffer as ArrayBuffer,
+          id: base64urlToArrayBuffer(c.id),
           transports: c.transports as AuthenticatorTransport[],
         }))
       const publicKeyCredOpts: PublicKeyCredentialRequestOptions = {
-        challenge: Uint8Array.from(
-          atob(passkeyChallenge.publicKey.challenge.replace(/-/g, '+').replace(/_/g, '/')),
-          (c: string) => c.charCodeAt(0),
-        ).buffer as ArrayBuffer,
+        challenge: base64urlToArrayBuffer(passkeyChallenge.publicKey.challenge),
         rpId: passkeyChallenge.publicKey.rpId,
         userVerification: passkeyChallenge.publicKey.userVerification as UserVerificationRequirement,
         allowCredentials: allowCreds,

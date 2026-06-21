@@ -5,7 +5,7 @@ import { get, post, patch, del, clearAuth, setAccessToken as setClientToken } fr
 import { ERRORS } from '@/api/errors'
 import { useAuth } from '@/context/useAuth'
 import { StepUpDialog } from '@/components/StepUpDialog'
-import { arrayBufferToBase64url } from '@/utils/string'
+import { arrayBufferToBase64url, base64urlToArrayBuffer } from '@/utils/string'
 import styles from './Admin.module.css'
 
 // ─── Types ───────────────────────────────────────────────────
@@ -370,19 +370,13 @@ export const SettingsSecurity = () => {
 
       const allowCreds = publicKey.allowCredentials?.map(c => ({
         type: c.type as PublicKeyCredentialType,
-        id: Uint8Array.from(
-          atob(c.id.replace(/-/g, '+').replace(/_/g, '/')),
-          cc => cc.charCodeAt(0),
-        ).buffer as ArrayBuffer,
+        id: base64urlToArrayBuffer(c.id),
         transports: c.transports as AuthenticatorTransport[],
       }))
 
       const credential = await navigator.credentials.get({
         publicKey: {
-          challenge: Uint8Array.from(
-            atob(publicKey.challenge.replace(/-/g, '+').replace(/_/g, '/')),
-            c => c.charCodeAt(0),
-          ).buffer as ArrayBuffer,
+          challenge: base64urlToArrayBuffer(publicKey.challenge),
           rpId: publicKey.rpId,
           userVerification: publicKey.userVerification as UserVerificationRequirement,
           allowCredentials: allowCreds,
@@ -423,19 +417,19 @@ export const SettingsSecurity = () => {
   const handleDeleteWithPassword = useCallback(async () => {
     if (!deletePassword || deletePasswordSubmitting) return
     setDeletePasswordSubmitting(true)
-    setDeletePasswordError("")
-    const body: Record<string, unknown> = { confirmation: "DELETE-MY-ACCOUNT", password: deletePassword }
+    setDeletePasswordError('')
+    const body: Record<string, unknown> = { confirmation: 'DELETE-MY-ACCOUNT', password: deletePassword }
     try {
-      const r = await post("/me/delete", body)
+      const r = await post('/me/delete', body)
       if (r.ok) {
         clearAuth()
-        navigate("/?toast=deletion_scheduled", { replace: true })
+        navigate('/?toast=deletion_scheduled', { replace: true })
       } else {
-        setDeletePasswordError(r.error?.message || t("settings.serverError"))
+        setDeletePasswordError(r.error?.message || t('settings.serverError'))
         setDeletePasswordSubmitting(false)
       }
     } catch {
-      setDeletePasswordError(t("settings.serverError"))
+      setDeletePasswordError(t('settings.serverError'))
       setDeletePasswordSubmitting(false)
     }
   }, [deletePassword, deletePasswordSubmitting, t, navigate])
@@ -625,23 +619,16 @@ export const SettingsSecurity = () => {
       // Step 2: call browser WebAuthn API
       const { registrationId, publicKey: creationOptions } = startResult.data
 
-      // Convert base64url challenge/user.id to ArrayBuffer for the browser API
-      const base64urlToBuffer = (s: string): ArrayBuffer =>
-        Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)).buffer
-
-      const base64urlToUint8Array = (s: string): Uint8Array =>
-        Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))
-
       const rawChallenge = creationOptions.challenge as unknown as string
       const rawUser = creationOptions.user as unknown as { id: string; displayName: string; name: string }
       const rawExclude = creationOptions.excludeCredentials as unknown as Array<{ id: string; type: string; transports?: AuthenticatorTransport[] }> | undefined
 
       const publicKey: PublicKeyCredentialCreationOptions = {
         ...creationOptions,
-        challenge: base64urlToBuffer(rawChallenge) as ArrayBuffer,
+        challenge: base64urlToArrayBuffer(rawChallenge),
         rp: creationOptions.rp as PublicKeyCredentialRpEntity,
         user: {
-          id: base64urlToUint8Array(rawUser.id).buffer as ArrayBuffer,
+          id: new Uint8Array(base64urlToArrayBuffer(rawUser.id)),
           displayName: rawUser.displayName,
           name: rawUser.name,
         },

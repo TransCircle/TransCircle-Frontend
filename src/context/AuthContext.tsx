@@ -1,7 +1,7 @@
 import { createContext, useEffect, useState, useCallback, useMemo, type ReactNode } from 'react'
 import { get, post, setAccessToken as setClientToken, clearAuth, tryRefreshToken } from '@/api/client'
 import { computePermissions, type Permission } from '@/api/permissions'
-import { arrayBufferToBase64url } from '@/utils/string'
+import { arrayBufferToBase64url, base64urlToArrayBuffer } from '@/utils/string'
 
 interface User {
   id: string
@@ -304,17 +304,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const allowCreds: PublicKeyCredentialDescriptor[] | undefined =
         publicKey.allowCredentials?.map((c: { type: string; id: string; transports: string[] }) => ({
           type: 'public-key' as const,
-          id: Uint8Array.from(
-            atob(c.id.replace(/-/g, '+').replace(/_/g, '/')),
-            (cc: string) => cc.charCodeAt(0),
-          ).buffer as ArrayBuffer,
+          id: base64urlToArrayBuffer(c.id),
           transports: c.transports as AuthenticatorTransport[],
         }))
       const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions = {
-        challenge: Uint8Array.from(
-          atob(publicKey.challenge.replace(/-/g, '+').replace(/_/g, '/')),
-          (c: string) => c.charCodeAt(0),
-        ).buffer as ArrayBuffer,
+        challenge: base64urlToArrayBuffer(publicKey.challenge),
         rpId: publicKey.rpId,
         userVerification: publicKey.userVerification as UserVerificationRequirement,
         allowCredentials: allowCreds,

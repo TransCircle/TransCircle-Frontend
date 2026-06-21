@@ -10,6 +10,28 @@ export function arrayBufferToBase64url(buffer: ArrayBuffer): string {
 }
 
 /**
+ * Convert base64url string to ArrayBuffer.
+ * Used for WebAuthn credential parsing (challenge, credential ID, signature).
+ * Inverse of arrayBufferToBase64url.
+ */
+export function base64urlToArrayBuffer(s: string): ArrayBuffer {
+  // Normalize base64url → base64: replace URL-safe chars and restore padding
+  const base64 = s.replace(/-/g, '+').replace(/_/g, '/')
+  const padding = 4 - (base64.length % 4)
+  const padded = padding < 4 ? base64 + '='.repeat(padding) : base64
+  try {
+    const binaryStr = atob(padded)
+    const bytes = new Uint8Array(binaryStr.length)
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i)
+    }
+    return bytes.buffer as ArrayBuffer
+  } catch {
+    throw new Error(`Invalid base64url string: length=${s.length}`)
+  }
+}
+
+/**
  * Unicode-aware string truncation by character count (not UTF-16 code units)
  */
 export function limitByUnicode(str: string, max: number): string {
