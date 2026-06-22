@@ -1,6 +1,6 @@
 import { createContext, useEffect, useState, useCallback, useMemo, type ReactNode } from 'react'
 import { get, post, setAccessToken as setClientToken, clearAuth, tryRefreshToken } from '@/api/client'
-import { computePermissions, type Permission } from '@/api/permissions'
+import { computePermissions } from '@/api/permissions'
 import { arrayBufferToBase64url, base64urlToArrayBuffer } from '@/utils/string'
 
 interface User {
@@ -12,6 +12,10 @@ interface User {
   emailVerified: boolean
   status: string
   roles: string[]
+  /** 细粒度权限（鉴权权威，来自后端 IAM 快照）；旧 payload 可能缺失 */
+  permissions?: string[]
+  /** 是否为 IAM 账号：决定 step-up 走本地因子还是 IAM 代理 2FA */
+  iamLinked?: boolean
   security?: {
     hasPassword: boolean
     totpEnabled: boolean
@@ -36,14 +40,16 @@ interface AuthContextValue {
   loading: boolean
   accessToken: string | null
   loginProvider: string | null
+  /** 是否可进入审核后台（拥有任一管理权限） */
   isAdmin: boolean
-  isFullAdmin: boolean
-  permissions: Permission[]
+  permissions: string[]
   /** 手动更新 AuthContext 中的 accessToken（用于改密等需同步 token 的场景） */
   updateAccessToken: (token: string | null) => void
   loginWithPassword: (identifier: string, password: string) => Promise<LoginResult>
   loginWithGitHub: () => Promise<void>
   loginWithX: () => Promise<void>
+  /** IAM 统一身份登录(管理员)：provider=iam，OIDC 流程同 github/x */
+  loginWithIam: () => Promise<void>
   logout: () => Promise<void>
   logoutAll: () => Promise<{ revokedSessions: number } | null>
   exchangeLoginCode: (loginCode: string) => Promise<User | null>
@@ -63,15 +69,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true)
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [loginProvider, setLoginProvider] = useState<string | null>(null)
-  /**
-   * 是否有管理后台访问权限（admin 或 reviewer）。
-   * 注意：此变量命名虽含 "Admin"，但 reviewer 也返回 true，
-   * 与 RequireReviewerOrAdminLayout 的路由守卫逻辑一致。
-   * 如需仅 admin 的判断，使用 isFullAdmin 变量。
-   */
-  const isAdmin = user ? (user.roles.includes('admin') || user.roles.includes('reviewer')) : false
-  const isFullAdmin = user ? user.roles.includes('admin') : false
-  const permissions = useMemo(() => computePermissions(user?.roles ?? []), [user])
+  // 权限权威来源 = 后端返回的 permissions（IAM 快照）；旧 payload 缺失时回退到角色派生
+  const permissions = useMemo<string[]>(
+    () => (Array.isArray(user?.permissions) ? user.permissions : computePermissions(user?.roles ?? [])),
+    [user],
+  )
+  // 管理入口改为权限驱动（不再纯角色判断），以支持 editor 与 IAM 细粒度授权：
+  // 拥有任一管理权限即可进入审核后台；具体页面/动作仍按各自所需权限进一步门控。
+  const isAdmin = permissions.includes('*') || permissions.includes('contribution:read')
   const updateAccessToken = useCallback((token: string | null) => {
     setAccessToken(token)
   }, [])
@@ -107,9 +112,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   // Start OAuth flow: fetch authorization URL from backend, then redirect
-  const startOAuth = useCallback(async (provider: 'github' | 'x') => {
+  const startOAuth = useCallback(async (provider: 'github' | 'x' | 'iam') => {
     setLoginProvider(provider)
-    const redirectAfter = window.location.pathname + window.location.search
+    // 不要把鉴权页（/login、/register、/auth/*）作为登录后回跳目标，否则回调会回到登录页、
+    // 看似未登录；此时留空，由回调按权限落地（landingPath）。
+    const isAuthPage = /^\/(login|register|auth)\b/.test(window.location.pathname)
+    const redirectAfter = isAuthPage ? '' : window.location.pathname + window.location.search
     const result = await get<{ authorizationUrl: string }>(
       `/auth/oauth/${provider}/start?redirectAfter=${encodeURIComponent(redirectAfter)}`,
     )
@@ -122,6 +130,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const loginWithGitHub = useCallback(() => startOAuth('github'), [startOAuth])
   const loginWithX = useCallback(() => startOAuth('x'), [startOAuth])
+  const loginWithIam = useCallback(() => startOAuth('iam'), [startOAuth])
 
   // Password login (api.md §1.3): POST /v1/auth/login
   const loginWithPassword = useCallback(async (identifier: string, password: string): Promise<LoginResult> => {
@@ -182,6 +191,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       emailVerified: (raw.emailVerified as boolean) ?? false,
       status: (raw.status as string) ?? 'active',
       roles: Array.isArray(raw.roles) ? (raw.roles as string[]) : [],
+      permissions: Array.isArray(raw.permissions) ? (raw.permissions as string[]) : undefined,
+      iamLinked: (raw.iamLinked as boolean) ?? false,
       security: raw.security as User['security'] | undefined,
       createdAt: (raw.createdAt as number) ?? 0,
       lastLoginAt: (raw.lastLoginAt as number | null) ?? null,
@@ -434,7 +445,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, loading, accessToken, loginProvider, isAdmin, isFullAdmin, permissions, updateAccessToken, loginWithPassword, loginWithGitHub, loginWithX, loginWithPasskey, logout, logoutAll, exchangeLoginCode, completeRegistration, mfaVerify, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, accessToken, loginProvider, isAdmin, permissions, updateAccessToken, loginWithPassword, loginWithGitHub, loginWithX, loginWithIam, loginWithPasskey, logout, logoutAll, exchangeLoginCode, completeRegistration, mfaVerify, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )

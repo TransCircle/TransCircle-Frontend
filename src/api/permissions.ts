@@ -8,6 +8,12 @@
 
 import { useMemo } from 'react'
 
+/**
+ * 细粒度权限常量（与后端 src/utils/permissions.ts / iam-admin-api.md §4.1 对齐）。
+ *
+ * 改造后权限的权威来源是后端 /v1/me 返回的 `permissions`（来自 IAM 登录快照）。
+ * 前端优先消费该列表；computePermissions 仅作旧 payload 的回退。
+ */
 export const PERMISSIONS = {
   CONTRIBUTION_READ: 'contribution:read',
   CONTRIBUTION_REVIEW: 'contribution:review',
@@ -20,6 +26,7 @@ export const PERMISSIONS = {
   CONTRIBUTION_EDIT_REQUEST_VOTE: 'contribution:edit-request:vote',
   USER_READ: 'user:read',
   USER_BAN: 'user:ban',
+  // 授权统一迁移到 IAM（§4.4）：本平台不再用这两个业务权限改权，常量保留仅为兼容引用
   ROLE_GRANT: 'role:grant',
   ROLE_REVOKE: 'role:revoke',
   AUDIT_READ: 'audit:read',
@@ -27,33 +34,33 @@ export const PERMISSIONS = {
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS]
 
-/**
- * 角色→权限映射，必须与后端 admin.ts ROLE_PERMISSIONS 保持一致。
- * 后端变更时请同步更新此表。
- */
-const ROLE_PERMISSIONS: Record<string, Permission[]> = {
-  admin: Object.values(PERMISSIONS),
+/** 通配权限：admin 快照可能为 '*'（迁移播种 / 角色派生回退）。 */
+const WILDCARD = '*'
+
+// 与后端 ROLE_PERMISSIONS / iam-admin-api.md §4.1 保持一致；editor ⊇ reviewer。仅用于回退派生。
+const ROLE_PERMISSIONS: Record<string, string[]> = {
+  admin: [WILDCARD],
   editor: [
     PERMISSIONS.CONTRIBUTION_READ,
     PERMISSIONS.CONTRIBUTION_REVIEW,
+    PERMISSIONS.CONTRIBUTION_EDIT_REQUEST_VOTE,
     PERMISSIONS.CONTRIBUTION_PUBLISH,
     PERMISSIONS.CONTRIBUTION_HIDE,
     PERMISSIONS.CONTRIBUTION_RESTORE,
-    PERMISSIONS.CONTRIBUTION_DELETE,
     PERMISSIONS.CONTRIBUTION_AUDIT_READ,
     PERMISSIONS.CONTRIBUTION_INTERNAL_NOTE_READ,
-    PERMISSIONS.CONTRIBUTION_EDIT_REQUEST_VOTE,
+    PERMISSIONS.USER_READ,
   ],
   reviewer: [
     PERMISSIONS.CONTRIBUTION_READ,
     PERMISSIONS.CONTRIBUTION_REVIEW,
-    PERMISSIONS.CONTRIBUTION_AUDIT_READ,
     PERMISSIONS.CONTRIBUTION_EDIT_REQUEST_VOTE,
   ],
 }
 
-export function computePermissions(roles: string[]): Permission[] {
-  const result: Permission[] = []
+/** 由角色派生权限（仅回退用；正常路径应直接使用后端返回的 permissions）。 */
+export function computePermissions(roles: string[]): string[] {
+  const result: string[] = []
   for (const role of roles) {
     const perms = ROLE_PERMISSIONS[role]
     if (perms) result.push(...perms)
@@ -61,10 +68,22 @@ export function computePermissions(roles: string[]): Permission[] {
   return [...new Set(result)]
 }
 
-export function usePermissions(roles: string[]): Permission[] {
+export function usePermissions(roles: string[]): string[] {
   return useMemo(() => computePermissions(roles), [roles])
 }
 
-export function hasPermission(permissions: Permission[], permission: Permission): boolean {
-  return permissions.includes(permission)
+/** 是否拥有某权限；'*' 通配视为拥有全部。 */
+export function hasPermission(permissions: string[], permission: string): boolean {
+  return permissions.includes(WILDCARD) || permissions.includes(permission)
+}
+
+/**
+ * 登录/注册后的落地页：按权限选「确实有权访问」的首个管理页，否则投稿页。
+ * 用于权限驱动跳转，避免把 editor / IAM 细粒度授权用户错误送到 /submit 或被守卫拒绝。
+ */
+export function landingPath(permissions: string[]): string {
+  if (hasPermission(permissions, PERMISSIONS.CONTRIBUTION_READ)) return '/admin'
+  if (hasPermission(permissions, PERMISSIONS.USER_READ)) return '/admin/users'
+  if (hasPermission(permissions, PERMISSIONS.AUDIT_READ)) return '/admin/audit-logs'
+  return '/submit'
 }

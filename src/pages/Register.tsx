@@ -5,6 +5,7 @@ import { useAuth } from '@/context/useAuth'
 import { get, clearCsrfToken } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { USERNAME_RE, checkPasswordStrength, validateEmail } from '@/utils/string'
+import { computePermissions, landingPath } from '@/api/permissions'
 import styles from '../App.module.css'
 import formStyles from '../components/Form.module.css'
 
@@ -147,7 +148,8 @@ const Register = () => {
 
       if (result?.user) {
         clearCsrfToken()
-        navigate((result.user.roles.includes('admin') || result.user.roles.includes('reviewer')) ? '/admin' : '/submit', { replace: true })
+        const perms = Array.isArray(result.user.permissions) ? result.user.permissions : computePermissions(result.user.roles ?? [])
+        navigate(landingPath(perms), { replace: true })
       } else {
         const code = result?.errorCode
         if (code === ERRORS.USERNAME_TAKEN) setError(t('register.errors.usernameTaken'))

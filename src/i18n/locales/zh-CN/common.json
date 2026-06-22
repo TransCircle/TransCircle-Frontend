@@ -226,6 +226,7 @@
   },
   "oauth": {
     "loading": "完成登录...",
+    "providerIam": "TransCircle 统一身份登录(管理员)",
     "blockedBanned": "账号已被封禁",
     "blockedMerged": "账号已合并，请使用主账号登录",
     "blockedPendingDeletion": "账号待注销，如需撤销请前往安全设置",
@@ -444,9 +445,19 @@
     "errorCodeEmpty": "请输入验证码",
     "errorFailed": "验证失败",
     "errorUserCancel": "用户取消了操作",
-    "errorPasskeyFailed": "Passkey 验证失败"
+    "errorPasskeyFailed": "Passkey 验证失败",
+    "iamPrompt": "当前账号为统一身份(IAM)账号，请前往 IAM 完成通行密钥 / TOTP 二次验证。",
+    "iamStart": "前往统一身份验证",
+    "iamRedirecting": "正在跳转...",
+    "iamStartError": "发起代理 2FA 失败，请重试",
+    "iamDoneTitle": "二次验证",
+    "iamPolling": "正在确认验证结果...",
+    "iamVerified": "验证通过，正在返回...",
+    "iamFailed": "验证未通过或已过期，请重试",
+    "iamBack": "返回管理后台"
   },
   "settings": {
+    "iamManagedNotice": "你的账户通过「TransCircle 统一身份登录(管理员)」管理，密码、Passkey、两步验证、第三方绑定与账户注销等安全设置请前往 IAM 控制台操作，本页不提供。",
     "passwordMismatch": "两次密码输入不一致",
     "currentPasswordWrong": "当前密码错误",
     "serverError": "服务器错误，请稍后重试",
@@ -697,6 +708,8 @@
     "passkeyUnit": " 个",
     "expiresAt": "过期 {{time}}",
     "permanent": "永久",
+    "noRoles": "（无角色）",
+    "rolesManagedInIam": "角色与权限已统一在 IAM 控制台管理；如需调整，请在 IAM 授予/撤销后让该用户重新使用统一身份登录。",
     "oauthAccount": "OAuth {{provider}}: @{{username}}"
   },
   "adminAuditLogs": {

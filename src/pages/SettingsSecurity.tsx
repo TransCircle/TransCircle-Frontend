@@ -81,6 +81,8 @@ export const SettingsSecurity = () => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { user: authUser, accessToken, logoutAll, loading: authLoading, updateAccessToken } = useAuth()
+  // IAM 账号的凭据/账户由统一身份管理，本页所有安全操作（密码/Passkey/TOTP/OAuth 绑定/注销删除）一律禁用
+  const isIam = !!authUser?.iamLinked
 
   const [profile, setProfile] = useState<UserProfile | null>(null)
   // 从 URL ?tab= 读取初始标签（如 OAuth 绑定成功后跳转，#13b）
@@ -196,6 +198,12 @@ export const SettingsSecurity = () => {
     load()
     return () => { cancelled = true }
   }, [authLoading, authUser])
+
+  // IAM 账号只允许停留在 profile 标签（其余安全标签隐藏）
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (isIam && activeTab !== 'profile') setActiveTab('profile')
+  }, [isIam, activeTab])
 
   // ── Load OAuth accounts ──
   useEffect(() => {
@@ -736,14 +744,17 @@ export const SettingsSecurity = () => {
     return null
   }
 
-  const tabs = [
-    { key: 'profile' as TabId, label: t('settings.tabProfile') },
-    { key: 'password' as TabId, label: t('settings.tabPassword') },
-    { key: 'totp' as TabId, label: t('settings.tabTotp') },
-    { key: 'passkey' as TabId, label: t('settings.tabPasskey') },
-    { key: 'oauth' as TabId, label: t('settings.tabOauth') },
-    { key: 'sessions' as TabId, label: t('settings.tabSessions') },
-  ]
+  // IAM 账号仅保留「资料」标签（含改名/数据导出），隐藏全部安全设置标签
+  const tabs = isIam
+    ? [{ key: 'profile' as TabId, label: t('settings.tabProfile') }]
+    : [
+        { key: 'profile' as TabId, label: t('settings.tabProfile') },
+        { key: 'password' as TabId, label: t('settings.tabPassword') },
+        { key: 'totp' as TabId, label: t('settings.tabTotp') },
+        { key: 'passkey' as TabId, label: t('settings.tabPasskey') },
+        { key: 'oauth' as TabId, label: t('settings.tabOauth') },
+        { key: 'sessions' as TabId, label: t('settings.tabSessions') },
+      ]
 
   return (
     <main className={styles.container}>
@@ -751,6 +762,14 @@ export const SettingsSecurity = () => {
         <h1 className={styles.heading}>{t('settings.pageTitle')}</h1>
         <p className={styles.headingDesc}>{t('settings.pageDescription')}</p>
       </header>
+
+      {isIam && (
+        <div className={styles.detailCard} style={{ borderColor: 'var(--accent-pink)', marginBottom: '1rem' }}>
+          <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+            {t('settings.iamManagedNotice')}
+          </p>
+        </div>
+      )}
 
       <nav className={styles.tabs} role="tablist">
         {tabs.map(tab => (
@@ -833,7 +852,8 @@ export const SettingsSecurity = () => {
             </button>
           </div>
 
-          {/* 撤销账户注销（api.md §2.5）*/}
+          {/* 撤销账户注销（api.md §2.5）—— IAM 账号不可用（账户生命周期由 IAM 管理）*/}
+          {!isIam && (
           <div style={{ marginTop: '2rem', borderTop: '1px solid var(--divider-color)', paddingTop: '1.5rem' }}>
             <h3 style={{ fontSize: '1rem', margin: '0 0 0.5rem' }}>{t('settings.cancelDeletionHeading')}</h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
@@ -911,6 +931,7 @@ export const SettingsSecurity = () => {
               </>
             )}
           </div>
+          )}
         </div>
       )}
 
@@ -1360,7 +1381,9 @@ export const SettingsSecurity = () => {
         </div>
       )}
 
-      {/* Delete account section (H2) */}
+      {/* Delete account section — only on the profile tab (was rendering under every tab);
+          hidden for IAM accounts (deletion is managed by IAM). */}
+      {activeTab === 'profile' && !isIam && (
       <div className={styles.detailCard} style={{ marginTop: '1rem', borderColor: 'var(--divider-color)' }}>
         <h2 className={styles.detailTitle} style={{ color: 'var(--error-color)' }}>{t('settings.deleteAccount.heading')}</h2>
         <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
@@ -1384,6 +1407,7 @@ export const SettingsSecurity = () => {
           {t('settings.deleteAccount.button')}
         </button>
       </div>
+      )}
 
       {/* Delete account password prompt (L10 — inline form replaces native prompt()) */}
       {deletePasswordNeeded && !deletePasswordSubmitting && (

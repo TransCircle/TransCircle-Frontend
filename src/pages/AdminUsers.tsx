@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { get, post, del } from '@/api/client'
+import { get, post } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
+import { hasPermission, PERMISSIONS } from '@/api/permissions'
+import { StepUpDialog } from '@/components/StepUpDialog'
 import styles from './Admin.module.css'
 
 interface ManagedUser {
@@ -38,7 +40,7 @@ function formatTs(ts: number | null | undefined): string {
 
 export const AdminUsers = () => {
   const { t } = useTranslation()
-  const { accessToken, loading: authLoading, user, isFullAdmin } = useAuth()
+  const { accessToken, loading: authLoading, user, permissions } = useAuth()
   const loadedRef = useRef(false)
   const fetchSeq = useRef(0)
 
@@ -49,6 +51,11 @@ export const AdminUsers = () => {
   const [keyword, setKeyword] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detail, setDetail] = useState<DetailedUser | null>(null)
+
+  // 危险操作（封禁/解封）可能返回 STEP_UP_REQUIRED → 弹 step-up（IAM 账号走代理 2FA 跳转）。
+  // 完成后 onSuccess 重放原操作（本地因子场景）；IAM 跳转场景回到本页重做即可。
+  const [showStepUp, setShowStepUp] = useState(false)
+  const pendingActionRef = useRef<(() => Promise<void>) | null>(null)
 
   const authHeaders = useCallback((): Record<string, string> => {
     return accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
@@ -79,6 +86,7 @@ export const AdminUsers = () => {
 
   useEffect(() => {
     if (authLoading || !accessToken) return
+    if (!hasPermission(permissions, PERMISSIONS.USER_READ)) return  // 无 user:read 直接拒绝页，免发无谓 403
     if (loadedRef.current) return
     loadedRef.current = true
     fetchUsers()
@@ -111,54 +119,30 @@ export const AdminUsers = () => {
     }
     setBanUserId(null)
     setBanReason('')
-    const result = await post(`/admin/users/${userId}/ban`, { reason }, {
-      headers: authHeaders(), skipRefresh: !accessToken,
-    })
-    if (result.ok) { fetchDetail(userId); fetchUsers() }
-    else setError(result.error.message)
+    const doBan = async () => {
+      const result = await post(`/admin/users/${userId}/ban`, { reason }, {
+        headers: authHeaders(), skipRefresh: !accessToken,
+      })
+      if (result.ok) { fetchDetail(userId); fetchUsers() }
+      else if (result.error.code === 'STEP_UP_REQUIRED') { pendingActionRef.current = doBan; setShowStepUp(true) }
+      else setError(result.error.message)
+    }
+    await doBan()
   }
 
   const handleUnban = async (userId: string) => {
+    const doUnban = async () => {
       const result = await post(`/admin/users/${userId}/unban`, { reason: t('adminUsers.adminUnban') }, {
-      headers: authHeaders(), skipRefresh: !accessToken,
-    })
-    if (result.ok) { fetchDetail(userId); fetchUsers() }
-    else setError(result.error.message)
-  }
-
-  const [roleInput, setRoleInput] = useState('')
-  const [roleUserId, setRoleUserId] = useState<string | null>(null)
-
-  const handleGrantRole = async (userId: string) => {
-    if (roleUserId !== userId) {
-      setRoleUserId(userId)
-      setRoleInput('')
-      setError('')
-      return
+        headers: authHeaders(), skipRefresh: !accessToken,
+      })
+      if (result.ok) { fetchDetail(userId); fetchUsers() }
+      else if (result.error.code === 'STEP_UP_REQUIRED') { pendingActionRef.current = doUnban; setShowStepUp(true) }
+      else setError(result.error.message)
     }
-    const roleId = roleInput.trim()
-    if (!roleId) {
-      setError(t('adminUsers.roleIdRequired'))
-      return
-    }
-    setRoleUserId(null)
-    setRoleInput('')
-    const result = await post(`/admin/users/${userId}/roles`, { roleId }, {
-      headers: authHeaders(), skipRefresh: !accessToken,
-    })
-    if (result.ok) fetchDetail(userId)
-    else setError(result.error.message)
+    await doUnban()
   }
 
-  const handleRevokeRole = async (userId: string, roleId: string) => {
-    const result = await del(`/admin/users/${userId}/roles/${roleId}`, undefined, {
-      headers: authHeaders(), skipRefresh: !accessToken,
-    })
-    if (result.ok) fetchDetail(userId)
-    else setError(result.error.message)
-  }
-
-  if (!authLoading && (!user || !isFullAdmin)) {
+  if (!authLoading && (!user || !hasPermission(permissions, PERMISSIONS.USER_READ))) {
     return (
       <main className={styles.container}>
         <h1 className={styles.heading}>{t('adminUsers.accessDenied')}</h1>
@@ -195,16 +179,17 @@ export const AdminUsers = () => {
           </div>
           <h3 style={{ marginTop: '1rem', fontWeight: 600 }}>{t('adminUsers.roles')}</h3>
           <ul>
+            {detail.roles.length === 0 && <li style={{ color: 'var(--text-muted)' }}>{t('adminUsers.noRoles')}</li>}
             {detail.roles.map(r => (
               <li key={r.id}>
                 {r.name}（{r.expiresAt ? t('adminUsers.expiresAt', { time: formatTs(r.expiresAt) }) : t('adminUsers.permanent')}）
-                <button onClick={() => handleRevokeRole(detail.id, r.id)}
-                  style={{ marginLeft: '0.5rem', color: 'var(--error-color)', cursor: 'pointer', background: 'none', border: 'none' }}>
-                  {t('adminUsers.revokeRole')}
-                </button>
               </li>
             ))}
           </ul>
+          {/* 授权统一迁移到 IAM：本平台不再人工授予/撤销角色（iam-admin-api.md §4.4） */}
+          <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            {t('adminUsers.rolesManagedInIam')}
+          </p>
           {error && <div className={styles.errorBox} role="alert">{error}</div>}
 
           {/* Inline ban reason input */}
@@ -231,36 +216,23 @@ export const AdminUsers = () => {
             </div>
           )}
 
-          {/* Inline role ID input */}
-          {roleUserId === detail.id && (
-            <div style={{ margin: '1rem 0', padding: '0.75rem', border: '1px solid var(--divider-color)', borderRadius: '8px', background: 'var(--hover-bg)' }}>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-                {t('adminUsers.roleIdPrompt')}
-              </p>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <input type="text" value={roleInput} onChange={e => setRoleInput(e.target.value)}
-                  placeholder={t('adminUsers.roleIdPlaceholder')} autoFocus
-                  style={{ flex: 1, padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') handleGrantRole(detail.id)
-                    if (e.key === 'Escape') { setRoleUserId(null); setRoleInput('') }
-                  }} />
-                <button className={styles.btnPrimary} onClick={() => handleGrantRole(detail.id)}
-                  style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>{t('admin.confirmReason')}</button>
-                <button className={styles.btnSecondary} onClick={() => { setRoleUserId(null); setRoleInput('') }}
-                  style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>{t('admin.cancelReason')}</button>
-              </div>
+          {/* 封禁/解封需 user:ban（仅 admin）；editor 仅有 user:read 时只读不可操作 */}
+          {hasPermission(permissions, PERMISSIONS.USER_BAN) && (
+            <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
+              {detail.status === 'banned'
+                ? <button className={styles.btnPrimary} onClick={() => handleUnban(detail.id)}>{t('adminUsers.unban')}</button>
+                : <button className={styles.btnSecondary} onClick={() => handleBan(detail.id)} style={{ color: 'var(--error-color)' }}>{t('adminUsers.ban')}</button>
+              }
             </div>
           )}
-
-          <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
-            <button className={styles.btnPrimary} onClick={() => handleGrantRole(detail.id)}>{t('adminUsers.grantRole')}</button>
-            {detail.status === 'banned'
-              ? <button className={styles.btnPrimary} onClick={() => handleUnban(detail.id)}>{t('adminUsers.unban')}</button>
-              : <button className={styles.btnSecondary} onClick={() => handleBan(detail.id)} style={{ color: 'var(--error-color)' }}>{t('adminUsers.ban')}</button>
-            }
-          </div>
         </div>
+        {showStepUp && accessToken && (
+          <StepUpDialog
+            accessToken={accessToken}
+            onSuccess={() => { setShowStepUp(false); const a = pendingActionRef.current; pendingActionRef.current = null; void a?.() }}
+            onCancel={() => { setShowStepUp(false); pendingActionRef.current = null }}
+          />
+        )}
       </main>
     )
   }

@@ -2,6 +2,8 @@
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
+import { get } from '@/api/client'
+import { computePermissions, landingPath } from '@/api/permissions'
 import styles from '../App.module.css'
 import formStyles from '../components/Form.module.css'
 
@@ -9,8 +11,18 @@ export const Login = () => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { t } = useTranslation()
-  const { loginWithPassword, loginWithGitHub, loginWithX, loginWithPasskey, mfaVerify, user: authUser, loading: authLoading } = useAuth()
+  const { loginWithPassword, loginWithGitHub, loginWithX, loginWithIam, loginWithPasskey, mfaVerify, user: authUser, loading: authLoading } = useAuth()
   const justLoggedInRef = useRef(false)
+
+  // 仅当后端启用 IAM（配置完整）时才展示「统一身份登录(管理员)」按钮
+  const [iamEnabled, setIamEnabled] = useState(false)
+  useEffect(() => {
+    let active = true
+    get<{ providers: string[] }>('/auth/oauth/providers').then(r => {
+      if (active && r.ok) setIamEnabled(r.data.providers.includes('iam'))
+    })
+    return () => { active = false }
+  }, [])
 
   // Navigate after auth context loads full profile (with roles) from /v1/me
   // 优先消费 ?redirect= 深链参数（从 RequireAdminLayout 等守卫跳转而来）
@@ -23,9 +35,23 @@ export const Login = () => {
         navigate(redirect, { replace: true })
         return
       }
-      const isAdmin = authUser.roles?.includes('admin') || authUser.roles?.includes('reviewer')
-      navigate(isAdmin ? '/admin' : '/submit', { replace: true })
+      // 权限驱动跳转：进入「确实有权访问」的首个管理页，避免被各页守卫拒绝
+      const perms = Array.isArray(authUser.permissions)
+        ? authUser.permissions
+        : computePermissions(authUser.roles ?? [])
+      navigate(landingPath(perms), { replace: true })
     }
+  }, [authUser, authLoading, navigate, searchParams])
+
+  // 路由保护：已登录用户访问 /login 直接重定向走（修复 OAuth 回调 redirectAfter=/login
+  // 时回到登录页、看似未登录的问题）。优先消费安全的 ?redirect=，否则前往个人资料页。
+  useEffect(() => {
+    if (authLoading || justLoggedInRef.current || !authUser) return
+    const redirect = searchParams.get('redirect')
+    const safe = redirect && redirect.startsWith('/') && !redirect.startsWith('//') && !/^\/(login|register)\b/.test(redirect)
+      ? redirect
+      : '/settings/security?tab=profile'
+    navigate(safe, { replace: true })
   }, [authUser, authLoading, navigate, searchParams])
 
   const [identifier, setIdentifier] = useState('')
@@ -284,6 +310,20 @@ export const Login = () => {
             finally { setSubmitting(false) }
           }} className={styles.oauthBtn}>{t('login.passkeyLogin')}</button>
         </div>
+
+        {iamEnabled && (
+          <button
+            type="button"
+            onClick={loginWithIam}
+            aria-label={t('oauth.providerIam')}
+            style={{
+              marginTop: '0.75rem', width: '100%',
+              background: 'var(--primary-pink)', border: '1px solid var(--primary-pink)',
+              color: 'var(--surface-card)', padding: '0.55rem 1rem', borderRadius: '50px',
+              fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >{t('oauth.providerIam')}</button>
+        )}
       </div>
     </>
   )

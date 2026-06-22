@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
 import { saveCsrfToken } from '@/api/client'
+import { computePermissions, landingPath } from '@/api/permissions'
 
 // login_blocked 子错误码文案映射
 const BLOCKED_REASONS: Record<string, string> = {
@@ -50,9 +51,11 @@ export const OAuthCallback = () => {
             }
             // Read redirectAfter from URL params and validate it's a safe relative path
             const redirectAfter = searchParams.get('redirectAfter') || ''
-            const safeRedirect = redirectAfter.startsWith('/') && !redirectAfter.startsWith('//')
+            const perms = Array.isArray(user.permissions) ? user.permissions : computePermissions(user.roles ?? [])
+            // 安全相对路径且非鉴权页才采用，否则按权限落地，避免回到 /login、/register
+            const safeRedirect = redirectAfter.startsWith('/') && !redirectAfter.startsWith('//') && !/^\/(login|register)\b/.test(redirectAfter)
               ? redirectAfter
-              : (user?.roles.includes('admin') || user?.roles.includes('reviewer') ? '/admin' : '/submit')
+              : landingPath(perms)
             navigate(safeRedirect, { replace: true })
           }
           break

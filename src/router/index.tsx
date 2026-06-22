@@ -85,6 +85,10 @@ export const router = createBrowserRouter([
         element: lazyNamed(() => import('../pages/OAuthMerge'), 'OAuthMerge'),
       },
       {
+        path: 'auth/step-up/done',
+        element: lazyNamed(() => import('../pages/StepUpDone'), 'StepUpDone'),
+      },
+      {
         path: 'settings',
         element: <Navigate to="/settings/security" replace />,
       },
