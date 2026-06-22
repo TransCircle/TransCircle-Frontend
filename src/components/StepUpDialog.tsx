@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { post, setAccessToken } from '@/api/client'
+import { post, setAccessToken, getAccessToken } from '@/api/client'
+import { arrayBufferToBase64url, base64urlToArrayBuffer } from '@/utils/string'
+import { useAuth } from '@/context/useAuth'
 
 interface StepUpDialogProps {
   onSuccess: () => void
@@ -31,11 +33,14 @@ interface StartResponse {
 
 export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogProps) => {
   const { t } = useTranslation()
+  const { user } = useAuth()
   const dialogRef = useRef<HTMLDivElement>(null)
   const [challengeId, setChallengeId] = useState('')
   const [availableMethods, setAvailableMethods] = useState<StepUpMethod[]>([])
   const [passkeyChallenge, setPasskeyChallenge] = useState<StartResponse['passkey'] | null>(null)
   const [selectedMethod, setSelectedMethod] = useState<StepUpMethod | null>(null)
+  // IAM 账号无本地因子 → 走 IAM 代理 2FA（整页跳转 verify_url）
+  const [iamMode, setIamMode] = useState(false)
 
   const [password, setPassword] = useState('')
   const [code, setCode] = useState('')
@@ -46,9 +51,13 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
 
   const passkeyProcessed = useRef(false)
 
-  // Sync accessToken into client memory so step-up API calls use correct auth
+  // Sync accessToken into client memory so step-up API calls use correct auth.
+  // Restore the previous token on unmount to avoid leaking the dialog's token
+  // to subsequent API calls from other components.
   useEffect(() => {
+    const prevToken = getAccessToken()
     if (accessToken) setAccessToken(accessToken)
+    return () => setAccessToken(prevToken)
   }, [accessToken])
 
   // Focus trap: trap focus inside dialog when open
@@ -76,25 +85,49 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
 
   // Fetch available methods on mount
   useEffect(() => {
+    const ac = new AbortController()
+    let cancelled = false
     const init = async () => {
       const result = await post<StartResponse>(
         '/auth/step-up/start',
         {},
+        { signal: ac.signal },
       )
-      if (!result.ok || !result.data.challengeId) {
-        setError(t('stepUp.errorInit'))
+      if (cancelled) return
+      const methods = result.ok ? (result.data.availableMethods || []) : []
+      if (result.ok && result.data.challengeId && methods.length > 0) {
+        setChallengeId(result.data.challengeId)
+        setAvailableMethods(methods)
+        setPasskeyChallenge(result.data.passkey ?? null)
+        // Default to password, fallback to first available
+        setSelectedMethod(methods.includes('password') ? 'password' : (methods[0] ?? null))
         return
       }
-      setChallengeId(result.data.challengeId)
-      const methods = result.data.availableMethods || []
-      setAvailableMethods(methods)
-      setPasskeyChallenge(result.data.passkey ?? null)
-
-      // Default to password, fallback to first available
-      setSelectedMethod(methods.includes('password') ? 'password' : (methods[0] ?? null))
+      // 无可用本地因子：IAM 账号改走代理 2FA，否则报错
+      if (user?.iamLinked) {
+        setIamMode(true)
+        return
+      }
+      setError(t('stepUp.errorInit'))
     }
     init()
-  }, [accessToken, t])
+    return () => { cancelled = true; ac.abort() }
+  }, [accessToken, t, user])
+
+  // IAM 代理 2FA：后端代发验证请求，整页跳转到 IAM 完成，回跳 /auth/step-up/done 回查
+  const handleIamStepUp = async () => {
+    setSubmitting(true)
+    setError('')
+    const result = await post<{ verifyUrl?: string; verificationId?: string }>('/auth/step-up/iam/start', {})
+    if (!result.ok || !result.data.verifyUrl || !result.data.verificationId) {
+      setError(t('stepUp.iamStartError'))
+      setSubmitting(false)
+      return
+    }
+    sessionStorage.setItem('iamStepUpVerificationId', result.data.verificationId)
+    sessionStorage.setItem('iamStepUpReturnTo', window.location.pathname + window.location.search)
+    window.location.href = result.data.verifyUrl
+  }
 
   const handleSubmit = async () => {
     if (!challengeId || !selectedMethod) return
@@ -149,17 +182,11 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
       const allowCreds: PublicKeyCredentialDescriptor[] | undefined =
         passkeyChallenge.publicKey.allowCredentials?.map((c: { id: string; type: 'public-key'; transports: string[] }) => ({
           type: 'public-key' as const,
-          id: Uint8Array.from(
-            atob(c.id.replace(/-/g, '+').replace(/_/g, '/')),
-            (cc: string) => cc.charCodeAt(0),
-          ).buffer as ArrayBuffer,
+          id: base64urlToArrayBuffer(c.id),
           transports: c.transports as AuthenticatorTransport[],
         }))
       const publicKeyCredOpts: PublicKeyCredentialRequestOptions = {
-        challenge: Uint8Array.from(
-          atob(passkeyChallenge.publicKey.challenge.replace(/-/g, '+').replace(/_/g, '/')),
-          (c: string) => c.charCodeAt(0),
-        ).buffer as ArrayBuffer,
+        challenge: base64urlToArrayBuffer(passkeyChallenge.publicKey.challenge),
         rpId: passkeyChallenge.publicKey.rpId,
         userVerification: passkeyChallenge.publicKey.userVerification as UserVerificationRequirement,
         allowCredentials: allowCreds,
@@ -204,13 +231,6 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
     } finally {
       setSubmitting(false)
     }
-  }
-
-  function arrayBufferToBase64url(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer)
-    let binary = ''
-    for (const b of bytes) binary += String.fromCharCode(b)
-    return btoa(binary).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
   }
 
   // Reset passkey guard when method switches away from passkey (M7)
@@ -259,6 +279,24 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
           {t('stepUp.description')}
         </p>
 
+        {iamMode ? (
+          <div>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+              {t('stepUp.iamPrompt')}
+            </p>
+            {error && <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{error}</p>}
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button onClick={onCancel} disabled={submitting} style={{ padding: '0.4rem 1rem' }}>{t('stepUp.cancel')}</button>
+              <button onClick={handleIamStepUp} disabled={submitting} style={{
+                padding: '0.4rem 1rem', background: 'var(--accent-pink, #e91e63)', color: 'var(--surface-card)', border: 'none',
+                borderRadius: '50px', cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+                {submitting ? t('stepUp.iamRedirecting') : t('stepUp.iamStart')}
+              </button>
+            </div>
+          </div>
+        ) : (
+        <>
         {/* Method selector */}
         {availableMethods.length > 1 && (
           <div style={{ marginBottom: '1rem' }}>
@@ -333,6 +371,8 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
             </button>
           )}
         </div>
+        </>
+        )}
       </div>
     </div>
   )

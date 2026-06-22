@@ -1,4 +1,4 @@
-﻿import { createBrowserRouter } from 'react-router-dom'
+﻿import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 
 import { RootLayout } from '../layouts/RootLayout'
@@ -17,7 +17,7 @@ function lazyNamed(
     const mod = await importFn()
     return { default: mod[name] as React.ComponentType<unknown> }
   })
-  return <Suspense fallback={<div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>{'Loading...'}</div>}>
+  return <Suspense fallback={<div role="status" aria-live="polite" aria-busy="true" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>{'Loading...'}</div>}>
     <LazyComponent />
   </Suspense>
 }
@@ -85,8 +85,12 @@ export const router = createBrowserRouter([
         element: lazyNamed(() => import('../pages/OAuthMerge'), 'OAuthMerge'),
       },
       {
+        path: 'auth/step-up/done',
+        element: lazyNamed(() => import('../pages/StepUpDone'), 'StepUpDone'),
+      },
+      {
         path: 'settings',
-        element: lazyNamed(() => import('../pages/SettingsSecurity'), 'SettingsSecurity'),
+        element: <Navigate to="/settings/security" replace />,
       },
       {
         path: 'settings/security',
@@ -115,6 +119,10 @@ export const router = createBrowserRouter([
       {
         path: 'auth/password/reset',
         element: lazyNamed(() => import('../pages/ResetPassword'), 'ResetPassword'),
+      },
+      {
+        path: 'auth/cancel-deletion',
+        element: lazyNamed(() => import('../pages/CancelDeletion'), 'CancelDeletion'),
       },
       {
         path: 'me/contributions',

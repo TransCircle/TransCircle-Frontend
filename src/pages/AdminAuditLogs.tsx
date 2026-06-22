@@ -2,6 +2,7 @@
 import { useTranslation } from 'react-i18next'
 import { get } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
+import { hasPermission, PERMISSIONS } from '@/api/permissions'
 import { limitByUnicode } from '@/utils/string'
 import styles from './Admin.module.css'
 
@@ -26,7 +27,7 @@ function formatTs(ts: number | null | undefined): string {
 
 export const AdminAuditLogs = () => {
   const { t } = useTranslation()
-  const { accessToken, loading: authLoading, user, isFullAdmin } = useAuth()
+  const { accessToken, loading: authLoading, user, permissions } = useAuth()
   const loadedRef = useRef(false)
   const fetchSeq = useRef(0)
 
@@ -66,13 +67,14 @@ export const AdminAuditLogs = () => {
 
   useEffect(() => {
     if (authLoading || !accessToken) return
+    if (!hasPermission(permissions, PERMISSIONS.AUDIT_READ)) return  // 无 audit:read 直接拒绝页，免发无谓 403
     if (loadedRef.current) return
     loadedRef.current = true
     fetchLogs()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, accessToken])
 
-  if (!authLoading && (!user || !isFullAdmin)) {
+  if (!authLoading && (!user || !hasPermission(permissions, PERMISSIONS.AUDIT_READ))) {
     return (
       <main className={styles.container}>
         <h1 className={styles.heading}>{t('adminAuditLogs.accessDenied')}</h1>
@@ -95,11 +97,15 @@ export const AdminAuditLogs = () => {
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
         <input type="text" value={actionFilter} onChange={e => setActionFilter(e.target.value)}
-          placeholder={t('adminAuditLogs.filterAction')} className={styles.input}
+          placeholder={t('adminAuditLogs.filterAction')}
+          aria-label={t('adminAuditLogs.filterActionAria', '操作类型筛选')}
+          className={styles.input}
           style={{ flex: 1, minWidth: '200px', padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
           onKeyDown={e => { if (e.key === 'Enter') fetchLogs() }} />
         <input type="text" value={resourceFilter} onChange={e => setResourceFilter(e.target.value)}
-          placeholder={t('adminAuditLogs.filterResource')} className={styles.input}
+          placeholder={t('adminAuditLogs.filterResource')}
+          aria-label={t('adminAuditLogs.filterResourceAria', '资源类型筛选')}
+          className={styles.input}
           style={{ flex: 1, minWidth: '150px', padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
           onKeyDown={e => { if (e.key === 'Enter') fetchLogs() }} />
         <button className={styles.btnSecondary} onClick={() => fetchLogs()}>{t('adminAuditLogs.search')}</button>

@@ -1,10 +1,11 @@
 ﻿import { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { get, post, patch, del, clearAuth, setAccessToken as setClientToken } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { useAuth } from '@/context/useAuth'
 import { StepUpDialog } from '@/components/StepUpDialog'
+import { arrayBufferToBase64url, base64urlToArrayBuffer } from '@/utils/string'
 import styles from './Admin.module.css'
 
 // ─── Types ───────────────────────────────────────────────────
@@ -80,10 +81,12 @@ export const SettingsSecurity = () => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { user: authUser, accessToken, logoutAll, loading: authLoading, updateAccessToken } = useAuth()
+  // IAM 账号的凭据/账户由统一身份管理，本页所有安全操作（密码/Passkey/TOTP/OAuth 绑定/注销删除）一律禁用
+  const isIam = !!authUser?.iamLinked
 
   const [profile, setProfile] = useState<UserProfile | null>(null)
   // 从 URL ?tab= 读取初始标签（如 OAuth 绑定成功后跳转，#13b）
-  const initialTab = (searchParams.get('tab') as TabId) || 'password'
+  const initialTab = (searchParams.get('tab') as TabId) || 'profile'
   const [activeTab, setActiveTab] = useState<TabId>(initialTab)
 
   // ── Password state ──
@@ -147,7 +150,10 @@ export const SettingsSecurity = () => {
   const [exportError, setExportError] = useState('')
 
   // ── Cancel deletion state (api.md §2.5) ──
-  const [cancelToken, setCancelToken] = useState('')
+  const location = useLocation()
+  const [cancelToken, setCancelToken] = useState<string>(
+    (location.state as Record<string, unknown> | null)?.cancelToken as string ?? ''
+  )
   const [cancelIdentifier, setCancelIdentifier] = useState('')
   const [cancelPassword, setCancelPassword] = useState('')
   const [cancelMfaCode, setCancelMfaCode] = useState('')
@@ -161,12 +167,16 @@ export const SettingsSecurity = () => {
   const [deletePasswordNeeded, setDeletePasswordNeeded] = useState(false)
   const [deletePasswordError, setDeletePasswordError] = useState('')
   const [deletePasswordSubmitting, setDeletePasswordSubmitting] = useState(false)
+  /** Delete-account API 错误（用于无密码用户的步骤升级流程）*/
+  const [deleteAccountError, setDeleteAccountError] = useState('')
 
   // ── Load profile on mount ──
   useEffect(() => {
     if (authLoading || !authUser) return
+    let cancelled = false
     const load = async () => {
       const result = await get<Record<string, unknown>>('/me')
+      if (cancelled) return
       if (result.ok) {
         const d = result.data
         setProfile({
@@ -186,7 +196,14 @@ export const SettingsSecurity = () => {
       }
     }
     load()
+    return () => { cancelled = true }
   }, [authLoading, authUser])
+
+  // IAM 账号只允许停留在 profile 标签（其余安全标签隐藏）
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (isIam && activeTab !== 'profile') setActiveTab('profile')
+  }, [isIam, activeTab])
 
   // ── Load OAuth accounts ──
   useEffect(() => {
@@ -252,6 +269,7 @@ export const SettingsSecurity = () => {
 
   // When step-up completes, proceed with unbinding
   const handleUnbindAfterStepUp = useCallback(async (provider: 'github' | 'x'): Promise<void> => {
+    setOauthError('')
     const result = await del<{ provider: string; unbound: boolean; revokedSessions: number }>(
       `/me/oauth/${provider}`,
     )
@@ -282,7 +300,7 @@ export const SettingsSecurity = () => {
           clearAuth()
           navigate('/?toast=deletion_scheduled', { replace: true })
         } else {
-          setCancelError(r.error?.message || t('settings.serverError'))
+          setDeleteAccountError(r.error?.message || t('settings.serverError'))
         }
       })
     } else if (action?.startsWith('unbind-')) {
@@ -363,19 +381,13 @@ export const SettingsSecurity = () => {
 
       const allowCreds = publicKey.allowCredentials?.map(c => ({
         type: c.type as PublicKeyCredentialType,
-        id: Uint8Array.from(
-          atob(c.id.replace(/-/g, '+').replace(/_/g, '/')),
-          cc => cc.charCodeAt(0),
-        ).buffer as ArrayBuffer,
+        id: base64urlToArrayBuffer(c.id),
         transports: c.transports as AuthenticatorTransport[],
       }))
 
       const credential = await navigator.credentials.get({
         publicKey: {
-          challenge: Uint8Array.from(
-            atob(publicKey.challenge.replace(/-/g, '+').replace(/_/g, '/')),
-            c => c.charCodeAt(0),
-          ).buffer as ArrayBuffer,
+          challenge: base64urlToArrayBuffer(publicKey.challenge),
           rpId: publicKey.rpId,
           userVerification: publicKey.userVerification as UserVerificationRequirement,
           allowCredentials: allowCreds,
@@ -416,19 +428,19 @@ export const SettingsSecurity = () => {
   const handleDeleteWithPassword = useCallback(async () => {
     if (!deletePassword || deletePasswordSubmitting) return
     setDeletePasswordSubmitting(true)
-    setDeletePasswordError("")
-    const body: Record<string, unknown> = { confirmation: "DELETE-MY-ACCOUNT", password: deletePassword }
+    setDeletePasswordError('')
+    const body: Record<string, unknown> = { confirmation: 'DELETE-MY-ACCOUNT', password: deletePassword }
     try {
-      const r = await post("/me/delete", body)
+      const r = await post('/me/delete', body)
       if (r.ok) {
         clearAuth()
-        navigate("/?toast=deletion_scheduled", { replace: true })
+        navigate('/?toast=deletion_scheduled', { replace: true })
       } else {
-        setDeletePasswordError(r.error?.message || t("settings.serverError"))
+        setDeletePasswordError(r.error?.message || t('settings.serverError'))
         setDeletePasswordSubmitting(false)
       }
     } catch {
-      setDeletePasswordError(t("settings.serverError"))
+      setDeletePasswordError(t('settings.serverError'))
       setDeletePasswordSubmitting(false)
     }
   }, [deletePassword, deletePasswordSubmitting, t, navigate])
@@ -444,10 +456,13 @@ export const SettingsSecurity = () => {
       identifier: cancelIdentifier.trim(),
       mfaCode: cancelMfaCode || undefined,
     }
-    // api.md §2.5: OAuth-only 账户传 null，密码账户传实际值
-    if (profile?.security.hasPassword === false) {
-      body.password = null
-    } else if (cancelPassword) {
+    // api.md §2.5: OAuth-only 账户省略 password，密码账户传实际值
+    if (profile?.security.hasPassword !== false) {
+      if (!cancelPassword) {
+        setCancelStatus('error')
+        setCancelError(t('settings.passwordRequired'))
+        return
+      }
       body.password = cancelPassword
     }
     if (cancelPasskeyAssertion) {
@@ -613,30 +628,23 @@ export const SettingsSecurity = () => {
       // Step 2: call browser WebAuthn API
       const { registrationId, publicKey: creationOptions } = startResult.data
 
-      // Convert base64url challenge/user.id to ArrayBuffer for the browser API
-      const base64urlToBuffer = (s: string): ArrayBuffer =>
-        Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)).buffer
-
-      const base64urlToUint8Array = (s: string): Uint8Array =>
-        Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0))
-
       const rawChallenge = creationOptions.challenge as unknown as string
       const rawUser = creationOptions.user as unknown as { id: string; displayName: string; name: string }
       const rawExclude = creationOptions.excludeCredentials as unknown as Array<{ id: string; type: string; transports?: AuthenticatorTransport[] }> | undefined
 
       const publicKey: PublicKeyCredentialCreationOptions = {
         ...creationOptions,
-        challenge: base64urlToBuffer(rawChallenge) as ArrayBuffer,
+        challenge: base64urlToArrayBuffer(rawChallenge),
         rp: creationOptions.rp as PublicKeyCredentialRpEntity,
         user: {
-          id: base64urlToUint8Array(rawUser.id).buffer as ArrayBuffer,
+          id: new Uint8Array(base64urlToArrayBuffer(rawUser.id)),
           displayName: rawUser.displayName,
           name: rawUser.name,
         },
         pubKeyCredParams: creationOptions.pubKeyCredParams as PublicKeyCredentialParameters[],
         excludeCredentials: rawExclude?.map(c => ({
           type: c.type as PublicKeyCredentialType,
-          id: base64urlToUint8Array(c.id).buffer as ArrayBuffer,
+          id: base64urlToArrayBuffer(c.id),
           transports: c.transports,
         })),
       }
@@ -716,13 +724,7 @@ export const SettingsSecurity = () => {
     setPendingAction(`unbind-${provider}`)
   }
 
-  // ── Helper: ArrayBuffer → base64url ──
-  function arrayBufferToBase64url(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer)
-    let binary = ''
-    for (const b of bytes) binary += String.fromCharCode(b)
-    return btoa(binary).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
-  }
+  // ── Helper: ArrayBuffer → base64url (from shared utils/string.ts)
 
   // Not loading and not logged in — redirect to login
   useEffect(() => {
@@ -742,14 +744,17 @@ export const SettingsSecurity = () => {
     return null
   }
 
-  const tabs = [
-    { key: 'profile' as TabId, label: t('settings.tabProfile') },
-    { key: 'password' as TabId, label: t('settings.tabPassword') },
-    { key: 'totp' as TabId, label: t('settings.tabTotp') },
-    { key: 'passkey' as TabId, label: t('settings.tabPasskey') },
-    { key: 'oauth' as TabId, label: t('settings.tabOauth') },
-    { key: 'sessions' as TabId, label: t('settings.tabSessions') },
-  ]
+  // IAM 账号仅保留「资料」标签（含改名/数据导出），隐藏全部安全设置标签
+  const tabs = isIam
+    ? [{ key: 'profile' as TabId, label: t('settings.tabProfile') }]
+    : [
+        { key: 'profile' as TabId, label: t('settings.tabProfile') },
+        { key: 'password' as TabId, label: t('settings.tabPassword') },
+        { key: 'totp' as TabId, label: t('settings.tabTotp') },
+        { key: 'passkey' as TabId, label: t('settings.tabPasskey') },
+        { key: 'oauth' as TabId, label: t('settings.tabOauth') },
+        { key: 'sessions' as TabId, label: t('settings.tabSessions') },
+      ]
 
   return (
     <main className={styles.container}>
@@ -757,6 +762,14 @@ export const SettingsSecurity = () => {
         <h1 className={styles.heading}>{t('settings.pageTitle')}</h1>
         <p className={styles.headingDesc}>{t('settings.pageDescription')}</p>
       </header>
+
+      {isIam && (
+        <div className={styles.detailCard} style={{ borderColor: 'var(--accent-pink)', marginBottom: '1rem' }}>
+          <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+            {t('settings.iamManagedNotice')}
+          </p>
+        </div>
+      )}
 
       <nav className={styles.tabs} role="tablist">
         {tabs.map(tab => (
@@ -839,7 +852,8 @@ export const SettingsSecurity = () => {
             </button>
           </div>
 
-          {/* 撤销账户注销（api.md §2.5）*/}
+          {/* 撤销账户注销（api.md §2.5）—— IAM 账号不可用（账户生命周期由 IAM 管理）*/}
+          {!isIam && (
           <div style={{ marginTop: '2rem', borderTop: '1px solid var(--divider-color)', paddingTop: '1.5rem' }}>
             <h3 style={{ fontSize: '1rem', margin: '0 0 0.5rem' }}>{t('settings.cancelDeletionHeading')}</h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
@@ -917,6 +931,7 @@ export const SettingsSecurity = () => {
               </>
             )}
           </div>
+          )}
         </div>
       )}
 
@@ -1366,7 +1381,9 @@ export const SettingsSecurity = () => {
         </div>
       )}
 
-      {/* Delete account section (H2) */}
+      {/* Delete account section — only on the profile tab (was rendering under every tab);
+          hidden for IAM accounts (deletion is managed by IAM). */}
+      {activeTab === 'profile' && !isIam && (
       <div className={styles.detailCard} style={{ marginTop: '1rem', borderColor: 'var(--divider-color)' }}>
         <h2 className={styles.detailTitle} style={{ color: 'var(--error-color)' }}>{t('settings.deleteAccount.heading')}</h2>
         <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
@@ -1374,6 +1391,9 @@ export const SettingsSecurity = () => {
         </p>
         {cancelError && (
           <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{cancelError}</p>
+        )}
+        {deleteAccountError && (
+          <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{deleteAccountError}</p>
         )}
         <button
           className={styles.btnSecondary}
@@ -1387,6 +1407,7 @@ export const SettingsSecurity = () => {
           {t('settings.deleteAccount.button')}
         </button>
       </div>
+      )}
 
       {/* Delete account password prompt (L10 — inline form replaces native prompt()) */}
       {deletePasswordNeeded && !deletePasswordSubmitting && (

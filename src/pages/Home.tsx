@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect, useRef, useCallback } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { get } from '@/api/client'
+import { get, type ApiResult } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import styles from './Admin.module.css'
 
@@ -19,36 +19,42 @@ interface PublicContribution {
 }
 
 function formatTs(ts: number): string {
-  return new Date(ts).toISOString().slice(0, 16).replace('T', ' ')
+  if (!ts) return ''
+  return new Date(ts).toLocaleString('zh-CN', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit',
+    hour12: false,
+  })
 }
 
-async function fetchPage(cursorVal?: string | null) {
-  const params = new URLSearchParams({ limit: '20' })
-  if (cursorVal) params.set('cursor', cursorVal)
-  return get<PublicContribution[]>(`/public/contributions?${params}`)
+async function fetchPage(cursorVal?: string | null, keywordVal?: string): Promise<ApiResult<PublicContribution[]>> {
+  try {
+    const params = new URLSearchParams({ limit: '20' })
+    if (cursorVal) params.set('cursor', cursorVal)
+    if (keywordVal) params.set('keyword', keywordVal)
+    return get<PublicContribution[]>(`/public/contributions?${params}`)
+  } catch {
+    return { ok: false as const, error: { code: 'NETWORK_ERROR', message: '' }, requestId: '', status: 0 }
+  }
 }
 
 export const Home = () => {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [items, setItems] = useState<PublicContribution[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [expanding, setExpanding] = useState(false)
-  const [initialDone, setInitialDone] = useState(false)
 
-  const searchTerm = searchParams.get('search')?.toLowerCase()
+  const searchTerm = searchParams.get('search') || ''
 
   const [error, setError] = useState('')
   const initialLoaded = useRef(false)
-  const expandGen = useRef(0)
 
-  const doInitialLoad = useCallback(async () => {
+  const doLoad = useCallback(async (keyword?: string) => {
     setLoading(true)
-    const result = await fetchPage()
+    const result = await fetchPage(undefined, keyword || undefined)
     if (result.ok) {
       setItems(result.data)
       setCursor(result.pagination?.nextCursor || null)
@@ -57,49 +63,18 @@ export const Home = () => {
       setError(result.error.message || t('home.errorLoad'))
     }
     setLoading(false)
-    setInitialDone(true)
   }, [t])
+
+  // 初始加载（无搜索词）或搜索词变化时重新加载
+  useEffect(() => {
+    initialLoaded.current = false
+  }, [searchTerm])
 
   useEffect(() => {
     if (initialLoaded.current) return
     initialLoaded.current = true
-    doInitialLoad()
-  }, [doInitialLoad])
-
-  useEffect(() => {
-    const gen = ++expandGen.current
-    if (!searchTerm || !initialDone) return
-
-    const MAX_PAGES = 5
-    let pagesLoaded = 1
-
-    ;(async () => {
-      setExpanding(true)
-      let currentCursor = cursor
-      while (currentCursor && pagesLoaded < MAX_PAGES && gen === expandGen.current) {
-        const result = await fetchPage(currentCursor)
-        if (!result.ok || gen !== expandGen.current) break
-        setItems(prev => [...prev, ...result.data])
-        currentCursor = result.pagination?.nextCursor || null
-        pagesLoaded++
-      }
-      // 始终推进 cursor，即使代次已失效（否则展开中途清空/切词后
-      // cursor 仍停在展开前，加载更多会重复拉取已加载的页）
-      setCursor(currentCursor)
-      if (gen === expandGen.current) {
-        setExpanding(false)
-      }
-    })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm, initialDone])
-
-  const displayItems = searchTerm
-    ? items.filter(item =>
-        item.title.toLowerCase().includes(searchTerm) ||
-        (item.summary?.toLowerCase().includes(searchTerm)) ||
-        item.tags?.some(t => t.toLowerCase().includes(searchTerm))
-      )
-    : items
+    doLoad(searchTerm || undefined)
+  }, [doLoad, searchTerm])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -123,14 +98,14 @@ export const Home = () => {
             placeholder={t('home.searchPlaceholder')}
             style={{ flex: 1, minWidth: '160px', padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
           />
-          <button type="submit" style={{ padding: '0.4rem 0.75rem', cursor: 'pointer' }}>{t('home.searchSubmit')}</button>
+          <button type="submit" className={`${styles.btnSecondary}`}>{t('home.searchSubmit')}</button>
           {searchTerm && (
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              {expanding ? t('home.searchExpanding') : t('home.localSearchHint', { count: displayItems.length })}
+              {loading ? t('home.searchExpanding') : t('home.localSearchHint', { count: items.length })}
             </span>
           )}
         </form>
-        {searchTerm && displayItems.length === 0 && !loading && !expanding && (
+        {searchTerm && items.length === 0 && !loading && (
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '-0.5rem', marginBottom: '0.5rem' }}>
             {t('home.noMatches')}
           </p>
@@ -148,17 +123,18 @@ export const Home = () => {
 
       {error ? (
         <div className={styles.empty} role="alert">{error}</div>
-      ) : !loading && displayItems.length === 0 && !searchTerm ? (
+      ) : loading && items.length === 0 ? (
+        <div className={styles.empty} role="status" aria-live="polite">{t('home.loading')}</div>
+      ) : !loading && items.length === 0 && !searchTerm ? (
         <div className={styles.empty}>{t('home.empty')}</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {displayItems.map(item => (
-            <button
-              type="button"
+          {items.map(item => (
+            <Link
+              to={`/contributions/${item.id}`}
               key={item.id}
               className={styles.detailCard}
-              onClick={() => navigate(`/contributions/${item.id}`)}
-              style={{ cursor: 'pointer', textAlign: 'left', width: '100%', border: 'none' }}
+              style={{ cursor: 'pointer', textAlign: 'left', width: '100%', border: 'none', display: 'block', textDecoration: 'none', color: 'inherit' }}
             >
               <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.25rem', color: 'var(--text-main)' }}>
                 {item.title}
@@ -174,23 +150,27 @@ export const Home = () => {
                   <span key={t} style={{ marginLeft: '0.5rem', background: 'var(--hover-bg)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>{t}</span>
                 ))}
               </div>
-            </button>
+            </Link>
           ))}
         </div>
       )}
 
-      {cursor && !searchTerm && (
+      {cursor && (
         <button
           className={styles.btnSecondary}
-          onClick={() => {
+          onClick={async () => {
             setLoading(true)
-            fetchPage(cursor).then(result => {
+            try {
+              const result = await fetchPage(cursor)
               if (result.ok) {
                 setItems(prev => [...prev, ...result.data])
                 setCursor(result.pagination?.nextCursor || null)
               }
+            } catch {
+              // handled in fetchPage
+            } finally {
               setLoading(false)
-            })
+            }
           }}
           disabled={loading}
           style={{ display: 'block', margin: '1.5rem auto' }}

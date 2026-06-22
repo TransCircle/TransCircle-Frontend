@@ -9,6 +9,11 @@
       (function() {
         try {
           var t = localStorage.getItem('transcircle-theme')
+          // Validate theme value — prevent invalid localStorage values from
+          // causing CSS to fail (M1). Valid themes: light, dark, contrast.
+          if (t !== 'light' && t !== 'dark' && t !== 'contrast') {
+            t = null
+          }
           if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
           document.documentElement.setAttribute('data-theme', t)
         } catch(e) {}

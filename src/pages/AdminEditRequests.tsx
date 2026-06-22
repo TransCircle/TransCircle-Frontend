@@ -54,6 +54,38 @@ function formatTs(ts: number | null | undefined): string {
   return new Date(ts).toISOString().slice(0, 16).replace('T', ' ')
 }
 
+/**
+ * Safely read a proposed-change field, preferring the typed `proposed` sub-object
+ * and falling back to the legacy flat field.  Type-safe alternative to
+ * `as unknown as Record` (H1).
+ */
+function getProposedField(
+  detail: EditRequestItem | null,
+  nestedKey: keyof NonNullable<EditRequestItem['proposed']>,
+  flatKey: string,
+): string | null | undefined {
+  if (!detail) return undefined
+  const nested = detail.proposed?.[nestedKey]
+  // nested can be string or string[] — only return string values here
+  if (typeof nested === 'string') return nested
+  if (nested === null) return null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (detail as any)[flatKey]
+}
+
+function getProposedFieldArray(
+  detail: EditRequestItem | null,
+  nestedKey: keyof NonNullable<EditRequestItem['proposed']>,
+  flatKey: string,
+): string[] | null | undefined {
+  if (!detail) return undefined
+  const nested = detail.proposed?.[nestedKey]
+  if (Array.isArray(nested)) return nested
+  if (nested === null) return null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (detail as any)[flatKey]
+}
+
 export const AdminEditRequests = () => {
   const { t } = useTranslation()
   const { accessToken, loading: authLoading, user, isAdmin, permissions } = useAuth()
@@ -173,23 +205,23 @@ export const AdminEditRequests = () => {
             </div>
           )}
 
-          {/* Proposed changes — prefer nested fields, fall back to flat */}
-          {(detail.proposed?.title ?? (detail as unknown as Record<string, string | null>).proposedTitle) && (
-            <p><strong>{t('adminEditRequests.proposedTitle')}：</strong>{detail.proposed?.title ?? (detail as unknown as Record<string, string | null>).proposedTitle}</p>
+          {/* Proposed changes — prefer nested fields, fall back to flat (via type guard, H1) */}
+          {getProposedField(detail, 'title', 'proposedTitle') && (
+            <p><strong>{t('adminEditRequests.proposedTitle')}：</strong>{getProposedField(detail, 'title', 'proposedTitle')}</p>
           )}
-          {(detail.proposed?.summary ?? (detail as unknown as Record<string, string | null>).proposedSummary) && (
-            <p><strong>{t('adminEditRequests.proposedSummary')}：</strong>{detail.proposed?.summary ?? (detail as unknown as Record<string, string | null>).proposedSummary}</p>
+          {getProposedField(detail, 'summary', 'proposedSummary') && (
+            <p><strong>{t('adminEditRequests.proposedSummary')}：</strong>{getProposedField(detail, 'summary', 'proposedSummary')}</p>
           )}
-          {(detail.proposed?.content ?? (detail as unknown as Record<string, string | null>).proposedContent) && (
+          {getProposedField(detail, 'content', 'proposedContent') && (
             <div className={styles.detailContent}>
               <strong>{t('adminEditRequests.proposedContent')}：</strong>
               <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>
-                {detail.proposed?.content ?? (detail as unknown as Record<string, string | null>).proposedContent}
+                {getProposedField(detail, 'content', 'proposedContent')}
               </pre>
             </div>
           )}
-          {(detail.proposed?.tags ?? (detail as unknown as Record<string, string[] | null>).proposedTags) && (
-            <p><strong>{t('adminEditRequests.proposedTags')}：</strong>{(detail.proposed?.tags ?? (detail as unknown as Record<string, string[] | null>).proposedTags ?? []).join(', ')}</p>
+          {getProposedFieldArray(detail, 'tags', 'proposedTags') && (
+            <p><strong>{t('adminEditRequests.proposedTags')}：</strong>{(getProposedFieldArray(detail, 'tags', 'proposedTags') ?? []).join(', ')}</p>
           )}
 
           {error && <div className={styles.errorBox}>{error}</div>}

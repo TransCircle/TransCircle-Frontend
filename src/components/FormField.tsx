@@ -10,19 +10,16 @@ interface FormFieldProps {
   htmlFor?: string
 }
 
-/** Elements that accept `htmlFor` / are "labelable" per HTML spec */
+/**
+ * Check if a React element is a native labelable form element per HTML spec.
+ *
+ * Only native `<input>`, `<select>`, and `<textarea>` elements are detected.
+ * Wrapped custom components must use the `htmlFor` prop on FormField to
+ * associate a label with the nested control (H3).
+ */
 function isLabelableElement(child: ReactElement): boolean {
   const { type } = child
-  // <input>, <select>, <textarea> are labelable per HTML spec
-  if (type === 'select' || type === 'textarea' || type === 'input') return true
-  // Fallback: detect by props for wrapped/untyped elements
-  const props = child.props as Record<string, unknown>
-  return (
-    typeof props.type === 'string' ||
-    typeof props.multiple === 'boolean' ||
-    typeof props.rows === 'number' ||
-    typeof props.cols === 'number'
-  )
+  return type === 'select' || type === 'textarea' || type === 'input'
 }
 
 export const FormField = ({ label, required, error, children, htmlFor }: FormFieldProps) => {

@@ -2,29 +2,56 @@
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
+import { get } from '@/api/client'
+import { computePermissions, landingPath } from '@/api/permissions'
 import styles from '../App.module.css'
-import formStyles from './Register.module.css'
+import formStyles from '../components/Form.module.css'
 
 export const Login = () => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { t } = useTranslation()
-  const { loginWithPassword, loginWithGitHub, loginWithX, loginWithPasskey, mfaVerify, user: authUser, loading: authLoading } = useAuth()
+  const { loginWithPassword, loginWithGitHub, loginWithX, loginWithIam, loginWithPasskey, mfaVerify, user: authUser, loading: authLoading } = useAuth()
   const justLoggedInRef = useRef(false)
+
+  // 仅当后端启用 IAM（配置完整）时才展示「统一身份登录(管理员)」按钮
+  const [iamEnabled, setIamEnabled] = useState(false)
+  useEffect(() => {
+    let active = true
+    get<{ providers: string[] }>('/auth/oauth/providers').then(r => {
+      if (active && r.ok) setIamEnabled(r.data.providers.includes('iam'))
+    })
+    return () => { active = false }
+  }, [])
 
   // Navigate after auth context loads full profile (with roles) from /v1/me
   // 优先消费 ?redirect= 深链参数（从 RequireAdminLayout 等守卫跳转而来）
+  // 注意：redirect 必须通过白名单校验，防止开放重定向
   useEffect(() => {
     if (justLoggedInRef.current && authUser && !authLoading) {
       justLoggedInRef.current = false
       const redirect = searchParams.get('redirect')
-      if (redirect) {
+      if (redirect && isValidRedirect(redirect)) {
         navigate(redirect, { replace: true })
         return
       }
-      const isAdmin = authUser.roles?.includes('admin') || authUser.roles?.includes('reviewer')
-      navigate(isAdmin ? '/admin' : '/submit', { replace: true })
+      // 权限驱动跳转：进入「确实有权访问」的首个管理页，避免被各页守卫拒绝
+      const perms = Array.isArray(authUser.permissions)
+        ? authUser.permissions
+        : computePermissions(authUser.roles ?? [])
+      navigate(landingPath(perms), { replace: true })
     }
+  }, [authUser, authLoading, navigate, searchParams])
+
+  // 路由保护：已登录用户访问 /login 直接重定向走（修复 OAuth 回调 redirectAfter=/login
+  // 时回到登录页、看似未登录的问题）。优先消费安全的 ?redirect=，否则前往个人资料页。
+  useEffect(() => {
+    if (authLoading || justLoggedInRef.current || !authUser) return
+    const redirect = searchParams.get('redirect')
+    const safe = redirect && redirect.startsWith('/') && !redirect.startsWith('//') && !/^\/(login|register)\b/.test(redirect)
+      ? redirect
+      : '/settings/security?tab=profile'
+    navigate(safe, { replace: true })
   }, [authUser, authLoading, navigate, searchParams])
 
   const [identifier, setIdentifier] = useState('')
@@ -38,6 +65,10 @@ export const Login = () => {
   const [mfaMethods, setMfaMethods] = useState<string[]>([])
   const [mfaCode, setMfaCode] = useState('')
   const [mfaSubmitting, setMfaSubmitting] = useState(false)
+  // Tracks whether the current input contains recovery-code characters.
+  // Updated in onChange; React handles the re-render so the keyboard switches
+  // before the next paint (M2).
+  const [isRecoveryCode, setIsRecoveryCode] = useState(false)
 
   const canSubmit = useMemo(() => {
     return identifier.trim().length >= 3 && password.length >= 12 && password.length <= 128
@@ -114,15 +145,18 @@ export const Login = () => {
         {hasTotp && (
           <input
             type="text"
-            inputMode="text"
+            inputMode={isRecoveryCode ? 'text' : 'numeric'}
             value={mfaCode}
             onChange={(e) => {
               const raw = e.target.value.toUpperCase()
-              if (/[A-Z-]/.test(raw)) {
+              const hasLetters = /[A-Z-]/.test(raw)
+              if (hasLetters) {
                 setMfaCode(raw.replace(/[^A-Z0-9-]/g, '').slice(0, 14))
               } else {
                 setMfaCode(raw.replace(/\D/g, '').slice(0, 6))
               }
+              // Update isRecoveryCode on next render so inputMode is correct (M2)
+              if (hasLetters !== isRecoveryCode) setIsRecoveryCode(hasLetters)
             }}
             placeholder={t('login.totpPlaceholder')}
             style={{ width: '200px', padding: '0.5rem', textAlign: 'center', fontSize: '1.2rem', letterSpacing: '0.5em' }}
@@ -147,6 +181,11 @@ export const Login = () => {
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
               {t('login.passkeyMfaDescription')}
             </p>
+            {mfaSubmitting && (
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                {t('login.passkeyAwaiting')}
+              </p>
+            )}
             <button
               onClick={async () => {
                 setMfaSubmitting(true)
@@ -173,7 +212,7 @@ export const Login = () => {
 
         {error && <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginTop: '0.5rem' }}>{error}</p>}
         <button
-          onClick={() => { setMfaRequired(false); setMfaCode(''); setMfaMethods([]); setError('') }}
+          onClick={() => { setMfaRequired(false); setMfaCode(''); setMfaMethods([]); setError(''); setIsRecoveryCode(false) }}
           style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
         >
           {t('login.backToLogin')}
@@ -201,6 +240,7 @@ export const Login = () => {
             required
             autoFocus
             minLength={3}
+            autoComplete="username"
             maxLength={254}
           />
         </label>
@@ -216,6 +256,7 @@ export const Login = () => {
             required
             minLength={12}
             maxLength={128}
+            autoComplete="current-password"
           />
           <div style={{ textAlign: 'right', marginTop: '0.25rem' }}>
             <Link to="/auth/password/forgot" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
@@ -248,16 +289,8 @@ export const Login = () => {
           {t('login.oauthAlternative')}
         </p>
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-          <button type="button" onClick={loginWithGitHub} style={{
-            background: 'none', border: '1px solid var(--primary-pink)',
-            color: 'var(--primary-pink)', padding: '0.4rem 1rem', borderRadius: '50px',
-            fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
-          }}>{t('submit.loginWithGithub')}</button>
-          <button type="button" onClick={loginWithX} style={{
-            background: 'none', border: '1px solid var(--primary-pink)',
-            color: 'var(--primary-pink)', padding: '0.4rem 1rem', borderRadius: '50px',
-            fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
-          }}>{t('submit.loginWithX')}</button>
+          <button type="button" onClick={loginWithGitHub} className={styles.oauthBtn}>{t('submit.loginWithGithub')}</button>
+          <button type="button" onClick={loginWithX} className={styles.oauthBtn}>{t('submit.loginWithX')}</button>
           <button type="button" onClick={async () => {
             setSubmitting(true); setError('')
             try {
@@ -275,13 +308,36 @@ export const Login = () => {
               }
             } catch { setError(t('login.errors.serverError')) }
             finally { setSubmitting(false) }
-          }} style={{
-            background: 'none', border: '1px solid var(--primary-pink)',
-            color: 'var(--primary-pink)', padding: '0.4rem 1rem', borderRadius: '50px',
-            fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
-          }}>{t('login.passkeyLogin')}</button>
+          }} className={styles.oauthBtn}>{t('login.passkeyLogin')}</button>
         </div>
+
+        {iamEnabled && (
+          <button
+            type="button"
+            onClick={loginWithIam}
+            aria-label={t('oauth.providerIam')}
+            style={{
+              marginTop: '0.75rem', width: '100%',
+              background: 'var(--primary-pink)', border: '1px solid var(--primary-pink)',
+              color: 'var(--surface-card)', padding: '0.55rem 1rem', borderRadius: '50px',
+              fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >{t('oauth.providerIam')}</button>
+        )}
       </div>
     </>
   )
+}
+
+/** 校验重定向 URL 防止开放重定向：仅允许站内相对路径 */
+function isValidRedirect(url: string): boolean {
+  if (!url.startsWith('/')) return false
+  if (url.startsWith('//')) return false
+  try {
+    // 用 URL 确保不包含非法协议结构
+    new URL(url, 'http://localhost')
+    return true
+  } catch {
+    return false
+  }
 }

@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "transcircle-frontend",
+  "main": "worker.js",
+  "compatibility_date": "2026-06-19",
+  "account_id": "f0b2647fe3ba05362055f3999522bd07",
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "routes": [
+    { "pattern": "story.transcircle.org", "zone_id": "759a1eeae75b405b37d76959b926bb7f" }
+  ]
+}

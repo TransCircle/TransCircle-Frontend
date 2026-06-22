@@ -5,6 +5,7 @@ import { post, clearAuth, tryRefreshToken, clearCsrfToken } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { useAuth } from '@/context/useAuth'
 import { StepUpDialog } from '@/components/StepUpDialog'
+import styles from '../App.module.css'
 
 export const OAuthMerge = () => {
   const [searchParams] = useSearchParams()
@@ -81,14 +82,9 @@ export const OAuthMerge = () => {
     handleMerge()
   }
 
-  const containerStyle: React.CSSProperties = {
-    display: 'flex', flexDirection: 'column', alignItems: 'center',
-    justifyContent: 'center', minHeight: '50vh', textAlign: 'center', padding: '2rem',
-  }
-
   if (status === 'success') {
     return (
-      <main style={containerStyle}>
+      <main className={styles.standalonePage}>
         <p style={{ fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('oauth.mergeSuccess')}</p>
       </main>
     )
@@ -96,7 +92,7 @@ export const OAuthMerge = () => {
 
   if (!mergeToken) {
     return (
-      <main style={containerStyle}>
+      <main className={styles.standalonePage}>
         <h1 style={{ fontSize: '1.8rem', margin: '0 0 0.75rem', color: 'var(--text-main)' }}>{t('oauth.mergeTitle')}</h1>
         <p style={{ fontSize: '1rem', color: 'var(--error-color)' }} role="alert">{t('oauth.mergeTokenExpired')}</p>
       </main>
@@ -105,7 +101,7 @@ export const OAuthMerge = () => {
 
   return (
     <>
-      <main style={containerStyle}>
+      <main className={styles.standalonePage}>
         <h1 style={{ fontSize: '1.8rem', margin: '0 0 0.75rem', color: 'var(--text-main)' }}>{t('oauth.mergeTitle')}</h1>
         <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', margin: '0 0 1.5rem', maxWidth: '450px', lineHeight: 1.6 }}>
           {t('oauth.mergeDescription')}

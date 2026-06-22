@@ -1,34 +1,11 @@
 ﻿import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { post, setIntentKey } from '@/api/client'
+import { post, setIntentKey, newIdempotencyKey } from '@/api/client'
 import { ERRORS } from '@/api/errors'
+import { USERNAME_RE, checkPasswordStrength, validateEmail } from '@/utils/string'
 import styles from '../App.module.css'
-import formStyles from './Register.module.css'
-
-const USERNAME_RE = /^[a-z][a-z0-9_-]{2,31}$/
-const UPPER_RE = /[A-Z]/
-const LOWER_RE = /[a-z]/
-const DIGIT_RE = /\d/
-const SYMBOL_RE = /[!-/:-@[-`{-~]|[\p{P}\p{S}]/u
-
-function checkPasswordStrength(pw: string): number {
-  let s = 0
-  if (UPPER_RE.test(pw)) s++
-  if (LOWER_RE.test(pw)) s++
-  if (DIGIT_RE.test(pw)) s++
-  if (SYMBOL_RE.test(pw)) s++
-  return s
-}
-
-function validateEmail(email: string): boolean {
-  const parts = email.split('@')
-  if (parts.length !== 2) return false
-  const [local, domain] = parts
-  if (!local || !domain) return false
-  if (email.length > 254) return false
-  return true
-}
+import formStyles from '../components/Form.module.css'
 
 export const RegisterDirect = () => {
   const { t } = useTranslation()
@@ -55,10 +32,10 @@ export const RegisterDirect = () => {
     else {
       // api.md §1.1: password must not contain username or email local part (case-insensitive)
       const lowerPw = pw.toLowerCase()
-      if (username.trim() && lowerPw.includes(username.trim().toLowerCase())) errs.password = t('registerDirect.errors.passwordContainsUsername') || '密码不能包含用户名'
+      if (username.trim() && lowerPw.includes(username.trim().toLowerCase())) errs.password = t('registerDirect.errors.passwordContainsUsername')
       else if (email.trim()) {
         const emailLocal = email.trim().split('@')[0]
-        if (emailLocal && lowerPw.includes(emailLocal.toLowerCase())) errs.password = t('registerDirect.errors.passwordContainsEmail') || '密码不能包含邮箱地址'
+        if (emailLocal && lowerPw.includes(emailLocal.toLowerCase())) errs.password = t('registerDirect.errors.passwordContainsEmail')
       }
     }
     if (!displayName.trim()) errs.displayName = t('registerDirect.errors.displayNameRequired')
@@ -93,7 +70,7 @@ export const RegisterDirect = () => {
     }
     setSubmitting(true)
     try {
-      setIntentKey(crypto.randomUUID())  // Per-intent idempotency-key (M9)
+      setIntentKey(newIdempotencyKey())  // Per-intent idempotency-key (M9)
       const result = await post('/auth/register', {
         username: username.trim(),
         email: email.trim(),
@@ -105,8 +82,7 @@ export const RegisterDirect = () => {
         const code = result.error.code
         const nextAction = result.error.data?.nextAction as string | undefined
         if (code === ERRORS.USERNAME_TAKEN) {
-          if (nextAction === 'choose_other_username') setError(t('registerDirect.errors.usernameTaken'))
-          else setError(t('registerDirect.errors.usernameTaken'))
+          setError(t('registerDirect.errors.usernameTaken'))
         } else if (code === ERRORS.EMAIL_TAKEN) {
           if (nextAction === 'password_forgot') setError(t('registerDirect.errors.emailTaken') + ' ' + t('registerDirect.errors.tryForgotPassword'))
           else if (nextAction === 'try_login') setError(t('registerDirect.errors.emailTaken') + ' ' + t('registerDirect.errors.tryLogin'))
@@ -141,12 +117,12 @@ export const RegisterDirect = () => {
 
   if (success) {
     return (
-      <main style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem', textAlign: 'center' }}>
+      <main className={styles.standalonePage}>
         <h1 style={{ fontSize: '1.5rem', color: 'var(--text-main)' }}>{t('registerDirect.success')}</h1>
-        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-          {t('emailVerify.redirectToLogin')}
+        <p className={styles.statusMuted} style={{ marginTop: '0.5rem' }}>
+          {t('registerDirect.successHint')}
         </p>
-        <Link to="/login" style={{ marginTop: '1rem', color: 'var(--accent-pink)' }}>{t('emailVerify.redirectToLogin')}</Link>
+        <Link to="/login" className={styles.accentLink} style={{ marginTop: '1rem' }}>{t('registerDirect.goToLogin')}</Link>
       </main>
     )
   }

@@ -351,6 +351,16 @@
   background-color: rgba(244, 67, 54, 0.08);
 }
 
+[data-theme="contrast"] .btnReject {
+  color: #ff6666;
+  border-color: #ffaa00;
+}
+
+[data-theme="contrast"] .btnReject:hover {
+  border-color: #ffaa00;
+  background-color: #332200;
+}
+
 /* ── Loading ───────────────────────────────── */
 
 .loading {
@@ -375,6 +385,12 @@
   background-color: rgba(244, 67, 54, 0.1);
   border-color: rgba(244, 67, 54, 0.25);
   color: #ef5350;
+}
+
+[data-theme="contrast"] .errorBox {
+  background-color: #332200;
+  border-color: #ffaa00;
+  color: #ff6666;
 }
 
 @media (prefers-reduced-motion: reduce) {

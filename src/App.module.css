@@ -127,6 +127,18 @@
   }
 }
 
+.oauthBtn {
+  background: none;
+  border: 1px solid var(--primary-pink);
+  color: var(--primary-pink);
+  padding: 0.4rem 1rem;
+  border-radius: 50px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+}
+
 .ctaSecondary {
   display: inline-block;
   border: 1.5px solid var(--primary-pink);
@@ -207,6 +219,54 @@
   text-overflow: ellipsis;
 }
 
+/* ── Shared page patterns (L4) ────────────────── */
+
+/**
+ * Flex-centered page container used by standalone/auth pages.
+ * Packaged as a CSS class so pages share one definition instead of
+ * inlining identical flexbox rules (ErrorBoundaryPage, NotFound,
+ * AuthError, EmailVerify, etc.).
+ */
+.standalonePage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  text-align: center;
+  padding: 2rem;
+}
+
+/* Status message variants — consolidate repeated inline styles */
+.statusError {
+  color: var(--error-color);
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.statusSuccess {
+  color: var(--success-color);
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.statusMuted {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0 0 1rem;
+}
+
+/* Accent-pink link — most common link pattern across pages */
+.accentLink {
+  color: var(--accent-pink);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.accentLink:hover {
+  text-decoration: underline;
+}
+
 /* ── Reduced motion ───────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
@@ -245,4 +305,33 @@
   .socialHandle {
     display: none;
   }
+}
+
+/* ── Toast notifications ────────────────────────── */
+
+.toastError,
+.toastInfo {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  z-index: 10000;
+  box-shadow: 0 2px 8px var(--shadow-color);
+}
+
+.toastError {
+  top: 1rem;
+  background: var(--error-color);
+  color: #fff;
+  cursor: pointer;
+}
+
+.toastInfo {
+  top: 4rem;
+  background: var(--surface-card);
+  color: var(--text-main);
+  border: 1px solid var(--divider-color);
+  z-index: 9999;
 }

@@ -1,10 +1,11 @@
-﻿import { useState } from 'react'
+﻿import { useState, useRef, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { post, tryRefreshToken, clearCsrfToken } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { useAuth } from '@/context/useAuth'
 import { StepUpDialog } from '@/components/StepUpDialog'
+import styles from '../App.module.css'
 
 export const OAuthBinding = () => {
   const [searchParams] = useSearchParams()
@@ -12,6 +13,8 @@ export const OAuthBinding = () => {
   const { t } = useTranslation()
   const { accessToken } = useAuth()
 
+  const navigateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => { return () => { if (navigateTimerRef.current) clearTimeout(navigateTimerRef.current) } }, [])
   const provider = searchParams.get('provider') || 'github'
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
@@ -22,14 +25,11 @@ export const OAuthBinding = () => {
     setErrorMsg('')
 
     try {
-      let currentToken = accessToken
-      if (!currentToken) {
+      if (!accessToken) {
         // Token might be null in memory but refresh token cookie still valid — try refresh
         const refreshed = await tryRefreshToken()
-        if (refreshed) {
-          currentToken = refreshed
-        } else {
-          setErrorMsg(t('oauth.bindStepUpRequired'))
+        if (!refreshed) {
+          setErrorMsg(t('oauth.bindSessionExpired'))
           setStatus('error')
           return
         }
@@ -73,7 +73,7 @@ export const OAuthBinding = () => {
 
       clearCsrfToken()
       setStatus('success')
-      setTimeout(() => navigate('/settings/security?toast=bind_success&tab=oauth', { replace: true }), 1500)
+      navigateTimerRef.current = setTimeout(() => navigate('/settings/security?toast=bind_success&tab=oauth', { replace: true }), 1500)
     } catch {
       setErrorMsg(t('oauth.bindError'))
       setStatus('error')
@@ -86,14 +86,10 @@ export const OAuthBinding = () => {
   }
 
   const providerLabel = provider === 'x' ? 'X' : 'GitHub'
-  const containerStyle: React.CSSProperties = {
-    display: 'flex', flexDirection: 'column', alignItems: 'center',
-    justifyContent: 'center', minHeight: '50vh', textAlign: 'center', padding: '2rem',
-  }
 
   if (status === 'success') {
     return (
-      <main style={containerStyle}>
+      <main className={styles.standalonePage}>
         <p style={{ fontSize: '1.1rem', color: 'var(--text-main)' }}>
           {t('oauth.bindSuccess', { provider: providerLabel })}
         </p>
@@ -103,7 +99,7 @@ export const OAuthBinding = () => {
 
   return (
     <>
-      <main style={containerStyle}>
+      <main className={styles.standalonePage}>
         <h1 style={{ fontSize: '1.8rem', margin: '0 0 0.75rem', color: 'var(--text-main)' }}>
           {t('oauth.bindTitle')}
         </h1>

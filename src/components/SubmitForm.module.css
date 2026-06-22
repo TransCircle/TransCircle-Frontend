@@ -95,6 +95,34 @@
   height: 400px;
 }
 
+.editorWrapper :global(.md-editor-toolbar-item) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--divider-color);
+  color: var(--text-secondary);
+  background: var(--bg-color);
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.editorWrapper :global(.md-editor-toolbar-item):hover {
+  border-color: var(--primary-pink);
+  color: var(--text-main);
+  background-color: var(--hover-bg);
+}
+
+.editorWrapper :global(.md-editor-toolbar-active) {
+  background-color: var(--hover-bg);
+  color: var(--primary-pink);
+  border-color: var(--primary-pink);
+}
+
 @media (max-width: 768px) {
   .editorWrapper :global(.md-editor) {
     height: 300px;

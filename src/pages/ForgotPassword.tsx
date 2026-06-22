@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { post } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import styles from '../App.module.css'
-import formStyles from './Register.module.css'
+import formStyles from '../components/Form.module.css'
 
 export const ForgotPassword = () => {
   const { t } = useTranslation()
@@ -40,9 +40,9 @@ export const ForgotPassword = () => {
 
   if (success) {
     return (
-      <main style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem', textAlign: 'center' }}>
-        <h1 style={{ fontSize: '1.5rem', color: 'var(--success-color)' }}>{t('forgotPassword.success')}</h1>
-          <Link to="/login" style={{ marginTop: '1rem', color: 'var(--accent-pink)' }}>
+      <main className={styles.standalonePage}>
+        <h1 className={styles.statusSuccess} style={{ fontSize: '1.5rem' }}>{t('forgotPassword.success')}</h1>
+          <Link to="/login" className={styles.accentLink} style={{ marginTop: '1rem' }}>
             {t('common.backToLogin')}
           </Link>
       </main>

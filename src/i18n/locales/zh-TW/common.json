@@ -1,9 +1,9 @@
-﻿{
+{
   "nav": {
     "ariaLabel": "主導航",
     "logo": "TransCircle",
     "home": "首頁",
-    "submit": "故事徵集",
+    "submit": "故事投稿",
     "archive": "人物歸檔（開發中）",
     "community": "社群互助（開發中）",
     "openMenu": "打開選單",
@@ -14,7 +14,12 @@
     "adminDashboard": "管理後台",
     "logout": "登出",
     "logoutShort": "登出",
-    "login": "登入"
+    "login": "登入",
+    "links": "連結",
+    "submitView": "投稿展示",
+    "externalLinks": "外部連結",
+    "blog": "部落格",
+    "explore": "探索"
   },
   "theme": {
     "light": "亮色模式",
@@ -72,6 +77,7 @@
     "loginWithGithub": "GitHub",
     "loginWithX": "X",
     "loggedInAs": "已登入 · 投稿將關聯到你的帳號",
+    "back": "後退",
     "errors": {
       "titleRequired": "請輸入標題",
       "contentRequired": "請輸入正文",
@@ -115,6 +121,9 @@
     "tempTokenLogin": "令牌登入",
     "tempAdmin": "臨時管理員",
     "tempAdminHint": "臨時令牌",
+    "provider_oauth": "第三方登入",
+    "provider_github": "GitHub",
+    "provider_x": "X (Twitter)",
     "tabs": {
       "inReview": "審核中",
       "pending": "待審核",
@@ -171,7 +180,10 @@
     "publishButton": "發布",
     "hideButton": "隱藏",
     "restoreButton": "復原",
-    "deleteButton": "刪除"
+    "deleteButton": "刪除",
+    "reasonPlaceholder": "輸入原因...",
+    "confirmReason": "確認",
+    "cancelReason": "取消"
   },
   "register": {
     "title": "完成註冊",
@@ -214,6 +226,7 @@
   },
   "oauth": {
     "loading": "完成登入...",
+    "providerIam": "TransCircle 統一身分登入(管理員)",
     "blockedBanned": "帳號已被封禁",
     "blockedMerged": "帳號已合併，請使用主帳號登入",
     "blockedPendingDeletion": "帳號待刪除，如需撤銷請前往安全設定",
@@ -266,6 +279,7 @@
     "passkeyMfaDescription": "使用裝置生物辨識或 PIN 完成驗證",
     "passkeyMfaOnly": "該帳戶僅啟用了 Passkey 驗證，請使用 Passkey 直接登入",
     "passkeyMfaButton": "使用 Passkey 登入",
+    "passkeyAwaiting": "正在等待安全金鑰互動…",
     "passkeyLogin": "Passkey",
     "backToLogin": "返回登入",
     "totpPlaceholder": "123456 或 XXXX-XXXX-XXXX",
@@ -338,6 +352,8 @@
     "submit": "註冊",
     "submitting": "註冊中...",
     "success": "註冊成功！請查收驗證郵件",
+    "successHint": "請查看收件匣中的驗證郵件，點擊連結完成信箱驗證。",
+    "goToLogin": "前往登入",
     "errors": {
       "usernameRequired": "請輸入使用者名稱",
       "usernameInvalid": "使用者名稱需3-32字元，以小寫字母開頭，僅含小寫字母/數字/底線/連字號",
@@ -358,6 +374,7 @@
     }
   },
   "emailVerify": {
+    "noToken": "缺少驗證令牌",
     "title": "驗證信箱",
     "verifying": "正在驗證信箱...",
     "success": "信箱驗證成功！",
@@ -374,7 +391,10 @@
     "success": "驗證郵件已發送，請檢查收件匣",
     "emailNotFound": "該信箱未註冊",
     "alreadyVerified": "該信箱已驗證，無需重發",
-    "error": "發送失敗，請稍後重試"
+    "error": "發送失敗，請稍後重試",
+    "errors": {
+      "emailRequired": "請輸入信箱"
+    }
   },
   "forgotPassword": {
     "title": "忘記密碼",
@@ -425,9 +445,19 @@
     "errorCodeEmpty": "請輸入驗證碼",
     "errorFailed": "驗證失敗",
     "errorUserCancel": "用戶取消了操作",
-    "errorPasskeyFailed": "Passkey 驗證失敗"
+    "errorPasskeyFailed": "Passkey 驗證失敗",
+    "iamPrompt": "當前帳號為統一身分(IAM)帳號，請前往 IAM 完成通行密鑰 / TOTP 二次驗證。",
+    "iamStart": "前往統一身分驗證",
+    "iamRedirecting": "正在跳轉...",
+    "iamStartError": "發起代理 2FA 失敗，請重試",
+    "iamDoneTitle": "二次驗證",
+    "iamPolling": "正在確認驗證結果...",
+    "iamVerified": "驗證通過，正在返回...",
+    "iamFailed": "驗證未通過或已過期，請重試",
+    "iamBack": "返回管理後台"
   },
   "settings": {
+    "iamManagedNotice": "你的帳戶透過「TransCircle 統一身分登入(管理員)」管理，密碼、Passkey、兩步驗證、第三方綁定與帳戶註銷等安全設定請前往 IAM 控制台操作，本頁不提供。",
     "passwordMismatch": "兩次密碼輸入不一致",
     "currentPasswordWrong": "目前密碼錯誤",
     "serverError": "伺服器錯誤，請稍後重試",
@@ -439,11 +469,10 @@
       "heading": "刪除帳戶",
       "description": "刪除後帳戶將被註銷，所有投稿將被匿名化。提交後有 30 天冷靜期，期間可以撤銷。",
       "button": "刪除我的帳戶",
-      "confirm": "確定要刪除帳戶？之後需要重新完成 OAuth 授權流程。",
+      "confirm": "確認",
       "passwordPrompt": "請輸入目前密碼以確認刪除帳戶：",
       "success": "刪除請求已提交，帳戶將在 30 天後自動註銷",
       "passwordPlaceholder": "輸入目前密碼",
-      "confirm": "確認",
       "cancel": "取消"
     },
     "tabProfile": "個人資料",
@@ -488,6 +517,7 @@
     "cancelPasskeyError": "Passkey 驗證失敗",
     "cancelDeletionButton": "撤銷刪除",
     "cancelRequired": "令牌和帳號識別為必填項",
+    "passwordRequired": "請輸入當前密碼",
     "passwordHeading": "修改密碼",
     "passwordNotSet": "你目前未設定密碼。請設定一個密碼以增加帳戶安全性。",
     "passwordChanged": "密碼修改成功",
@@ -591,6 +621,7 @@
     "fieldSummary": "摘要",
     "fieldTags": "標籤",
     "tagPlaceholder": "輸入標籤後按 Enter 新增",
+    "removeTag": "移除標籤 {{tag}}",
     "saveSuccess": "儲存成功",
     "saveError": "儲存失敗",
     "saveSubmitting": "儲存中...",
@@ -624,6 +655,7 @@
     "proposedSummary": "建議新摘要（選填）",
     "proposedTags": "建議新標籤（選填）",
     "tagPlaceholder": "輸入標籤後按 Enter 新增",
+    "removeTag": "移除標籤 {{tag}}",
     "atLeastOne": "至少需要修改標題、內容、摘要或標籤中的一項",
     "submitting": "提交中...",
     "submit": "提交修改申請",
@@ -657,6 +689,10 @@
     "grantRole": "授予角色",
     "revokeRole": "撤銷",
     "banReasonPrompt": "封鎖原因：",
+    "banReasonRequired": "請輸入封鎖原因",
+    "banReasonPlaceholder": "輸入封鎖原因...",
+    "roleIdRequired": "請輸入角色 ID",
+    "roleIdPlaceholder": "輸入角色 ID...",
     "adminUnban": "管理員解除封鎖",
     "userBanned": "使用者已被封鎖",
     "userUnbanned": "使用者已解除封鎖",
@@ -672,6 +708,8 @@
     "passkeyUnit": " 個",
     "expiresAt": "過期 {{time}}",
     "permanent": "永久",
+    "noRoles": "（無角色）",
+    "rolesManagedInIam": "角色與權限已統一在 IAM 控制台管理；如需調整，請在 IAM 授予/撤銷後讓該用戶重新使用統一身分登入。",
     "oauthAccount": "OAuth {{provider}}: @{{username}}"
   },
   "adminAuditLogs": {

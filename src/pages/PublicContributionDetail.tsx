@@ -34,16 +34,21 @@ export const PublicContributionDetail = () => {
 
   useEffect(() => {
     if (!id) return
+    let cancelled = false
     const load = async () => {
       const result = await get<PublicDetail>(`/public/contributions/${id}`)
+      if (cancelled) return
       if (result.ok) {
         setDetail(result.data)
-      } else {
+      } else if (result.status === 404) {
         setError(t('publicContributionDetail.notFound'))
+      } else {
+        setError(result.error?.message || t('publicContributionDetail.notFound'))
       }
       setLoading(false)
     }
     load()
+    return () => { cancelled = true }
   }, [id, t])
 
   if (loading) return <main className={styles.container}><div className={styles.loading}>{t('publicContributionDetail.loading')}</div></main>
@@ -51,7 +56,7 @@ export const PublicContributionDetail = () => {
 
   return (
     <main className={styles.container}>
-        <Link to="/" className={styles.back}>← {t('publicContributionDetail.backToHome')}</Link>
+        <Link to="/" className={styles.back}>{t('publicContributionDetail.backToHome')}</Link>
 
       <article className={styles.detailCard}>
         <h1 style={{ fontSize: '1.5rem', margin: '0 0 0.5rem' }}>{detail.title}</h1>

@@ -3,9 +3,9 @@
   display: none;
 }
 
-/* ── Visible at 1100px+ ───────────────────────── */
+/* ── Visible at 1200px+ ───────────────────────── */
 
-@media (min-width: 1100px) {
+@media (min-width: 1200px) {
   .toc {
     display: block;
     position: fixed;
@@ -26,7 +26,7 @@
 
 /* fallback for browsers without backdrop-filter */
 @supports not (backdrop-filter: blur(1px)) {
-  @media (min-width: 1100px) {
+  @media (min-width: 1200px) {
     .toc {
       background: var(--bg-color);
     }

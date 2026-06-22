@@ -6,6 +6,7 @@ import { get, post } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
 import { limitByUnicode } from '@/utils/string'
+import { StepUpDialog } from '@/components/StepUpDialog'
 import styles from './Admin.module.css'
 
 // Temp token is kept in memory only (per api.md §JWT Payload Structure:
@@ -77,7 +78,11 @@ function formatTs(ts: number | string | null): string {
 
 export const Admin = () => {
   const { t } = useTranslation()
-  const { user, loading: authLoading, accessToken, loginProvider, isAdmin, isFullAdmin, permissions, loginWithGitHub } = useAuth()
+  const { user, loading: authLoading, accessToken, loginProvider, isAdmin, permissions, loginWithGitHub } = useAuth()
+  // 危险操作（隐藏/删除，及配置开启时的发布）可能返回 STEP_UP_REQUIRED → 弹 step-up；
+  // 本地因子账号 onSuccess 后重放原操作；IAM 账号在对话框内跳转 IAM 完成后回本页重做。
+  const [showStepUp, setShowStepUp] = useState(false)
+  const pendingActionRef = useRef<(() => Promise<void>) | null>(null)
   const [tempToken, setTempToken] = useState('')
   const [tokenInput, setTokenInput] = useState('')
   const [activeTab, setActiveTab] = useState<Status>('pending')
@@ -113,7 +118,7 @@ export const Admin = () => {
         skipRefresh: !accessToken, // tempToken users can't auto-refresh
       })
       if (seq !== fetchSeq.current) return
-      if (result.status === 403) {
+      if (result.status === 403 || result.status === 401) {
         setTempToken('')
         setLoading(false)
         return
@@ -146,44 +151,12 @@ export const Admin = () => {
 
   useEffect(() => {
     if (!isAdmin && !tempToken) return
-    let cancelled = false
-
-    const load = async () => {
-      setLoading(true)
-      setError('')
-      try {
-        const params = new URLSearchParams({ status: activeTab, limit: '50' })
-        const result = await get<Submission[]>(`/admin/contributions?${params}`, {
-          headers: authHeaders(),
-          skipRefresh: !accessToken,
-        })
-        if (cancelled) return
-
-        if (result.status === 403) {
-          setTempToken('')
-          return
-        }
-        if (!result.ok) {
-          throw new Error(result.error.message || t('admin.errorLoad'))
-        }
-
-        const items = result.data
-        setSubmissions(items)
-        const pagination = result.pagination
-        setNextCursor(pagination?.nextCursor || null)
-        setHasMore(pagination?.hasMore ?? false)
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : t('admin.errorLoad'))
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    load()
-    return () => { cancelled = true }
-  }, [activeTab, isAdmin, tempToken, authHeaders, t, accessToken])
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchSubmissions()
+  }, [activeTab, isAdmin, tempToken, authHeaders, t, accessToken]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchDetail = async (id: string) => {
+    setError('')
     try {
       const result = await get<Submission>(`/admin/contributions/${id}`, {
         headers: authHeaders(),
@@ -231,7 +204,7 @@ export const Admin = () => {
         return
       }
       setSelected(null)
-      fetchSubmissions()
+      fetchSubmissions(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : t('admin.errorReview'))
     }
@@ -239,49 +212,74 @@ export const Admin = () => {
 
   const handlePublish = async () => {
     if (!selected) return
+    const id = selected.id
     const v = selected.version || 1
-    const result = await post(`/admin/contributions/${selected.id}/publish`, {
-      expectedVersion: v,
-      publicNote: null,
-    }, { headers: authHeaders(), skipRefresh: !accessToken })
-    if (!result.ok) {
-      if (result.error.code === ERRORS.VERSION_CONFLICT && selected) {
-        setError(t('admin.versionConflictRefreshed'))
-        fetchDetail(selected.id)
-      } else {
-        setError(result.error.message || t('admin.errorReview'))
+    const doPublish = async () => {
+      const result = await post(`/admin/contributions/${id}/publish`, {
+        expectedVersion: v,
+        publicNote: null,
+      }, { headers: authHeaders(), skipRefresh: !accessToken })
+      if (!result.ok) {
+        if (result.error.code === ERRORS.STEP_UP_REQUIRED) {
+          pendingActionRef.current = doPublish
+          setShowStepUp(true)
+        } else if (result.error.code === ERRORS.VERSION_CONFLICT) {
+          setError(t('admin.versionConflictRefreshed'))
+          fetchDetail(id)
+        } else {
+          setError(result.error.message || t('admin.errorReview'))
+        }
+        return
       }
-      return
+      setSelected(null)
+      fetchSubmissions()
     }
-    setSelected(null)
-    fetchSubmissions()
+    await doPublish()
   }
+
+  const [actionReason, setActionReason] = useState('')
+  const [actionType, setActionType] = useState<'hide' | 'delete' | null>(null)
 
   const handleHide = async () => {
     if (!selected) return
-    const reason = prompt(t('admin.hideReasonPrompt'))
-    if (!reason || !reason.trim() || reason.trim().length > 200) {
+    if (actionType !== 'hide') {
+      setActionType('hide')
+      setActionReason('')
+      setError('')
+      return
+    }
+    const reason = actionReason.trim()
+    if (!reason || reason.length > 200) {
       setError(t('admin.hideReasonRequired'))
       return
     }
+    setActionType(null)
+    setActionReason('')
+    const id = selected.id
     const v = selected.version || 1
-    const result = await post(`/admin/contributions/${selected.id}/hide`, {
-      expectedVersion: v,
-      reason: reason.trim(),
-      publicNote: null,
-      internalNote: null,
-    }, { headers: authHeaders(), skipRefresh: !accessToken })
-    if (!result.ok) {
-      if (result.error.code === ERRORS.VERSION_CONFLICT && selected) {
-        setError(t('admin.versionConflictRefreshed'))
-        fetchDetail(selected.id)
-      } else {
-        setError(result.error.message || t('admin.errorReview'))
+    const doHide = async () => {
+      const result = await post(`/admin/contributions/${id}/hide`, {
+        expectedVersion: v,
+        reason,
+        publicNote: null,
+        internalNote: null,
+      }, { headers: authHeaders(), skipRefresh: !accessToken })
+      if (!result.ok) {
+        if (result.error.code === ERRORS.STEP_UP_REQUIRED) {
+          pendingActionRef.current = doHide
+          setShowStepUp(true)
+        } else if (result.error.code === ERRORS.VERSION_CONFLICT) {
+          setError(t('admin.versionConflictRefreshed'))
+          fetchDetail(id)
+        } else {
+          setError(result.error.message || t('admin.errorReview'))
+        }
+        return
       }
-      return
+      setSelected(null)
+      fetchSubmissions()
     }
-    setSelected(null)
-    fetchSubmissions()
+    await doHide()
   }
 
   const handleRestore = async () => {
@@ -308,28 +306,47 @@ export const Admin = () => {
 
   const handleDelete = async () => {
     if (!selected) return
-    const reason = prompt(t('admin.deleteReasonPrompt'))
-    if (!reason || !reason.trim() || reason.trim().length > 200) {
+    if (actionType !== 'delete') {
+      setActionType('delete')
+      setActionReason('')
+      setError('')
+      return
+    }
+    const reason = actionReason.trim()
+    if (!reason || reason.length > 200) {
       setError(t('admin.deleteReasonRequired'))
       return
     }
-    if (!window.confirm(t('admin.deleteConfirm'))) return
-    const v = selected.version || 1
-    const result = await post(`/admin/contributions/${selected.id}/delete`, {
-      expectedVersion: v,
-      reason: reason.trim(),
-    }, { headers: authHeaders(), skipRefresh: !accessToken })
-    if (!result.ok) {
-      if (result.error.code === ERRORS.VERSION_CONFLICT && selected) {
-        setError(t('admin.versionConflictRefreshed'))
-        fetchDetail(selected.id)
-      } else {
-        setError(result.error.message || t('admin.errorReview'))
-      }
+    if (!window.confirm(t('admin.deleteConfirm'))) {
+      setActionType(null)
+      setActionReason('')
       return
     }
-    setSelected(null)
-    fetchSubmissions()
+    setActionType(null)
+    setActionReason('')
+    const id = selected.id
+    const v = selected.version || 1
+    const doDelete = async () => {
+      const result = await post(`/admin/contributions/${id}/delete`, {
+        expectedVersion: v,
+        reason,
+      }, { headers: authHeaders(), skipRefresh: !accessToken })
+      if (!result.ok) {
+        if (result.error.code === ERRORS.STEP_UP_REQUIRED) {
+          pendingActionRef.current = doDelete
+          setShowStepUp(true)
+        } else if (result.error.code === ERRORS.VERSION_CONFLICT) {
+          setError(t('admin.versionConflictRefreshed'))
+          fetchDetail(id)
+        } else {
+          setError(result.error.message || t('admin.errorReview'))
+        }
+        return
+      }
+      setSelected(null)
+      fetchSubmissions()
+    }
+    await doDelete()
   }
 
   // ── Loading ──
@@ -361,7 +378,7 @@ export const Admin = () => {
         })
         if (result.ok) {
           setTempToken(raw)
-        } else if (result.status === 403) {
+        } else if (result.status === 403 || result.status === 401) {
           setError(t('admin.accessDenied'))
         } else {
           setError(t('admin.errorLoad'))
@@ -447,15 +464,15 @@ export const Admin = () => {
               {t('admin.title')}
             </h1>
             <span className={styles.userInfo}>
-              {user ? `${user.username} (${loginProvider ?? 'oauth'})` : `${t('admin.tempAdmin')} (${t('admin.tempAdminHint')})`}
+              {user ? `${user.username} (${t(`admin.provider_${loginProvider ?? 'oauth'}`)})` : `${t('admin.tempAdmin')} (${t('admin.tempAdminHint')})`}
             </span>
             {isAdmin && (
               <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.75rem', fontSize: '0.85rem', flexWrap: 'wrap' }}>
-                {isFullAdmin && (
-                  <>
-                    <Link to="/admin/users" style={{ color: 'var(--accent-pink)' }}>{t('admin.usersLink')}</Link>
-                    <Link to="/admin/audit-logs" style={{ color: 'var(--accent-pink)' }}>{t('admin.auditLogsLink')}</Link>
-                  </>
+                {hasPermission(permissions, PERMISSIONS.USER_READ) && (
+                  <Link to="/admin/users" style={{ color: 'var(--accent-pink)' }}>{t('admin.usersLink')}</Link>
+                )}
+                {hasPermission(permissions, PERMISSIONS.AUDIT_READ) && (
+                  <Link to="/admin/audit-logs" style={{ color: 'var(--accent-pink)' }}>{t('admin.auditLogsLink')}</Link>
                 )}
                 <Link to="/admin/edit-requests" style={{ color: 'var(--accent-pink)' }}>{t('admin.editRequestsLink')}</Link>
               </div>
@@ -463,11 +480,13 @@ export const Admin = () => {
           </div>
         </div>
 
-        <nav className={styles.tabs}>
+        <nav className={styles.tabs} role="tablist" aria-label={t('admin.tabsAriaLabel', '投稿审核')}>
           {tabs.map((tab) => (
             <button
               key={tab.key}
+              role="tab"
               className={`${styles.tab} ${activeTab === tab.key ? styles.tabActive : ''}`}
+              aria-selected={activeTab === tab.key}
               onClick={() => setActiveTab(tab.key)}
             >
               {tab.label}
@@ -547,8 +566,8 @@ export const Admin = () => {
           {selected.contentRaw}
         </div>
 
-        {/* Internal note — only visible with contribution:internal-note:read permission (api.md §15.10) */}
-        {selected.review?.internalNote && (
+        {/* Internal note — 仅在拥有 contribution:internal-note:read 权限时展示 */}
+        {selected.review?.internalNote && hasPermission(permissions, PERMISSIONS.CONTRIBUTION_INTERNAL_NOTE_READ) && (
           <div className={styles.detailContact} style={{ borderLeft: '3px solid var(--accent-pink)', marginBottom: '1.25rem' }}>
             <strong style={{ color: 'var(--accent-pink)' }}>{t('admin.internalNoteLabel')}</strong>
             <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem' }}>{selected.review.internalNote}</p>
@@ -586,6 +605,40 @@ export const Admin = () => {
 
         {error && <div className={styles.errorBox} role="alert">{error}</div>}
 
+        {actionType && (
+          <div style={{ margin: '1rem 0', padding: '0.75rem', border: '1px solid var(--divider-color)', borderRadius: '8px', background: 'var(--hover-bg)' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+              {actionType === 'hide' ? t('admin.hideReasonPrompt') : t('admin.deleteReasonPrompt')}
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                type="text"
+                value={actionReason}
+                onChange={e => setActionReason(e.target.value)}
+                placeholder={t('admin.reasonPlaceholder')}
+                aria-label={t('admin.reasonAriaLabel', '操作原因')}
+                autoFocus
+                style={{ flex: 1, padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    if (actionType === 'hide') handleHide()
+                    else handleDelete()
+                  }
+                  if (e.key === 'Escape') { setActionType(null); setActionReason('') }
+                }}
+              />
+              <button className={styles.btnPrimary} onClick={actionType === 'hide' ? handleHide : handleDelete}
+                style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>
+                {t('admin.confirmReason')}
+              </button>
+              <button className={styles.btnSecondary} onClick={() => { setActionType(null); setActionReason('') }}
+                style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>
+                {t('admin.cancelReason')}
+              </button>
+            </div>
+          </div>
+        )}
+
         {(selected.status === 'pending' || selected.status === 'in_review') && (
           <>
             <textarea
@@ -594,13 +647,16 @@ export const Admin = () => {
               onChange={(e) => setReviewNotes(e.target.value)}
               placeholder={t('admin.reviewTextareaPlaceholder')}
             />
-            <textarea
-              className={styles.reviewTextarea}
-              value={internalNote}
-              onChange={(e) => setInternalNote(e.target.value)}
-              placeholder={t('admin.internalNotePlaceholder')}
-              style={{ marginTop: '0.5rem', minHeight: '3rem' }}
-            />
+            {/* 内部备注输入：与后端一致，需 contribution:internal-note:read 权限 */}
+            {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_INTERNAL_NOTE_READ) && (
+              <textarea
+                className={styles.reviewTextarea}
+                value={internalNote}
+                onChange={(e) => setInternalNote(e.target.value)}
+                placeholder={t('admin.internalNotePlaceholder')}
+                style={{ marginTop: '0.5rem', minHeight: '3rem' }}
+              />
+            )}
 
             <div className={styles.reviewActions}>
               {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_REVIEW) && (
@@ -665,6 +721,13 @@ export const Admin = () => {
           </div>
         )}
       </div>
+      {showStepUp && accessToken && (
+        <StepUpDialog
+          accessToken={accessToken}
+          onSuccess={() => { setShowStepUp(false); const a = pendingActionRef.current; pendingActionRef.current = null; void a?.() }}
+          onCancel={() => { setShowStepUp(false); pendingActionRef.current = null }}
+        />
+      )}
     </main>
   )
 }

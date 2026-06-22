@@ -1,15 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import { get, post, patch } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import { ERRORS } from '@/api/errors'
+import { limitByUnicode } from '@/utils/string'
 import styles from './Admin.module.css'
-
-// Unicode 感知的字符串截断（api.md §12 通用约定：按字符而非 UTF-16 码元计数）
-function limitByUnicode(str: string, max: number): string {
-  return [...str].slice(0, max).join('')
-}
 
 interface ContributionDetail {
   id: string
@@ -44,11 +40,11 @@ export const MyContributionDetail = () => {
   const { loading: authLoading } = useAuth()
   const { t } = useTranslation()
 
-  const STATUS_LABELS: Record<string, string> = {
+  const STATUS_LABELS: Record<string, string> = useMemo(() => ({
     draft: t('myContributionDetail.statusDraft'), pending: t('myContributionDetail.statusPending'), in_review: t('myContributionDetail.statusInReview'),
     approved: t('myContributionDetail.statusApproved'), rejected: t('myContributionDetail.statusRejected'), published: t('myContributionDetail.statusPublished'),
     hidden: t('myContributionDetail.statusHidden'), withdrawn: t('myContributionDetail.statusWithdrawn'),
-  }
+  }), [t])
   const EDITABLE_STATUSES = ['draft', 'rejected', 'withdrawn']
 
   const [contrib, setContrib] = useState<ContributionDetail | null>(null)
@@ -64,6 +60,11 @@ export const MyContributionDetail = () => {
   const [saving, setSaving] = useState(false)
   const [actionError, setActionError] = useState('')
   const busy = useRef(false)
+  const fieldTitleId = useId()
+  const fieldContentId = useId()
+  const fieldSummaryId = useId()
+  const fieldTagsId = useId()
+  const fieldLangId = useId()
 
   useEffect(() => {
     if (!id || authLoading) return
@@ -85,7 +86,8 @@ export const MyContributionDetail = () => {
   }, [id, authLoading])
 
   const handleSave = async () => {
-    if (!contrib) return
+    if (busy.current || !contrib) return
+    busy.current = true
     setSaving(true)
     setActionError('')
     const result = await patch(`/me/contributions/${contrib.id}`, {
@@ -95,6 +97,7 @@ export const MyContributionDetail = () => {
       expectedVersion: contrib.version,
     })
     setSaving(false)
+    busy.current = false
     if (result.ok) {
       setContrib(result.data as unknown as ContributionDetail)
       setEditMode(false)
@@ -156,32 +159,32 @@ export const MyContributionDetail = () => {
         {editMode ? (
           <>
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{t('myContributionDetail.fieldTitle')}</label>
-              <input type="text" value={title} onChange={e => setTitle(limitByUnicode(e.target.value, 120))}
+              <label htmlFor={fieldTitleId} style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{t('myContributionDetail.fieldTitle')}</label>
+              <input id={fieldTitleId} type="text" value={title} onChange={e => setTitle(limitByUnicode(e.target.value, 120))}
                 className={styles.input} style={{ width: '100%' }} />
             </div>
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{t('myContributionDetail.fieldContent')}</label>
-              <textarea value={content} onChange={e => setContent(e.target.value)}
+              <label htmlFor={fieldContentId} style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{t('myContributionDetail.fieldContent')}</label>
+              <textarea id={fieldContentId} value={content} onChange={e => setContent(e.target.value)}
                 className={styles.input} style={{ width: '100%', minHeight: '200px' }} />
             </div>
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{t('myContributionDetail.fieldSummary')}</label>
-              <input type="text" value={summary} onChange={e => setSummary(e.target.value)}
+              <label htmlFor={fieldSummaryId} style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{t('myContributionDetail.fieldSummary')}</label>
+              <input id={fieldSummaryId} type="text" value={summary} onChange={e => setSummary(e.target.value)}
                 className={styles.input} maxLength={300} style={{ width: '100%' }} />
             </div>
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{t('myContributionDetail.fieldTags')}</label>
+              <label htmlFor={fieldTagsId} style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{t('myContributionDetail.fieldTags')}</label>
               <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
                 {tags.map(tag => (
                   <span key={tag} style={{ background: 'var(--hover-bg)', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.85rem' }}>
                     {tag}
-                    <button type="button" onClick={() => setTags(prev => prev.filter(t => t !== tag))}
+                    <button type="button" aria-label={t('myContributionDetail.removeTag', { tag })} onClick={() => setTags(prev => prev.filter(t => t !== tag))}
                       style={{ marginLeft: '0.25rem', cursor: 'pointer', background: 'none', border: 'none', color: 'var(--error-color)', padding: 0 }}>&times;</button>
                   </span>
                 ))}
               </div>
-              <input type="text" value={tagInput}
+              <input id={fieldTagsId} type="text" value={tagInput}
                 onChange={e => setTagInput(limitByUnicode(e.target.value, 32))}
                 onKeyDown={e => {
                   if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
@@ -197,14 +200,14 @@ export const MyContributionDetail = () => {
                 style={{ width: '100%' }} />
             </div>
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{t('myContributionDetail.fieldLanguage')}</label>
-              <select value={language} onChange={e => setLanguage(e.target.value)}
+              <label htmlFor={fieldLangId} style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{t('myContributionDetail.fieldLanguage')}</label>
+              <select id={fieldLangId} value={language} onChange={e => setLanguage(e.target.value)}
                 className={styles.input} style={{ width: '100%' }}>
-                <option value="zh-CN">zh-CN</option>
-                <option value="zh-TW">zh-TW</option>
-                <option value="en">en</option>
-                <option value="ja">ja</option>
-                <option value="other">other</option>
+                <option value="zh-CN">{t('submit.languages.zh-CN')}</option>
+                <option value="zh-TW">{t('submit.languages.zh-TW')}</option>
+                <option value="en">{t('submit.languages.en')}</option>
+                <option value="ja">{t('submit.languages.ja')}</option>
+                <option value="other">{t('submit.languages.other')}</option>
               </select>
             </div>
             {actionError && <p style={{ color: 'var(--error-color)', marginBottom: '0.5rem' }}>{actionError}</p>}

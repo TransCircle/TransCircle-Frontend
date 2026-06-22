@@ -12,9 +12,18 @@ export const ImageUploader = ({ onUploaded }: ImageUploaderProps) => {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  const currentUploadRef = useRef<AbortController | null>(null)
 
   const handleFile = async (file: File | undefined) => {
     if (!file) return
+
+    // 取消正在进行的旧上传，避免并发覆盖结果
+    if (currentUploadRef.current) {
+      currentUploadRef.current.abort()
+    }
+    const controller = new AbortController()
+    currentUploadRef.current = controller
+
     setUploading(true)
     setError('')
 
@@ -31,11 +40,28 @@ export const ImageUploader = ({ onUploaded }: ImageUploaderProps) => {
     }
 
     try {
-      const result = await uploadFile(file)
+      const result = await uploadFile(file, controller.signal)
+
+      // 如果此上传已被取消（新上传已启动），忽略结果
+      if (controller.signal.aborted) return
+
       setUploading(false)
+      currentUploadRef.current = null
 
       if (result.ok) {
-        onUploaded(result.data.url)
+        // 深层防御：验证返回的 URL 是合法的 HTTP(S) 链接
+        const url = result.data.url
+        try {
+          const parsed = new URL(url)
+          if (!['http:', 'https:'].includes(parsed.protocol)) {
+            setError(t('imageUploader.errorInvalid'))
+            return
+          }
+        } catch {
+          setError(t('imageUploader.errorInvalid'))
+          return
+        }
+        onUploaded(url)
       } else {
         const code = result.error.code
         if (code === ERRORS.EMAIL_NOT_VERIFIED) setError(t('imageUploader.errorEmailNotVerified'))
@@ -44,7 +70,9 @@ export const ImageUploader = ({ onUploaded }: ImageUploaderProps) => {
         else if (code === ERRORS.INVALID_IMAGE) setError(t('imageUploader.errorInvalid'))
         else setError(result.error.message || t('imageUploader.errorFallback'))
       }
-    } catch {
+    } catch (err) {
+      // 用户取消上传不显示错误
+      if (err instanceof DOMException && err.name === 'AbortError') return
       setUploading(false)
       setError(t('imageUploader.errorNetwork'))
     }
@@ -56,7 +84,9 @@ export const ImageUploader = ({ onUploaded }: ImageUploaderProps) => {
         ref={inputRef}
         type="file"
         accept="image/jpeg,image/png,image/gif,image/webp"
-        style={{ display: 'none' }}
+        aria-hidden="true"
+        tabIndex={-1}
+        style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }}
         onChange={e => {
           handleFile(e.target.files?.[0])
           e.target.value = ''
@@ -66,7 +96,14 @@ export const ImageUploader = ({ onUploaded }: ImageUploaderProps) => {
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={uploading}
-        style={{ padding: '0.3rem 0.75rem', fontSize: '0.85rem', cursor: 'pointer' }}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+          border: '1.5px solid var(--divider-color)', color: 'var(--text-main)',
+          background: 'var(--bg-color)', padding: '0.55rem 1.25rem',
+          borderRadius: '50px', fontSize: '0.88rem', fontWeight: 500,
+          cursor: 'pointer', fontFamily: 'inherit',
+          transition: 'border-color 0.15s ease'
+        }}
       >
         {uploading ? t('imageUploader.uploading') : t('imageUploader.uploadButton')}
       </button>

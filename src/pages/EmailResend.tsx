@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { post } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import styles from '../App.module.css'
-import formStyles from './Register.module.css'
+import formStyles from '../components/Form.module.css'
 
 export const EmailResend = () => {
   const { t } = useTranslation()
@@ -16,12 +17,12 @@ export const EmailResend = () => {
     e.preventDefault()
     setError('')
     if (!email.trim()) {
-      setError(t('registerDirect.errors.emailRequired'))
+      setError(t('emailResend.errors.emailRequired'))
       return
     }
     setSubmitting(true)
     try {
-      const result = await post('/auth/email/resend', { email: email.trim() })
+      const result = await post('/auth/email/resend', { email: email.trim() }, { idempotent: true })
       if (result.ok) {
         setSuccess(true)
       } else {
@@ -39,8 +40,11 @@ export const EmailResend = () => {
 
   if (success) {
     return (
-      <main style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem', textAlign: 'center' }}>
-        <h1 style={{ fontSize: '1.5rem', color: 'var(--success-color)' }}>{t('emailResend.success')}</h1>
+      <main className={styles.standalonePage}>
+        <h1 className={styles.statusSuccess} style={{ fontSize: '1.5rem' }}>{t('emailResend.success')}</h1>
+          <Link to="/login" className={styles.accentLink} style={{ marginTop: '1rem' }}>
+            {t('login.title')}
+          </Link>
       </main>
     )
   }
@@ -56,7 +60,7 @@ export const EmailResend = () => {
           <span className={formStyles.label}>{t('emailResend.email')}</span>
           <input className={formStyles.input} type="email" value={email}
             onChange={e => setEmail(e.target.value)} placeholder={t('emailResend.emailPlaceholder')}
-            required autoFocus maxLength={254} />
+            required autoFocus maxLength={254} aria-invalid={!!error} />
         </label>
         {error && <p className={formStyles.error} role="alert">{error}</p>}
         <button type="submit" disabled={submitting}
