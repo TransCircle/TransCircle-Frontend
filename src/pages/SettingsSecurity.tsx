@@ -14,12 +14,14 @@ import {
   DescriptionList,
   Modal,
   PageHeader,
+  Pill,
   Spinner,
   StatusBadge,
   Tabs,
   TextField,
   type TabItem,
 } from '@/components/ui'
+import { PERMISSION_LABEL_KEYS, ROLE_LABEL_KEYS } from '@/api/permissions'
 import { useFormatTs } from '@/utils/datetime'
 import shell from './Page.module.css'
 import s from './SettingsSecurity.module.css'
@@ -97,6 +99,12 @@ export const SettingsSecurity = () => {
   const { user: authUser, accessToken, logoutAll, loading: authLoading, updateAccessToken } = useAuth()
   // IAM 账号的凭据/账户由统一身份管理，本页所有安全操作（密码/Passkey/TOTP/OAuth 绑定/注销删除）一律禁用
   const isIam = !!authUser?.iamLinked
+  // 「我的权限」概览：角色 + 细粒度权限。严格展示后端 /me 返回的权限快照本身（authUser.permissions），
+  // 不用 useAuth().permissions 的角色派生回退，避免在展示层臆造权限。仅对实际拥有角色/权限的账号展示。
+  const roles = authUser?.roles ?? []
+  const permissions = authUser?.permissions ?? []
+  const hasWildcard = permissions.includes('*')
+  const hasAnyGrant = roles.length > 0 || permissions.length > 0
   const formatTs = useFormatTs()
 
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -946,6 +954,49 @@ export const SettingsSecurity = () => {
                 )}
               </div>
             )}
+          </div>
+        </Card>
+      )}
+
+      {/* ══════════════════════════════════════════
+          MY PERMISSIONS (我的权限) — 仅在拥有角色/权限时展示，
+          让经 IAM 登录的管理员清楚自己被授予了哪些权限
+          ══════════════════════════════════════════ */}
+      {activeTab === 'profile' && hasAnyGrant && (
+        <Card>
+          <div className={shell.stack}>
+            <h2 className={shell.detailTitle}>{t('settings.permissionsHeading')}</h2>
+            <p className={s.note}>{isIam ? t('settings.permissionsDescriptionIam') : t('settings.permissionsDescription')}</p>
+
+            {roles.length > 0 && (
+              <div className={s.permGroup}>
+                <p className={s.permGroupLabel}>{t('settings.permissionsRoles')}</p>
+                <div className={s.chips}>
+                  {roles.map(r => {
+                    const key = ROLE_LABEL_KEYS[r]
+                    return <Pill key={r} tone="accent">{key ? t(key) : r}</Pill>
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className={s.permGroup}>
+              <p className={s.permGroupLabel}>{t('settings.permissionsList')}</p>
+              {hasWildcard ? (
+                <div className={s.chips}>
+                  <Pill tone="accent">{t('settings.permissionsWildcard')}</Pill>
+                </div>
+              ) : permissions.length === 0 ? (
+                <p className={s.note}>{t('settings.permissionsNone')}</p>
+              ) : (
+                <div className={s.chips}>
+                  {permissions.map(p => {
+                    const key = PERMISSION_LABEL_KEYS[p]
+                    return <Pill key={p}>{key ? t(key) : p}</Pill>
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </Card>
       )}

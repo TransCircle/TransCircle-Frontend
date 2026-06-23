@@ -21,6 +21,28 @@
   color: var(--text-secondary);
 }
 
+/* Permissions overview (我的权限) — role/permission chip groups */
+.permGroup {
+  margin-top: 1rem;
+}
+
+.permGroup:first-of-type {
+  margin-top: 0;
+}
+
+.permGroupLabel {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
 /* Inline register row (passkey name + button) */
 .inlineRow {
   display: flex;

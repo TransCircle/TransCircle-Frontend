@@ -34,6 +34,35 @@ export const PERMISSIONS = {
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS]
 
+/**
+ * 权限 key → i18n 文案 key 映射，用于「我的权限」等展示场景。
+ * 权限 key 含冒号（i18next 的命名空间分隔符），不能直接作为翻译键路径，故集中维护安全键名。
+ * 未在表内的权限（IAM 可能新增）由调用方回退展示原始 key，保证前向兼容。
+ */
+export const PERMISSION_LABEL_KEYS: Record<string, string> = {
+  [PERMISSIONS.CONTRIBUTION_READ]: 'settings.perm.contributionRead',
+  [PERMISSIONS.CONTRIBUTION_REVIEW]: 'settings.perm.contributionReview',
+  [PERMISSIONS.CONTRIBUTION_EDIT_REQUEST_VOTE]: 'settings.perm.contributionEditRequestVote',
+  [PERMISSIONS.CONTRIBUTION_PUBLISH]: 'settings.perm.contributionPublish',
+  [PERMISSIONS.CONTRIBUTION_HIDE]: 'settings.perm.contributionHide',
+  [PERMISSIONS.CONTRIBUTION_RESTORE]: 'settings.perm.contributionRestore',
+  [PERMISSIONS.CONTRIBUTION_AUDIT_READ]: 'settings.perm.contributionAuditRead',
+  [PERMISSIONS.CONTRIBUTION_INTERNAL_NOTE_READ]: 'settings.perm.contributionInternalNoteRead',
+  [PERMISSIONS.CONTRIBUTION_DELETE]: 'settings.perm.contributionDelete',
+  [PERMISSIONS.USER_READ]: 'settings.perm.userRead',
+  [PERMISSIONS.USER_BAN]: 'settings.perm.userBan',
+  [PERMISSIONS.AUDIT_READ]: 'settings.perm.auditRead',
+  [PERMISSIONS.ROLE_GRANT]: 'settings.perm.roleGrant',
+  [PERMISSIONS.ROLE_REVOKE]: 'settings.perm.roleRevoke',
+}
+
+/** 角色名 → i18n 文案 key 映射；未知角色回退展示原始名。 */
+export const ROLE_LABEL_KEYS: Record<string, string> = {
+  admin: 'settings.roleAdmin',
+  editor: 'settings.roleEditor',
+  reviewer: 'settings.roleReviewer',
+}
+
 /** 通配权限：admin 快照可能为 '*'（迁移播种 / 角色派生回退）。 */
 const WILDCARD = '*'
 
