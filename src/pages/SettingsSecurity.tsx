@@ -358,18 +358,23 @@ export const SettingsSecurity = () => {
 
   // ── Passkey assertion for cancel deletion (api.md §2.5 OAuth-only) ──
   const handleCancelPasskey = async () => {
+    // 取消删除的 Passkey 挑战由专用端点 /me/delete/cancel/passkey/start 签发，且绑定 cancelToken
+    if (!cancelToken.trim()) {
+      setCancelError(t('settings.cancelRequired'))
+      return
+    }
     setCancelPasskeyProcessing(true)
     setCancelError('')
     try {
       const startResult = await post<{
         challengeId: string
-        publicKey: {
+        challenge: {
           challenge: string
-          rpId: string
-          userVerification: string
-          allowCredentials?: Array<{ type: string; id: string; transports: string[] }>
+          rpId?: string
+          userVerification?: string
+          allowCredentials?: Array<{ id: string; type?: string; transports?: string[] }>
         }
-      }>('/auth/passkey/login/start', { identifier: cancelIdentifier.trim() })
+      }>('/me/delete/cancel/passkey/start', { cancelToken: cancelToken.trim() })
 
       if (!startResult.ok) {
         setCancelError(t('settings.cancelPasskeyError'))
@@ -377,19 +382,19 @@ export const SettingsSecurity = () => {
         return
       }
 
-      const { challengeId, publicKey } = startResult.data
+      const { challengeId, challenge } = startResult.data
 
-      const allowCreds = publicKey.allowCredentials?.map(c => ({
-        type: c.type as PublicKeyCredentialType,
+      const allowCreds = challenge.allowCredentials?.map(c => ({
+        type: 'public-key' as PublicKeyCredentialType,
         id: base64urlToArrayBuffer(c.id),
-        transports: c.transports as AuthenticatorTransport[],
+        transports: (c.transports ?? []) as AuthenticatorTransport[],
       }))
 
       const credential = await navigator.credentials.get({
         publicKey: {
-          challenge: base64urlToArrayBuffer(publicKey.challenge),
-          rpId: publicKey.rpId,
-          userVerification: publicKey.userVerification as UserVerificationRequirement,
+          challenge: base64urlToArrayBuffer(challenge.challenge),
+          rpId: challenge.rpId,
+          userVerification: (challenge.userVerification as UserVerificationRequirement) ?? 'required',
           allowCredentials: allowCreds,
         },
       })
@@ -402,9 +407,10 @@ export const SettingsSecurity = () => {
       const pkCred = credential as PublicKeyCredential
       const response = pkCred.response as AuthenticatorAssertionResponse
 
+      // 后端 /me/delete/cancel 读取顶层 challengeId + 扁平的 passkeyAssertion（直接作为 WebAuthn 断言）
       setCancelPasskeyAssertion({
         challengeId,
-        credential: {
+        assertion: {
           id: arrayBufferToBase64url(pkCred.rawId),
           rawId: arrayBufferToBase64url(pkCred.rawId),
           type: pkCred.type,
@@ -466,7 +472,9 @@ export const SettingsSecurity = () => {
       body.password = cancelPassword
     }
     if (cancelPasskeyAssertion) {
-      body.passkeyAssertion = cancelPasskeyAssertion
+      // challengeId 必须在 body 顶层，passkeyAssertion 为扁平 WebAuthn 断言（api.md §2.5）
+      body.challengeId = cancelPasskeyAssertion.challengeId
+      body.passkeyAssertion = cancelPasskeyAssertion.assertion
     }
     const result = await post('/me/delete/cancel', body, { idempotent: true })
     if (result.ok) {

@@ -14,10 +14,9 @@ interface AuditLogEntry {
   resourceId: string | null
   before: Record<string, unknown> | null
   after: Record<string, unknown> | null
-  metadata: Record<string, unknown>
   createdAt: number
   requestId: string
-  ipHash: string
+  // 后端审计列表不返回 metadata / ipHash（api.md §8）；如未来返回再设为可选字段
 }
 
 function formatTs(ts: number | null | undefined): string {

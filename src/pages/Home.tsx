@@ -161,7 +161,8 @@ export const Home = () => {
           onClick={async () => {
             setLoading(true)
             try {
-              const result = await fetchPage(cursor)
+              // 保持搜索词，否则「加载更多」会拉到未过滤的下一页
+              const result = await fetchPage(cursor, searchTerm || undefined)
               if (result.ok) {
                 setItems(prev => [...prev, ...result.data])
                 setCursor(result.pagination?.nextCursor || null)

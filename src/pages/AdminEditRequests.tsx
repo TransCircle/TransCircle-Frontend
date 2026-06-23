@@ -226,7 +226,7 @@ export const AdminEditRequests = () => {
 
           {error && <div className={styles.errorBox}>{error}</div>}
 
-          {detail.status === 'pending' && hasPermission(permissions, PERMISSIONS.CONTRIBUTION_REVIEW) && (
+          {detail.status === 'pending' && hasPermission(permissions, PERMISSIONS.CONTRIBUTION_EDIT_REQUEST_VOTE) && (
             <>
               <textarea className={styles.reviewTextarea} value={voteNote}
                 onChange={e => setVoteNote(e.target.value)} placeholder={t('adminEditRequests.voteNotePlaceholder')} />

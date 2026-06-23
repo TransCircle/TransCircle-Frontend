@@ -113,7 +113,8 @@ export const AdminUsers = () => {
       return
     }
     const reason = banReason.trim()
-    if (!reason || reason.length > 200) {
+    // 封禁理由 1-500 字符（api.md §7.5 / 后端 admin.ts 校验一致）
+    if (!reason || reason.length > 500) {
       setError(t('adminUsers.banReasonRequired'))
       return
     }
