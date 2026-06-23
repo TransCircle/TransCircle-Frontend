@@ -8,6 +8,15 @@
   padding-top: 1.3rem;
 }
 
+/* Reading / form pages: keep a comfortable measure (not full browse width)
+   centered within the wide content rail, so long-form text and single-column
+   forms don't sprawl on large screens. */
+.pageNarrow {
+  width: 100%;
+  max-width: var(--width-reading);
+  margin-inline: auto;
+}
+
 /* 列表页头部（标签/搜索栏）：随内容区滚动时固定在顶部，不跟列表一起滑走。
    负上边距抵消 .page 的 padding-top，并把该留白纳入 sticky 头部自身，
    使其贴住滚动容器顶端、完整覆盖滚动经过的内容。 */
@@ -21,6 +30,15 @@
   flex-direction: column;
   gap: 0.8rem;
   padding: 1.3rem 0 0.7rem;
+}
+
+/* Non-sticky page header group for customer (document-scroll) pages, where a
+   sticky header would pin underneath RootLayout's sticky navbar. Admin pages
+   keep .stickyHead because they scroll inside an internal container. */
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
 }
 
 .toolbar {
@@ -71,6 +89,7 @@
   cursor: pointer;
   color: inherit;
   font: inherit;
+  text-decoration: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
 
@@ -122,6 +141,19 @@
   flex-wrap: wrap;
   align-items: center;
   word-break: break-word;
+}
+
+/* Optional 2-line body excerpt inside a list row (e.g. the public feed summary). */
+.rowSummary {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
 }
 
 .rowMetaSep {
@@ -204,6 +236,40 @@
   color: var(--text-body);
   white-space: pre-wrap;
   overflow-x: auto;
+}
+
+/* Rendered (sanitized) rich-text article body. */
+.prose {
+  font-size: 0.95rem;
+  line-height: 1.8;
+  color: var(--text-body);
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+}
+
+.prose pre {
+  overflow-x: auto;
+  padding: 0.9rem 1.1rem;
+  background-color: var(--hover-bg);
+  border-radius: var(--radius-sm);
+}
+
+.prose a {
+  color: var(--accent-pink);
+}
+
+.prose :first-child {
+  margin-top: 0;
+}
+
+.prose :last-child {
+  margin-bottom: 0;
 }
 
 .actions {

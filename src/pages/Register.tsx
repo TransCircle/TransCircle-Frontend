@@ -6,8 +6,8 @@ import { get, clearCsrfToken } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { USERNAME_RE, checkPasswordStrength, validateEmail } from '@/utils/string'
 import { computePermissions, landingPath } from '@/api/permissions'
-import styles from '../App.module.css'
-import formStyles from '../components/Form.module.css'
+import { AdminButton, Alert, CenteredCard, Checkbox, PageHeader, TextField } from '@/components/ui'
+import auth from './Auth.module.css'
 
 const Register = () => {
   const [searchParams] = useSearchParams()
@@ -171,122 +171,92 @@ const Register = () => {
 
   const providerLabel = provider === 'x' ? t('register.providerX') : t('register.providerGithub')
 
+  const showEmailChange = !!suggestedEmail && email.trim().toLowerCase() !== suggestedEmail.toLowerCase() && !fieldErrors.email
+
   return (
-    <>
-      <header className={styles.contentHeader}>
-        <h1 className={styles.mainTitle}>{t('register.title')}</h1>
-        <p className={styles.subTitle}>
-          {t('register.description', { provider: providerLabel })}
-        </p>
-      </header>
+    <CenteredCard>
+      <PageHeader
+        title={t('register.title')}
+        description={t('register.description', { provider: providerLabel })}
+        align="center"
+      />
 
-      <form className={formStyles.form} onSubmit={handleSubmit} noValidate>
-        <label className={formStyles.field}>
-          <span className={formStyles.label}>{t('register.username')}</span>
-          <input
-            className={formStyles.input}
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder={t('register.usernamePlaceholder')}
-            required
-            autoFocus
-            maxLength={32}
-            aria-invalid={!!fieldErrors.username}
-          />
-          {fieldErrors.username && (
-            <span className={formStyles.error} role="alert">{fieldErrors.username}</span>
-          )}
-        </label>
+      <form className={auth.form} onSubmit={handleSubmit} noValidate>
+        <TextField
+          label={t('register.username')}
+          type="text"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder={t('register.usernamePlaceholder')}
+          autoFocus
+          maxLength={32}
+          autoComplete="username"
+          invalid={!!fieldErrors.username}
+          hint={fieldErrors.username || undefined}
+        />
 
-        <label className={formStyles.field}>
-          <span className={formStyles.label}>{t('register.password')}</span>
-          <input
-            className={formStyles.input}
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder={t('register.passwordPlaceholder')}
-            required
-            minLength={12}
-            maxLength={128}
-            aria-invalid={!!fieldErrors.password}
-          />
-          {fieldErrors.password && (
-            <span className={formStyles.error} role="alert">{fieldErrors.password}</span>
-          )}
-        </label>
+        <TextField
+          label={t('register.password')}
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder={t('register.passwordPlaceholder')}
+          minLength={12}
+          maxLength={128}
+          autoComplete="new-password"
+          invalid={!!fieldErrors.password}
+          hint={fieldErrors.password || undefined}
+        />
 
-        <label className={formStyles.field}>
-          <span className={formStyles.label}>{t('register.email')}</span>
-          <input
-            className={formStyles.input}
-            type="email"
-            value={email}
-            onChange={(e) => { setEmail(e.target.value); setEmailChangedConfirmed(false) }}
-            placeholder={t('register.emailPlaceholder')}
-            required
-            maxLength={254}
-            aria-invalid={!!fieldErrors.email}
-          />
-          {fieldErrors.email && (
-            <span className={formStyles.error} role="alert">{fieldErrors.email}</span>
-          )}
-        </label>
-        {suggestedEmail && email.trim().toLowerCase() !== suggestedEmail.toLowerCase() && !fieldErrors.email && (
-          <div style={{
-            background: 'var(--hover-bg)', padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-sm)',
-            marginBottom: '0.75rem', fontSize: '0.85rem',
-          }}>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
-              {t('register.emailChangeWarning', { suggested: suggestedEmail })}
-            </p>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
+        <TextField
+          label={t('register.email')}
+          type="email"
+          value={email}
+          onChange={(e) => { setEmail(e.target.value); setEmailChangedConfirmed(false) }}
+          placeholder={t('register.emailPlaceholder')}
+          maxLength={254}
+          autoComplete="email"
+          invalid={!!fieldErrors.email}
+          hint={fieldErrors.email || undefined}
+        />
+
+        {showEmailChange && (
+          <Alert tone="info">
+            <span className={auth.infoStack}>
+              <span>{t('register.emailChangeWarning', { suggested: suggestedEmail })}</span>
+              <Checkbox
+                label={t('register.emailChangeConfirm')}
                 checked={emailChangedConfirmed}
                 onChange={(e) => setEmailChangedConfirmed(e.target.checked)}
               />
-              <span>{t('register.emailChangeConfirm')}</span>
-            </label>
-          </div>
+            </span>
+          </Alert>
         )}
 
-        <label className={formStyles.field}>
-          <span className={formStyles.label}>{t('register.displayName')}</span>
-          <input
-            className={formStyles.input}
-            type="text"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            placeholder={t('register.displayNamePlaceholder')}
-            required
-            maxLength={50}
-            aria-invalid={!!fieldErrors.displayName}
-          />
-          {fieldErrors.displayName && (
-            <span className={formStyles.error} role="alert">{fieldErrors.displayName}</span>
-          )}
-        </label>
+        <TextField
+          label={t('register.displayName')}
+          type="text"
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
+          placeholder={t('register.displayNamePlaceholder')}
+          maxLength={50}
+          autoComplete="nickname"
+          invalid={!!fieldErrors.displayName}
+          hint={fieldErrors.displayName || undefined}
+        />
 
-        {error && (
-          <p className={formStyles.error} role="alert">{error}</p>
-        )}
+        {error && <Alert tone="error">{error}</Alert>}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className={`${styles.ctaPrimary} ${formStyles.submitBtn}`}
-        >
-          {submitting ? t('register.submitting') : t('register.submit')}
-        </button>
+        <AdminButton type="submit" variant="primary" fullWidth loading={submitting}>
+          {t('register.submit')}
+        </AdminButton>
       </form>
 
-      <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.85rem' }}>
+      <p className={auth.aside}>
         {t('register.haveAccount')}{' '}
-        <Link to="/login" style={{ color: 'var(--accent-pink)' }}>{t('register.loginInstead')}</Link>
+        <Link to="/login" className={auth.link}>{t('register.loginInstead')}</Link>
       </p>
-    </>
+    </CenteredCard>
   )
 }
 

@@ -2,7 +2,8 @@ import { Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
-import styles from './Admin.module.css'
+import { Spinner, EmptyState } from '@/components/ui'
+import shell from './Page.module.css'
 
 /**
  * Route-level guard for the user-management / audit sub-routes.
@@ -14,8 +15,8 @@ export const AdminOnlyGuard = () => {
 
   if (authLoading) {
     return (
-      <div className={styles.container}>
-        <div className={styles.loading}>{t('admin.verifying')}</div>
+      <div className={shell.page}>
+        <Spinner size="lg" label={t('admin.verifying')} />
       </div>
     )
   }
@@ -23,9 +24,8 @@ export const AdminOnlyGuard = () => {
   const allowed = !!user && (hasPermission(permissions, PERMISSIONS.USER_READ) || hasPermission(permissions, PERMISSIONS.AUDIT_READ))
   if (!allowed) {
     return (
-      <div className={styles.container}>
-        <h1 className={styles.heading}>{t('adminUsers.accessDenied')}</h1>
-        <p className={styles.headingDesc}>{t('adminUsers.accessDeniedDetail')}</p>
+      <div className={shell.page}>
+        <EmptyState title={t('adminUsers.accessDenied')} description={t('adminUsers.accessDeniedDetail')} />
       </div>
     )
   }

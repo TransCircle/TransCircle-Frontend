@@ -44,13 +44,19 @@
   display: none;
   flex-direction: column;
   justify-content: space-between;
-  width: 24px;
-  height: 18px;
+  width: 40px;
+  height: 40px;
+  padding: 11px 8px;
+  box-sizing: border-box;
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: 0;
   z-index: 1001;
+}
+
+.externalIcon {
+  margin-left: 4px;
+  vertical-align: -1px;
 }
 
 .bar {
@@ -92,7 +98,7 @@
   line-height: 1.5;
   transition: color 0.2s ease, background-color 0.2s ease;
   padding: 0.5rem 1rem;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   box-sizing: border-box;
   white-space: nowrap;
 }
@@ -118,7 +124,7 @@
   font-size: 0.9rem;
   line-height: 1.5;
   padding: 0.5rem 1rem;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   box-sizing: border-box;
   white-space: nowrap;
   color: var(--text-secondary);
@@ -166,13 +172,13 @@
   padding: 0.4rem 0;
   background-color: var(--bg-color);
   border: 1px solid var(--divider-color);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   min-width: 100px;
   opacity: 0;
   visibility: hidden;
   transform: translateY(-4px);
   transition: opacity 0.15s ease, visibility 0s linear 0.15s, transform 0.15s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-pop);
   z-index: 1001;
 }
 
@@ -282,7 +288,7 @@
     padding: 4rem 0 1rem 0;
     gap: 0;
     border-right: 1px solid var(--divider-color);
-    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
+    box-shadow: 4px 0 16px var(--shadow-color);
     transform: translateX(-100%);
     visibility: hidden;
     pointer-events: none;
@@ -407,12 +413,12 @@
     padding: 0.8rem 1.5rem;
   }
 
-  .mobileThemeToggleGroup {
-    background-color: var(--surface-card);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    width: fit-content;
-    max-width: 100%;
+  .mobileToggleRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.25rem;
   }
 
   .mobileThemeLabel {
@@ -448,12 +454,6 @@
   .mobileOnly a:hover,
   .dropdownTrigger:hover {
     transform: none;
-  }
-}
-
-@media (max-width: 600px) {
-  .rightSection {
-    display: none;
   }
 }
 

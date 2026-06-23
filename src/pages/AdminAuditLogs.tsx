@@ -12,7 +12,7 @@ import {
   SearchField,
   Spinner,
 } from '@/components/admin'
-import shell from './AdminPages.module.css'
+import shell from './Page.module.css'
 
 interface AuditLogEntry {
   id: string

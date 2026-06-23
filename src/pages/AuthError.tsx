@@ -1,7 +1,7 @@
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useEffect } from 'react'
-import styles from '../App.module.css'
+import { StatusScreen } from '@/components/ui'
 
 const ERROR_MESSAGES: Record<string, string> = {
   bad_state: 'oauth.errorBadState',
@@ -46,34 +46,12 @@ export const AuthError = () => {
     : (ERROR_MESSAGES[status] || (ALLOWED_REASONS.has(reasonKey) ? reasonKey : 'oauth.errorDescription'))
 
   return (
-    <main className={styles.standalonePage}>
-      <h1 style={{ fontSize: '1.8rem', margin: '0 0 0.75rem', color: 'var(--accent-pink)' }}>
-        {t('oauth.errorTitle')}
-      </h1>
-      <p
-        style={{
-          fontSize: '1rem',
-          color: 'var(--text-secondary)',
-          margin: '0 0 0.5rem',
-          maxWidth: '400px',
-          lineHeight: 1.6,
-        }}
-        role="alert"
-      >
-        {t(messageKey)}
-      </p>
-      {code && (
-        <p className={styles.statusMuted}>
-          ({code})
-        </p>
-      )}
-      <button
-        onClick={() => navigate('/', { replace: true })}
-        className={styles.ctaSecondary}
-        style={{ border: '1.5px solid var(--accent-pink)', color: 'var(--accent-pink)' }}
-      >
-        {t('oauth.errorBackToHome')}
-      </button>
-    </main>
+    <StatusScreen
+      kind="error"
+      title={t('oauth.errorTitle')}
+      description={t(messageKey)}
+      detail={code ? `(${code})` : undefined}
+      actions={[{ label: t('oauth.errorBackToHome'), variant: 'secondary', onClick: () => navigate('/', { replace: true }) }]}
+    />
   )
 }

@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
 import { get } from '@/api/client'
 import { computePermissions, landingPath } from '@/api/permissions'
-import styles from '../App.module.css'
-import formStyles from '../components/Form.module.css'
+import { AdminButton, Alert, CenteredCard, PageHeader, TextField } from '@/components/ui'
+import auth from './Auth.module.css'
 
 export const Login = () => {
   const navigate = useNavigate()
@@ -137,56 +137,55 @@ export const Login = () => {
     const hasPasskey = mfaMethods.includes('passkey')
 
     return (
-      <main style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem' }}>
-        <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>{t('login.mfaTitle')}</h1>
-        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-          {t('login.mfaDescription')}
-        </p>
+      <CenteredCard>
+        <PageHeader title={t('login.mfaTitle')} description={t('login.mfaDescription')} align="center" />
+
         {hasTotp && (
-          <input
-            type="text"
-            inputMode={isRecoveryCode ? 'text' : 'numeric'}
-            value={mfaCode}
-            onChange={(e) => {
-              const raw = e.target.value.toUpperCase()
-              const hasLetters = /[A-Z-]/.test(raw)
-              if (hasLetters) {
-                setMfaCode(raw.replace(/[^A-Z0-9-]/g, '').slice(0, 14))
-              } else {
-                setMfaCode(raw.replace(/\D/g, '').slice(0, 6))
-              }
-              // Update isRecoveryCode on next render so inputMode is correct (M2)
-              if (hasLetters !== isRecoveryCode) setIsRecoveryCode(hasLetters)
-            }}
-            placeholder={t('login.totpPlaceholder')}
-            style={{ width: '200px', padding: '0.5rem', textAlign: 'center', fontSize: '1.2rem', letterSpacing: '0.5em' }}
-            maxLength={14}
-            autoFocus
-          />
-        )}
-        {/* TOTP/recovery code confirm button */}
-        {hasTotp && (
-          <button
-            onClick={handleMfaSubmit}
-            disabled={mfaSubmitting || (mfaCode.length !== 6 && mfaCode.length !== 14)}
-            style={{ marginTop: '1rem', padding: '0.5rem 2rem', background: 'var(--accent-pink)', color: '#fff', border: 'none', borderRadius: '50px' }}
-          >
-            {mfaSubmitting ? t('login.submitting') : t('login.submit')}
-          </button>
+          <div className={auth.form}>
+            <TextField
+              label={t('login.mfaCodeLabel')}
+              placeholder={t('login.totpPlaceholder')}
+              className={auth.mfaCode}
+              type="text"
+              inputMode={isRecoveryCode ? 'text' : 'numeric'}
+              value={mfaCode}
+              onChange={(e) => {
+                const raw = e.target.value.toUpperCase()
+                const hasLetters = /[A-Z-]/.test(raw)
+                if (hasLetters) {
+                  setMfaCode(raw.replace(/[^A-Z0-9-]/g, '').slice(0, 14))
+                } else {
+                  setMfaCode(raw.replace(/\D/g, '').slice(0, 6))
+                }
+                // Update isRecoveryCode on next render so inputMode is correct (M2)
+                if (hasLetters !== isRecoveryCode) setIsRecoveryCode(hasLetters)
+              }}
+              maxLength={14}
+              autoFocus
+            />
+            <AdminButton
+              variant="primary"
+              fullWidth
+              loading={mfaSubmitting}
+              disabled={mfaCode.length !== 6 && mfaCode.length !== 14}
+              onClick={handleMfaSubmit}
+            >
+              {t('login.submit')}
+            </AdminButton>
+          </div>
         )}
 
         {hasPasskey && (
-          <div style={{ textAlign: 'center', marginTop: '1rem', borderTop: hasTotp ? '1px solid var(--divider-color)' : 'none', paddingTop: hasTotp ? '1rem' : 0, width: '100%' }}>
-            {hasTotp && <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{t('login.mfaOrPasskey')}</p>}
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
-              {t('login.passkeyMfaDescription')}
-            </p>
+          <div className={auth.form}>
+            {hasTotp && <div className={auth.divider}>{t('login.mfaOrPasskey')}</div>}
+            <p className={auth.aside}>{t('login.passkeyMfaDescription')}</p>
             {mfaSubmitting && (
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-                {t('login.passkeyAwaiting')}
-              </p>
+              <p className={auth.aside} role="status" aria-live="polite">{t('login.passkeyAwaiting')}</p>
             )}
-            <button
+            <AdminButton
+              variant="primary"
+              fullWidth
+              loading={mfaSubmitting}
               onClick={async () => {
                 setMfaSubmitting(true)
                 try {
@@ -202,130 +201,108 @@ export const Login = () => {
                   setMfaSubmitting(false)
                 }
               }}
-              disabled={mfaSubmitting}
-              style={{ padding: '0.5rem 2rem', background: 'var(--accent-pink)', color: '#fff', border: 'none', borderRadius: '50px', cursor: 'pointer', fontFamily: 'inherit' }}
             >
-              {mfaSubmitting ? t('login.submitting') : t('login.passkeyMfaButton')}
-            </button>
+              {t('login.passkeyMfaButton')}
+            </AdminButton>
           </div>
         )}
 
-        {error && <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginTop: '0.5rem' }}>{error}</p>}
-        <button
+        {error && <Alert tone="error">{error}</Alert>}
+
+        <AdminButton
+          variant="ghost"
+          fullWidth
           onClick={() => { setMfaRequired(false); setMfaCode(''); setMfaMethods([]); setError(''); setIsRecoveryCode(false) }}
-          style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
         >
           {t('login.backToLogin')}
-        </button>
-      </main>
+        </AdminButton>
+      </CenteredCard>
     )
   }
 
   return (
-    <>
-      <header className={styles.contentHeader}>
-        <h1 className={styles.mainTitle}>{t('login.title')}</h1>
-        <p className={styles.subTitle}>{t('login.description')}</p>
-      </header>
+    <CenteredCard>
+      <PageHeader title={t('login.title')} description={t('login.description')} align="center" />
 
-      <form className={formStyles.form} onSubmit={handleSubmit} noValidate>
-        <label className={formStyles.field}>
-          <span className={formStyles.label}>{t('login.identifier')}</span>
-          <input
-            className={formStyles.input}
-            type="text"
-            value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)}
-            placeholder={t('login.identifierPlaceholder')}
-            required
-            autoFocus
-            minLength={3}
-            autoComplete="username"
-            maxLength={254}
-          />
-        </label>
+      <form className={auth.form} onSubmit={handleSubmit} noValidate>
+        <TextField
+          label={t('login.identifier')}
+          type="text"
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
+          placeholder={t('login.identifierPlaceholder')}
+          autoFocus
+          minLength={3}
+          maxLength={254}
+          autoComplete="username"
+        />
 
-        <label className={formStyles.field}>
-          <span className={formStyles.label}>{t('login.password')}</span>
-          <input
-            className={formStyles.input}
+        <div className={auth.fieldGroup}>
+          <TextField
+            label={t('login.password')}
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder={t('login.passwordPlaceholder')}
-            required
             minLength={12}
             maxLength={128}
             autoComplete="current-password"
           />
-          <div style={{ textAlign: 'right', marginTop: '0.25rem' }}>
-            <Link to="/auth/password/forgot" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              {t('login.forgotPassword')}
-            </Link>
+          <div className={auth.forgotRow}>
+            <Link to="/auth/password/forgot" className={auth.forgotLink}>{t('login.forgotPassword')}</Link>
           </div>
-        </label>
-
-        {error && <p className={formStyles.error} role="alert">{error}</p>}
-
-        <button
-          type="submit"
-          disabled={!canSubmit || submitting}
-          className={`${styles.ctaPrimary} ${formStyles.submitBtn}`}
-        >
-          {submitting ? t('login.submitting') : t('login.submit')}
-        </button>
-      </form>
-
-      <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.85rem' }}>
-        {t('login.noAccount')}{' '}
-        <Link to="/register-direct" style={{ color: 'var(--accent-pink)' }}>{t('login.registerNow')}</Link>
-      </p>
-
-      <div style={{
-        marginTop: '1.5rem', paddingTop: '1.5rem',
-        borderTop: '1px solid var(--divider-color)', textAlign: 'center',
-      }}>
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-          {t('login.oauthAlternative')}
-        </p>
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-          <button type="button" onClick={loginWithGitHub} className={styles.oauthBtn}>{t('submit.loginWithGithub')}</button>
-          <button type="button" onClick={loginWithX} className={styles.oauthBtn}>{t('submit.loginWithX')}</button>
-          <button type="button" onClick={async () => {
-            setSubmitting(true); setError('')
-            try {
-              const result = await loginWithPasskey()
-              if (result.user) {
-                justLoggedInRef.current = true
-              } else if (result.mfaChallengeToken) {
-                setMfaRequired(true)
-                setMfaChallengeToken(result.mfaChallengeToken)
-                setMfaMethods(result.mfaAvailableMethods || [])
-              } else if (result.errorCode === 'PASSKEY_CANCELLED') {
-                // user cancelled
-              } else {
-                setError(t('login.errors.serverError'))
-              }
-            } catch { setError(t('login.errors.serverError')) }
-            finally { setSubmitting(false) }
-          }} className={styles.oauthBtn}>{t('login.passkeyLogin')}</button>
         </div>
 
-        {iamEnabled && (
-          <button
+        {error && <Alert tone="error">{error}</Alert>}
+
+        <AdminButton type="submit" variant="primary" fullWidth loading={submitting} disabled={!canSubmit}>
+          {t('login.submit')}
+        </AdminButton>
+      </form>
+
+      <p className={auth.aside}>
+        {t('login.noAccount')}{' '}
+        <Link to="/register-direct" className={auth.link}>{t('login.registerNow')}</Link>
+      </p>
+
+      <div className={auth.oauthSection}>
+        <div className={auth.divider}>{t('login.oauthAlternative')}</div>
+        <div className={auth.oauthRow}>
+          <AdminButton type="button" variant="secondary" fullWidth onClick={loginWithGitHub}>{t('submit.loginWithGithub')}</AdminButton>
+          <AdminButton type="button" variant="secondary" fullWidth onClick={loginWithX}>{t('submit.loginWithX')}</AdminButton>
+          <AdminButton
             type="button"
-            onClick={loginWithIam}
-            aria-label={t('oauth.providerIam')}
-            style={{
-              marginTop: '0.75rem', width: '100%',
-              background: 'var(--primary-pink)', border: '1px solid var(--primary-pink)',
-              color: 'var(--surface-card)', padding: '0.55rem 1rem', borderRadius: '50px',
-              fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+            variant="secondary"
+            fullWidth
+            onClick={async () => {
+              setSubmitting(true); setError('')
+              try {
+                const result = await loginWithPasskey()
+                if (result.user) {
+                  justLoggedInRef.current = true
+                } else if (result.mfaChallengeToken) {
+                  setMfaRequired(true)
+                  setMfaChallengeToken(result.mfaChallengeToken)
+                  setMfaMethods(result.mfaAvailableMethods || [])
+                } else if (result.errorCode === 'PASSKEY_CANCELLED') {
+                  // user cancelled
+                } else {
+                  setError(t('login.errors.serverError'))
+                }
+              } catch { setError(t('login.errors.serverError')) }
+              finally { setSubmitting(false) }
             }}
-          >{t('oauth.providerIam')}</button>
-        )}
+          >
+            {t('login.passkeyLogin')}
+          </AdminButton>
+          {iamEnabled && (
+            <AdminButton type="button" variant="primary" fullWidth onClick={loginWithIam} aria-label={t('oauth.providerIam')}>
+              {t('oauth.providerIam')}
+            </AdminButton>
+          )}
+        </div>
       </div>
-    </>
+    </CenteredCard>
   )
 }
 

@@ -1,16 +1,12 @@
-﻿import type { FormEvent } from 'react'
+import type { FormEvent } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MdEditor } from 'md-editor-rt'
-import 'md-editor-rt/lib/style.css'
-import { useTheme } from '@/context/useTheme'
 import { useAuth } from '@/context/useAuth'
 import { post, setIntentKey, newIdempotencyKey } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { limitByUnicode } from '@/utils/string'
-import { FormField } from './FormField'
-import { FieldErrorConsumer } from './FieldError'
-import { ImageUploader } from './ImageUploader'
+import { AdminButton, Alert, Checkbox, Select, TagInput, TextArea, TextField } from '@/components/ui'
+import { MarkdownField } from './MarkdownField'
 import styles from './SubmitForm.module.css'
 
 type FormStatus = 'idle' | 'submitting' | 'success' | 'error'
@@ -20,7 +16,6 @@ interface FormData {
   content: string
   summary: string
   tags: string[]
-  tagInput: string
   language: string
   submitMode: string
   agreement: boolean
@@ -40,7 +35,6 @@ const INITIAL_FORM: FormData = {
   content: '',
   summary: '',
   tags: [],
-  tagInput: '',
   language: 'zh-CN',
   submitMode: 'submit',
   agreement: false,
@@ -71,7 +65,6 @@ const validate = (data: FormData, t: (key: string, options?: Record<string, unkn
 
 export const SubmitForm = () => {
   const { t } = useTranslation()
-  const { theme } = useTheme()
   const { user, loading, loginProvider, loginWithGitHub, loginWithX } = useAuth()
   const [form, setForm] = useState<FormData>(INITIAL_FORM)
   const [errors, setErrors] = useState<FormErrors>({})
@@ -83,33 +76,6 @@ export const SubmitForm = () => {
     setForm((prev) => ({ ...prev, [key]: value }))
     const errorKey = key as keyof FormErrors
     if (errors[errorKey]) setErrors((prev) => ({ ...prev, [errorKey]: undefined }))
-  }
-
-  const addTag = (raw: string) => {
-    const tag = [...raw.trim()].slice(0, TAG_MAX_LENGTH).join('')
-    if (!tag) return
-    if (form.tags.length >= TAG_MAX) return
-    if (form.tags.includes(tag)) return
-    set('tags', [...form.tags, tag])
-    set('tagInput', '')
-  }
-
-  const removeTag = (tag: string) => {
-    set('tags', form.tags.filter((t) => t !== tag))
-  }
-
-  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault()
-      addTag(form.tagInput)
-    }
-    if (e.key === 'Backspace' && !form.tagInput && form.tags.length > 0) {
-      removeTag(form.tags[form.tags.length - 1]!)
-    }
-  }
-
-  const handleImageUploaded = (url: string) => {
-    setForm(prev => ({ ...prev, content: prev.content + `\n![image](${url})\n` }))
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -204,25 +170,20 @@ export const SubmitForm = () => {
 
   if (status === 'success') {
     return (
-      <div className={styles.successBox}>
-        <h3 className={styles.successTitle}>{t('submit.success.title')}</h3>
-        <p className={styles.successId}>{t('submit.success.id', { id: submitId })}</p>
-        <p className={styles.successHint}>
-          {t('submit.success.hint')}
-        </p>
-        <button
-          type="button"
-          className={styles.submitButton}
-          onClick={handleReset}
-          style={{ marginTop: '1rem' }}
-        >
+      <div className={styles.form}>
+        <Alert tone="success">
+          <span className={styles.successContent}>
+            <span className={styles.successTitle}>{t('submit.success.title')}</span>
+            <span className={styles.successId}>{t('submit.success.id', { id: submitId })}</span>
+            <span>{t('submit.success.hint')}</span>
+          </span>
+        </Alert>
+        <AdminButton type="button" variant="primary" fullWidth onClick={handleReset}>
           {t('submit.status.continue')}
-        </button>
+        </AdminButton>
       </div>
     )
   }
-
-  const editorTheme = theme === 'dark' ? 'dark' : 'light'
 
   return (
     <form className={styles.form} onSubmit={handleSubmit} noValidate>
@@ -230,151 +191,89 @@ export const SubmitForm = () => {
         <div className={styles.loginHint}>
           {user ? (
             <span className={styles.userBadge}>
-              <span className={styles.userProvider}>
-                {loginProvider === 'github' ? 'GitHub' : loginProvider === 'x' ? 'X' : ''}
-              </span>
+              {(loginProvider === 'github' || loginProvider === 'x') && (
+                <span className={styles.userProvider}>{loginProvider === 'github' ? 'GitHub' : 'X'}</span>
+              )}
               <span className={styles.userName}>{user.username}</span>
               <span className={styles.userTag}>{t('submit.loggedInAs')}</span>
             </span>
           ) : (
             <span className={styles.loginActions}>
               {t('submit.loginHint')}
-              <button type="button" className={styles.loginBtn} onClick={loginWithGitHub}>
+              <AdminButton type="button" variant="secondary" size="sm" onClick={loginWithGitHub}>
                 {t('submit.loginWithGithub')}
-              </button>
-              <button type="button" className={styles.loginBtn} onClick={loginWithX}>
+              </AdminButton>
+              <AdminButton type="button" variant="secondary" size="sm" onClick={loginWithX}>
                 {t('submit.loginWithX')}
-              </button>
+              </AdminButton>
             </span>
           )}
         </div>
       )}
 
-        <FormField label={t('submit.title')} required error={errors.title}>
-        <input
-          className={styles.textInput}
-          type="text"
-          value={form.title}
-          onChange={(e) => set('title', limitByUnicode(e.target.value, 120))}
-          placeholder={t('submit.titlePlaceholder')}
-        />
-      </FormField>
+      <TextField
+        label={t('submit.title')}
+        required
+        type="text"
+        value={form.title}
+        onChange={(e) => set('title', limitByUnicode(e.target.value, 120))}
+        placeholder={t('submit.titlePlaceholder')}
+        invalid={!!errors.title}
+        hint={errors.title || undefined}
+      />
 
-      <FormField label={t('submit.content')} required error={errors.content} htmlFor="submit-content">
-        <div className={styles.editorWrapper} id="submit-content">
-          <MdEditor
-            value={form.content}
-            onChange={(v: string) => set('content', v)}
-            theme={editorTheme}
-            language="zh-CN"
-            preview={true}
-            toolbarsExclude={['image', 'link', 'mermaid', 'katex', 'github']}
-          />
-          <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <ImageUploader onUploaded={handleImageUploaded} />
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              {t('submit.imageHint')}
-            </span>
-          </div>
-        </div>
-      </FormField>
+      <MarkdownField
+        label={t('submit.content')}
+        required
+        value={form.content}
+        onChange={(v) => set('content', v)}
+        error={errors.content}
+      />
 
-      <FormField label={t('submit.summary')} error={errors.summary}>
-        <textarea
-          className={styles.textInput}
-          value={form.summary}
-          onChange={(e) => set('summary', e.target.value)}
-          placeholder={t('submit.summaryPlaceholder')}
-          maxLength={300}
-          rows={3}
-          style={{ resize: 'vertical' }}
-        />
-      </FormField>
+      <TextArea
+        label={t('submit.summary')}
+        value={form.summary}
+        onChange={(e) => set('summary', e.target.value)}
+        placeholder={t('submit.summaryPlaceholder')}
+        maxLength={300}
+        rows={3}
+        invalid={!!errors.summary}
+        hint={errors.summary || undefined}
+      />
 
-      <FormField label={t('submit.tags')} error={errors.tags} htmlFor="submit-tags">
-        <div className={styles.tagInputWrapper}>
-          <div className={styles.tagList}>
-            {form.tags.map((tag) => (
-              <span key={tag} className={styles.tagChip}>
-                {tag}
-                <button
-                  type="button"
-                  className={styles.tagRemove}
-                  onClick={() => removeTag(tag)}
-                  aria-label={t('submit.removeTag', { tag })}
-                >
-                  &times;
-                </button>
-              </span>
-            ))}
-          </div>
-          <FieldErrorConsumer>
-            {(errorId) => (
-              <input
-                id="submit-tags"
-                className={styles.tagInput}
-                type="text"
-                value={form.tagInput}
-                onChange={(e) => set('tagInput', e.target.value)}
-                onKeyDown={handleTagKeyDown}
-                placeholder={form.tags.length >= TAG_MAX ? t('submit.tagsMaxReached', { max: TAG_MAX }) : t('submit.tagsPlaceholder')}
-                disabled={form.tags.length >= TAG_MAX}
-                aria-invalid={!!errors.tags}
-                aria-describedby={errorId || undefined}
-              />
-            )}
-          </FieldErrorConsumer>
-        </div>
-      </FormField>
+      <TagInput
+        label={t('submit.tags')}
+        value={form.tags}
+        onChange={(tags) => set('tags', tags)}
+        maxTags={TAG_MAX}
+        maxTagLength={TAG_MAX_LENGTH}
+        placeholder={t('submit.tagsPlaceholder')}
+        maxReachedPlaceholder={t('submit.tagsMaxReached', { max: TAG_MAX })}
+        removeTagLabel={(tag) => t('submit.removeTag', { tag })}
+        invalid={!!errors.tags}
+        hint={errors.tags || undefined}
+      />
 
-      <FormField label={t('submit.language')}>
-        <select
-          className={styles.selectInput}
-          value={form.language}
-          onChange={(e) => set('language', e.target.value)}
-        >
-          {LANGUAGES.map((lang) => (
-            <option key={lang} value={lang}>
-              {t(`submit.languages.${lang}`)}
-            </option>
-          ))}
-        </select>
-      </FormField>
+      <Select
+        label={t('submit.language')}
+        value={form.language}
+        onChange={(v) => set('language', v)}
+        options={LANGUAGES.map((l) => ({ value: l, label: t(`submit.languages.${l}`) }))}
+      />
 
-      <FormField label="" error={errors.agreement}>
-        <FieldErrorConsumer>
-          {(errorId) => (
-            <div className={styles.checkboxRow}>
-              <input
-                type="checkbox"
-                id="agreement"
-                checked={form.agreement}
-                onChange={(e) => set('agreement', e.target.checked)}
-                aria-describedby={errorId || undefined}
-                aria-invalid={!!errorId}
-              />
-              <label htmlFor="agreement" className={styles.checkboxLabel}>
-                {t('submit.agreement')}
-              </label>
-            </div>
-          )}
-        </FieldErrorConsumer>
-      </FormField>
+      <Checkbox
+        label={t('submit.agreement')}
+        checked={form.agreement}
+        onChange={(e) => set('agreement', e.target.checked)}
+        invalid={!!errors.agreement}
+        hint={errors.agreement || undefined}
+      />
 
-      {status === 'error' && serverError && (
-        <div className={styles.errorBox} role="alert">
-          <p className={styles.errorText}>{serverError}</p>
-        </div>
-      )}
+      {status === 'error' && serverError && <Alert tone="error">{serverError}</Alert>}
 
-      <button
-        type="submit"
-        className={styles.submitButton}
-        disabled={status === 'submitting'}
-      >
-        {status === 'submitting' ? t('submit.status.submitting') : t('submit.status.submit')}
-      </button>
+      <AdminButton type="submit" variant="primary" fullWidth loading={status === 'submitting'}>
+        {t('submit.status.submit')}
+      </AdminButton>
     </form>
   )
 }
-

@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from 'react'
-import { useSearchParams, Link } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { post } from '@/api/client'
-import styles from '../App.module.css'
+import { StatusScreen } from '@/components/ui'
 
 export const EmailVerify = () => {
   const [searchParams] = useSearchParams()
@@ -51,28 +51,24 @@ export const EmailVerify = () => {
     }
   }, [searchParams, t])
 
+  if (status === 'verifying') {
+    return <StatusScreen kind="loading" title={t('emailVerify.verifying')} />
+  }
+  if (status === 'success') {
+    return (
+      <StatusScreen
+        kind="success"
+        title={t('emailVerify.success')}
+        actions={[{ label: t('emailVerify.redirectToLogin'), to: '/login' }]}
+      />
+    )
+  }
   return (
-    <main className={styles.standalonePage}>
-      {status === 'verifying' && (
-        <h1 style={{ fontSize: '1.5rem', color: 'var(--text-main)' }}>{t('emailVerify.verifying')}</h1>
-      )}
-      {status === 'success' && (
-        <>
-          <h1 style={{ fontSize: '1.5rem', color: 'var(--success-color)' }}>{t('emailVerify.success')}</h1>
-          <Link to="/login" style={{ marginTop: '1rem', color: 'var(--accent-pink)' }}>
-            {t('emailVerify.redirectToLogin')}
-          </Link>
-        </>
-      )}
-      {status === 'error' && (
-        <>
-          <h1 style={{ fontSize: '1.5rem', color: 'var(--error-color)' }}>{t('emailVerify.title')}</h1>
-          <p style={{ fontSize: '1rem', color: 'var(--text-secondary)' }} role="alert">{errorMsg}</p>
-          <Link to="/auth/email/resend" style={{ marginTop: '1rem', color: 'var(--accent-pink)' }}>
-            {t('emailResend.title')}
-          </Link>
-        </>
-      )}
-    </main>
+    <StatusScreen
+      kind="error"
+      title={t('emailVerify.title')}
+      description={errorMsg}
+      actions={[{ label: t('emailResend.title'), to: '/auth/email/resend' }]}
+    />
   )
 }

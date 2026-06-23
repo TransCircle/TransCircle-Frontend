@@ -2,7 +2,8 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
-import styles from './Admin.module.css'
+import { Spinner, EmptyState } from '@/components/ui'
+import shell from './Page.module.css'
 
 export const RequireReviewerOrAdminLayout = () => {
   const { t } = useTranslation()
@@ -11,8 +12,8 @@ export const RequireReviewerOrAdminLayout = () => {
 
   if (authLoading) {
     return (
-      <div className={styles.container}>
-        <div className={styles.loading}>{t('admin.verifying')}</div>
+      <div className={shell.page}>
+        <Spinner size="lg" label={t('admin.verifying')} />
       </div>
     )
   }
@@ -25,9 +26,8 @@ export const RequireReviewerOrAdminLayout = () => {
   const allowed = hasPermission(permissions, PERMISSIONS.CONTRIBUTION_READ)
   if (!allowed) {
     return (
-      <div className={styles.container}>
-        <h1 className={styles.heading}>{t('admin.accessDenied')}</h1>
-        <p className={styles.headingDesc}>{t('admin.accessDeniedDetail', { username: user.username })}</p>
+      <div className={shell.page}>
+        <EmptyState title={t('admin.accessDenied')} description={t('admin.accessDeniedDetail', { username: user.username })} />
       </div>
     )
   }

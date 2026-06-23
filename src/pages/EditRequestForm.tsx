@@ -4,9 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { post, setIntentKey, newIdempotencyKey } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { limitByUnicode } from '@/utils/string'
-import styles from '../App.module.css'
-import formStyles from '../components/Form.module.css'
-import adminStyles from './Admin.module.css'
+import { AdminButton, Alert, Card, PageHeader, StatusScreen, TagInput, TextArea, TextField } from '@/components/ui'
+import { MarkdownField } from '@/components/MarkdownField'
+import shell from './Page.module.css'
 
 export const EditRequestForm = () => {
   const { id } = useParams<{ id: string }>()
@@ -18,14 +18,13 @@ export const EditRequestForm = () => {
   const [proposedContent, setProposedContent] = useState('')
   const [proposedSummary, setProposedSummary] = useState('')
   const [proposedTags, setProposedTags] = useState<string[]>([])
-  const [tagInput, setTagInput] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   // 服务端字段级错误（L8）
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
-  const clearFieldError = (field: string) => () => {
+  const clearFieldError = (field: string) => {
     if (fieldErrors[field]) {
       setFieldErrors(prev => { const n = { ...prev }; delete n[field]; return n })
     }
@@ -102,74 +101,76 @@ export const EditRequestForm = () => {
 
   if (success) {
     return (
-      <main className={adminStyles.container} style={{ textAlign: 'center', padding: '2rem' }}>
-        <h2 className={adminStyles.heading}>{t('editRequest.successTitle')}</h2>
-        <p>{t('editRequest.successDescription')}</p>
-        <button className={adminStyles.btnPrimary} onClick={() => navigate('/')}>{t('editRequest.backToHome')}</button>
-      </main>
+      <StatusScreen
+        kind="success"
+        title={t('editRequest.successTitle')}
+        description={t('editRequest.successDescription')}
+        actions={[{ label: t('editRequest.backToHome'), to: '/' }]}
+      />
     )
   }
 
   return (
-    <main className={adminStyles.container}>
-      <button className={adminStyles.back} onClick={() => window.history.length > 1 ? navigate(-1) : navigate('/')}>{t('editRequest.back')}</button>
-      <h1 className={adminStyles.heading}>{t('editRequest.title')}</h1>
-      <form className={formStyles.form} onSubmit={handleSubmit}>
-        <label className={formStyles.field}>
-          <span className={formStyles.label}>{t('editRequest.reasonLabel')}</span>
-          <textarea value={reason} onChange={e => { setReason(e.target.value); clearFieldError('reason')() }}
-            className={formStyles.input} rows={3} maxLength={500} required aria-invalid={!!fieldErrors.reason} />
-          {fieldErrors.reason && <span className={formStyles.error} role="alert">{fieldErrors.reason}</span>}
-        </label>
-        <label className={formStyles.field}>
-          <span className={formStyles.label}>{t('editRequest.proposedTitle')}</span>
-          <input type="text" value={proposedTitle} onChange={e => { setProposedTitle(limitByUnicode(e.target.value, 120)); clearFieldError('proposedTitle')() }}
-            className={formStyles.input} aria-invalid={!!fieldErrors.proposedTitle} />
-          {fieldErrors.proposedTitle && <span className={formStyles.error} role="alert">{fieldErrors.proposedTitle}</span>}
-        </label>
-        <label className={formStyles.field}>
-          <span className={formStyles.label}>{t('editRequest.proposedContent')}</span>
-          <textarea value={proposedContent} onChange={e => { setProposedContent(e.target.value); clearFieldError('proposedContent')() }}
-            className={formStyles.input} rows={10} aria-invalid={!!fieldErrors.proposedContent} />
-          {fieldErrors.proposedContent && <span className={formStyles.error} role="alert">{fieldErrors.proposedContent}</span>}
-        </label>
-        <label className={formStyles.field}>
-          <span className={formStyles.label}>{t('editRequest.proposedSummary')}</span>
-          <input type="text" value={proposedSummary} onChange={e => { setProposedSummary(limitByUnicode(e.target.value, 300)); clearFieldError('proposedSummary')() }}
-            className={formStyles.input} maxLength={300} aria-invalid={!!fieldErrors.proposedSummary} />
-          {fieldErrors.proposedSummary && <span className={formStyles.error} role="alert">{fieldErrors.proposedSummary}</span>}
-        </label>
-        <label className={formStyles.field}>
-          <span className={formStyles.label}>{t('editRequest.proposedTags')}</span>
-          <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
-            {proposedTags.map(tag => (
-              <span key={tag} style={{ background: 'var(--hover-bg)', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.85rem' }}>
-                {tag}
-                <button type="button" aria-label={t('editRequest.removeTag', { tag })} onClick={() => setProposedTags(prev => prev.filter(t => t !== tag))}
-                  style={{ marginLeft: '0.25rem', cursor: 'pointer', background: 'none', border: 'none', color: 'var(--error-color)', padding: 0 }}>&times;</button>
-              </span>
-            ))}
-          </div>
-          <input type="text" value={tagInput}
-            onChange={e => setTagInput(limitByUnicode(e.target.value, 32))}
-            onKeyDown={e => {
-              if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
-                e.preventDefault()
-                const tag = [...tagInput.trim()].slice(0, 32).join('')
-                if (!proposedTags.includes(tag) && proposedTags.length < 8) {
-                  setProposedTags(prev => [...prev, tag])
-                }
-                setTagInput('')
-              }
-            }}
-            placeholder={t('editRequest.tagPlaceholder')} className={formStyles.input} />
-        </label>
-        {error && <p className={formStyles.error}>{error}</p>}
-        <button type="submit" disabled={submitting}
-          className={`${styles.ctaPrimary} ${formStyles.submitBtn}`}>
-          {submitting ? t('editRequest.submitting') : t('editRequest.submit')}
-        </button>
-      </form>
-    </main>
+    <div className={`${shell.page} ${shell.pageNarrow}`}>
+      <div>
+        <AdminButton
+          variant="ghost"
+          size="sm"
+          onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
+        >
+          {t('editRequest.back')}
+        </AdminButton>
+      </div>
+      <PageHeader title={t('editRequest.title')} />
+
+      <Card>
+        <form className={shell.stack} onSubmit={handleSubmit} noValidate>
+          <TextArea
+            label={t('editRequest.reasonLabel')}
+            required
+            value={reason}
+            onChange={(e) => { setReason(e.target.value); clearFieldError('reason') }}
+            rows={3}
+            maxLength={500}
+            invalid={!!fieldErrors.reason}
+            hint={fieldErrors.reason || undefined}
+          />
+          <TextField
+            label={t('editRequest.proposedTitle')}
+            value={proposedTitle}
+            onChange={(e) => { setProposedTitle(limitByUnicode(e.target.value, 120)); clearFieldError('proposedTitle') }}
+            invalid={!!fieldErrors.proposedTitle}
+            hint={fieldErrors.proposedTitle || undefined}
+          />
+          <MarkdownField
+            label={t('editRequest.proposedContent')}
+            value={proposedContent}
+            onChange={(v) => { setProposedContent(v); clearFieldError('proposedContent') }}
+            error={fieldErrors.proposedContent}
+          />
+          <TextField
+            label={t('editRequest.proposedSummary')}
+            value={proposedSummary}
+            onChange={(e) => { setProposedSummary(limitByUnicode(e.target.value, 300)); clearFieldError('proposedSummary') }}
+            maxLength={300}
+            invalid={!!fieldErrors.proposedSummary}
+            hint={fieldErrors.proposedSummary || undefined}
+          />
+          <TagInput
+            label={t('editRequest.proposedTags')}
+            value={proposedTags}
+            onChange={setProposedTags}
+            maxTags={8}
+            maxTagLength={32}
+            removeTagLabel={(tag) => t('editRequest.removeTag', { tag })}
+            placeholder={t('editRequest.tagPlaceholder')}
+          />
+          {error && <Alert tone="error">{error}</Alert>}
+          <AdminButton type="submit" variant="primary" fullWidth loading={submitting}>
+            {t('editRequest.submit')}
+          </AdminButton>
+        </form>
+      </Card>
+    </div>
   )
 }

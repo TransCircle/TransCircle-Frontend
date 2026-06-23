@@ -1,11 +1,10 @@
 ﻿import { useState, useMemo } from 'react'
-import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { post, setIntentKey, newIdempotencyKey } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { USERNAME_RE, checkPasswordStrength, validateEmail } from '@/utils/string'
-import styles from '../App.module.css'
-import formStyles from '../components/Form.module.css'
+import { AdminButton, Alert, CenteredCard, PageHeader, StatusScreen, TextField } from '@/components/ui'
+import auth from './Auth.module.css'
 
 export const RegisterDirect = () => {
   const { t } = useTranslation()
@@ -117,58 +116,71 @@ export const RegisterDirect = () => {
 
   if (success) {
     return (
-      <main className={styles.standalonePage}>
-        <h1 style={{ fontSize: '1.5rem', color: 'var(--text-main)' }}>{t('registerDirect.success')}</h1>
-        <p className={styles.statusMuted} style={{ marginTop: '0.5rem' }}>
-          {t('registerDirect.successHint')}
-        </p>
-        <Link to="/login" className={styles.accentLink} style={{ marginTop: '1rem' }}>{t('registerDirect.goToLogin')}</Link>
-      </main>
+      <StatusScreen
+        kind="success"
+        title={t('registerDirect.success')}
+        description={t('registerDirect.successHint')}
+        actions={[{ label: t('registerDirect.goToLogin'), to: '/login' }]}
+      />
     )
   }
 
   return (
-    <>
-      <header className={styles.contentHeader}>
-        <h1 className={styles.mainTitle}>{t('registerDirect.title')}</h1>
-        <p className={styles.subTitle}>{t('registerDirect.description')}</p>
-      </header>
-      <form className={formStyles.form} onSubmit={handleSubmit} noValidate>
-        <label className={formStyles.field}>
-          <span className={formStyles.label}>{t('registerDirect.username')}</span>
-          <input className={formStyles.input} type="text" value={username}
-            onChange={handleFieldChange('username', setUsername)} placeholder={t('registerDirect.usernamePlaceholder')}
-            required autoFocus maxLength={32} aria-invalid={!!allFieldErrors.username} />
-          {allFieldErrors.username && <span className={formStyles.error} role="alert">{allFieldErrors.username}</span>}
-        </label>
-        <label className={formStyles.field}>
-          <span className={formStyles.label}>{t('registerDirect.email')}</span>
-          <input className={formStyles.input} type="email" value={email}
-            onChange={handleFieldChange('email', setEmail)} placeholder={t('registerDirect.emailPlaceholder')}
-            required maxLength={254} aria-invalid={!!allFieldErrors.email} />
-          {allFieldErrors.email && <span className={formStyles.error} role="alert">{allFieldErrors.email}</span>}
-        </label>
-        <label className={formStyles.field}>
-          <span className={formStyles.label}>{t('registerDirect.password')}</span>
-          <input className={formStyles.input} type="password" value={password}
-            onChange={handleFieldChange('password', setPassword)} placeholder={t('registerDirect.passwordPlaceholder')}
-            required minLength={12} maxLength={128} aria-invalid={!!allFieldErrors.password} />
-          {allFieldErrors.password && <span className={formStyles.error} role="alert">{allFieldErrors.password}</span>}
-        </label>
-        <label className={formStyles.field}>
-          <span className={formStyles.label}>{t('registerDirect.displayName')}</span>
-          <input className={formStyles.input} type="text" value={displayName}
-            onChange={handleFieldChange('displayName', setDisplayName)} placeholder={t('registerDirect.displayNamePlaceholder')}
-            required maxLength={50} aria-invalid={!!allFieldErrors.displayName} />
-          {allFieldErrors.displayName && <span className={formStyles.error} role="alert">{allFieldErrors.displayName}</span>}
-        </label>
-        {error && <p className={formStyles.error} role="alert">{error}</p>}
-        <button type="submit" disabled={submitting}
-          className={`${styles.ctaPrimary} ${formStyles.submitBtn}`}>
-          {submitting ? t('registerDirect.submitting') : t('registerDirect.submit')}
-        </button>
+    <CenteredCard>
+      <PageHeader title={t('registerDirect.title')} description={t('registerDirect.description')} align="center" />
+      <form className={auth.form} onSubmit={handleSubmit} noValidate>
+        <TextField
+          label={t('registerDirect.username')}
+          type="text"
+          value={username}
+          onChange={handleFieldChange('username', setUsername)}
+          placeholder={t('registerDirect.usernamePlaceholder')}
+          autoFocus
+          maxLength={32}
+          autoComplete="username"
+          invalid={!!allFieldErrors.username}
+          hint={allFieldErrors.username || undefined}
+        />
+        <TextField
+          label={t('registerDirect.email')}
+          type="email"
+          value={email}
+          onChange={handleFieldChange('email', setEmail)}
+          placeholder={t('registerDirect.emailPlaceholder')}
+          maxLength={254}
+          autoComplete="email"
+          invalid={!!allFieldErrors.email}
+          hint={allFieldErrors.email || undefined}
+        />
+        <TextField
+          label={t('registerDirect.password')}
+          type="password"
+          value={password}
+          onChange={handleFieldChange('password', setPassword)}
+          placeholder={t('registerDirect.passwordPlaceholder')}
+          minLength={12}
+          maxLength={128}
+          autoComplete="new-password"
+          invalid={!!allFieldErrors.password}
+          hint={allFieldErrors.password || undefined}
+        />
+        <TextField
+          label={t('registerDirect.displayName')}
+          type="text"
+          value={displayName}
+          onChange={handleFieldChange('displayName', setDisplayName)}
+          placeholder={t('registerDirect.displayNamePlaceholder')}
+          maxLength={50}
+          autoComplete="nickname"
+          invalid={!!allFieldErrors.displayName}
+          hint={allFieldErrors.displayName || undefined}
+        />
+        {error && <Alert tone="error">{error}</Alert>}
+        <AdminButton type="submit" variant="primary" fullWidth loading={submitting}>
+          {t('registerDirect.submit')}
+        </AdminButton>
       </form>
-    </>
+    </CenteredCard>
   )
 }
 

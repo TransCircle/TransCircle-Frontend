@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
-import { useSearchParams, useNavigate, Link } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import styles from '../App.module.css'
+import { StatusScreen } from '@/components/ui'
 
 /**
  * Cancel account deletion page (api.md §2.5).
@@ -25,38 +25,23 @@ export const CancelDeletion = () => {
     }
   }, [tokenFromUrl, navigate])
 
-  return (
-    <main className={styles.standalonePage} style={{ maxWidth: '600px', margin: '0 auto' }}>
-      <header className={styles.contentHeader}>
-        <h1 className={styles.mainTitle}>{t('settings.cancelDeletionHeading')}</h1>
-      </header>
+  // With a token we redirect immediately — show a transient loading screen.
+  if (tokenFromUrl) {
+    return (
+      <StatusScreen
+        kind="loading"
+        title={t('settings.cancelDeletionHeading')}
+        description={t('settings.cancelDeletionDescription')}
+      />
+    )
+  }
 
-      {tokenFromUrl ? (
-        <div>
-          <p className={styles.statusMuted}>
-            {t('settings.cancelDeletionDescription')}
-          </p>
-          <p className={styles.statusMuted} style={{ marginBottom: '1rem' }}>
-            {t('common.loading')}
-          </p>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            <Link to="/settings/security" className={styles.accentLink}>
-              {t('common.backToHome')}
-            </Link>
-          </p>
-        </div>
-      ) : (
-        <div>
-          <p className={styles.statusMuted}>
-            {t('settings.cancelDeletionDescription')}
-          </p>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            <Link to="/settings/security" className={styles.accentLink}>
-              {t('common.backToHome')}
-            </Link>
-          </p>
-        </div>
-      )}
-    </main>
+  return (
+    <StatusScreen
+      kind="info"
+      title={t('settings.cancelDeletionHeading')}
+      description={t('settings.cancelDeletionDescription')}
+      actions={[{ label: t('common.backToHome'), to: '/settings/security', variant: 'secondary' }]}
+    />
   )
 }

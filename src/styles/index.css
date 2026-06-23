@@ -24,6 +24,30 @@
   --shadow-color: rgba(240, 98, 145, 0.128);
   --shadow-color-hover: rgba(240, 98, 146, 0.4);
   --overlay-bg: rgba(0, 0, 0, 0.3);
+
+  /* Soft success surface (light) — used by Alert/StatusScreen success states */
+  --soft-success-bg: #e7f6ec;
+  --soft-success-border: #a9d8b6;
+  --soft-success-text: #1e7d34;
+
+  /* ── Shared scales (theme-invariant) ─────────────────────── */
+  /* Radius scale: inputs/selects, rows/popovers, cards, full pill. */
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  /* Elevation — resolved lazily against the active theme's --shadow-color. */
+  --shadow-card: 0 1px 2px var(--shadow-color);
+  --shadow-card-hover: 0 4px 14px var(--shadow-color-hover);
+  --shadow-pop: 0 8px 24px var(--shadow-color);
+
+  /* Layout rails — fluid: pages fill the viewport up to these caps.
+     content = wide browse/list pages; reading = comfortable measure for
+     long-form text + forms; form = focused auth/status card. */
+  --width-content: 1280px;
+  --width-reading: 60rem;
+  --width-form: 26rem;
 }
 
 /* ── Dark Theme (via system preference, JS-less fallback) ── */
@@ -49,6 +73,10 @@
     --shadow-color: rgba(255, 107, 156, 0.098);
     --shadow-color-hover: rgba(255, 107, 157, 0.4);
     --overlay-bg: rgba(0, 0, 0, 0.5);
+
+    --soft-success-bg: rgba(46, 160, 75, 0.12);
+    --soft-success-border: rgba(46, 160, 75, 0.3);
+    --soft-success-text: #66bb6a;
   }
 }
 
@@ -74,6 +102,10 @@
   --shadow-color: rgba(255, 107, 156, 0.098);
   --shadow-color-hover: rgba(255, 107, 157, 0.4);
   --overlay-bg: rgba(0, 0, 0, 0.5);
+
+  --soft-success-bg: rgba(46, 160, 75, 0.12);
+  --soft-success-border: rgba(46, 160, 75, 0.3);
+  --soft-success-text: #66bb6a;
 }
 
 /* ── High Contrast Theme ───────────────────────── */
@@ -98,6 +130,10 @@
   --shadow-color: rgba(255, 170, 0, 0.3);
   --shadow-color-hover: rgba(255, 170, 0, 0.5);
   --overlay-bg: rgba(0, 0, 0, 0.8);
+
+  --soft-success-bg: #000000;
+  --soft-success-border: #66ff66;
+  --soft-success-text: #66ff66;
 }
 
 *,

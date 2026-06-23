@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { post, tryRefreshToken } from '@/api/client'
+import { StatusScreen } from '@/components/ui'
 
 /**
  * IAM 代理 2FA 回跳落地页（iam-admin-api.md §5.2）。
@@ -70,31 +71,21 @@ export const StepUpDone = () => {
     void run()
   }, [params, navigate])
 
+  if (state === 'polling') {
+    return <StatusScreen kind="loading" title={t('stepUp.iamDoneTitle')} description={t('stepUp.iamPolling')} />
+  }
+  if (state === 'popup') {
+    return <StatusScreen kind="info" title={t('stepUp.iamDoneTitle')} description={t('stepUp.iamPopupClose')} />
+  }
+  if (state === 'verified') {
+    return <StatusScreen kind="success" title={t('stepUp.iamDoneTitle')} description={t('stepUp.iamVerified')} />
+  }
   return (
-    <main style={{ maxWidth: 480, margin: '4rem auto', padding: '0 1rem', textAlign: 'center' }}>
-      <h1 style={{ fontSize: '1.3rem', marginBottom: '1rem' }}>{t('stepUp.iamDoneTitle')}</h1>
-      {state === 'polling' && <p style={{ color: 'var(--text-secondary)' }}>{t('stepUp.iamPolling')}</p>}
-      {state === 'popup' && (
-        <p style={{ color: 'var(--text-secondary)' }} role="status">{t('stepUp.iamPopupClose')}</p>
-      )}
-      {state === 'verified' && (
-        <p style={{ color: 'var(--text-secondary)' }} role="status">{t('stepUp.iamVerified')}</p>
-      )}
-      {state === 'failed' && (
-        <>
-          <p style={{ color: 'var(--error-color)' }} role="alert">{t('stepUp.iamFailed')}</p>
-          <button
-            onClick={() => navigate('/admin', { replace: true })}
-            style={{
-              marginTop: '1rem', padding: '0.4rem 1rem', borderRadius: '50px',
-              border: '1px solid var(--primary-pink)', background: 'none',
-              color: 'var(--primary-pink)', cursor: 'pointer', fontFamily: 'inherit',
-            }}
-          >
-            {t('stepUp.iamBack')}
-          </button>
-        </>
-      )}
-    </main>
+    <StatusScreen
+      kind="error"
+      title={t('stepUp.iamDoneTitle')}
+      description={t('stepUp.iamFailed')}
+      actions={[{ label: t('stepUp.iamBack'), variant: 'secondary', onClick: () => navigate('/admin', { replace: true }) }]}
+    />
   )
 }

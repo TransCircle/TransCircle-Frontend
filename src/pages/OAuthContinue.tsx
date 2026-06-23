@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { saveCsrfToken } from '@/api/client'
+import { StatusScreen } from '@/components/ui'
 
 /**
  * OAuth 补全注册中间页 — api.md §1.6.2
@@ -29,9 +30,5 @@ export const OAuthContinue = () => {
     }
   }, [searchParams, navigate])
 
-  return (
-    <main style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
-      <p style={{ fontSize: '1.1rem', color: 'var(--text-muted)' }}>{t('common.loading')}</p>
-    </main>
-  )
+  return <StatusScreen kind="loading" title={t('common.loading')} />
 }

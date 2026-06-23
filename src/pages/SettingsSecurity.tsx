@@ -6,7 +6,23 @@ import { ERRORS } from '@/api/errors'
 import { useAuth } from '@/context/useAuth'
 import { StepUpDialog } from '@/components/StepUpDialog'
 import { arrayBufferToBase64url, base64urlToArrayBuffer } from '@/utils/string'
-import styles from './Admin.module.css'
+import {
+  AdminButton,
+  Alert,
+  Card,
+  ConfirmDialog,
+  DescriptionList,
+  Modal,
+  PageHeader,
+  Spinner,
+  StatusBadge,
+  Tabs,
+  TextField,
+  type TabItem,
+} from '@/components/ui'
+import { useFormatTs } from '@/utils/datetime'
+import shell from './Page.module.css'
+import s from './SettingsSecurity.module.css'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -67,12 +83,10 @@ interface SessionEntry {
 
 type TabId = 'profile' | 'password' | 'totp' | 'passkey' | 'oauth' | 'sessions'
 
-// ─── Helpers ──────────────────────────────────────────────────
-
-function formatTs(ts: number | null | undefined): string {
-  if (!ts) return ''
-  return new Date(ts).toISOString().slice(0, 16).replace('T', ' ')
-}
+type ConfirmKind =
+  | { kind: 'logoutAll' }
+  | { kind: 'revoke'; sessionId: string }
+  | { kind: 'deleteAccount' }
 
 // ─── Component ────────────────────────────────────────────────
 
@@ -83,6 +97,7 @@ export const SettingsSecurity = () => {
   const { user: authUser, accessToken, logoutAll, loading: authLoading, updateAccessToken } = useAuth()
   // IAM 账号的凭据/账户由统一身份管理，本页所有安全操作（密码/Passkey/TOTP/OAuth 绑定/注销删除）一律禁用
   const isIam = !!authUser?.iamLinked
+  const formatTs = useFormatTs()
 
   const [profile, setProfile] = useState<UserProfile | null>(null)
   // 从 URL ?tab= 读取初始标签（如 OAuth 绑定成功后跳转，#13b）
@@ -138,6 +153,10 @@ export const SettingsSecurity = () => {
   // ── Step-up state ──
   const [showStepUp, setShowStepUp] = useState(false)
   const [pendingAction, setPendingAction] = useState<string | null>(null)
+
+  // ── Destructive-action confirmation (replaces window.confirm) ──
+  const [confirmAction, setConfirmAction] = useState<ConfirmKind | null>(null)
+  const [confirmBusy, setConfirmBusy] = useState(false)
 
   // ── Profile edit state (api.md §2.2) ──
   const [profileDisplayName, setProfileDisplayName] = useState('')
@@ -712,7 +731,7 @@ export const SettingsSecurity = () => {
   const handleOAuthBind = async (provider: 'github' | 'x') => {
     const result = await get<{ authorizationUrl: string }>(`/me/oauth/${provider}/bind/start`)
     if (result.ok && result.data.authorizationUrl) {
-      window.location.href = result.data.authorizationUrl
+      window.location.assign(result.data.authorizationUrl)
     } else if (!result.ok) {
       setOauthError(result.error.message)
     } else {
@@ -734,6 +753,47 @@ export const SettingsSecurity = () => {
 
   // ── Helper: ArrayBuffer → base64url (from shared utils/string.ts)
 
+  // ── Destructive confirm runner (logout-all / revoke session / delete-account) ──
+  const runConfirm = async () => {
+    if (!confirmAction) return
+    if (confirmAction.kind === 'deleteAccount') {
+      // Confirmation only gates the step-up flow; no API call here.
+      setConfirmAction(null)
+      setPendingAction('delete-account')
+      setShowStepUp(true)
+      return
+    }
+    setConfirmBusy(true)
+    if (confirmAction.kind === 'logoutAll') {
+      const result = await logoutAll()
+      setConfirmBusy(false)
+      setConfirmAction(null)
+      if (result) {
+        navigate('/login', { replace: true })
+      } else {
+        setSessionError(t('settings.sessionsLogoutAllError'))
+      }
+    } else {
+      const sid = confirmAction.sessionId
+      setSessionRevoking(sid)
+      const result = await del(`/me/sessions/${sid}`)
+      if (result.ok) {
+        setSessions(prev => prev.filter(s => s.id !== sid))
+      } else {
+        setSessionError(result.error.message)
+      }
+      setSessionRevoking(null)
+      setConfirmBusy(false)
+      setConfirmAction(null)
+    }
+  }
+
+  const confirmCopy: Record<ConfirmKind['kind'], { title: string; message: string; cta: string }> = {
+    logoutAll: { title: t('settings.sessionsLogoutAll'), message: t('settings.sessionsLogoutAllConfirm'), cta: t('settings.sessionsLogoutAll') },
+    revoke: { title: t('settings.sessionsRevoke'), message: t('settings.sessionsRevokeConfirm'), cta: t('settings.sessionsRevoke') },
+    deleteAccount: { title: t('settings.deleteAccount.heading'), message: t('settings.deleteAccount.confirm'), cta: t('settings.deleteAccount.button') },
+  }
+
   // Not loading and not logged in — redirect to login
   useEffect(() => {
     if (!authUser && !authLoading) {
@@ -744,711 +804,583 @@ export const SettingsSecurity = () => {
   if (!authUser) {
     if (authLoading) {
       return (
-        <main className={styles.container}>
-          <div className={styles.loading}>{t('admin.verifying')}</div>
-        </main>
+        <div className={`${shell.page} ${shell.pageNarrow}`}>
+          <Spinner size="lg" label={t('admin.verifying')} />
+        </div>
       )
     }
     return null
   }
 
   // IAM 账号仅保留「资料」标签（含改名/数据导出），隐藏全部安全设置标签
-  const tabs = isIam
-    ? [{ key: 'profile' as TabId, label: t('settings.tabProfile') }]
+  const tabs: TabItem<TabId>[] = isIam
+    ? [{ key: 'profile', label: t('settings.tabProfile') }]
     : [
-        { key: 'profile' as TabId, label: t('settings.tabProfile') },
-        { key: 'password' as TabId, label: t('settings.tabPassword') },
-        { key: 'totp' as TabId, label: t('settings.tabTotp') },
-        { key: 'passkey' as TabId, label: t('settings.tabPasskey') },
-        { key: 'oauth' as TabId, label: t('settings.tabOauth') },
-        { key: 'sessions' as TabId, label: t('settings.tabSessions') },
+        { key: 'profile', label: t('settings.tabProfile') },
+        { key: 'password', label: t('settings.tabPassword') },
+        { key: 'totp', label: t('settings.tabTotp') },
+        { key: 'passkey', label: t('settings.tabPasskey') },
+        { key: 'oauth', label: t('settings.tabOauth') },
+        { key: 'sessions', label: t('settings.tabSessions') },
       ]
 
   return (
-    <main className={styles.container}>
-      <header>
-        <h1 className={styles.heading}>{t('settings.pageTitle')}</h1>
-        <p className={styles.headingDesc}>{t('settings.pageDescription')}</p>
-      </header>
+    <div className={`${shell.page} ${shell.pageNarrow}`}>
+      <PageHeader title={t('settings.pageTitle')} description={t('settings.pageDescription')} />
 
-      {isIam && (
-        <div className={styles.detailCard} style={{ borderColor: 'var(--accent-pink)', marginBottom: '1rem' }}>
-          <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-            {t('settings.iamManagedNotice')}
-          </p>
-        </div>
-      )}
+      {isIam && <Alert tone="info">{t('settings.iamManagedNotice')}</Alert>}
 
-      <nav className={styles.tabs} role="tablist">
-        {tabs.map(tab => (
-          <button
-            key={tab.key}
-            role="tab"
-            aria-selected={activeTab === tab.key}
-            className={`${styles.tab} ${activeTab === tab.key ? styles.tabActive : ''}`}
-            onClick={() => setActiveTab(tab.key)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
+      <Tabs
+        items={tabs}
+        value={activeTab}
+        onChange={setActiveTab}
+        ariaLabel={t('settings.pageTitle')}
+        panelId="settings-panel"
+      />
+
+      <div id="settings-panel" role="tabpanel" aria-labelledby={`tab-${activeTab}`} className={shell.tabpanel}>
 
       {/* ══════════════════════════════════════════
           TAB 0: PROFILE (api.md §2.2)
           ══════════════════════════════════════════ */}
       {activeTab === 'profile' && (
-        <div className={styles.detailCard} role="tabpanel" aria-labelledby="tab-profile">
-          <h2 className={styles.detailTitle}>{t('settings.profileHeading')}</h2>
+        <Card>
+          <div className={shell.stack}>
+            <h2 className={shell.detailTitle}>{t('settings.profileHeading')}</h2>
 
-          {profile && (
-            <div style={{ marginBottom: '1rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              <p>{t('settings.username')}：{profile.username}</p>
-              <p>{t('settings.email')}：{profile.email ?? '-'}</p>
-              <p>{t('settings.emailVerified')}：{profile.emailVerified ? t('settings.yes') : t('settings.no')}</p>
-            </div>
-          )}
+            {profile && (
+              <DescriptionList
+                columns={1}
+                items={[
+                  { term: t('settings.username'), value: profile.username },
+                  { term: t('settings.email'), value: profile.email ?? '-' },
+                  { term: t('settings.emailVerified'), value: profile.emailVerified ? t('settings.yes') : t('settings.no') },
+                ]}
+              />
+            )}
 
-          <label className={styles.headingDesc} style={{ display: 'block', marginBottom: '0.75rem' }}>
-            {t('settings.displayNameLabel')}
-            <input
-              type="text"
+            <TextField
+              label={t('settings.displayNameLabel')}
               value={profileDisplayName}
               onChange={e => setProfileDisplayName(e.target.value)}
-              style={{ display: 'block', width: '100%', marginTop: '0.25rem' }}
-              className={styles.input}
               maxLength={50}
               required
-              aria-describedby={profileError ? 'profile-error' : undefined}
+              autoComplete="nickname"
             />
-          </label>
 
-          {profileSuccess && (
-            <p style={{ color: 'var(--success-color)', fontSize: '0.9rem', marginBottom: '0.75rem' }}>{t('settings.profileUpdated')}</p>
-          )}
-          {profileError && (
-            <p id="profile-error" style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{profileError}</p>
-          )}
+            {profileSuccess && <Alert tone="success">{t('settings.profileUpdated')}</Alert>}
+            {profileError && <Alert tone="error">{profileError}</Alert>}
 
-          <button
-            className={styles.btnPrimary}
-            onClick={handleProfileUpdate}
-            disabled={profileSubmitting || !profileDisplayName.trim()}
-          >
-            {profileSubmitting ? t('settings.saving') : t('settings.saveProfile')}
-          </button>
+            <div className={shell.actions}>
+              <AdminButton variant="primary" loading={profileSubmitting} disabled={!profileDisplayName.trim()} onClick={handleProfileUpdate}>
+                {t('settings.saveProfile')}
+              </AdminButton>
+            </div>
 
-          {/* GDPR 数据导出（api.md §2.3）*/}
-          <div style={{ marginTop: '2rem', borderTop: '1px solid var(--divider-color)', paddingTop: '1.5rem' }}>
-            <h3 style={{ fontSize: '1rem', margin: '0 0 0.5rem' }}>{t('settings.exportHeading')}</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
-              {t('settings.exportDescription')}
-            </p>
+            {/* GDPR 数据导出（api.md §2.3）*/}
+            <div className={s.section}>
+              <h3 className={s.subHeading}>{t('settings.exportHeading')}</h3>
+              <p className={s.note}>{t('settings.exportDescription')}</p>
+              {exportStatus === 'done' && <Alert tone="success">{t('settings.exportDone')}</Alert>}
+              {exportError && <Alert tone="error">{exportError}</Alert>}
+              <div className={shell.actions}>
+                <AdminButton variant="secondary" loading={exportStatus === 'submitting'} onClick={handleExport}>
+                  {t('settings.requestExport')}
+                </AdminButton>
+              </div>
+            </div>
 
-            {exportStatus === 'done' && (
-              <p style={{ color: 'var(--success-color)', fontSize: '0.9rem', marginBottom: '0.5rem' }}>{t('settings.exportDone')}</p>
-            )}
-            {exportError && (
-              <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{exportError}</p>
-            )}
+            {/* 撤销账户注销（api.md §2.5）—— IAM 账号不可用（账户生命周期由 IAM 管理）*/}
+            {!isIam && (
+              <div className={s.section}>
+                <h3 className={s.subHeading}>{t('settings.cancelDeletionHeading')}</h3>
+                <p className={s.note}>{t('settings.cancelDeletionDescription')}</p>
 
-            <button
-              className={styles.btnSecondary}
-              onClick={handleExport}
-              disabled={exportStatus === 'submitting'}
-            >
-              {exportStatus === 'submitting' ? t('settings.requesting') : t('settings.requestExport')}
-            </button>
-          </div>
+                {cancelStatus === 'success' ? (
+                  <Alert tone="success">{t('settings.cancelSuccess')}</Alert>
+                ) : (
+                  <div className={shell.stackSm}>
+                    <TextField label={t('settings.cancelToken')} value={cancelToken} onChange={e => setCancelToken(e.target.value)} placeholder={t('settings.cancelTokenPlaceholder')} />
+                    <TextField label={t('settings.cancelIdentifier')} value={cancelIdentifier} onChange={e => setCancelIdentifier(e.target.value)} placeholder={t('settings.cancelIdentifierPlaceholder')} autoComplete="username" />
+                    <TextField label={t('settings.cancelPassword')} type="password" value={cancelPassword} onChange={e => setCancelPassword(e.target.value)} placeholder={t('settings.cancelPasswordPlaceholder')} autoComplete="current-password" />
+                    <TextField
+                      label={t('settings.cancelMfa')}
+                      value={cancelMfaCode}
+                      onChange={e => {
+                        const raw = e.target.value.toUpperCase()
+                        if (/[A-Z-]/.test(raw)) {
+                          setCancelMfaCode(raw.replace(/[^A-Z0-9-]/g, '').slice(0, 14))
+                        } else {
+                          setCancelMfaCode(raw.replace(/\D/g, '').slice(0, 6))
+                        }
+                      }}
+                      placeholder={t('settings.cancelMfaPlaceholder')}
+                    />
 
-          {/* 撤销账户注销（api.md §2.5）—— IAM 账号不可用（账户生命周期由 IAM 管理）*/}
-          {!isIam && (
-          <div style={{ marginTop: '2rem', borderTop: '1px solid var(--divider-color)', paddingTop: '1.5rem' }}>
-            <h3 style={{ fontSize: '1rem', margin: '0 0 0.5rem' }}>{t('settings.cancelDeletionHeading')}</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
-              {t('settings.cancelDeletionDescription')}
-            </p>
-
-            {cancelStatus === 'success' ? (
-              <p style={{ color: 'var(--success-color)', fontSize: '0.9rem', marginBottom: '0.5rem' }}>{t('settings.cancelSuccess')}</p>
-            ) : (
-              <>
-                <label className={styles.headingDesc} style={{ display: 'block', marginBottom: '0.5rem' }}>
-                  {t('settings.cancelToken')}
-                  <input type="text" value={cancelToken} onChange={e => setCancelToken(e.target.value)}
-                    className={styles.input} style={{ display: 'block', width: '100%', marginTop: '0.25rem' }}
-                    placeholder={t('settings.cancelTokenPlaceholder')} />
-                </label>
-                <label className={styles.headingDesc} style={{ display: 'block', marginBottom: '0.5rem' }}>
-                  {t('settings.cancelIdentifier')}
-                  <input type="text" value={cancelIdentifier} onChange={e => setCancelIdentifier(e.target.value)}
-                    className={styles.input} style={{ display: 'block', width: '100%', marginTop: '0.25rem' }}
-                    placeholder={t('settings.cancelIdentifierPlaceholder')} />
-                </label>
-                <label className={styles.headingDesc} style={{ display: 'block', marginBottom: '0.5rem' }}>
-                  {t('settings.cancelPassword')}
-                  <input type="password" value={cancelPassword} onChange={e => setCancelPassword(e.target.value)}
-                    className={styles.input} style={{ display: 'block', width: '100%', marginTop: '0.25rem' }}
-                    placeholder={t('settings.cancelPasswordPlaceholder')} />
-                </label>
-                <label className={styles.headingDesc} style={{ display: 'block', marginBottom: '0.75rem' }}>
-                  {t('settings.cancelMfa')}
-                  <input type="text" inputMode="text" value={cancelMfaCode}
-                    onChange={e => {
-                      const raw = e.target.value.toUpperCase()
-                      if (/[A-Z-]/.test(raw)) {
-                        setCancelMfaCode(raw.replace(/[^A-Z0-9-]/g, '').slice(0, 14))
-                      } else {
-                        setCancelMfaCode(raw.replace(/\D/g, '').slice(0, 6))
-                      }
-                    }}
-                    className={styles.input} style={{ display: 'block', width: '100%', marginTop: '0.25rem' }}
-                    placeholder={t('settings.cancelMfaPlaceholder')} />
-                </label>
-
-                {/* OAuth-only 账户：使用 Passkey 代替密码（api.md §2.5）*/}
-                {profile?.security.hasPassword === false && (
-                  <div style={{ marginBottom: '0.75rem' }}>
-                    {cancelPasskeyAssertion ? (
-                      <p style={{ fontSize: '0.85rem', color: 'var(--success-color)' }}>{t('settings.cancelPasskeyReady')}</p>
-                    ) : (
-                      <button
-                        type="button"
-                        className={styles.btnSecondary}
-                        onClick={handleCancelPasskey}
-                        disabled={cancelPasskeyProcessing || !cancelIdentifier.trim()}
-                        style={{ color: 'var(--accent-pink)', borderColor: 'var(--accent-pink)' }}
-                      >
-                        {cancelPasskeyProcessing ? t('settings.cancelPasskeyProcessing') : t('settings.cancelPasskeyButton')}
-                      </button>
+                    {/* OAuth-only 账户：使用 Passkey 代替密码（api.md §2.5）*/}
+                    {profile?.security.hasPassword === false && (
+                      cancelPasskeyAssertion ? (
+                        <Alert tone="success">{t('settings.cancelPasskeyReady')}</Alert>
+                      ) : (
+                        <div className={shell.actions}>
+                          <AdminButton variant="secondary" loading={cancelPasskeyProcessing} disabled={!cancelIdentifier.trim()} onClick={handleCancelPasskey}>
+                            {t('settings.cancelPasskeyButton')}
+                          </AdminButton>
+                        </div>
+                      )
                     )}
+
+                    {cancelError && <Alert tone="error">{cancelError}</Alert>}
+
+                    <div className={shell.actions}>
+                      <AdminButton
+                        variant="primary"
+                        loading={cancelStatus === 'submitting'}
+                        disabled={!cancelToken.trim() || !cancelIdentifier.trim() || (!cancelPassword && !cancelPasskeyAssertion && profile?.security.hasPassword === false)}
+                        onClick={handleCancelDeletion}
+                      >
+                        {t('settings.cancelDeletionButton')}
+                      </AdminButton>
+                    </div>
                   </div>
                 )}
-
-                {cancelError && (
-                  <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{cancelError}</p>
-                )}
-
-                <button
-                  className={styles.btnSecondary}
-                  onClick={handleCancelDeletion}
-                  disabled={cancelStatus === 'submitting' || !cancelToken.trim() || !cancelIdentifier.trim() || (!cancelPassword && !cancelPasskeyAssertion && profile?.security.hasPassword === false)}
-                  style={{ color: 'var(--success-color)', borderColor: 'var(--accent-pink)' }}
-                >
-                  {cancelStatus === 'submitting' ? t('settings.submitting') : t('settings.cancelDeletionButton')}
-                </button>
-              </>
+              </div>
             )}
           </div>
-          )}
-        </div>
+        </Card>
       )}
 
       {/* ══════════════════════════════════════════
           TAB 1: PASSWORD
           ══════════════════════════════════════════ */}
       {activeTab === 'password' && (
-        <div className={styles.detailCard} role="tabpanel" aria-labelledby="tab-password">
-          <h2 className={styles.detailTitle}>{t('settings.passwordHeading')}</h2>
+        <Card>
+          <div className={shell.stack}>
+            <h2 className={shell.detailTitle}>{t('settings.passwordHeading')}</h2>
 
-          {profile?.security.hasPassword === false && (
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-              {t('settings.passwordNotSet')}
-            </p>
-          )}
+            {profile?.security.hasPassword === false && <Alert tone="info">{t('settings.passwordNotSet')}</Alert>}
+            {passwordSuccess && <Alert tone="success">{t('settings.passwordChanged')}</Alert>}
 
-          {passwordSuccess && (
-            <p style={{ color: 'var(--success-color)', fontSize: '0.9rem', marginBottom: '1rem' }}>
-              {t('settings.passwordChanged')}
-            </p>
-          )}
-
-          {profile?.security.hasPassword && (
-            <label className={styles.headingDesc} style={{ display: 'block', marginBottom: '0.5rem' }}>
-              {t('settings.currentPassword')}
-              <input
+            {profile?.security.hasPassword && (
+              <TextField
+                label={t('settings.currentPassword')}
                 type="password"
                 value={currentPassword}
                 onChange={e => setCurrentPassword(e.target.value)}
-                style={{ display: 'block', width: '100%', marginTop: '0.25rem' }}
-                className={styles.input}
-                aria-describedby={passwordError ? 'password-error' : undefined}
+                autoComplete="current-password"
               />
-            </label>
-          )}
+            )}
 
-          <label className={styles.headingDesc} style={{ display: 'block', marginBottom: '0.5rem' }}>
-            {t('settings.newPassword')}
-            <input
+            <TextField
+              label={t('settings.newPassword')}
               type="password"
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
-              style={{ display: 'block', width: '100%', marginTop: '0.25rem' }}
-              className={styles.input}
               minLength={12}
               maxLength={128}
+              autoComplete="new-password"
             />
-          </label>
 
-          <label className={styles.headingDesc} style={{ display: 'block', marginBottom: '0.75rem' }}>
-            {t('settings.confirmPassword')}
-            <input
+            <TextField
+              label={t('settings.confirmPassword')}
               type="password"
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}
-              style={{ display: 'block', width: '100%', marginTop: '0.25rem' }}
-              className={styles.input}
+              autoComplete="new-password"
             />
-          </label>
 
-          {passwordError && (
-            <p id="password-error" style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{passwordError}</p>
-          )}
+            {passwordError && <Alert tone="error">{passwordError}</Alert>}
 
-          <button
-            className={styles.btnPrimary}
-            onClick={handlePasswordChange}
-            disabled={passwordSubmitting || !newPassword}
-          >
-            {passwordSubmitting ? t('settings.changing') : t('settings.changePassword')}
-          </button>
-        </div>
+            <div className={shell.actions}>
+              <AdminButton variant="primary" loading={passwordSubmitting} disabled={!newPassword} onClick={handlePasswordChange}>
+                {t('settings.changePassword')}
+              </AdminButton>
+            </div>
+          </div>
+        </Card>
       )}
 
       {/* ══════════════════════════════════════════
           TAB 2: TOTP
           ══════════════════════════════════════════ */}
       {activeTab === 'totp' && (
-        <div className={styles.detailCard} role="tabpanel" aria-labelledby="tab-totp">
-          <h2 className={styles.detailTitle}>{t('settings.totpHeading')}</h2>
+        <Card>
+          <div className={shell.stack}>
+            <h2 className={shell.detailTitle}>{t('settings.totpHeading')}</h2>
 
-          {profile?.security.totpEnabled ? (
-            <>
-              <p style={{ fontSize: '0.9rem', color: 'var(--success-color)', marginBottom: '1rem' }}>
-                {t('settings.totpEnabled')}
-              </p>
+            {profile?.security.totpEnabled ? (
+              <>
+                <Alert tone="success">{t('settings.totpEnabled')}</Alert>
 
-              {/* Disable TOTP */}
-              <h3 style={{ fontSize: '1rem', margin: '0 0 0.75rem' }}>{t('settings.totpDisableTitle')}</h3>
-              {profile?.security.hasPassword && (
-                <input
-                  type="password"
-                  placeholder={t('settings.totpDisablePlaceholder')}
-                  value={disableTotpPassword}
-                  onChange={e => setDisableTotpPassword(e.target.value)}
-                  className={styles.input}
-                  style={{ display: 'block', width: '100%', marginBottom: '0.5rem' }}
-                />
-              )}
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder={t('settings.totpCodePlaceholder')}
-                value={disableTotpCode}
-                onChange={e => setDisableTotpCode(e.target.value)}
-                className={styles.input}
-                style={{ display: 'block', width: '100%', marginBottom: '0.75rem' }}
-              />
-              <button
-                className={styles.btnPrimary}
-                onClick={handleTotpDisable}
-                disabled={disableTotpSubmitting || !disableTotpCode}
-              >
-                {disableTotpSubmitting ? t('settings.totpDisabling') : t('settings.totpDisableButton')}
-              </button>
-
-              {/* Regenerate recovery codes */}
-              <div style={{ marginTop: '2rem', borderTop: '1px solid var(--divider-color)', paddingTop: '1rem' }}>
-                <h3 style={{ fontSize: '1rem', margin: '0 0 0.75rem' }}>{t('settings.recoveryRegenerateHeading')}</h3>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder={t('settings.recoveryRegeneratePlaceholder')}
-                  value={regenerateCode}
-                  onChange={e => setRegenerateCode(e.target.value)}
-                  className={styles.input}
-                  style={{ display: 'block', width: '100%', marginBottom: '0.75rem' }}
-                />
-                <button
-                  className={styles.btnSecondary}
-                  onClick={handleRegenerateRecoveryCodes}
-                  disabled={regenerateSubmitting || !regenerateCode}
-                >
-                  {regenerateSubmitting ? t('settings.recoveryRegenerating') : t('settings.recoveryRegenerateButton')}
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                {t('settings.totpSetupDescription')}
-              </p>
-
-              {!totpSetupData ? (
-                <button
-                  className={styles.btnPrimary}
-                  onClick={handleTotpSetup}
-                  disabled={totpSubmitting}
-                >
-                  {totpSubmitting ? t('settings.totpPreparing') : t('settings.totpSetupButton')}
-                </button>
-              ) : (
-                <div>
-                  <p style={{ fontSize: '0.9rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>
-                    {t('settings.totpScanHint')}
-                  </p>
-
-                  {totpSetupData.qrCodeImage && (
-                    <div style={{ textAlign: 'center', margin: '1rem 0' }}>
-                      <img
-                        src={totpSetupData.qrCodeImage}
-                        alt="TOTP QR Code"
-                        style={{ width: '200px', height: '200px', borderRadius: '8px' }}
-                      />
-                    </div>
+                {/* Disable TOTP */}
+                <div className={shell.stackSm}>
+                  <h3 className={s.subHeading}>{t('settings.totpDisableTitle')}</h3>
+                  {profile?.security.hasPassword && (
+                    <TextField
+                      type="password"
+                      placeholder={t('settings.totpDisablePlaceholder')}
+                      value={disableTotpPassword}
+                      onChange={e => setDisableTotpPassword(e.target.value)}
+                      autoComplete="current-password"
+                    />
                   )}
-
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', marginBottom: '1rem' }}>
-                    {t('settings.secretLabel')}<code style={{ fontSize: '0.9rem', letterSpacing: '0.1em' }}>{totpSetupData.secret}</code>
-                  </p>
-
-                  <input
-                    type="text"
+                  <TextField
                     inputMode="numeric"
-                    placeholder={t('settings.totpCodeInputPlaceholder')}
-                    value={totpCode}
-                    onChange={e => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    className={styles.input}
-                    style={{ display: 'block', width: '200px', margin: '0 auto 0.75rem', textAlign: 'center', fontSize: '1.2rem', letterSpacing: '0.3em' }}
-                    maxLength={6}
-                    autoFocus
-                    aria-describedby={totpError ? 'totp-error' : undefined}
+                    placeholder={t('settings.totpCodePlaceholder')}
+                    value={disableTotpCode}
+                    onChange={e => setDisableTotpCode(e.target.value)}
                   />
-
-                  {totpError && (
-                    <p id="totp-error" style={{ color: 'var(--error-color)', fontSize: '0.85rem', textAlign: 'center', marginBottom: '0.5rem' }} role="alert">{totpError}</p>
-                  )}
-
-                  <div style={{ textAlign: 'center' }}>
-                    <button
-                      className={styles.btnPrimary}
-                      onClick={handleTotpEnable}
-                      disabled={totpSubmitting || totpCode.length < 6}
-                    >
-                      {totpSubmitting ? t('settings.totpVerifying') : t('settings.totpConfirmButton')}
-                    </button>
+                  <div className={shell.actions}>
+                    <AdminButton variant="primary" loading={disableTotpSubmitting} disabled={!disableTotpCode} onClick={handleTotpDisable}>
+                      {t('settings.totpDisableButton')}
+                    </AdminButton>
                   </div>
                 </div>
-              )}
-            </>
-          )}
 
-          {/* Recovery codes modal */}
-          {showRecoveryCodes && recoveryCodes && recoveryCodes.length > 0 && (
-            <div style={{
-              position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'var(--overlay-bg)', zIndex: 1000,
-            }}>
-              <div role="dialog" aria-modal="true" aria-labelledby="recovery-codes-title" style={{
-                background: 'var(--bg-color, #fff)', padding: '2rem', borderRadius: '10px',
-                maxWidth: '500px', width: '90%',
-              }}>
-                <h3 id="recovery-codes-title" style={{ margin: '0 0 0.5rem' }}>{t('settings.recoveryCodesTitle')}</h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--error-color)', marginBottom: '0.75rem' }}>
-                  {t('settings.recoveryCodesHint')}
-                </p>
-                <div style={{
-                  background: 'var(--hover-bg)', padding: '1rem', borderRadius: '8px',
-                  fontFamily: 'monospace', fontSize: '0.9rem', lineHeight: 2,
-                }}>
-                  {recoveryCodes.map((code, i) => (
-                    <div key={i}>{code}</div>
-                  ))}
+                {/* Regenerate recovery codes */}
+                <div className={s.section}>
+                  <h3 className={s.subHeading}>{t('settings.recoveryRegenerateHeading')}</h3>
+                  <div className={shell.stackSm}>
+                    <TextField
+                      inputMode="numeric"
+                      placeholder={t('settings.recoveryRegeneratePlaceholder')}
+                      value={regenerateCode}
+                      onChange={e => setRegenerateCode(e.target.value)}
+                    />
+                    <div className={shell.actions}>
+                      <AdminButton variant="secondary" loading={regenerateSubmitting} disabled={!regenerateCode} onClick={handleRegenerateRecoveryCodes}>
+                        {t('settings.recoveryRegenerateButton')}
+                      </AdminButton>
+                    </div>
+                  </div>
                 </div>
-                <button
-                  className={styles.btnPrimary}
-                  onClick={() => { setShowRecoveryCodes(false); setRecoveryCodes(null) }}
-                  style={{ marginTop: '1rem' }}
-                >
-                  {t('settings.recoveryCodesSaved')}
-                </button>
-              </div>
-            </div>
-          )}
+              </>
+            ) : (
+              <>
+                <p className={s.note}>{t('settings.totpSetupDescription')}</p>
 
-          {totpError && !totpSetupData && (
-            <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginTop: '0.5rem' }}>{totpError}</p>
-          )}
-        </div>
+                {!totpSetupData ? (
+                  <div className={shell.actions}>
+                    <AdminButton variant="primary" loading={totpSubmitting} onClick={handleTotpSetup}>
+                      {t('settings.totpSetupButton')}
+                    </AdminButton>
+                  </div>
+                ) : (
+                  <div className={shell.stackSm}>
+                    <p className={s.note}>{t('settings.totpScanHint')}</p>
+
+                    {totpSetupData.qrCodeImage && (
+                      <img src={totpSetupData.qrCodeImage} alt="TOTP QR Code" className={s.qr} />
+                    )}
+
+                    <p className={s.secretLine}>
+                      {t('settings.secretLabel')}<code className={s.secret}>{totpSetupData.secret}</code>
+                    </p>
+
+                    <div className={s.codeNarrow}>
+                      <TextField
+                        className={s.codeInput}
+                        inputMode="numeric"
+                        placeholder={t('settings.totpCodeInputPlaceholder')}
+                        value={totpCode}
+                        onChange={e => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        maxLength={6}
+                        autoFocus
+                      />
+                    </div>
+
+                    {totpError && <Alert tone="error">{totpError}</Alert>}
+
+                    <div className={s.centerActions}>
+                      <AdminButton variant="primary" loading={totpSubmitting} disabled={totpCode.length < 6} onClick={handleTotpEnable}>
+                        {t('settings.totpConfirmButton')}
+                      </AdminButton>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {totpError && !totpSetupData && <Alert tone="error">{totpError}</Alert>}
+          </div>
+        </Card>
       )}
 
       {/* ══════════════════════════════════════════
           TAB 3: PASSKEY
           ══════════════════════════════════════════ */}
       {activeTab === 'passkey' && (
-        <div className={styles.detailCard} role="tabpanel" aria-labelledby="tab-passkey">
-          <h2 className={styles.detailTitle}>{t('settings.passkeyHeading')}</h2>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-            {t('settings.passkeyDescription')}
-          </p>
+        <Card>
+          <div className={shell.stack}>
+            <h2 className={shell.detailTitle}>{t('settings.passkeyHeading')}</h2>
+            <p className={s.note}>{t('settings.passkeyDescription')}</p>
 
-          {/* Register new */}
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', alignItems: 'center' }}>
-            <input
-              type="text"
-              placeholder={t('settings.passkeyNamePlaceholder')}
-              value={passkeyName}
-              onChange={e => setPasskeyName(e.target.value)}
-              className={styles.input}
-              style={{ flex: 1 }}
-              maxLength={50}
-            />
-            <button
-              className={styles.btnPrimary}
-              onClick={handlePasskeyRegister}
-              disabled={passkeySubmitting || !passkeyName.trim()}
-            >
-              {passkeySubmitting ? t('settings.passkeyRegistering') : t('settings.passkeyRegisterButton')}
-            </button>
-          </div>
+            {/* Register new */}
+            <div className={s.inlineRow}>
+              <TextField
+                fieldClassName={s.grow}
+                aria-label={t('settings.passkeyNamePlaceholder')}
+                placeholder={t('settings.passkeyNamePlaceholder')}
+                value={passkeyName}
+                onChange={e => setPasskeyName(e.target.value)}
+                maxLength={50}
+              />
+              <AdminButton variant="primary" loading={passkeySubmitting} disabled={!passkeyName.trim()} onClick={handlePasskeyRegister}>
+                {t('settings.passkeyRegisterButton')}
+              </AdminButton>
+            </div>
 
-          {passkeyError && (
-            <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{passkeyError}</p>
-          )}
+            {passkeyError && <Alert tone="error">{passkeyError}</Alert>}
 
-          {/* List */}
-          {passkeyLoading ? (
-            <div className={styles.loading}>{t('settings.loading')}</div>
-          ) : passkeys.length === 0 ? (
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('settings.passkeyEmpty')}</p>
-          ) : (
-            <ul className={styles.list}>
-              {passkeys.map(pk => (
-                <li key={pk.id} className={styles.item}>
-                  <div className={styles.itemMain}>
-                    <div className={styles.itemTitle}>{pk.name}</div>
-                    <div className={styles.itemMeta}>
-                      {pk.status === 'frozen' ? `❄️ ${t('settings.passkeyFrozen')} (${pk.frozenReason || t('settings.passkeyUnknownReason')}) · ` : ''}
-                      {t('settings.passkeyRegisteredAt')} {formatTs(pk.createdAt)}
-                      {pk.lastUsedAt ? ` · ${t('settings.passkeyLastUsed')} ${formatTs(pk.lastUsedAt)}` : ''}
+            {/* List */}
+            {passkeyLoading ? (
+              <Spinner size="lg" label={t('settings.loading')} />
+            ) : passkeys.length === 0 ? (
+              <p className={s.note}>{t('settings.passkeyEmpty')}</p>
+            ) : (
+              <ul className={shell.list}>
+                {passkeys.map(pk => (
+                  <li key={pk.id}>
+                    <div className={shell.rowStatic}>
+                      <span className={shell.rowMain}>
+                        <span className={shell.rowTitle}>{pk.name}</span>
+                        <span className={shell.rowMeta}>
+                          <span>{t('settings.passkeyRegisteredAt')} {formatTs(pk.createdAt)}</span>
+                          {pk.lastUsedAt && (
+                            <>
+                              <span className={shell.rowMetaSep}>·</span>
+                              <span>{t('settings.passkeyLastUsed')} {formatTs(pk.lastUsedAt)}</span>
+                            </>
+                          )}
+                          {pk.status === 'frozen' && (
+                            <>
+                              <span className={shell.rowMetaSep}>·</span>
+                              <span>{pk.frozenReason || t('settings.passkeyUnknownReason')}</span>
+                            </>
+                          )}
+                        </span>
+                      </span>
+                      <span className={shell.rowRight}>
+                        {pk.status === 'frozen' ? (
+                          <StatusBadge tone="muted" label={t('settings.passkeyFrozen')} size="sm" />
+                        ) : (
+                          <AdminButton variant="danger" size="sm" onClick={() => handlePasskeyDelete(pk.id)}>
+                            {t('settings.passkeyDelete')}
+                          </AdminButton>
+                        )}
+                      </span>
                     </div>
-                  </div>
-                  {pk.status === 'active' && (
-                    <button
-                      className={styles.btnSecondary}
-                      onClick={() => handlePasskeyDelete(pk.id)}
-                      style={{ color: 'var(--error-color)', borderColor: 'var(--divider-color)' }}
-                    >
-                      {t('settings.passkeyDelete')}
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </Card>
       )}
 
       {/* ══════════════════════════════════════════
           TAB 4: OAUTH BINDING
           ══════════════════════════════════════════ */}
       {activeTab === 'oauth' && (
-        <div className={styles.detailCard} role="tabpanel" aria-labelledby="tab-oauth">
-          <h2 className={styles.detailTitle}>{t('settings.oauthHeading')}</h2>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-            {t('settings.oauthDescription')}
-          </p>
+        <Card>
+          <div className={shell.stack}>
+            <h2 className={shell.detailTitle}>{t('settings.oauthHeading')}</h2>
+            <p className={s.note}>{t('settings.oauthDescription')}</p>
 
-          {oauthError && (
-            <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{oauthError}</p>
-          )}
+            {oauthError && <Alert tone="error">{oauthError}</Alert>}
 
-          {oauthLoading ? (
-            <div className={styles.loading}>{t('settings.loading')}</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {/* GitHub */}
-              <div className={styles.detailCard} style={{ border: '1px solid var(--divider-color)', margin: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <strong>GitHub</strong>
-                    {(() => {
-                      const gh = oauthAccounts.find(a => a.provider === 'github')
-                      return gh
-                        ? <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0.25rem 0 0' }}>
-                            @{gh.providerUsername} · {t('settings.oauthBoundAt')} {formatTs(gh.boundAt)}
-                          </p>
-                        : <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>{t('settings.oauthNotBound')}</p>
-                    })()}
-                  </div>
-                  {oauthAccounts.find(a => a.provider === 'github')
-                    ? <button className={styles.btnSecondary} onClick={() => handleOAuthUnbind('github')} style={{ color: 'var(--error-color)' }}>{t('settings.oauthUnbind')}</button>
-                    : <button className={styles.btnPrimary} onClick={() => handleOAuthBind('github')}>{t('settings.oauthBind')}</button>
-                  }
-                </div>
-              </div>
-
-              {/* X */}
-              <div className={styles.detailCard} style={{ border: '1px solid var(--divider-color)', margin: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <strong>X (Twitter)</strong>
-                    {(() => {
-                      const x = oauthAccounts.find(a => a.provider === 'x')
-                      return x
-                        ? <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0.25rem 0 0' }}>
-                            @{x.providerUsername} · {t('settings.oauthBoundAt')} {formatTs(x.boundAt)}
-                          </p>
-                        : <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>{t('settings.oauthNotBound')}</p>
-                    })()}
-                  </div>
-                  {oauthAccounts.find(a => a.provider === 'x')
-                    ? <button className={styles.btnSecondary} onClick={() => handleOAuthUnbind('x')} style={{ color: 'var(--error-color)' }}>{t('settings.oauthUnbind')}</button>
-                    : <button className={styles.btnPrimary} onClick={() => handleOAuthBind('x')}>{t('settings.oauthBind')}</button>
-                  }
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+            {oauthLoading ? (
+              <Spinner size="lg" label={t('settings.loading')} />
+            ) : (
+              <ul className={shell.list}>
+                {(['github', 'x'] as const).map(provider => {
+                  const acct = oauthAccounts.find(a => a.provider === provider)
+                  const name = provider === 'github' ? 'GitHub' : 'X (Twitter)'
+                  return (
+                    <li key={provider}>
+                      <div className={shell.rowStatic}>
+                        <span className={shell.rowMain}>
+                          <span className={shell.rowTitle}>{name}</span>
+                          <span className={shell.rowMeta}>
+                            {acct ? (
+                              <>
+                                <span>@{acct.providerUsername}</span>
+                                <span className={shell.rowMetaSep}>·</span>
+                                <span>{t('settings.oauthBoundAt')} {formatTs(acct.boundAt)}</span>
+                              </>
+                            ) : (
+                              <span>{t('settings.oauthNotBound')}</span>
+                            )}
+                          </span>
+                        </span>
+                        <span className={shell.rowRight}>
+                          {acct ? (
+                            <AdminButton variant="danger" size="sm" onClick={() => handleOAuthUnbind(provider)}>{t('settings.oauthUnbind')}</AdminButton>
+                          ) : (
+                            <AdminButton variant="primary" size="sm" onClick={() => handleOAuthBind(provider)}>{t('settings.oauthBind')}</AdminButton>
+                          )}
+                        </span>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+        </Card>
       )}
 
       {activeTab === 'sessions' && (
-        <div className={styles.detailCard} role="tabpanel" aria-labelledby="tab-sessions">
-          <h2 className={styles.detailTitle}>{t('settings.sessionsHeading')}</h2>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-            {t('settings.sessionsDescription')}
-          </p>
-          <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button className={styles.btnSecondary} onClick={async () => {
-              if (!window.confirm(t('settings.sessionsLogoutAllConfirm'))) return
-              const result = await logoutAll()
-              if (result) {
-                navigate('/login', { replace: true })
-              } else {
-                setSessionError(t('settings.sessionsLogoutAllError'))
-              }
-            }} style={{ color: 'var(--error-color)', borderColor: 'var(--divider-color)' }}>
-              {t('settings.sessionsLogoutAll')}
-            </button>
-          </div>
-          {sessionError && (
-            <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{sessionError}</p>
-          )}
-          {sessionLoading && sessions.length === 0 ? (
-            <div className={styles.loading}>{t('settings.loading')}</div>
-          ) : sessions.length === 0 ? (
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('settings.sessionsEmpty')}</p>
-          ) : (
-            <ul className={styles.list}>
-              {sessions.map(sess => (
-                <li key={sess.id} className={styles.item}>
-                  <div className={styles.itemMain}>
-                    <div className={styles.itemTitle}>
-                      {sess.current ? `🟢 ${t('settings.sessionsCurrent')}` : `○ ${sess.device.browser || '-'}`}
-                    </div>
-                    <div className={styles.itemMeta}>
-                      {sess.device.os ? `${sess.device.os} · ` : ''}
-                      {t('settings.sessionsIpPrefix')}: {sess.ipPrefix} · {t('settings.sessionsLoggedIn')}: {formatTs(sess.createdAt)}
-                      {sess.lastUsedAt ? ` · ${t('settings.sessionsLastActive')}: ${formatTs(sess.lastUsedAt)}` : ''}
-                    </div>
+        <Card>
+          <div className={shell.stack}>
+            <h2 className={shell.detailTitle}>{t('settings.sessionsHeading')}</h2>
+            <p className={s.note}>{t('settings.sessionsDescription')}</p>
+            <div className={shell.actions}>
+              <AdminButton variant="danger" onClick={() => setConfirmAction({ kind: 'logoutAll' })}>
+                {t('settings.sessionsLogoutAll')}
+              </AdminButton>
+            </div>
+            {sessionError && <Alert tone="error">{sessionError}</Alert>}
+            {sessionLoading && sessions.length === 0 ? (
+              <Spinner size="lg" label={t('settings.loading')} />
+            ) : sessions.length === 0 ? (
+              <p className={s.note}>{t('settings.sessionsEmpty')}</p>
+            ) : (
+              <>
+                <ul className={shell.list}>
+                  {sessions.map(sess => (
+                    <li key={sess.id}>
+                      <div className={shell.rowStatic}>
+                        <span className={shell.rowMain}>
+                          <span className={shell.rowTitle}>{sess.device.browser || '-'}</span>
+                          <span className={shell.rowMeta}>
+                            {sess.device.os && (
+                              <>
+                                <span>{sess.device.os}</span>
+                                <span className={shell.rowMetaSep}>·</span>
+                              </>
+                            )}
+                            <span>{t('settings.sessionsIpPrefix')}: {sess.ipPrefix}</span>
+                            <span className={shell.rowMetaSep}>·</span>
+                            <span>{t('settings.sessionsLoggedIn')}: {formatTs(sess.createdAt)}</span>
+                            {sess.lastUsedAt && (
+                              <>
+                                <span className={shell.rowMetaSep}>·</span>
+                                <span>{t('settings.sessionsLastActive')}: {formatTs(sess.lastUsedAt)}</span>
+                              </>
+                            )}
+                          </span>
+                        </span>
+                        <span className={shell.rowRight}>
+                          {sess.current ? (
+                            <StatusBadge tone="green" label={t('settings.sessionsCurrent')} size="sm" />
+                          ) : (
+                            <AdminButton
+                              variant="danger"
+                              size="sm"
+                              loading={sessionRevoking === sess.id}
+                              onClick={() => setConfirmAction({ kind: 'revoke', sessionId: sess.id })}
+                            >
+                              {t('settings.sessionsRevoke')}
+                            </AdminButton>
+                          )}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                {sessionCursor && (
+                  <div className={shell.loadMoreWrap}>
+                    <AdminButton variant="secondary" loading={sessionLoading} onClick={loadMoreSessions}>
+                      {t('settings.sessionsLoadMore')}
+                    </AdminButton>
                   </div>
-                  {!sess.current && (
-                    <button
-                      className={styles.btnSecondary}
-                      onClick={async () => {
-                        if (!window.confirm(t('settings.sessionsRevokeConfirm'))) return
-                        setSessionRevoking(sess.id)
-                        const result = await del(`/me/sessions/${sess.id}`)
-                        if (result.ok) {
-                          setSessions(prev => prev.filter(s => s.id !== sess.id))
-                        } else {
-                          setSessionError(result.error.message)
-                        }
-                        setSessionRevoking(null)
-                      }}
-                      disabled={sessionRevoking === sess.id}
-                      style={{ color: 'var(--error-color)', borderColor: 'var(--divider-color)' }}
-                    >
-                      {sessionRevoking === sess.id ? t('settings.sessionsRevoking') : t('settings.sessionsRevoke')}
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-          {sessionCursor && (
-            <button
-              className={styles.btnSecondary}
-              onClick={loadMoreSessions}
-              disabled={sessionLoading}
-              style={{ display: 'block', margin: '1rem auto' }}
-            >
-              {sessionLoading ? t('settings.loading') : t('settings.sessionsLoadMore')}
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Delete account section — only on the profile tab (was rendering under every tab);
-          hidden for IAM accounts (deletion is managed by IAM). */}
-      {activeTab === 'profile' && !isIam && (
-      <div className={styles.detailCard} style={{ marginTop: '1rem', borderColor: 'var(--divider-color)' }}>
-        <h2 className={styles.detailTitle} style={{ color: 'var(--error-color)' }}>{t('settings.deleteAccount.heading')}</h2>
-        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-          {t('settings.deleteAccount.description')}
-        </p>
-        {cancelError && (
-          <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{cancelError}</p>
-        )}
-        {deleteAccountError && (
-          <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{deleteAccountError}</p>
-        )}
-        <button
-          className={styles.btnSecondary}
-          onClick={() => {
-            if (!window.confirm(t('settings.deleteAccount.confirm'))) return
-            setPendingAction('delete-account')
-            setShowStepUp(true)
-          }}
-          style={{ color: 'var(--error-color)', borderColor: 'var(--divider-color)' }}
-        >
-          {t('settings.deleteAccount.button')}
-        </button>
-      </div>
-      )}
-
-      {/* Delete account password prompt (L10 — inline form replaces native prompt()) */}
-      {deletePasswordNeeded && !deletePasswordSubmitting && (
-        <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid var(--divider-color)', borderRadius: '8px', background: 'var(--hover-bg)' }}>
-          <p style={{ margin: '0 0 0.5rem', color: 'var(--text-main)', fontWeight: 500 }}>
-            {t('settings.deleteAccount.passwordPrompt')}
-          </p>
-          {deletePasswordError && <p style={{ color: 'var(--error-color)', fontSize: '0.85rem', marginBottom: '0.5rem' }} role="alert">{deletePasswordError}</p>}
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <input
-              type="password"
-              value={deletePassword}
-              onChange={e => setDeletePassword(e.target.value)}
-              placeholder={t('settings.passwordPlaceholder')}
-              autoFocus
-              style={{ flex: 1, padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
-              onKeyDown={e => { if (e.key === 'Enter') handleDeleteWithPassword() }}
-            />
-            <button
-              disabled={!deletePassword || deletePasswordSubmitting}
-              style={{ padding: '0.4rem 0.75rem', cursor: deletePassword ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}
-              onClick={handleDeleteWithPassword}
-            >
-              {deletePasswordSubmitting ? t('settings.submitting') : t('settings.confirm')}
-            </button>
-            <button
-              onClick={() => { setDeletePasswordNeeded(false); setDeletePassword(''); setDeletePasswordError('') }}
-              style={{ padding: '0.4rem 0.75rem', cursor: 'pointer', fontFamily: 'inherit', background: 'none', border: '1px solid var(--divider-color)', borderRadius: '8px' }}
-            >
-              {t('settings.cancel')}
-            </button>
+                )}
+              </>
+            )}
           </div>
+        </Card>
+      )}
+
+        {/* Delete account section — only on the profile tab; hidden for IAM accounts. */}
+        {activeTab === 'profile' && !isIam && (
+          <Card>
+            <div className={shell.stack}>
+              <h2 className={shell.detailTitle}>{t('settings.deleteAccount.heading')}</h2>
+              <p className={s.note}>{t('settings.deleteAccount.description')}</p>
+              {cancelError && <Alert tone="error">{cancelError}</Alert>}
+              {deleteAccountError && <Alert tone="error">{deleteAccountError}</Alert>}
+              <div className={shell.actions}>
+                <AdminButton variant="danger" onClick={() => setConfirmAction({ kind: 'deleteAccount' })}>
+                  {t('settings.deleteAccount.button')}
+                </AdminButton>
+              </div>
+            </div>
+          </Card>
+        )}
+      </div>
+
+      {/* Recovery codes — shown after enabling TOTP / regenerating */}
+      <Modal
+        open={showRecoveryCodes && !!recoveryCodes && recoveryCodes.length > 0}
+        /* Codes are shown once — only the explicit "saved" button dismisses;
+           Escape/backdrop are no-ops so an accidental tap can't lose them. */
+        onClose={() => {}}
+        closeOnOverlayClick={false}
+        title={t('settings.recoveryCodesTitle')}
+        footer={
+          <AdminButton variant="primary" onClick={() => { setShowRecoveryCodes(false); setRecoveryCodes(null) }}>
+            {t('settings.recoveryCodesSaved')}
+          </AdminButton>
+        }
+      >
+        <Alert tone="error">{t('settings.recoveryCodesHint')}</Alert>
+        <div className={s.recoveryCodes}>
+          {recoveryCodes?.map((code, i) => <div key={i}>{code}</div>)}
         </div>
+      </Modal>
+
+      {/* Delete account — password confirmation (replaces native prompt) */}
+      <Modal
+        open={deletePasswordNeeded}
+        onClose={() => { setDeletePasswordNeeded(false); setDeletePassword(''); setDeletePasswordError('') }}
+        title={t('settings.deleteAccount.passwordPrompt')}
+        footer={
+          <>
+            <AdminButton variant="secondary" onClick={() => { setDeletePasswordNeeded(false); setDeletePassword(''); setDeletePasswordError('') }}>
+              {t('settings.cancel')}
+            </AdminButton>
+            <AdminButton variant="danger" loading={deletePasswordSubmitting} disabled={!deletePassword} onClick={handleDeleteWithPassword}>
+              {t('settings.confirm')}
+            </AdminButton>
+          </>
+        }
+      >
+        <TextField
+          type="password"
+          value={deletePassword}
+          onChange={e => setDeletePassword(e.target.value)}
+          placeholder={t('settings.passwordPlaceholder')}
+          autoComplete="current-password"
+          autoFocus
+          onKeyDown={e => { if (e.key === 'Enter') handleDeleteWithPassword() }}
+        />
+        {deletePasswordError && <Alert tone="error">{deletePasswordError}</Alert>}
+      </Modal>
+
+      {/* Destructive confirmation (logout-all / revoke session / delete-account) */}
+      {confirmAction && (
+        <ConfirmDialog
+          open
+          title={confirmCopy[confirmAction.kind].title}
+          message={confirmCopy[confirmAction.kind].message}
+          confirmText={confirmCopy[confirmAction.kind].cta}
+          cancelText={t('settings.cancel')}
+          variant="danger"
+          confirmLoading={confirmBusy}
+          onConfirm={runConfirm}
+          onCancel={() => setConfirmAction(null)}
+        />
       )}
 
       {/* Step-up dialog */}
@@ -1459,7 +1391,7 @@ export const SettingsSecurity = () => {
           accessToken={accessToken ?? ''}
         />
       )}
-    </main>
+    </div>
   )
 }
 

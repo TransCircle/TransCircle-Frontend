@@ -11,8 +11,14 @@
   color: var(--text-secondary);
 }
 
+.required {
+  margin-left: 0.2rem;
+  color: var(--accent-pink);
+}
+
 .input {
   width: 100%;
+  min-height: 40px;
   padding: 0.55rem 0.8rem;
   border: 1.5px solid var(--divider-color);
   border-radius: 10px;
@@ -122,6 +128,17 @@
 .clearBtn:hover {
   background-color: var(--hover-bg);
   color: var(--text-main);
+}
+
+/* Comfortable touch targets on touch devices. */
+@media (pointer: coarse) {
+  .input {
+    min-height: 44px;
+  }
+  .clearBtn {
+    width: 40px;
+    height: 40px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

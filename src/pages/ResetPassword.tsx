@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react'
-import { useSearchParams, Link } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { post } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { checkPasswordStrength } from '@/utils/string'
-import styles from '../App.module.css'
-import formStyles from '../components/Form.module.css'
+import { AdminButton, Alert, CenteredCard, PageHeader, StatusScreen, TextField } from '@/components/ui'
+import auth from './Auth.module.css'
 
 export const ResetPassword = () => {
   const [searchParams] = useSearchParams()
@@ -54,33 +54,36 @@ export const ResetPassword = () => {
 
   if (success) {
     return (
-      <main className={styles.standalonePage}>
-        <h1 className={styles.statusSuccess} style={{ fontSize: '1.5rem' }}>{t('resetPassword.success')}</h1>
-        <Link to="/login" className={styles.accentLink} style={{ marginTop: '1rem' }}>{t('emailVerify.redirectToLogin')}</Link>
-      </main>
+      <StatusScreen
+        kind="success"
+        title={t('resetPassword.success')}
+        actions={[{ label: t('emailVerify.redirectToLogin'), to: '/login' }]}
+      />
     )
   }
 
   return (
-    <>
-      <header className={styles.contentHeader}>
-        <h1 className={styles.mainTitle}>{t('resetPassword.title')}</h1>
-        <p className={styles.subTitle}>{t('resetPassword.description')}</p>
-      </header>
-      <form className={formStyles.form} onSubmit={handleSubmit} noValidate>
-        <label className={formStyles.field}>
-          <span className={formStyles.label}>{t('resetPassword.newPassword')}</span>
-          <input className={formStyles.input} type="password" value={newPassword}
-            onChange={e => setNewPassword(e.target.value)} placeholder={t('resetPassword.newPasswordPlaceholder')}
-            required minLength={12} maxLength={128} autoFocus aria-invalid={!!pwError} />
-          {pwError && <span className={formStyles.error} role="alert">{pwError}</span>}
-        </label>
-        {error && <p className={formStyles.error} role="alert">{error}</p>}
-        <button type="submit" disabled={submitting || !newPassword || !!pwError}
-          className={`${styles.ctaPrimary} ${formStyles.submitBtn}`}>
-          {submitting ? t('resetPassword.submitting') : t('resetPassword.submit')}
-        </button>
+    <CenteredCard>
+      <PageHeader title={t('resetPassword.title')} description={t('resetPassword.description')} align="center" />
+      <form className={auth.form} onSubmit={handleSubmit} noValidate>
+        <TextField
+          label={t('resetPassword.newPassword')}
+          type="password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          placeholder={t('resetPassword.newPasswordPlaceholder')}
+          autoFocus
+          minLength={12}
+          maxLength={128}
+          autoComplete="new-password"
+          invalid={!!pwError}
+          hint={pwError || undefined}
+        />
+        {error && <Alert tone="error">{error}</Alert>}
+        <AdminButton type="submit" variant="primary" fullWidth loading={submitting} disabled={!newPassword || !!pwError}>
+          {t('resetPassword.submit')}
+        </AdminButton>
       </form>
-    </>
+    </CenteredCard>
   )
 }

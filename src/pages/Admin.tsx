@@ -21,7 +21,7 @@ import {
   CONTRIB_STATUS_TONE,
   type TabItem,
 } from '@/components/admin'
-import shell from './AdminPages.module.css'
+import shell from './Page.module.css'
 
 // Temp token is kept in memory only (per api.md §JWT Payload Structure:
 // access tokens must not be stored in localStorage or sessionStorage).

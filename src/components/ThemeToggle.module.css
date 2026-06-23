@@ -9,6 +9,14 @@
   backdrop-filter: blur(10px);
 }
 
+/* Plain variant: flush in a surface (no card backdrop/border). */
+.toggleGroup.plain {
+  background: none;
+  border: none;
+  padding: 0;
+  backdrop-filter: none;
+}
+
 .toggleBtn {
   display: flex;
   align-items: center;
@@ -70,4 +78,18 @@
 
 [data-theme="contrast"] .toggleBtn.active:hover {
   background-color: #cc8800;
+}
+
+/* Comfortable touch targets on touch devices (visual size unchanged on desktop). */
+@media (pointer: coarse) {
+  .toggleBtn {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toggleBtn {
+    transition: none;
+  }
 }

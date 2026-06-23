@@ -1,9 +1,11 @@
-﻿import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { get } from '@/api/client'
 import DOMPurify from 'dompurify'
-import styles from './Admin.module.css'
+import { AdminButton, Alert, Card, Pill, Spinner } from '@/components/ui'
+import { useFormatTs } from '@/utils/datetime'
+import shell from './Page.module.css'
 
 interface PublicDetail {
   id: string
@@ -20,13 +22,11 @@ interface PublicDetail {
   publishedAt: number
 }
 
-function formatTs(ts: number): string {
-  return new Date(ts).toISOString().slice(0, 16).replace('T', ' ')
-}
-
 export const PublicContributionDetail = () => {
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const formatTs = useFormatTs()
 
   const [detail, setDetail] = useState<PublicDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -51,38 +51,55 @@ export const PublicContributionDetail = () => {
     return () => { cancelled = true }
   }, [id, t])
 
-  if (loading) return <main className={styles.container}><div className={styles.loading}>{t('publicContributionDetail.loading')}</div></main>
-  if (error || !detail) return <main className={styles.container}><div className={styles.errorBox}>{error || t('publicContributionDetail.notFound')}</div></main>
+  if (loading) {
+    return (
+      <div className={`${shell.page} ${shell.pageNarrow}`}>
+        <Spinner size="lg" label={t('publicContributionDetail.loading')} />
+      </div>
+    )
+  }
+
+  if (error || !detail) {
+    return (
+      <div className={`${shell.page} ${shell.pageNarrow}`}>
+        <Alert tone="error">{error || t('publicContributionDetail.notFound')}</Alert>
+      </div>
+    )
+  }
 
   return (
-    <main className={styles.container}>
-        <Link to="/" className={styles.back}>{t('publicContributionDetail.backToHome')}</Link>
+    <div className={`${shell.page} ${shell.pageNarrow}`}>
+      <div>
+        <AdminButton variant="ghost" size="sm" onClick={() => navigate('/')}>
+          {t('publicContributionDetail.backToHome')}
+        </AdminButton>
+      </div>
 
-      <article className={styles.detailCard}>
-        <h1 style={{ fontSize: '1.5rem', margin: '0 0 0.5rem' }}>{detail.title}</h1>
+      <Card>
+        <article className={shell.stack}>
+          <div className={shell.stackSm}>
+            <h1 className={shell.detailTitle}>{detail.title}</h1>
+            <div className={shell.metaRow}>
+              <span className={shell.metaItem}>{t('publicContributionDetail.author')}: {detail.author.displayName}</span>
+              <span className={shell.metaItem}>{formatTs(detail.publishedAt)}</span>
+              <span className={shell.metaItem}>{detail.language}</span>
+              {detail.tags?.map((tag) => (
+                <Pill key={tag}>{tag}</Pill>
+              ))}
+            </div>
+          </div>
 
-        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-          {t('publicContributionDetail.author')}: {detail.author.displayName} · {formatTs(detail.publishedAt)} · {detail.language}
-          {detail.tags?.map(t => (
-            <span key={t} style={{ marginLeft: '0.5rem', background: 'var(--hover-bg)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>{t}</span>
-          ))}
-        </div>
+          {detail.summary && <p className={shell.subtleNote}>{detail.summary}</p>}
 
-        {detail.summary && (
-          <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: '1rem' }}>{detail.summary}</p>
-        )}
+          <div className={shell.prose} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(detail.contentHtml) }} />
 
-        <div
-          style={{ lineHeight: 1.8, fontSize: '1rem', overflowWrap: 'break-word', wordBreak: 'break-word' }}
-          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(detail.contentHtml) }}
-        />
-
-        <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--divider-color)' }}>
-          <Link to={'/contributions/' + id + '/edit-request'} style={{ fontSize: '0.85rem', color: 'var(--accent-pink)' }}>
-             {t('publicContributionDetail.submitEditRequest')}
-          </Link>
-        </div>
-      </article>
-    </main>
+          <div className={shell.actions}>
+            <AdminButton variant="ghost" size="sm" onClick={() => navigate(`/contributions/${id}/edit-request`)}>
+              {t('publicContributionDetail.submitEditRequest')}
+            </AdminButton>
+          </div>
+        </article>
+      </Card>
+    </div>
   )
 }

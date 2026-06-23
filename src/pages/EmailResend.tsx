@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
 import { post } from '@/api/client'
 import { ERRORS } from '@/api/errors'
-import styles from '../App.module.css'
-import formStyles from '../components/Form.module.css'
+import { AdminButton, Alert, CenteredCard, PageHeader, StatusScreen, TextField } from '@/components/ui'
+import auth from './Auth.module.css'
 
 export const EmailResend = () => {
   const { t } = useTranslation()
@@ -40,34 +39,34 @@ export const EmailResend = () => {
 
   if (success) {
     return (
-      <main className={styles.standalonePage}>
-        <h1 className={styles.statusSuccess} style={{ fontSize: '1.5rem' }}>{t('emailResend.success')}</h1>
-          <Link to="/login" className={styles.accentLink} style={{ marginTop: '1rem' }}>
-            {t('login.title')}
-          </Link>
-      </main>
+      <StatusScreen
+        kind="success"
+        title={t('emailResend.success')}
+        actions={[{ label: t('login.title'), to: '/login' }]}
+      />
     )
   }
 
   return (
-    <>
-      <header className={styles.contentHeader}>
-        <h1 className={styles.mainTitle}>{t('emailResend.title')}</h1>
-        <p className={styles.subTitle}>{t('emailResend.description')}</p>
-      </header>
-      <form className={formStyles.form} onSubmit={handleSubmit} noValidate>
-        <label className={formStyles.field}>
-          <span className={formStyles.label}>{t('emailResend.email')}</span>
-          <input className={formStyles.input} type="email" value={email}
-            onChange={e => setEmail(e.target.value)} placeholder={t('emailResend.emailPlaceholder')}
-            required autoFocus maxLength={254} aria-invalid={!!error} />
-        </label>
-        {error && <p className={formStyles.error} role="alert">{error}</p>}
-        <button type="submit" disabled={submitting}
-          className={`${styles.ctaPrimary} ${formStyles.submitBtn}`}>
-          {submitting ? t('emailResend.submitting') : t('emailResend.submit')}
-        </button>
+    <CenteredCard>
+      <PageHeader title={t('emailResend.title')} description={t('emailResend.description')} align="center" />
+      <form className={auth.form} onSubmit={handleSubmit} noValidate>
+        <TextField
+          label={t('emailResend.email')}
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder={t('emailResend.emailPlaceholder')}
+          autoFocus
+          maxLength={254}
+          autoComplete="email"
+          invalid={!!error}
+        />
+        {error && <Alert tone="error">{error}</Alert>}
+        <AdminButton type="submit" variant="primary" fullWidth loading={submitting}>
+          {t('emailResend.submit')}
+        </AdminButton>
       </form>
-    </>
+    </CenteredCard>
   )
 }

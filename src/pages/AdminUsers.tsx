@@ -19,7 +19,7 @@ import {
   USER_STATUS_LABEL_KEYS,
   type DescriptionItem,
 } from '@/components/admin'
-import shell from './AdminPages.module.css'
+import shell from './Page.module.css'
 
 interface ManagedUser {
   id: string

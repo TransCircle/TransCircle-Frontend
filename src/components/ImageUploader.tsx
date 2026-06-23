@@ -2,10 +2,19 @@ import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { uploadFile } from '@/api/client'
 import { ERRORS } from '@/api/errors'
+import { AdminButton, Alert } from '@/components/ui'
 
 interface ImageUploaderProps {
   onUploaded: (url: string) => void
 }
+
+const UploadIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <path d="M17 8l-5-5-5 5" />
+    <path d="M12 3v12" />
+  </svg>
+)
 
 export const ImageUploader = ({ onUploaded }: ImageUploaderProps) => {
   const { t } = useTranslation()
@@ -92,22 +101,17 @@ export const ImageUploader = ({ onUploaded }: ImageUploaderProps) => {
           e.target.value = ''
         }}
       />
-      <button
+      <AdminButton
         type="button"
+        variant="secondary"
+        size="sm"
+        loading={uploading}
+        iconLeft={<UploadIcon />}
         onClick={() => inputRef.current?.click()}
-        disabled={uploading}
-        style={{
-          display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
-          border: '1.5px solid var(--divider-color)', color: 'var(--text-main)',
-          background: 'var(--bg-color)', padding: '0.55rem 1.25rem',
-          borderRadius: '50px', fontSize: '0.88rem', fontWeight: 500,
-          cursor: 'pointer', fontFamily: 'inherit',
-          transition: 'border-color 0.15s ease'
-        }}
       >
         {uploading ? t('imageUploader.uploading') : t('imageUploader.uploadButton')}
-      </button>
-      {error && <p role="alert" style={{ color: 'var(--error-color)', fontSize: '0.8rem', marginTop: '0.25rem' }}>{error}</p>}
+      </AdminButton>
+      {error && <Alert tone="error">{error}</Alert>}
     </div>
   )
 }

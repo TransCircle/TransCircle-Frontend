@@ -2,12 +2,13 @@ import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ThemeToggle } from './ThemeToggle';
+import { LanguageToggle } from '@/components/ui'
 import { useAuth } from '@/context/useAuth'
 import { LOGOUT_REDIRECT } from '@/config'
 import styles from './Navbar.module.css';
 
 const ExternalLinkIcon = () => (
-  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginLeft: 4, verticalAlign: -1 }}>
+  <svg className={styles.externalIcon} width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M6 2h8v8" />
     <path d="M14 2 4 12" />
   </svg>
@@ -26,7 +27,7 @@ interface NavbarProps {
 const MOBILE_BREAKPOINT = 1200;
 
 export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const { user, isAdmin, logout } = useAuth()
   const location = useLocation()
   const [isOpen, setIsOpen] = useState(false);
@@ -89,7 +90,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
       requestAnimationFrame(() => {
         dropdownRef.current
           ?.closest(`.${styles.dropdown}`)
-          ?.querySelector<HTMLElement>('.dropdown-menu-link')
+          ?.querySelector<HTMLElement>('a[role="menuitem"]')
           ?.focus();
       });
     } else if (e.key === 'Escape') {
@@ -174,8 +175,8 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
                 role="menu"
                 onKeyDown={handleDropdownMenuKeyDown}
               >
-                <li role="none"><a role="menuitem" className="dropdown-menu-link" href="https://blog.transcircle.org/" target="_blank" rel="noopener noreferrer" onClick={closeMenu}>{t('nav.blog')}<ExternalLinkIcon /></a></li>
-                <li role="none"><a role="menuitem" className="dropdown-menu-link" href="https://search.transcircle.org/" target="_blank" rel="noopener noreferrer" onClick={closeMenu}>{t('nav.explore')}<ExternalLinkIcon /></a></li>
+                <li role="none"><a role="menuitem" href="https://blog.transcircle.org/" target="_blank" rel="noopener noreferrer" onClick={closeMenu}>{t('nav.blog')}<ExternalLinkIcon /></a></li>
+                <li role="none"><a role="menuitem" href="https://search.transcircle.org/" target="_blank" rel="noopener noreferrer" onClick={closeMenu}>{t('nav.explore')}<ExternalLinkIcon /></a></li>
               </ul>
             </li>
             <li><Link to={location.pathname === '/submit' ? '/' : '/submit'} onClick={closeMenu}>{location.pathname === '/submit' ? t('nav.submitView') : t('nav.submit')}</Link></li>
@@ -216,17 +217,9 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
             <li className={styles.mobileDivider}></li>
             <li className={`${styles.mobileOnly} ${styles.mobileThemeToggle}`}>
               <div className={styles.mobileThemeLabel}>{t('nav.mobileThemeLabel')}</div>
-              <ThemeToggle className={styles.mobileThemeToggleGroup} />
-              <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', justifyContent: 'center', marginTop: '0.25rem' }}>
-                <button
-                  onClick={() => { localStorage.setItem('transcircle-lang', 'zh-CN'); i18n.changeLanguage('zh-CN') }}
-                  style={{ fontSize: '0.8rem', fontWeight: i18n.language === 'zh-CN' ? 700 : 400, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-muted)' }}
-                >简体</button>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>/</span>
-                <button
-                  onClick={() => { localStorage.setItem('transcircle-lang', 'zh-TW'); i18n.changeLanguage('zh-TW') }}
-                  style={{ fontSize: '0.8rem', fontWeight: i18n.language === 'zh-TW' ? 700 : 400, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-muted)' }}
-                >繁體</button>
+              <div className={styles.mobileToggleRow}>
+                <ThemeToggle variant="plain" />
+                <LanguageToggle variant="plain" />
               </div>
             </li>
           </ul>

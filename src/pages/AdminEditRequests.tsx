@@ -20,7 +20,7 @@ import {
   EDIT_REQUEST_STATUS_LABEL_KEYS,
   type DescriptionItem,
 } from '@/components/admin'
-import shell from './AdminPages.module.css'
+import shell from './Page.module.css'
 
 interface EditRequestItem {
   id: string

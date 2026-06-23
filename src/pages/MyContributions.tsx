@@ -1,9 +1,20 @@
-﻿import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { get } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
-import styles from './Admin.module.css'
+import {
+  AdminButton,
+  Alert,
+  EmptyState,
+  Spinner,
+  StatusBadge,
+  Tabs,
+  CONTRIB_STATUS_TONE,
+  type TabItem,
+} from '@/components/ui'
+import { useFormatTs } from '@/utils/datetime'
+import shell from './Page.module.css'
 
 interface MyContribution {
   id: string
@@ -17,15 +28,30 @@ interface MyContribution {
   }
 }
 
-function formatTs(ts: number | null | undefined): string {
-  if (!ts) return ''
-  return new Date(ts).toISOString().slice(0, 16).replace('T', ' ')
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  draft: 'myContributions.filterDraft',
+  pending: 'myContributions.filterPending',
+  in_review: 'myContributions.filterInReview',
+  approved: 'myContributions.filterApproved',
+  rejected: 'myContributions.filterRejected',
+  published: 'myContributions.filterPublished',
+  hidden: 'myContributions.filterHidden',
+  withdrawn: 'myContributions.filterWithdrawn',
 }
+
+const FILTERS = ['all', 'draft', 'pending', 'in_review', 'approved', 'rejected', 'published', 'hidden', 'withdrawn'] as const
+
+const ChevronIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+    <path d="m9 18 6-6-6-6" />
+  </svg>
+)
 
 export const MyContributions = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { t } = useTranslation()
+  const formatTs = useFormatTs()
 
   const [items, setItems] = useState<MyContribution[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
@@ -73,89 +99,76 @@ export const MyContributions = () => {
 
   if (!user) {
     return (
-      <main className={styles.container}>
-        <p style={{ textAlign: 'center', padding: '2rem' }}>{t('myContributions.loginRequired')}</p>
-      </main>
+      <div className={shell.page}>
+        <EmptyState title={t('myContributions.loginRequired')} />
+      </div>
     )
   }
 
-  return (
-    <main className={styles.container}>
-      <header>
-        <h1 className={styles.heading}>{t('myContributions.title')}</h1>
-      </header>
+  const tabs: TabItem[] = FILTERS.map((s) => ({
+    key: s,
+    label: s === 'all' ? t('myContributions.filterAll') : t(STATUS_LABEL_KEYS[s]!),
+  }))
 
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-        {(['all', 'draft', 'pending', 'in_review', 'approved', 'rejected', 'published', 'hidden', 'withdrawn'] as const).map(s => (
-          <button
-            key={s}
-            onClick={() => setFilterStatus(s)}
-            className={`${styles.tab} ${filterStatus === s ? styles.tabActive : ''}`}
-            style={{ fontSize: '0.85rem', padding: '0.3rem 0.75rem' }}
-          >
-            {{
-              all: t('myContributions.filterAll'),
-              draft: t('myContributions.filterDraft'),
-              pending: t('myContributions.filterPending'),
-              in_review: t('myContributions.filterInReview'),
-              approved: t('myContributions.filterApproved'),
-              rejected: t('myContributions.filterRejected'),
-              published: t('myContributions.filterPublished'),
-              hidden: t('myContributions.filterHidden'),
-              withdrawn: t('myContributions.filterWithdrawn'),
-            }[s] || s}
-          </button>
-        ))}
+  return (
+    <div className={shell.page}>
+      <div className={shell.head}>
+        <Tabs
+          items={tabs}
+          value={filterStatus}
+          onChange={setFilterStatus}
+          ariaLabel={t('myContributions.title')}
+          panelId="my-contributions-panel"
+        />
       </div>
 
-      {error && <div className={styles.errorBox}>{error}</div>}
+      <div id="my-contributions-panel" role="tabpanel" aria-labelledby={`tab-${filterStatus}`} className={shell.tabpanel}>
+        {error && <Alert tone="error">{error}</Alert>}
 
-      {loading && items.length === 0 ? (
-        <div className={styles.loading}>{t('myContributions.loading')}</div>
-      ) : items.length === 0 ? (
-        <div className={styles.empty}>{t('myContributions.empty')}</div>
-      ) : (
-        <>
-          <ul className={styles.list}>
-            {items.map(item => (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  className={styles.itemButton}
-                  onClick={() => navigate(`/me/contributions/${item.id}`)}
-                >
-                <div className={styles.itemMain}>
-                  <div className={styles.itemTitle}>{item.title}</div>
-                  <div className={styles.itemMeta}>
-                    {{
-                      draft: t('myContributions.filterDraft'),
-                      pending: t('myContributions.filterPending'),
-                      in_review: t('myContributions.filterInReview'),
-                      approved: t('myContributions.filterApproved'),
-                      rejected: t('myContributions.filterRejected'),
-                      published: t('myContributions.filterPublished'),
-                      hidden: t('myContributions.filterHidden'),
-                      withdrawn: t('myContributions.filterWithdrawn'),
-                    }[item.status] || item.status} · {formatTs(item.createdAt)}
-                    {item.review.publicNote ? ` · ${item.review.publicNote}` : ''}
-                  </div>
-                </div>
-                </button>
-              </li>
-            ))}
-          </ul>
-          {cursor && (
-            <button
-              className={styles.btnSecondary}
-              onClick={() => fetchList(cursor)}
-              disabled={loading}
-              style={{ display: 'block', margin: '1rem auto' }}
-            >
-              {t('myContributions.loadMore')}
-            </button>
-          )}
-        </>
-      )}
-    </main>
+        {loading && items.length === 0 ? (
+          <Spinner size="lg" label={t('myContributions.loading')} />
+        ) : items.length === 0 ? (
+          <EmptyState title={t('myContributions.empty')} />
+        ) : (
+          <>
+            <ul className={shell.list}>
+              {items.map((item) => (
+                <li key={item.id}>
+                  <button type="button" className={shell.rowBtn} onClick={() => navigate(`/me/contributions/${item.id}`)}>
+                    <span className={shell.rowMain}>
+                      <span className={shell.rowTitle}>{item.title}</span>
+                      <span className={shell.rowMeta}>
+                        {formatTs(item.createdAt)}
+                        {item.review.publicNote && (
+                          <>
+                            <span className={shell.rowMetaSep}>·</span>
+                            {item.review.publicNote}
+                          </>
+                        )}
+                      </span>
+                    </span>
+                    <span className={shell.rowRight}>
+                      <StatusBadge
+                        tone={CONTRIB_STATUS_TONE[item.status] ?? 'neutral'}
+                        label={STATUS_LABEL_KEYS[item.status] ? t(STATUS_LABEL_KEYS[item.status]!) : item.status}
+                        size="sm"
+                      />
+                      <span className={shell.chevron} aria-hidden="true"><ChevronIcon /></span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {cursor && (
+              <div className={shell.loadMoreWrap}>
+                <AdminButton variant="secondary" loading={loading} onClick={() => fetchList(cursor)}>
+                  {t('myContributions.loadMore')}
+                </AdminButton>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   )
 }

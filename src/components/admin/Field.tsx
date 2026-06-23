@@ -27,11 +27,12 @@ export interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string
   hint?: string
   invalid?: boolean
+  required?: boolean
   fieldClassName?: string
 }
 
 export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function TextField(
-  { label, hint, invalid, id, className, fieldClassName, ...rest },
+  { label, hint, invalid, required, id, className, fieldClassName, ...rest },
   ref,
 ) {
   const autoId = useId()
@@ -42,6 +43,7 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function T
       {label && (
         <label htmlFor={inputId} className={styles.label}>
           {label}
+          {required && <span className={styles.required} aria-hidden="true">*</span>}
         </label>
       )}
       <input
@@ -50,6 +52,7 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function T
         className={cx(styles.input, invalid && styles.invalid, className)}
         aria-invalid={invalid || undefined}
         aria-describedby={hintId}
+        required={required}
         {...rest}
       />
       {hint && (
@@ -67,11 +70,12 @@ export interface TextAreaProps extends TextareaHTMLAttributes<HTMLTextAreaElemen
   label?: string
   hint?: string
   invalid?: boolean
+  required?: boolean
   fieldClassName?: string
 }
 
 export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(function TextArea(
-  { label, hint, invalid, id, className, fieldClassName, ...rest },
+  { label, hint, invalid, required, id, className, fieldClassName, ...rest },
   ref,
 ) {
   const autoId = useId()
@@ -82,6 +86,7 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(function 
       {label && (
         <label htmlFor={areaId} className={styles.label}>
           {label}
+          {required && <span className={styles.required} aria-hidden="true">*</span>}
         </label>
       )}
       <textarea
@@ -90,6 +95,7 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(function 
         className={cx(styles.input, styles.textarea, invalid && styles.invalid, className)}
         aria-invalid={invalid || undefined}
         aria-describedby={hintId}
+        required={required}
         {...rest}
       />
       {hint && (

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { post, setAccessToken, getAccessToken } from '@/api/client'
 import { arrayBufferToBase64url, base64urlToArrayBuffer } from '@/utils/string'
 import { useAuth } from '@/context/useAuth'
+import { Select } from '@/components/ui'
 import styles from './StepUpDialog.module.css'
 
 interface StepUpDialogProps {
@@ -425,19 +426,12 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
           <>
             {/* Method selector */}
             {availableMethods.length > 1 && (
-              <div className={styles.field}>
-                <label htmlFor="stepup-method" className={styles.label}>{t('stepUp.methodLabel')}</label>
-                <select
-                  id="stepup-method"
-                  className={styles.select}
-                  value={selectedMethod ?? ''}
-                  onChange={e => setSelectedMethod(e.target.value as StepUpMethod)}
-                >
-                  {availableMethods.map(m => (
-                    <option key={m} value={m}>{methodLabels[m]}</option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                label={t('stepUp.methodLabel')}
+                value={selectedMethod}
+                onChange={(v) => setSelectedMethod(v)}
+                options={availableMethods.map((m) => ({ value: m, label: methodLabels[m] }))}
+              />
             )}
 
             {selectedMethod === 'password' && (

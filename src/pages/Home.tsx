@@ -1,9 +1,11 @@
-﻿import { useState, useEffect, useRef, useCallback } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { get, type ApiResult } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
-import styles from './Admin.module.css'
+import { AdminButton, Alert, EmptyState, PageHeader, Pill, SearchField, Spinner } from '@/components/ui'
+import { useFormatTs } from '@/utils/datetime'
+import shell from './Page.module.css'
 
 interface PublicContribution {
   id: string
@@ -18,15 +20,6 @@ interface PublicContribution {
   publishedAt: number
 }
 
-function formatTs(ts: number): string {
-  if (!ts) return ''
-  return new Date(ts).toLocaleString('zh-CN', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit',
-    hour12: false,
-  })
-}
-
 async function fetchPage(cursorVal?: string | null, keywordVal?: string): Promise<ApiResult<PublicContribution[]>> {
   try {
     const params = new URLSearchParams({ limit: '20' })
@@ -38,18 +31,26 @@ async function fetchPage(cursorVal?: string | null, keywordVal?: string): Promis
   }
 }
 
+const ChevronIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+    <path d="m9 18 6-6-6-6" />
+  </svg>
+)
+
 export const Home = () => {
   const { t } = useTranslation()
   const { user } = useAuth()
+  const navigate = useNavigate()
+  const formatTs = useFormatTs()
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [items, setItems] = useState<PublicContribution[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const searchTerm = searchParams.get('search') || ''
-
-  const [error, setError] = useState('')
+  const [searchInput, setSearchInput] = useState(searchTerm)
   const initialLoaded = useRef(false)
 
   const doLoad = useCallback(async (keyword?: string) => {
@@ -73,112 +74,111 @@ export const Home = () => {
   useEffect(() => {
     if (initialLoaded.current) return
     initialLoaded.current = true
+    setSearchInput(searchTerm)
     doLoad(searchTerm || undefined)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doLoad, searchTerm])
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    const form = e.currentTarget as HTMLFormElement
-    const fd = new FormData(form)
-    const q = (fd.get('search') as string || '').trim()
+  const runSearch = () => {
+    const q = searchInput.trim()
     setSearchParams(q ? { search: q } : {})
     if (!q) window.scrollTo({ top: 0 })
   }
 
+  const clearSearch = () => {
+    setSearchInput('')
+    setSearchParams({})
+    window.scrollTo({ top: 0 })
+  }
+
+  const loadMore = async () => {
+    setLoading(true)
+    try {
+      // 保持搜索词，否则「加载更多」会拉到未过滤的下一页
+      const result = await fetchPage(cursor, searchTerm || undefined)
+      if (result.ok) {
+        setItems((prev) => [...prev, ...result.data])
+        setCursor(result.pagination?.nextCursor || null)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
-    <main className={styles.container}>
-      <header style={{ marginBottom: '2rem' }}>
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <label htmlFor="search-input" style={{ position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{t('home.searchLabel')}</label>
-          <input
-            id="search-input"
-            name="search"
-            type="text"
-            defaultValue={searchParams.get('search') || ''}
+    <div className={shell.page}>
+      <div className={shell.head}>
+        <PageHeader
+          title={t('home.title')}
+          description={t('home.subtitle')}
+          actions={user ? (
+            <>
+              <AdminButton variant="primary" onClick={() => navigate('/submit')}>{t('home.submitLink')}</AdminButton>
+              <AdminButton variant="secondary" onClick={() => navigate('/me/contributions')}>{t('home.myContributions')}</AdminButton>
+            </>
+          ) : undefined}
+        />
+        <div className={shell.toolbar}>
+          <SearchField
+            fieldClassName={shell.grow}
+            value={searchInput}
+            onValueChange={setSearchInput}
+            onSearch={runSearch}
+            onClear={clearSearch}
             placeholder={t('home.searchPlaceholder')}
-            style={{ flex: 1, minWidth: '160px', padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
+            searchAriaLabel={t('home.searchLabel')}
+            clearAriaLabel={t('home.clearSearch')}
           />
-          <button type="submit" className={`${styles.btnSecondary}`}>{t('home.searchSubmit')}</button>
           {searchTerm && (
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            <span className={shell.count}>
               {loading ? t('home.searchExpanding') : t('home.localSearchHint', { count: items.length })}
             </span>
           )}
-        </form>
-        {searchTerm && items.length === 0 && !loading && (
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '-0.5rem', marginBottom: '0.5rem' }}>
-            {t('home.noMatches')}
-          </p>
-        )}
-        <h1 className={styles.heading}>TransCircle</h1>
-        <p className={styles.headingDesc}>TransCircle</p>
-        {user && (
-          <div style={{ marginTop: '0.75rem' }}>
-            <Link to="/submit" style={{ color: 'var(--accent-pink)' }}>{t('home.submitLink')}</Link>
-            {' · '}
-            <Link to="/me/contributions" style={{ color: 'var(--accent-pink)' }}>{t('home.myContributions')}</Link>
-          </div>
-        )}
-      </header>
+        </div>
+      </div>
 
       {error ? (
-        <div className={styles.empty} role="alert">{error}</div>
+        <Alert tone="error">{error}</Alert>
       ) : loading && items.length === 0 ? (
-        <div className={styles.empty} role="status" aria-live="polite">{t('home.loading')}</div>
-      ) : !loading && items.length === 0 && !searchTerm ? (
-        <div className={styles.empty}>{t('home.empty')}</div>
+        <Spinner size="lg" label={t('home.loading')} />
+      ) : items.length === 0 ? (
+        <EmptyState title={searchTerm ? t('home.noMatches') : t('home.empty')} />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {items.map(item => (
-            <Link
-              to={`/contributions/${item.id}`}
-              key={item.id}
-              className={styles.detailCard}
-              style={{ cursor: 'pointer', textAlign: 'left', width: '100%', border: 'none', display: 'block', textDecoration: 'none', color: 'inherit' }}
-            >
-              <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.25rem', color: 'var(--text-main)' }}>
-                {item.title}
-              </h2>
-              {item.summary && (
-                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: '0 0 0.5rem' }}>
-                  {item.summary}
-                </p>
-              )}
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                {item.author.displayName} · {formatTs(item.publishedAt)} · {item.language}
-                {item.tags?.map(t => (
-                  <span key={t} style={{ marginLeft: '0.5rem', background: 'var(--hover-bg)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>{t}</span>
-                ))}
-              </div>
-            </Link>
-          ))}
-        </div>
+        <>
+          <ul className={shell.list}>
+            {items.map((item) => (
+              <li key={item.id}>
+                <Link to={`/contributions/${item.id}`} className={shell.rowBtn}>
+                  <span className={shell.rowMain}>
+                    <span className={shell.rowTitle}>{item.title}</span>
+                    {item.summary && <span className={shell.rowSummary}>{item.summary}</span>}
+                    <span className={shell.rowMeta}>
+                      <span>{item.author.displayName}</span>
+                      <span className={shell.rowMetaSep}>·</span>
+                      <span>{formatTs(item.publishedAt)}</span>
+                      <span className={shell.rowMetaSep}>·</span>
+                      <span>{item.language}</span>
+                      {item.tags?.map((tag) => (
+                        <Pill key={tag}>{tag}</Pill>
+                      ))}
+                    </span>
+                  </span>
+                  <span className={shell.rowRight}>
+                    <span className={shell.chevron} aria-hidden="true"><ChevronIcon /></span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {cursor && (
+            <div className={shell.loadMoreWrap}>
+              <AdminButton variant="secondary" loading={loading} onClick={loadMore}>
+                {t('home.loadMore')}
+              </AdminButton>
+            </div>
+          )}
+        </>
       )}
-
-      {cursor && (
-        <button
-          className={styles.btnSecondary}
-          onClick={async () => {
-            setLoading(true)
-            try {
-              // 保持搜索词，否则「加载更多」会拉到未过滤的下一页
-              const result = await fetchPage(cursor, searchTerm || undefined)
-              if (result.ok) {
-                setItems(prev => [...prev, ...result.data])
-                setCursor(result.pagination?.nextCursor || null)
-              }
-            } catch {
-              // handled in fetchPage
-            } finally {
-              setLoading(false)
-            }
-          }}
-          disabled={loading}
-          style={{ display: 'block', margin: '1.5rem auto' }}
-        >
-          {loading ? t('home.loading') : t('home.loadMore')}
-        </button>
-      )}
-    </main>
+    </div>
   )
 }

@@ -5,7 +5,7 @@ import { post, tryRefreshToken, clearCsrfToken } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { useAuth } from '@/context/useAuth'
 import { StepUpDialog } from '@/components/StepUpDialog'
-import styles from '../App.module.css'
+import { AdminButton, Alert, CenteredCard, PageHeader, StatusScreen } from '@/components/ui'
 
 export const OAuthBinding = () => {
   const [searchParams] = useSearchParams()
@@ -88,42 +88,22 @@ export const OAuthBinding = () => {
   const providerLabel = provider === 'x' ? 'X' : 'GitHub'
 
   if (status === 'success') {
-    return (
-      <main className={styles.standalonePage}>
-        <p style={{ fontSize: '1.1rem', color: 'var(--text-main)' }}>
-          {t('oauth.bindSuccess', { provider: providerLabel })}
-        </p>
-      </main>
-    )
+    return <StatusScreen kind="success" title={t('oauth.bindSuccess', { provider: providerLabel })} />
   }
 
   return (
     <>
-      <main className={styles.standalonePage}>
-        <h1 style={{ fontSize: '1.8rem', margin: '0 0 0.75rem', color: 'var(--text-main)' }}>
-          {t('oauth.bindTitle')}
-        </h1>
-        <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', margin: '0 0 1.5rem', maxWidth: '400px', lineHeight: 1.6 }}>
-          {t('oauth.bindDescription', { provider: providerLabel })}
-        </p>
-
-        {status === 'error' && errorMsg && (
-          <p style={{ color: 'var(--error-color)', fontSize: '0.9rem', marginBottom: '1rem' }} role="alert">{errorMsg}</p>
-        )}
-
-        <button
-          onClick={handleBind}
-          disabled={status === 'submitting'}
-          style={{
-            backgroundColor: 'var(--accent-pink)', color: 'white', border: 'none',
-            padding: '0.65rem 2rem', borderRadius: '50px', fontSize: '0.95rem',
-            fontWeight: 600, cursor: status === 'submitting' ? 'not-allowed' : 'pointer',
-            opacity: status === 'submitting' ? 0.6 : 1, fontFamily: 'inherit',
-          }}
-        >
-          {status === 'submitting' ? t('register.submitting') : t('oauth.bindConfirm')}
-        </button>
-      </main>
+      <CenteredCard>
+        <PageHeader
+          title={t('oauth.bindTitle')}
+          description={t('oauth.bindDescription', { provider: providerLabel })}
+          align="center"
+        />
+        {status === 'error' && errorMsg && <Alert tone="error">{errorMsg}</Alert>}
+        <AdminButton variant="primary" fullWidth loading={status === 'submitting'} onClick={handleBind}>
+          {t('oauth.bindConfirm')}
+        </AdminButton>
+      </CenteredCard>
 
       {showStepUp && (
         <StepUpDialog

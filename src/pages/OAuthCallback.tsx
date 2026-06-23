@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
 import { saveCsrfToken } from '@/api/client'
 import { computePermissions, landingPath } from '@/api/permissions'
+import { StatusScreen } from '@/components/ui'
 
 // login_blocked 子错误码文案映射
 const BLOCKED_REASONS: Record<string, string> = {
@@ -120,9 +121,5 @@ export const OAuthCallback = () => {
   handle()
 }, [searchParams, navigate, exchangeLoginCode])
 
-  return (
-    <main style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
-      <p style={{ fontSize: '1.1rem', color: 'var(--text-muted)' }}>{t('oauth.loading')}</p>
-    </main>
-  )
+  return <StatusScreen kind="loading" title={t('oauth.loading')} />
 }

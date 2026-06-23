@@ -1,11 +1,25 @@
-import { useState, useEffect, useRef, useMemo, useId } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import { get, post, patch } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import { ERRORS } from '@/api/errors'
 import { limitByUnicode } from '@/utils/string'
-import styles from './Admin.module.css'
+import {
+  AdminButton,
+  Alert,
+  Card,
+  ConfirmDialog,
+  Select,
+  Spinner,
+  StatusBadge,
+  TagInput,
+  TextArea,
+  TextField,
+  CONTRIB_STATUS_TONE,
+} from '@/components/ui'
+import { useFormatTs } from '@/utils/datetime'
+import shell from './Page.module.css'
 
 interface ContributionDetail {
   id: string
@@ -29,23 +43,21 @@ interface ContributionDetail {
   }
 }
 
-function formatTs(ts: number | null | undefined): string {
-  if (!ts) return ''
-  return new Date(ts).toISOString().slice(0, 16).replace('T', ' ')
-}
+const LANGUAGES = ['zh-CN', 'zh-TW', 'en', 'ja', 'other'] as const
+const EDITABLE_STATUSES = ['draft', 'rejected', 'withdrawn']
 
 export const MyContributionDetail = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { loading: authLoading } = useAuth()
   const { t } = useTranslation()
+  const formatTs = useFormatTs()
 
   const STATUS_LABELS: Record<string, string> = useMemo(() => ({
     draft: t('myContributionDetail.statusDraft'), pending: t('myContributionDetail.statusPending'), in_review: t('myContributionDetail.statusInReview'),
     approved: t('myContributionDetail.statusApproved'), rejected: t('myContributionDetail.statusRejected'), published: t('myContributionDetail.statusPublished'),
     hidden: t('myContributionDetail.statusHidden'), withdrawn: t('myContributionDetail.statusWithdrawn'),
   }), [t])
-  const EDITABLE_STATUSES = ['draft', 'rejected', 'withdrawn']
 
   const [contrib, setContrib] = useState<ContributionDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -56,15 +68,11 @@ export const MyContributionDetail = () => {
   const [summary, setSummary] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [language, setLanguage] = useState('zh-CN')
-  const [tagInput, setTagInput] = useState('')
   const [saving, setSaving] = useState(false)
   const [actionError, setActionError] = useState('')
+  const [confirmAction, setConfirmAction] = useState<'submit' | 'withdraw' | null>(null)
+  const [confirmBusy, setConfirmBusy] = useState(false)
   const busy = useRef(false)
-  const fieldTitleId = useId()
-  const fieldContentId = useId()
-  const fieldSummaryId = useId()
-  const fieldTagsId = useId()
-  const fieldLangId = useId()
 
   useEffect(() => {
     if (!id || authLoading) return
@@ -108,17 +116,21 @@ export const MyContributionDetail = () => {
     }
   }
 
-  const handleSubmit = async () => {
-    if (busy.current || !contrib) return
+  const runConfirm = async () => {
+    if (busy.current || !contrib || !confirmAction) return
     busy.current = true
+    setConfirmBusy(true)
     setActionError('')
-    if (!window.confirm(t('myContributionDetail.confirmSubmit'))) { busy.current = false; return }
-    const result = await post(`/me/contributions/${contrib.id}/submit`, {
+    const endpoint = confirmAction === 'submit' ? 'submit' : 'withdraw'
+    const nextStatus = confirmAction === 'submit' ? 'pending' : 'withdrawn'
+    const result = await post(`/me/contributions/${contrib.id}/${endpoint}`, {
       expectedVersion: contrib.version,
     })
     busy.current = false
+    setConfirmBusy(false)
+    setConfirmAction(null)
     if (result.ok) {
-      setContrib(prev => prev ? { ...prev, status: 'pending', version: (result.data as unknown as Record<string, number>).version ?? prev.version } : prev)
+      setContrib(prev => prev ? { ...prev, status: nextStatus, version: (result.data as unknown as Record<string, number>).version ?? prev.version } : prev)
     } else if (result.error.code === ERRORS.VERSION_CONFLICT) {
       setActionError(t('myContributionDetail.versionConflict'))
     } else {
@@ -126,129 +138,128 @@ export const MyContributionDetail = () => {
     }
   }
 
-  const handleWithdraw = async () => {
-    if (busy.current || !contrib) return
-    busy.current = true
-    setActionError('')
-    if (!window.confirm(t('myContributionDetail.confirmWithdraw'))) { busy.current = false; return }
-    const result = await post(`/me/contributions/${contrib.id}/withdraw`, {
-      expectedVersion: contrib.version,
-    })
-    busy.current = false
-    if (result.ok) {
-      setContrib(prev => prev ? { ...prev, status: 'withdrawn', version: (result.data as unknown as Record<string, number>).version ?? prev.version } : prev)
-    } else if (result.error.code === ERRORS.VERSION_CONFLICT) {
-      setActionError(t('myContributionDetail.versionConflict'))
-    } else {
-      setActionError(result.error.message)
-    }
+  if (loading) {
+    return (
+      <div className={`${shell.page} ${shell.pageNarrow}`}>
+        <Spinner size="lg" label={t('myContributionDetail.loading')} />
+      </div>
+    )
   }
 
-  if (loading) return <main className={styles.container}><div className={styles.loading}>{t('myContributionDetail.loading')}</div></main>
-  if (error || !contrib) return <main className={styles.container}><div className={styles.errorBox}>{error || t('myContributionDetail.notFound')}</div></main>
+  if (error || !contrib) {
+    return (
+      <div className={`${shell.page} ${shell.pageNarrow}`}>
+        <Alert tone="error">{error || t('myContributionDetail.notFound')}</Alert>
+      </div>
+    )
+  }
 
   const isEditable = EDITABLE_STATUSES.includes(contrib.status)
+  const canWithdraw = contrib.status === 'pending' || contrib.status === 'in_review'
 
   return (
-    <main className={styles.container}>
-      <button className={styles.back} onClick={() => navigate('/me/contributions')}>
-        {t('myContributionDetail.backToList')}
-      </button>
+    <div className={`${shell.page} ${shell.pageNarrow}`}>
+      <div>
+        <AdminButton variant="ghost" size="sm" onClick={() => navigate('/me/contributions')}>
+          {t('myContributionDetail.backToList')}
+        </AdminButton>
+      </div>
 
-      <div className={styles.detailCard}>
+      <Card>
         {editMode ? (
-          <>
-            <div style={{ marginBottom: '1rem' }}>
-              <label htmlFor={fieldTitleId} style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{t('myContributionDetail.fieldTitle')}</label>
-              <input id={fieldTitleId} type="text" value={title} onChange={e => setTitle(limitByUnicode(e.target.value, 120))}
-                className={styles.input} style={{ width: '100%' }} />
+          <div className={shell.stack}>
+            <TextField
+              label={t('myContributionDetail.fieldTitle')}
+              required
+              value={title}
+              onChange={(e) => setTitle(limitByUnicode(e.target.value, 120))}
+            />
+            <TextArea
+              label={t('myContributionDetail.fieldContent')}
+              required
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              rows={12}
+            />
+            <TextField
+              label={t('myContributionDetail.fieldSummary')}
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+              maxLength={300}
+            />
+            <TagInput
+              label={t('myContributionDetail.fieldTags')}
+              value={tags}
+              onChange={setTags}
+              maxTags={8}
+              maxTagLength={32}
+              removeTagLabel={(tag) => t('myContributionDetail.removeTag', { tag })}
+              placeholder={t('myContributionDetail.tagPlaceholder')}
+            />
+            <Select
+              label={t('myContributionDetail.fieldLanguage')}
+              value={language}
+              onChange={setLanguage}
+              options={LANGUAGES.map((l) => ({ value: l, label: t(`submit.languages.${l}`) }))}
+            />
+            {actionError && <Alert tone="error">{actionError}</Alert>}
+            <div className={shell.actions}>
+              <AdminButton variant="primary" loading={saving} onClick={handleSave}>
+                {t('myContributionDetail.saveSubmit')}
+              </AdminButton>
+              <AdminButton variant="secondary" onClick={() => setEditMode(false)}>
+                {t('myContributionDetail.cancel')}
+              </AdminButton>
             </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label htmlFor={fieldContentId} style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{t('myContributionDetail.fieldContent')}</label>
-              <textarea id={fieldContentId} value={content} onChange={e => setContent(e.target.value)}
-                className={styles.input} style={{ width: '100%', minHeight: '200px' }} />
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label htmlFor={fieldSummaryId} style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{t('myContributionDetail.fieldSummary')}</label>
-              <input id={fieldSummaryId} type="text" value={summary} onChange={e => setSummary(e.target.value)}
-                className={styles.input} maxLength={300} style={{ width: '100%' }} />
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label htmlFor={fieldTagsId} style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{t('myContributionDetail.fieldTags')}</label>
-              <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
-                {tags.map(tag => (
-                  <span key={tag} style={{ background: 'var(--hover-bg)', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.85rem' }}>
-                    {tag}
-                    <button type="button" aria-label={t('myContributionDetail.removeTag', { tag })} onClick={() => setTags(prev => prev.filter(t => t !== tag))}
-                      style={{ marginLeft: '0.25rem', cursor: 'pointer', background: 'none', border: 'none', color: 'var(--error-color)', padding: 0 }}>&times;</button>
-                  </span>
-                ))}
-              </div>
-              <input id={fieldTagsId} type="text" value={tagInput}
-                onChange={e => setTagInput(limitByUnicode(e.target.value, 32))}
-                onKeyDown={e => {
-                  if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
-                    e.preventDefault()
-                    const tag = [...tagInput.trim()].slice(0, 32).join('')
-                    if (!tags.includes(tag) && tags.length < 8) {
-                      setTags(prev => [...prev, tag])
-                    }
-                    setTagInput('')
-                  }
-                }}
-                placeholder={t('myContributionDetail.tagPlaceholder')} className={styles.input}
-                style={{ width: '100%' }} />
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label htmlFor={fieldLangId} style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>{t('myContributionDetail.fieldLanguage')}</label>
-              <select id={fieldLangId} value={language} onChange={e => setLanguage(e.target.value)}
-                className={styles.input} style={{ width: '100%' }}>
-                <option value="zh-CN">{t('submit.languages.zh-CN')}</option>
-                <option value="zh-TW">{t('submit.languages.zh-TW')}</option>
-                <option value="en">{t('submit.languages.en')}</option>
-                <option value="ja">{t('submit.languages.ja')}</option>
-                <option value="other">{t('submit.languages.other')}</option>
-              </select>
-            </div>
-            {actionError && <p style={{ color: 'var(--error-color)', marginBottom: '0.5rem' }}>{actionError}</p>}
-            <button className={styles.btnPrimary} onClick={handleSave} disabled={saving}>
-              {saving ? t('myContributionDetail.saveSubmitting') : t('myContributionDetail.saveSubmit')}
-            </button>
-            <button className={styles.btnSecondary} onClick={() => setEditMode(false)} style={{ marginLeft: '0.5rem' }}>{t('myContributionDetail.cancel')}</button>
-          </>
+          </div>
         ) : (
-          <>
-            <h2 className={styles.detailTitle}>{contrib.title}</h2>
-            <div className={styles.detailMeta}>
-              {STATUS_LABELS[contrib.status] || contrib.status} · v{contrib.version}
-              · {formatTs(contrib.createdAt)}
-              {contrib.submittedAt ? ` · ${t('myContributionDetail.submittedAt', { time: formatTs(contrib.submittedAt) })}` : ''}
+          <div className={shell.stack}>
+            <div className={shell.detailHead}>
+              <h1 className={shell.detailTitle}>{contrib.title}</h1>
+              <StatusBadge tone={CONTRIB_STATUS_TONE[contrib.status] ?? 'neutral'} label={STATUS_LABELS[contrib.status] || contrib.status} />
             </div>
-            {contrib.summary && <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>{contrib.summary}</p>}
-            <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', background: 'var(--hover-bg)', padding: '1rem', borderRadius: '8px' }}>
-              {contrib.contentRaw}
-            </pre>
+            <div className={shell.metaRow}>
+              <span className={shell.metaItem}>v{contrib.version}</span>
+              <span className={shell.metaItem}>{formatTs(contrib.createdAt)}</span>
+              {contrib.submittedAt && (
+                <span className={shell.metaItem}>{t('myContributionDetail.submittedAt', { time: formatTs(contrib.submittedAt) })}</span>
+              )}
+            </div>
+            {contrib.summary && <p className={shell.subtleNote}>{contrib.summary}</p>}
+            <div className={shell.contentBlock}>{contrib.contentRaw}</div>
             {contrib.review.publicNote && (
-              <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--hover-bg)', borderRadius: '8px' }}>
+              <div className={shell.contentBlock}>
                 <strong>{t('myContributionDetail.reviewNote')}：</strong>{contrib.review.publicNote}
                 {contrib.review.reviewedAt && ` (${formatTs(contrib.review.reviewedAt)})`}
               </div>
             )}
-            {actionError && <p style={{ color: 'var(--error-color)', marginTop: '0.5rem' }}>{actionError}</p>}
-            <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
+            {actionError && <Alert tone="error">{actionError}</Alert>}
+            <div className={shell.actions}>
               {isEditable && (
-                <button className={styles.btnPrimary} onClick={() => setEditMode(true)}>{t('myContributionDetail.edit')}</button>
+                <AdminButton variant="primary" onClick={() => setEditMode(true)}>{t('myContributionDetail.edit')}</AdminButton>
               )}
               {isEditable && (
-                <button className={styles.btnSecondary} onClick={handleSubmit}>{t('myContributionDetail.submitReview')}</button>
+                <AdminButton variant="secondary" onClick={() => setConfirmAction('submit')}>{t('myContributionDetail.submitReview')}</AdminButton>
               )}
-              {(contrib.status === 'pending' || contrib.status === 'in_review') && (
-                <button className={styles.btnSecondary} onClick={handleWithdraw} style={{ color: 'var(--error-color)' }}>{t('myContributionDetail.withdraw')}</button>
+              {canWithdraw && (
+                <AdminButton variant="danger" onClick={() => setConfirmAction('withdraw')}>{t('myContributionDetail.withdraw')}</AdminButton>
               )}
             </div>
-          </>
+          </div>
         )}
-      </div>
-    </main>
+      </Card>
+
+      <ConfirmDialog
+        open={confirmAction !== null}
+        title={confirmAction === 'withdraw' ? t('myContributionDetail.withdraw') : t('myContributionDetail.submitReview')}
+        message={confirmAction === 'withdraw' ? t('myContributionDetail.confirmWithdraw') : t('myContributionDetail.confirmSubmit')}
+        confirmText={confirmAction === 'withdraw' ? t('myContributionDetail.withdraw') : t('myContributionDetail.submitReview')}
+        cancelText={t('myContributionDetail.cancel')}
+        variant={confirmAction === 'withdraw' ? 'danger' : 'default'}
+        confirmLoading={confirmBusy}
+        onConfirm={runConfirm}
+        onCancel={() => setConfirmAction(null)}
+      />
+    </div>
   )
 }

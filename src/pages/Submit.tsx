@@ -1,20 +1,15 @@
 import { useTranslation } from 'react-i18next'
 import { SubmitForm } from '@/components/SubmitForm'
-import styles from '../App.module.css'
+import { PageHeader } from '@/components/ui'
+import shell from './Page.module.css'
 
 export const Submit = () => {
   const { t } = useTranslation()
 
   return (
-    <>
-      <header className={styles.contentHeader}>
-        <h1 className={styles.mainTitle}>{t('submitPage.title')}</h1>
-        <p className={styles.subTitle}>
-          {t('submitPage.description')}
-        </p>
-      </header>
-
+    <div className={`${shell.page} ${shell.pageNarrow}`}>
+      <PageHeader title={t('submitPage.title')} description={t('submitPage.description')} />
       <SubmitForm />
-    </>
+    </div>
   )
 }

@@ -5,7 +5,8 @@ import { post, clearAuth, tryRefreshToken, clearCsrfToken } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { useAuth } from '@/context/useAuth'
 import { StepUpDialog } from '@/components/StepUpDialog'
-import styles from '../App.module.css'
+import { AdminButton, Alert, CenteredCard, PageHeader, StatusScreen } from '@/components/ui'
+import shell from './Page.module.css'
 
 export const OAuthMerge = () => {
   const [searchParams] = useSearchParams()
@@ -83,50 +84,32 @@ export const OAuthMerge = () => {
   }
 
   if (status === 'success') {
-    return (
-      <main className={styles.standalonePage}>
-        <p style={{ fontSize: '1.1rem', color: 'var(--text-main)' }}>{t('oauth.mergeSuccess')}</p>
-      </main>
-    )
+    return <StatusScreen kind="success" title={t('oauth.mergeSuccess')} />
   }
 
   if (!mergeToken) {
     return (
-      <main className={styles.standalonePage}>
-        <h1 style={{ fontSize: '1.8rem', margin: '0 0 0.75rem', color: 'var(--text-main)' }}>{t('oauth.mergeTitle')}</h1>
-        <p style={{ fontSize: '1rem', color: 'var(--error-color)' }} role="alert">{t('oauth.mergeTokenExpired')}</p>
-      </main>
+      <StatusScreen
+        kind="error"
+        title={t('oauth.mergeTitle')}
+        description={t('oauth.mergeTokenExpired')}
+        actions={[{ label: t('common.backToHome'), to: '/' }]}
+      />
     )
   }
 
   return (
     <>
-      <main className={styles.standalonePage}>
-        <h1 style={{ fontSize: '1.8rem', margin: '0 0 0.75rem', color: 'var(--text-main)' }}>{t('oauth.mergeTitle')}</h1>
-        <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', margin: '0 0 1.5rem', maxWidth: '450px', lineHeight: 1.6 }}>
-          {t('oauth.mergeDescription')}
-        </p>
+      <CenteredCard>
+        <PageHeader title={t('oauth.mergeTitle')} description={t('oauth.mergeDescription')} align="center" />
         {conflictUserId && (
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-            {t('admin.authorLabel')} {conflictUserId}
-          </p>
+          <p className={shell.subtleNote}>{t('oauth.mergeConflictUser', { user: conflictUserId })}</p>
         )}
-        {status === 'error' && errorMsg && (
-          <p style={{ color: 'var(--error-color)', fontSize: '0.9rem', marginBottom: '1rem' }} role="alert">{errorMsg}</p>
-        )}
-        <button
-          onClick={handleMerge}
-          disabled={status === 'submitting'}
-          style={{
-            backgroundColor: 'var(--error-color)', color: 'white', border: 'none',
-            padding: '0.65rem 2rem', borderRadius: '50px', fontSize: '0.95rem',
-            fontWeight: 600, cursor: status === 'submitting' ? 'not-allowed' : 'pointer',
-            opacity: status === 'submitting' ? 0.6 : 1, fontFamily: 'inherit',
-          }}
-        >
-          {status === 'submitting' ? t('register.submitting') : t('oauth.mergeConfirm')}
-        </button>
-      </main>
+        {status === 'error' && errorMsg && <Alert tone="error">{errorMsg}</Alert>}
+        <AdminButton variant="danger" fullWidth loading={status === 'submitting'} onClick={handleMerge}>
+          {t('oauth.mergeConfirm')}
+        </AdminButton>
+      </CenteredCard>
 
       {showStepUp && (
         <StepUpDialog

@@ -75,9 +75,11 @@ const THEME_KEYS: { id: Theme; i18nKey: string; icon: React.FC }[] = [
 
 interface ThemeToggleProps {
   className?: string;
+  /** 'plain' drops the card backdrop/border so the toggle sits flush in any surface. */
+  variant?: "card" | "plain";
 }
 
-export const ThemeToggle = ({ className = "" }: ThemeToggleProps) => {
+export const ThemeToggle = ({ className = "", variant = "card" }: ThemeToggleProps) => {
   const { t } = useTranslation();
   const { theme, setTheme } = useTheme();
   const radioRefs = useRef<HTMLButtonElement[]>([]);
@@ -118,7 +120,7 @@ export const ThemeToggle = ({ className = "" }: ThemeToggleProps) => {
 
   return (
     <div
-      className={`${styles.toggleGroup} ${className}`.trim()}
+      className={`${styles.toggleGroup} ${variant === "plain" ? styles.plain : ""} ${className}`.trim()}
       role="radiogroup"
       aria-label={t('theme.selectLabel')}
     >

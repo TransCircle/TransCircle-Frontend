@@ -1,0 +1,75 @@
+.editorWrapper {
+  border: 1.5px solid var(--divider-color);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.editorWrapper:focus-within {
+  border-color: var(--primary-pink);
+  box-shadow: 0 0 0 3px rgba(255, 133, 162, 0.15);
+}
+
+@supports (box-shadow: 0 0 0 3px color-mix(in srgb, red 18%, transparent)) {
+  .editorWrapper:focus-within {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-pink) 22%, transparent);
+  }
+}
+
+.editorWrapper :global(.md-editor) {
+  border: none;
+  height: 400px;
+}
+
+.editorWrapper :global(.md-editor-toolbar-item) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--divider-color);
+  color: var(--text-secondary);
+  background: var(--surface-card);
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.editorWrapper :global(.md-editor-toolbar-item):hover {
+  border-color: var(--primary-pink);
+  color: var(--text-main);
+  background-color: var(--hover-bg);
+}
+
+.editorWrapper :global(.md-editor-toolbar-active) {
+  background-color: var(--hover-bg);
+  color: var(--primary-pink);
+  border-color: var(--primary-pink);
+}
+
+@media (max-width: 768px) {
+  .editorWrapper :global(.md-editor) {
+    height: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .editorWrapper :global(.md-editor) {
+    height: 250px;
+  }
+}
+
+.imageRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.6rem;
+}
+
+.imageHint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
