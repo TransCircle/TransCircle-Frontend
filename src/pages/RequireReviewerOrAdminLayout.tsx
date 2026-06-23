@@ -11,9 +11,9 @@ export const RequireReviewerOrAdminLayout = () => {
 
   if (authLoading) {
     return (
-      <main className={styles.container}>
+      <div className={styles.container}>
         <div className={styles.loading}>{t('admin.verifying')}</div>
-      </main>
+      </div>
     )
   }
 
@@ -25,10 +25,10 @@ export const RequireReviewerOrAdminLayout = () => {
   const allowed = hasPermission(permissions, PERMISSIONS.CONTRIBUTION_READ)
   if (!allowed) {
     return (
-      <main className={styles.container}>
+      <div className={styles.container}>
         <h1 className={styles.heading}>{t('admin.accessDenied')}</h1>
         <p className={styles.headingDesc}>{t('admin.accessDeniedDetail', { username: user.username })}</p>
-      </main>
+      </div>
     )
   }
 

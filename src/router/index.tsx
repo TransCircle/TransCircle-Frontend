@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react'
 
 import { RootLayout } from '../layouts/RootLayout'
 import { ErrorBoundaryPage } from '../pages/ErrorBoundaryPage'
+import { AdminShell } from '../pages/AdminShell'
 import { RequireAdminLayout } from '../pages/RequireAdminLayout'
 import { RequireReviewerOrAdminLayout } from '../pages/RequireReviewerOrAdminLayout'
 import { AdminOnlyGuard } from '../pages/AdminOnlyGuard'
@@ -46,6 +47,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'admin',
+        element: <AdminShell />,
         children: [
           {
             element: <RequireReviewerOrAdminLayout />,

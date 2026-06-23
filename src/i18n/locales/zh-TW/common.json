@@ -183,7 +183,30 @@
     "deleteButton": "刪除",
     "reasonPlaceholder": "輸入原因...",
     "confirmReason": "確認",
-    "cancelReason": "取消"
+    "cancelReason": "取消",
+    "tabsAriaLabel": "投稿審核",
+    "hideTitle": "隱藏投稿",
+    "deleteTitle": "刪除投稿",
+    "ui": {
+      "charCount": "{{n}}/{{max}}",
+      "clear": "清除"
+    }
+  },
+  "adminShell": {
+    "brand": "管理後台",
+    "navAriaLabel": "後台導覽",
+    "navReview": "審核佇列",
+    "navEditRequests": "編輯申請",
+    "navUsers": "使用者管理",
+    "navAudit": "稽核日誌",
+    "collapse": "收合側欄",
+    "expand": "展開側欄",
+    "openNav": "開啟導覽",
+    "closeNav": "關閉導覽",
+    "skipToContent": "跳至主要內容",
+    "roleAdmin": "管理員",
+    "roleEditor": "編輯",
+    "roleReviewer": "審核員"
   },
   "register": {
     "title": "完成註冊",
@@ -303,6 +326,7 @@
     "backToHome": "返回首頁"
   },
   "footer": {
+    "copyright": "© {{year}} TransCircle",
     "heading": "LICENSE",
     "text1": "對於此頁面的文字和素材：CC BY 4.0 or later",
     "text2": "對於其他人提供的材料，依照她們的版權要求。屆時我們會提供單獨的版權頁面。"
@@ -454,7 +478,10 @@
     "iamPolling": "正在確認驗證結果...",
     "iamVerified": "驗證通過，正在返回...",
     "iamFailed": "驗證未通過或已過期，請重試",
-    "iamBack": "返回管理後台"
+    "iamBack": "返回管理後台",
+    "iamWaiting": "請在彈出的視窗中完成統一身分驗證…",
+    "iamSuccess": "驗證通過，正在執行操作…",
+    "iamPopupClose": "驗證完成，可關閉此視窗"
   },
   "settings": {
     "iamManagedNotice": "你的帳戶透過「TransCircle 統一身分登入(管理員)」管理，密碼、Passkey、兩步驗證、第三方綁定與帳戶註銷等安全設定請前往 IAM 控制台操作，本頁不提供。",
@@ -710,7 +737,16 @@
     "permanent": "永久",
     "noRoles": "（無角色）",
     "rolesManagedInIam": "角色與權限已統一在 IAM 控制台管理；如需調整，請在 IAM 授予/撤銷後讓該用戶重新使用統一身分登入。",
-    "oauthAccount": "OAuth {{provider}}: @{{username}}"
+    "oauthAccount": "OAuth {{provider}}: @{{username}}",
+    "empty": "暫無使用者",
+    "banTitle": "封鎖使用者",
+    "emailVerified": "已驗證",
+    "emailUnverified": "未驗證",
+    "statusActive": "正常",
+    "statusBanned": "已封鎖",
+    "statusPendingDeletion": "待註銷",
+    "statusMerged": "已合併",
+    "statusDeleted": "已註銷"
   },
   "adminAuditLogs": {
     "title": "稽核日誌",
@@ -724,7 +760,41 @@
     "filterResource": "按資源類型過濾（如 contribution）",
     "search": "搜尋",
     "actorUser": "操作者 {{id}}",
-    "actorSystem": "系統"
+    "actorSystem": "系統",
+    "actions": {
+      "auth_register": "使用者註冊",
+      "auth_login": "登入",
+      "auth_step_up": "二次驗證",
+      "oauth_bind": "綁定第三方帳號",
+      "oauth_bind_start": "發起綁定第三方帳號",
+      "oauth_unbind": "解除綁定第三方帳號",
+      "oauth_provider_token_discard": "丟棄第三方權杖",
+      "account_merge": "帳號合併",
+      "mfa_recovery_codes_regenerate": "重新產生恢復碼",
+      "passkey_create": "建立 Passkey",
+      "session_refresh": "更新工作階段",
+      "session_refresh_reuse_detected": "偵測到更新權杖重放",
+      "session_revoke": "撤銷工作階段",
+      "session_revoke_all": "撤銷全部工作階段",
+      "me_export": "匯出個人資料",
+      "me_delete": "申請註銷帳戶",
+      "me_delete_cancel": "撤銷帳戶註銷",
+      "password_change": "修改密碼",
+      "contribution_submit": "提交投稿",
+      "contribution_review": "審核投稿",
+      "contribution_publish": "發布投稿",
+      "contribution_hide": "隱藏投稿",
+      "contribution_restore": "復原投稿",
+      "contribution_delete": "刪除投稿",
+      "contribution_edit_request_create": "發起編輯申請",
+      "contribution_edit_request_vote": "編輯申請投票",
+      "contribution_edit_request_resolve": "編輯申請決議",
+      "role_grant": "授予角色",
+      "role_revoke": "撤銷角色",
+      "user_ban": "封鎖使用者",
+      "user_unban": "解除封鎖使用者",
+      "image_upload": "上傳圖片"
+    }
   },
   "adminEditRequests": {
     "title": "編輯申請審核",
@@ -755,6 +825,11 @@
     "voteSubmitting": "提交中...",
     "voteHistory": "投票記錄",
     "noNote": "無備註",
-    "contribPrefix": "投稿"
+    "contribPrefix": "投稿",
+    "statusPending": "待處理",
+    "statusApproved": "已通過",
+    "statusRejected": "已拒絕",
+    "statusApplied": "已套用",
+    "statusSuperseded": "已被取代"
   }
 }

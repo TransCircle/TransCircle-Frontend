@@ -14,19 +14,19 @@ export const AdminOnlyGuard = () => {
 
   if (authLoading) {
     return (
-      <main className={styles.container}>
+      <div className={styles.container}>
         <div className={styles.loading}>{t('admin.verifying')}</div>
-      </main>
+      </div>
     )
   }
 
   const allowed = !!user && (hasPermission(permissions, PERMISSIONS.USER_READ) || hasPermission(permissions, PERMISSIONS.AUDIT_READ))
   if (!allowed) {
     return (
-      <main className={styles.container}>
+      <div className={styles.container}>
         <h1 className={styles.heading}>{t('adminUsers.accessDenied')}</h1>
         <p className={styles.headingDesc}>{t('adminUsers.accessDeniedDetail')}</p>
-      </main>
+      </div>
     )
   }
 

@@ -6,6 +6,14 @@
   flex-direction: column;
 }
 
+/* 后台：固定视口高度的应用外壳，页面整体不滚动（侧栏/顶栏/页脚固定，仅内容区内部滚动） */
+.appContainer.appContainerAdmin {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* ── Main content ─────────────────────────────── */
 
 .mainContent {
@@ -17,6 +25,16 @@
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+}
+
+/* 后台路由：占满宽度，内部由 AdminShell 自管栅格与留白（仅作用于 /admin）。
+   复合选择器（0,2,0）确保覆盖文件后段 .mainContent 的响应式 padding（0,1,0）。 */
+.mainContent.mainContentAdmin {
+  max-width: none;
+  width: 100%;
+  padding: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .contentHeader {

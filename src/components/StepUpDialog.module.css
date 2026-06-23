@@ -1,0 +1,277 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background-color: var(--overlay-bg);
+  animation: suOverlay 0.2s ease;
+}
+
+.panel {
+  width: 100%;
+  max-width: 420px;
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  background-color: var(--surface-card);
+  border: 1px solid var(--divider-color);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+  padding: 1.5rem;
+  animation: suPanel 0.2s ease;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.desc {
+  margin: 0.5rem 0 1.1rem;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+/* ── Fields ──────────────────────────────────────────────── */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.select,
+.input {
+  width: 100%;
+  padding: 0.55rem 0.8rem;
+  border: 1.5px solid var(--divider-color);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: var(--text-main);
+  background-color: var(--surface-card);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input {
+  margin-bottom: 0.9rem;
+}
+
+.select {
+  cursor: pointer;
+}
+
+.select:focus,
+.input:focus {
+  border-color: var(--primary-pink);
+  box-shadow: 0 0 0 3px rgba(255, 133, 162, 0.18);
+}
+
+@supports (box-shadow: 0 0 0 3px color-mix(in srgb, red 18%, transparent)) {
+  .select:focus,
+  .input:focus {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-pink) 22%, transparent);
+  }
+}
+
+/* ── Buttons (自绘，不使用浏览器原生默认样式) ──────────────── */
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 1.2rem;
+  flex-wrap: wrap;
+}
+
+.btnPrimary,
+.btnGhost,
+.btnPrimaryFull {
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 0.88rem;
+  border-radius: 50px;
+  padding: 0.55rem 1.25rem;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.btnPrimary,
+.btnPrimaryFull {
+  background-color: var(--accent-pink);
+  color: #ffffff;
+}
+
+.btnPrimaryFull {
+  width: 100%;
+}
+
+.btnPrimary:hover:not(:disabled),
+.btnPrimaryFull:hover:not(:disabled) {
+  background-color: var(--cta-hover);
+}
+
+@supports (background-color: color-mix(in srgb, red 85%, black)) {
+  .btnPrimary:hover:not(:disabled),
+  .btnPrimaryFull:hover:not(:disabled) {
+    background-color: var(--cta-hover-mix);
+  }
+}
+
+[data-theme='contrast'] .btnPrimary,
+[data-theme='contrast'] .btnPrimaryFull {
+  color: #000000;
+}
+
+.btnGhost {
+  background-color: var(--surface-card);
+  color: var(--text-main);
+  border-color: var(--divider-color);
+}
+
+.btnGhost:hover:not(:disabled) {
+  border-color: var(--primary-pink);
+  background-color: var(--hover-bg);
+}
+
+.btnPrimary:disabled,
+.btnPrimaryFull:disabled,
+.btnGhost:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.error {
+  color: var(--error-color);
+  font-size: 0.85rem;
+  margin: 0.5rem 0 0;
+}
+
+/* ── IAM popup states ────────────────────────────────────── */
+
+.iamPrompt {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.waitState,
+.successState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.8rem;
+  padding: 0.75rem 0 0.25rem;
+}
+
+.waitText,
+.successText {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--text-main);
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid var(--soft-pink);
+  border-top-color: var(--accent-pink);
+  animation: suSpin 0.7s linear infinite;
+}
+
+.successCheck {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: #e7f6ec;
+  color: #2e9e4b;
+  border: 1px solid #a9d8b6;
+  animation: suPop 0.3s ease;
+}
+
+.successCheck svg path {
+  stroke-dasharray: 26;
+  stroke-dashoffset: 26;
+  animation: suDraw 0.4s ease 0.12s forwards;
+}
+
+[data-theme='dark'] .successCheck {
+  background-color: rgba(46, 160, 75, 0.14);
+  color: #66bb6a;
+  border-color: rgba(46, 160, 75, 0.3);
+}
+
+[data-theme='contrast'] .successCheck {
+  background-color: #000000;
+  color: #66ff66;
+  border-color: #66ff66;
+}
+
+/* ── Animations ──────────────────────────────────────────── */
+
+@keyframes suOverlay {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes suPanel {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+}
+
+@keyframes suSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes suPop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+}
+
+@keyframes suDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .panel,
+  .successCheck {
+    animation: none;
+  }
+  .spinner {
+    animation-duration: 1.2s;
+  }
+  .successCheck svg path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}

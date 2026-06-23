@@ -1,17 +1,30 @@
-﻿import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
 import { useAuth } from '@/context/useAuth'
 import { get, post } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
 import { limitByUnicode } from '@/utils/string'
 import { StepUpDialog } from '@/components/StepUpDialog'
-import styles from './Admin.module.css'
+import {
+  AdminButton,
+  Alert,
+  Card,
+  EmptyState,
+  Pill,
+  ReasonPromptDialog,
+  SectionLabel,
+  Spinner,
+  StatusBadge,
+  Tabs,
+  TextArea,
+  CONTRIB_STATUS_TONE,
+  type TabItem,
+} from '@/components/admin'
+import shell from './AdminPages.module.css'
 
 // Temp token is kept in memory only (per api.md §JWT Payload Structure:
 // access tokens must not be stored in localStorage or sessionStorage).
-// On page refresh, admin must re-enter the token.
 type Status = 'pending' | 'in_review' | 'approved' | 'rejected' | 'published' | 'hidden'
 type ReviewAction = 'approved' | 'rejected'
 
@@ -69,6 +82,12 @@ const STATUS_LABEL_KEYS: Record<Status, string> = {
   hidden: 'admin.statusHidden',
 }
 
+const ChevronRight = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+    <path d="m9 18 6-6-6-6" />
+  </svg>
+)
+
 function formatTs(ts: number | string | null): string {
   if (!ts) return ''
   const n = typeof ts === 'string' ? Number(ts) : ts
@@ -78,13 +97,11 @@ function formatTs(ts: number | string | null): string {
 
 export const Admin = () => {
   const { t } = useTranslation()
-  const { user, loading: authLoading, accessToken, loginProvider, isAdmin, permissions, loginWithGitHub } = useAuth()
+  const { user, loading: authLoading, accessToken, isAdmin, permissions } = useAuth()
   // 危险操作（隐藏/删除，及配置开启时的发布）可能返回 STEP_UP_REQUIRED → 弹 step-up；
   // 本地因子账号 onSuccess 后重放原操作；IAM 账号在对话框内跳转 IAM 完成后回本页重做。
   const [showStepUp, setShowStepUp] = useState(false)
   const pendingActionRef = useRef<(() => Promise<void>) | null>(null)
-  const [tempToken, setTempToken] = useState('')
-  const [tokenInput, setTokenInput] = useState('')
   const [activeTab, setActiveTab] = useState<Status>('pending')
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [nextCursor, setNextCursor] = useState<string | null>(null)
@@ -98,12 +115,16 @@ export const Admin = () => {
   const [reviewEventsLoading, setReviewEventsLoading] = useState(false)
   const fetchSeq = useRef(0)
 
+  // 隐藏/删除原因对话框（替代原生 window.confirm 与内联原因输入框）
+  const [reasonDialog, setReasonDialog] = useState<{ kind: 'hide' | 'delete' } | null>(null)
+  const [actionReason, setActionReason] = useState('')
+  const [reasonError, setReasonError] = useState('')
+
   const authHeaders = useCallback((): Record<string, string> => {
     const h: Record<string, string> = {}
     if (accessToken) h.Authorization = `Bearer ${accessToken}`
-    else if (tempToken) h.Authorization = `Bearer ${tempToken}`
     return h
-  }, [accessToken, tempToken])
+  }, [accessToken])
 
   const fetchSubmissions = useCallback(async (cursor?: string | null) => {
     const seq = ++fetchSeq.current
@@ -115,11 +136,10 @@ export const Admin = () => {
 
       const result = await get<Submission[]>(`/admin/contributions?${params}`, {
         headers: authHeaders(),
-        skipRefresh: !accessToken, // tempToken users can't auto-refresh
+        skipRefresh: !accessToken,
       })
       if (seq !== fetchSeq.current) return
       if (result.status === 403 || result.status === 401) {
-        setTempToken('')
         setLoading(false)
         return
       }
@@ -150,10 +170,10 @@ export const Admin = () => {
   }, [activeTab, authHeaders, t, accessToken])
 
   useEffect(() => {
-    if (!isAdmin && !tempToken) return
+    if (!isAdmin) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchSubmissions()
-  }, [activeTab, isAdmin, tempToken, authHeaders, t, accessToken]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeTab, isAdmin, authHeaders, t, accessToken]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchDetail = async (id: string) => {
     setError('')
@@ -165,6 +185,7 @@ export const Admin = () => {
       if (!result.ok) throw new Error(t('admin.errorDetail'))
       setSelected(result.data)
       setReviewNotes('')
+      setInternalNote('')
       // Also fetch review history (api.md §6.3)
       setReviewEventsLoading(true)
       const eventsResult = await get<ReviewEvent[]>(`/admin/contributions/${id}/review-events`, {
@@ -237,24 +258,8 @@ export const Admin = () => {
     await doPublish()
   }
 
-  const [actionReason, setActionReason] = useState('')
-  const [actionType, setActionType] = useState<'hide' | 'delete' | null>(null)
-
-  const handleHide = async () => {
+  const runHide = async (reason: string) => {
     if (!selected) return
-    if (actionType !== 'hide') {
-      setActionType('hide')
-      setActionReason('')
-      setError('')
-      return
-    }
-    const reason = actionReason.trim()
-    if (!reason || reason.length > 200) {
-      setError(t('admin.hideReasonRequired'))
-      return
-    }
-    setActionType(null)
-    setActionReason('')
     const id = selected.id
     const v = selected.version || 1
     const doHide = async () => {
@@ -304,26 +309,8 @@ export const Admin = () => {
     fetchSubmissions()
   }
 
-  const handleDelete = async () => {
+  const runDelete = async (reason: string) => {
     if (!selected) return
-    if (actionType !== 'delete') {
-      setActionType('delete')
-      setActionReason('')
-      setError('')
-      return
-    }
-    const reason = actionReason.trim()
-    if (!reason || reason.length > 200) {
-      setError(t('admin.deleteReasonRequired'))
-      return
-    }
-    if (!window.confirm(t('admin.deleteConfirm'))) {
-      setActionType(null)
-      setActionReason('')
-      return
-    }
-    setActionType(null)
-    setActionReason('')
     const id = selected.id
     const v = selected.version || 1
     const doDelete = async () => {
@@ -349,101 +336,54 @@ export const Admin = () => {
     await doDelete()
   }
 
+  const openReasonDialog = (kind: 'hide' | 'delete') => {
+    setActionReason('')
+    setReasonError('')
+    setError('')
+    setReasonDialog({ kind })
+  }
+
+  const submitReason = async () => {
+    if (!reasonDialog) return
+    const reason = actionReason.trim()
+    if (!reason || reason.length > 200) {
+      setReasonError(reasonDialog.kind === 'hide' ? t('admin.hideReasonRequired') : t('admin.deleteReasonRequired'))
+      return
+    }
+    const kind = reasonDialog.kind
+    setReasonDialog(null)
+    setReasonError('')
+    if (kind === 'hide') await runHide(reason)
+    else await runDelete(reason)
+  }
+
   // ── Loading ──
 
   if (authLoading) {
     return (
-      <main className={styles.container}>
-        <div className={styles.loading}>{t('admin.verifying')}</div>
-      </main>
+      <div className={shell.page}>
+        <Spinner size="md" label={t('admin.verifying')} />
+      </div>
     )
   }
 
-  // ── Not logged in (no OAuth user + no temp token) ──
-
-  if (!user && !tempToken) {
-    const handleTempLogin = async () => {
-      const raw = tokenInput.trim()
-      if (!raw) return
-
-      setLoading(true)
-      setError('')
-      try {
-        // Verify the token has reviewer role by making an authenticated apiRequest
-        // with the manual Authorization header (apiRequest will not interfere since
-        // _memoryToken is null at this point for non-OAuth users).
-        const result = await get('/admin/contributions?status=pending&limit=1', {
-          headers: { Authorization: `Bearer ${raw}` },
-          skipRefresh: true,
-        })
-        if (result.ok) {
-          setTempToken(raw)
-        } else if (result.status === 403 || result.status === 401) {
-          setError(t('admin.accessDenied'))
-        } else {
-          setError(t('admin.errorLoad'))
-        }
-      } catch {
-        setError(t('admin.networkError'))
-      }
-      setLoading(false)
-    }
-
-    return (
-      <main className={styles.container}>
-        <header>
-          <h1 className={styles.heading}>
-            {t('admin.title')}
-          </h1>
-          <p className={styles.headingDesc}>
-            {t('admin.description')}
-          </p>
-        </header>
-
-        <div className={styles.loginBox}>
-          <button className={`${styles.btnPrimary} ${styles.loginBoxBtn}`} onClick={loginWithGitHub}>
-            {t('admin.loginWithGithub')}
-          </button>
-
-          <div className={styles.loginDivider}>
-            <p className={styles.loginDescription}>
-              {t('admin.tempTokenDescription')}
-            </p>
-            <input
-              type="password"
-              value={tokenInput}
-              onChange={(e) => setTokenInput(e.target.value)}
-              placeholder={t('admin.tempTokenPlaceholder')}
-              onKeyDown={(e) => e.key === 'Enter' && handleTempLogin()}
-            />
-            <button className={styles.btnSecondary} onClick={handleTempLogin}>
-              {t('admin.tempTokenLogin')}
-            </button>
-          </div>
-        </div>
-      </main>
-    )
-  }
-
-  // ── Not admin (OAuth user but not in org) ──
+  // ── Not admin (OAuth user but no management permission) ──
 
   if (user && !isAdmin) {
     return (
-      <main className={styles.container}>
-        <h1 className={styles.heading}>
-          {t('admin.accessDenied')}
-        </h1>
-        <p className={styles.headingDesc}>
-          {t('admin.accessDeniedDetail', { username: user.username })}
-        </p>
-      </main>
+      <div className={shell.page}>
+        <EmptyState
+          title={t('admin.accessDenied')}
+          description={t('admin.accessDeniedDetail', { username: user.username })}
+        />
+      </div>
     )
   }
 
   // ── Submission List ──
 
   if (!selected) {
-    const tabs: Array<{ key: Status; label: string }> = [
+    const tabs: Array<TabItem<Status>> = [
       { key: 'pending', label: t('admin.tabs.pending') },
       { key: 'approved', label: t('admin.tabs.approved') },
       { key: 'rejected', label: t('admin.tabs.rejected') },
@@ -457,270 +397,233 @@ export const Admin = () => {
       : t('admin.count', { count: submissions.length })
 
     return (
-      <main className={styles.container}>
-        <div className={styles.bar}>
-          <div>
-            <h1 className={styles.heading}>
-              {t('admin.title')}
-            </h1>
-            <span className={styles.userInfo}>
-              {user ? `${user.username} (${t(`admin.provider_${loginProvider ?? 'oauth'}`)})` : `${t('admin.tempAdmin')} (${t('admin.tempAdminHint')})`}
-            </span>
-            {isAdmin && (
-              <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.75rem', fontSize: '0.85rem', flexWrap: 'wrap' }}>
-                {hasPermission(permissions, PERMISSIONS.USER_READ) && (
-                  <Link to="/admin/users" style={{ color: 'var(--accent-pink)' }}>{t('admin.usersLink')}</Link>
-                )}
-                {hasPermission(permissions, PERMISSIONS.AUDIT_READ) && (
-                  <Link to="/admin/audit-logs" style={{ color: 'var(--accent-pink)' }}>{t('admin.auditLogsLink')}</Link>
-                )}
-                <Link to="/admin/edit-requests" style={{ color: 'var(--accent-pink)' }}>{t('admin.editRequestsLink')}</Link>
-              </div>
-            )}
-          </div>
+      <div className={shell.page}>
+        <div className={shell.stickyHead}>
+          <Tabs items={tabs} value={activeTab} onChange={setActiveTab} ariaLabel={t('admin.tabsAriaLabel', '投稿审核')} panelId="admin-review-panel" />
         </div>
 
-        <nav className={styles.tabs} role="tablist" aria-label={t('admin.tabsAriaLabel', '投稿审核')}>
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              role="tab"
-              className={`${styles.tab} ${activeTab === tab.key ? styles.tabActive : ''}`}
-              aria-selected={activeTab === tab.key}
-              onClick={() => setActiveTab(tab.key)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </nav>
+        <div
+          id="admin-review-panel"
+          role="tabpanel"
+          aria-labelledby={`tab-${activeTab}`}
+          className={shell.tabpanel}
+        >
+          <div className={shell.count} role="status" aria-live="polite">{countLabel}</div>
 
-        <div className={styles.count}>{countLabel}</div>
+          {error && <Alert tone="error">{error}</Alert>}
 
-        {error && <div className={styles.errorBox} role="alert">{error}</div>}
-
-        {loading && submissions.length === 0 ? (
-          <div className={styles.loading}>{t('admin.loading')}</div>
-        ) : submissions.length === 0 ? (
-          <div className={styles.empty}>{t('admin.empty')}</div>
-        ) : (
-          <>
-            <ul className={styles.list}>
-              {submissions.map((s) => (
-                <li key={s.id}>
-                  <button
-                    type="button"
-                    className={styles.itemButton}
-                    onClick={() => fetchDetail(s.id)}
-                  >
-                  <div className={styles.itemMain}>
-                    <div className={styles.itemTitle}>{s.title}</div>
-                    <div className={styles.itemMeta}>
-                      {s.author?.displayName || t('admin.authorAnonymous')} · {formatTs(s.createdAt)}
-                    </div>
-                  </div>
-                    <span className={styles.itemCategory}>{s.summary ? limitByUnicode(s.summary, 20) : '-'}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-            {hasMore && (
-              <button
-                className={`${styles.btnSecondary} ${styles.loadMoreBtn}`}
-                onClick={() => fetchSubmissions(nextCursor)}
-                disabled={loading}
-              >
-                {loading ? t('admin.loading') : t('admin.loadMore')}
-              </button>
-            )}
-          </>
-        )}
-      </main>
+          {loading && submissions.length === 0 ? (
+            <Spinner size="md" label={t('admin.loading')} />
+          ) : submissions.length === 0 ? (
+            <EmptyState title={t('admin.empty')} />
+          ) : (
+            <>
+              <ul className={shell.list}>
+                {submissions.map((s) => (
+                  <li key={s.id}>
+                    <button type="button" className={shell.rowBtn} onClick={() => fetchDetail(s.id)}>
+                      <span className={shell.rowMain}>
+                        <span className={shell.rowTitle}>{s.title}</span>
+                        <span className={shell.rowMeta}>
+                          {s.author?.displayName || t('admin.authorAnonymous')}
+                          <span className={shell.rowMetaSep}>·</span>
+                          {formatTs(s.createdAt)}
+                        </span>
+                      </span>
+                      <span className={shell.rowRight}>
+                        {s.summary && <Pill>{limitByUnicode(s.summary, 20)}</Pill>}
+                        <StatusBadge tone={CONTRIB_STATUS_TONE[s.status] ?? 'neutral'} label={t(STATUS_LABEL_KEYS[s.status])} size="sm" />
+                        <span className={shell.chevron} aria-hidden="true"><ChevronRight /></span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {hasMore && (
+                <div className={shell.loadMoreWrap}>
+                  <AdminButton variant="secondary" onClick={() => fetchSubmissions(nextCursor)} loading={loading}>
+                    {t('admin.loadMore')}
+                  </AdminButton>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
     )
   }
 
   // ── Submission Detail ──
 
   const authorDisplay = selected.author?.displayName || t('admin.authorAnonymous')
-
-  const statusLabel = STATUS_LABEL_KEYS[selected.status] || selected.status
+  const canInternalNote = hasPermission(permissions, PERMISSIONS.CONTRIBUTION_INTERNAL_NOTE_READ)
+  const isReviewable = selected.status === 'pending' || selected.status === 'in_review'
 
   return (
-    <main className={styles.container}>
-      <button className={styles.back} onClick={() => setSelected(null)}>
-        {t('admin.back')}
-      </button>
-
-      <div className={styles.detailCard}>
-        <h2 className={styles.detailTitle}>{selected.title}</h2>
-
-        <div className={styles.detailMeta}>
-          <span>{t('admin.category', { category: selected.tags?.[0] || '-' })}</span>
-          <span>
-            {t('admin.authorLabel')}{authorDisplay}
-          </span>
-          <span>{t('admin.submitTime', { time: formatTs(selected.createdAt) })}</span>
-          <span>{t('admin.status', { status: statusLabel })}</span>
-        </div>
-
-        <div className={styles.detailContent}>
-          {selected.contentRaw}
-        </div>
-
-        {/* Internal note — 仅在拥有 contribution:internal-note:read 权限时展示 */}
-        {selected.review?.internalNote && hasPermission(permissions, PERMISSIONS.CONTRIBUTION_INTERNAL_NOTE_READ) && (
-          <div className={styles.detailContact} style={{ borderLeft: '3px solid var(--accent-pink)', marginBottom: '1.25rem' }}>
-            <strong style={{ color: 'var(--accent-pink)' }}>{t('admin.internalNoteLabel')}</strong>
-            <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem' }}>{selected.review.internalNote}</p>
-          </div>
-        )}
-
-        {/* Review history (api.md §6.3: audit trail) */}
-        {reviewEventsLoading ? (
-          <div className={styles.detailContact} style={{ marginBottom: '1.25rem', fontSize: '0.85rem' }}>
-            {t('admin.reviewEventsLoading')}
-          </div>
-        ) : reviewEvents.length > 0 && (
-          <div className={styles.detailContact} style={{ marginBottom: '1.25rem' }}>
-            <strong>{t('admin.reviewEventsTitle')}</strong>
-            <ul style={{ margin: '0.5rem 0 0', padding: '0 0 0 1.2rem', fontSize: '0.82rem', lineHeight: 1.8 }}>
-              {reviewEvents.map(ev => (
-                <li key={ev.id}>
-                  {ev.fromStatus} → {ev.toStatus}
-                  {ev.reviewer?.displayName ? ` · ${t('admin.reviewerPrefix')}${ev.reviewer.displayName}` : ''}
-                  {ev.publicNote ? ` · ${t('admin.notePrefix')}${ev.publicNote}` : ''}
-                  {ev.createdAt ? ` · ${formatTs(ev.createdAt)}` : ''}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {selected.review?.publicNote && (
-          <div className={styles.detailContact}>
-            {t('admin.reviewNotes', { notes: selected.review.publicNote })}
-            {selected.review.reviewerUserId && t('admin.reviewer', { reviewer: selected.review.reviewerUserId })}
-            {selected.review.reviewedAt && ` · ${formatTs(selected.review.reviewedAt)}`}
-          </div>
-        )}
-
-        {error && <div className={styles.errorBox} role="alert">{error}</div>}
-
-        {actionType && (
-          <div style={{ margin: '1rem 0', padding: '0.75rem', border: '1px solid var(--divider-color)', borderRadius: '8px', background: 'var(--hover-bg)' }}>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-              {actionType === 'hide' ? t('admin.hideReasonPrompt') : t('admin.deleteReasonPrompt')}
-            </p>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <input
-                type="text"
-                value={actionReason}
-                onChange={e => setActionReason(e.target.value)}
-                placeholder={t('admin.reasonPlaceholder')}
-                aria-label={t('admin.reasonAriaLabel', '操作原因')}
-                autoFocus
-                style={{ flex: 1, padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    if (actionType === 'hide') handleHide()
-                    else handleDelete()
-                  }
-                  if (e.key === 'Escape') { setActionType(null); setActionReason('') }
-                }}
-              />
-              <button className={styles.btnPrimary} onClick={actionType === 'hide' ? handleHide : handleDelete}
-                style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>
-                {t('admin.confirmReason')}
-              </button>
-              <button className={styles.btnSecondary} onClick={() => { setActionType(null); setActionReason('') }}
-                style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>
-                {t('admin.cancelReason')}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {(selected.status === 'pending' || selected.status === 'in_review') && (
-          <>
-            <textarea
-              className={styles.reviewTextarea}
-              value={reviewNotes}
-              onChange={(e) => setReviewNotes(e.target.value)}
-              placeholder={t('admin.reviewTextareaPlaceholder')}
-            />
-            {/* 内部备注输入：与后端一致，需 contribution:internal-note:read 权限 */}
-            {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_INTERNAL_NOTE_READ) && (
-              <textarea
-                className={styles.reviewTextarea}
-                value={internalNote}
-                onChange={(e) => setInternalNote(e.target.value)}
-                placeholder={t('admin.internalNotePlaceholder')}
-                style={{ marginTop: '0.5rem', minHeight: '3rem' }}
-              />
-            )}
-
-            <div className={styles.reviewActions}>
-              {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_REVIEW) && (
-                <button className={styles.btnPrimary} onClick={() => handleReview('approved')}>
-                  {t('admin.approve')}
-                </button>
-              )}
-              {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_REVIEW) && (
-                <button className={styles.btnReject} onClick={() => handleReview('rejected')}>
-                  {t('admin.reject')}
-                </button>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* Post-review actions: publish for approved, hide/delete for published, restore/delete for hidden, delete for rejected (api.md §6.4, §6.5, §6.6) */}
-        {selected.status === 'approved' && (
-          <div className={styles.reviewActions}>
-            {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_PUBLISH) && (
-              <button className={styles.btnPrimary} onClick={handlePublish}>
-                {t('admin.publishButton')}
-              </button>
-            )}
-            {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_DELETE) && (
-              <button className={styles.btnReject} onClick={handleDelete}>
-                {t('admin.deleteButton')}
-              </button>
-            )}
-          </div>
-        )}
-        {selected.status === 'published' && (
-          <div className={styles.reviewActions}>
-            {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_HIDE) && (
-              <button className={styles.btnReject} onClick={handleHide}>
-                {t('admin.hideButton')}
-              </button>
-            )}
-          </div>
-        )}
-        {selected.status === 'hidden' && (
-          <div className={styles.reviewActions}>
-            {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_RESTORE) && (
-              <button className={styles.btnPrimary} onClick={handleRestore}>
-                {t('admin.restoreButton')}
-              </button>
-            )}
-            {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_DELETE) && (
-              <button className={styles.btnReject} onClick={handleDelete}>
-                {t('admin.deleteButton')}
-              </button>
-            )}
-          </div>
-        )}
-        {selected.status === 'rejected' && (
-          <div className={styles.reviewActions}>
-            {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_DELETE) && (
-              <button className={styles.btnReject} onClick={handleDelete}>
-                {t('admin.deleteButton')}
-              </button>
-            )}
-          </div>
-        )}
+    <div className={shell.page}>
+      <div>
+        <AdminButton variant="ghost" size="sm" onClick={() => setSelected(null)}>
+          {t('admin.back')}
+        </AdminButton>
       </div>
+
+      <Card>
+        <div className={shell.stack}>
+          <div className={shell.detailHead}>
+            <h2 className={shell.detailTitle}>{selected.title}</h2>
+            <StatusBadge tone={CONTRIB_STATUS_TONE[selected.status] ?? 'neutral'} label={t(STATUS_LABEL_KEYS[selected.status])} />
+          </div>
+
+          <div className={shell.metaRow}>
+            <span className={shell.metaItem}>{t('admin.category', { category: selected.tags?.[0] || '—' })}</span>
+            <span className={shell.metaItem}>{t('admin.authorLabel')}{authorDisplay}</span>
+            <span className={shell.metaItem}>{t('admin.submitTime', { time: formatTs(selected.createdAt) })}</span>
+          </div>
+
+          <div className={shell.contentBlock}>{selected.contentRaw}</div>
+
+          {/* Internal note — 仅在拥有 contribution:internal-note:read 权限时展示 */}
+          {selected.review?.internalNote && canInternalNote && (
+            <Card tone="subtle" accent padding="sm">
+              <SectionLabel>{t('admin.internalNoteLabel')}</SectionLabel>
+              <p className={shell.noteText}>{selected.review.internalNote}</p>
+            </Card>
+          )}
+
+          {/* Review history (api.md §6.3: audit trail) */}
+          {reviewEventsLoading ? (
+            <Spinner size="sm" label={t('admin.reviewEventsLoading')} />
+          ) : reviewEvents.length > 0 && (
+            <Card tone="subtle" padding="sm">
+              <SectionLabel>{t('admin.reviewEventsTitle')}</SectionLabel>
+              <ul className={shell.history}>
+                {reviewEvents.map(ev => (
+                  <li key={ev.id} className={shell.historyItem}>
+                    <span className={shell.historyHead}>
+                      <span>{ev.fromStatus} → {ev.toStatus}</span>
+                      {ev.reviewer?.displayName && <span>· {t('admin.reviewerPrefix')}{ev.reviewer.displayName}</span>}
+                    </span>
+                    {ev.publicNote && <span>{t('admin.notePrefix')}{ev.publicNote}</span>}
+                    {ev.createdAt ? <span className={shell.historyTime}>{formatTs(ev.createdAt)}</span> : null}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          {selected.review?.publicNote && (
+            <Card tone="subtle" padding="sm">
+              <p className={shell.noteText}>
+                {t('admin.reviewNotes', { notes: selected.review.publicNote })}
+                {selected.review.reviewerUserId && t('admin.reviewer', { reviewer: selected.review.reviewerUserId })}
+                {selected.review.reviewedAt ? ` · ${formatTs(selected.review.reviewedAt)}` : ''}
+              </p>
+            </Card>
+          )}
+
+          {error && <Alert tone="error">{error}</Alert>}
+
+          {isReviewable && (
+            <div className={shell.stackSm}>
+              <TextArea
+                value={reviewNotes}
+                onChange={(e) => setReviewNotes(e.target.value)}
+                placeholder={t('admin.reviewTextareaPlaceholder')}
+              />
+              {/* 内部备注输入：与后端一致，需 contribution:internal-note:read 权限 */}
+              {canInternalNote && (
+                <TextArea
+                  value={internalNote}
+                  onChange={(e) => setInternalNote(e.target.value)}
+                  placeholder={t('admin.internalNotePlaceholder')}
+                />
+              )}
+              <div className={shell.actions}>
+                {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_REVIEW) && (
+                  <AdminButton variant="primary" onClick={() => handleReview('approved')}>
+                    {t('admin.approve')}
+                  </AdminButton>
+                )}
+                {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_REVIEW) && (
+                  <AdminButton variant="danger" onClick={() => handleReview('rejected')}>
+                    {t('admin.reject')}
+                  </AdminButton>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Post-review actions (api.md §6.4, §6.5, §6.6) */}
+          {selected.status === 'approved' && (
+            <div className={shell.actions}>
+              {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_PUBLISH) && (
+                <AdminButton variant="primary" onClick={handlePublish}>{t('admin.publishButton')}</AdminButton>
+              )}
+              {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_DELETE) && (
+                <AdminButton variant="danger" onClick={() => openReasonDialog('delete')}>{t('admin.deleteButton')}</AdminButton>
+              )}
+            </div>
+          )}
+          {selected.status === 'published' && (
+            <div className={shell.actions}>
+              {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_HIDE) && (
+                <AdminButton variant="danger" onClick={() => openReasonDialog('hide')}>{t('admin.hideButton')}</AdminButton>
+              )}
+            </div>
+          )}
+          {selected.status === 'hidden' && (
+            <div className={shell.actions}>
+              {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_RESTORE) && (
+                <AdminButton variant="primary" onClick={handleRestore}>{t('admin.restoreButton')}</AdminButton>
+              )}
+              {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_DELETE) && (
+                <AdminButton variant="danger" onClick={() => openReasonDialog('delete')}>{t('admin.deleteButton')}</AdminButton>
+              )}
+            </div>
+          )}
+          {selected.status === 'rejected' && (
+            <div className={shell.actions}>
+              {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_DELETE) && (
+                <AdminButton variant="danger" onClick={() => openReasonDialog('delete')}>{t('admin.deleteButton')}</AdminButton>
+              )}
+            </div>
+          )}
+        </div>
+      </Card>
+
+      <ReasonPromptDialog
+        open={reasonDialog?.kind === 'hide'}
+        title={t('admin.hideTitle')}
+        prompt={t('admin.hideReasonPrompt')}
+        placeholder={t('admin.reasonPlaceholder')}
+        value={actionReason}
+        onChange={setActionReason}
+        onSubmit={submitReason}
+        onCancel={() => { setReasonDialog(null); setReasonError('') }}
+        submitText={t('admin.hideButton')}
+        cancelText={t('admin.cancelReason')}
+        maxLength={200}
+        counterText={t('admin.ui.charCount', { n: actionReason.length, max: 200 })}
+        error={reasonError || undefined}
+        variant="danger"
+      />
+      <ReasonPromptDialog
+        open={reasonDialog?.kind === 'delete'}
+        title={t('admin.deleteTitle')}
+        prompt={t('admin.deleteReasonPrompt')}
+        placeholder={t('admin.reasonPlaceholder')}
+        value={actionReason}
+        onChange={setActionReason}
+        onSubmit={submitReason}
+        onCancel={() => { setReasonDialog(null); setReasonError('') }}
+        submitText={t('admin.deleteButton')}
+        cancelText={t('admin.cancelReason')}
+        maxLength={200}
+        counterText={t('admin.ui.charCount', { n: actionReason.length, max: 200 })}
+        error={reasonError || undefined}
+        variant="danger"
+      />
+
       {showStepUp && accessToken && (
         <StepUpDialog
           accessToken={accessToken}
@@ -728,8 +631,6 @@ export const Admin = () => {
           onCancel={() => { setShowStepUp(false); pendingActionRef.current = null }}
         />
       )}
-    </main>
+    </div>
   )
 }
-
-

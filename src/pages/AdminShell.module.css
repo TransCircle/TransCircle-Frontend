@@ -1,0 +1,400 @@
+.shell {
+  --admin-sidebar-w: 240px;
+  display: grid;
+  grid-template-columns: var(--admin-sidebar-w) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.shellCollapsed {
+  --admin-sidebar-w: 72px;
+}
+
+/* ── Bootstrap (auth loading) ────────────────────────────── */
+
+.bootstrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  padding: 2rem;
+}
+
+/* ── Skip link ───────────────────────────────────────────── */
+
+.skipLink {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 1300;
+  padding: 0.6rem 1rem;
+  background: var(--accent-pink);
+  color: #fff;
+  border-radius: 0 0 8px 0;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.skipLink:focus {
+  left: 0;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────── */
+
+.sidebar {
+  grid-column: 1;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--surface-card);
+  border-right: 1px solid var(--divider-color);
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 6;
+}
+
+.sidebarHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 1.1rem 1.1rem 0.6rem;
+  min-height: 56px;
+}
+
+.brand {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.collapseBtn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--divider-color);
+  border-radius: 8px;
+  background: var(--bg-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.collapseBtn:hover {
+  background-color: var(--hover-bg);
+  color: var(--text-main);
+}
+
+.collapseIcon {
+  display: inline-flex;
+  transition: transform 0.2s ease;
+}
+
+.collapseIconFlipped {
+  transform: rotate(180deg);
+}
+
+/* ── Nav ─────────────────────────────────────────────────── */
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.5rem 0.7rem 1rem;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.navItem:hover {
+  background-color: var(--hover-bg);
+  color: var(--text-main);
+}
+
+.navItemActive,
+.navItemActive:hover {
+  background-color: var(--hover-bg);
+  color: var(--accent-pink);
+  font-weight: 600;
+}
+
+@supports (background-color: color-mix(in srgb, red 15%, white)) {
+  .navItem:hover,
+  .navItemActive,
+  .navItemActive:hover {
+    background-color: var(--hover-bg-mix);
+  }
+}
+
+.navIcon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.navLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Collapsed rail (desktop only) ───────────────────────── */
+
+.shellCollapsed .brand {
+  opacity: 0;
+  width: 0;
+}
+
+.shellCollapsed .sidebarHead {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.shellCollapsed .navItem {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.shellCollapsed .navLabel {
+  display: none;
+}
+
+/* ── Content column ──────────────────────────────────────── */
+
+.contentCol {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.topbar {
+  flex-shrink: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1.8rem;
+  background-color: var(--bg-color);
+  border-bottom: 1px solid var(--divider-color);
+}
+
+.hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--divider-color);
+  border-radius: 9px;
+  background: var(--surface-card);
+  color: var(--text-main);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.pageTitle {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.identity {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background-color: var(--accent-pink);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+[data-theme='contrast'] .avatar {
+  color: #000;
+}
+
+.avatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.identityText {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  min-width: 0;
+}
+
+.identityName {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.identityRole {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow-y: auto;
+  /* 顶部留白移交给 .page / .stickyHead，使 sticky 头部能贴顶覆盖、避免滚动行从透明带透出 */
+  padding: 0 1.8rem 2rem;
+  box-sizing: border-box;
+}
+
+/* ── Drawer overlay (hidden on desktop) ──────────────────── */
+
+.overlay {
+  display: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* ── Responsive: drawer ≤1024px ──────────────────────────── */
+
+@media (max-width: 1024px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    height: 100dvh;
+    width: 270px;
+    transform: translateX(-100%);
+    transition: transform 0.28s ease;
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.12);
+    z-index: 1200;
+  }
+
+  .drawerOpen .sidebar {
+    transform: translateX(0);
+  }
+
+  /* In the drawer, always show full labels even if "collapsed" was set */
+  .shellCollapsed .brand {
+    opacity: 1;
+    width: auto;
+  }
+  .shellCollapsed .navItem {
+    justify-content: flex-start;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  .shellCollapsed .navLabel {
+    display: block;
+  }
+  .shellCollapsed .sidebarHead {
+    justify-content: space-between;
+    padding-left: 1.1rem;
+    padding-right: 1.1rem;
+  }
+
+  .collapseBtn {
+    display: none;
+  }
+
+  .contentCol {
+    grid-column: 1;
+  }
+
+  .hamburger {
+    display: inline-flex;
+  }
+
+  .overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1199;
+    background-color: var(--overlay-bg);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.28s ease;
+  }
+
+  .drawerOpen .overlay {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* ── Responsive: compact ≤768px ──────────────────────────── */
+
+@media (max-width: 768px) {
+  .topbar {
+    padding: 0.7rem 1rem;
+    gap: 0.7rem;
+  }
+
+  .content {
+    padding: 0 1rem 1.5rem;
+  }
+
+  .identityText {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .overlay,
+  .collapseIcon,
+  .collapseBtn {
+    transition: none;
+  }
+}

@@ -1,10 +1,18 @@
-﻿import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { get } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
 import { limitByUnicode } from '@/utils/string'
-import styles from './Admin.module.css'
+import {
+  AdminButton,
+  Alert,
+  EmptyState,
+  Pill,
+  SearchField,
+  Spinner,
+} from '@/components/admin'
+import shell from './AdminPages.module.css'
 
 interface AuditLogEntry {
   id: string
@@ -36,9 +44,14 @@ export const AdminAuditLogs = () => {
   const [error, setError] = useState('')
   const [actionFilter, setActionFilter] = useState('')
   const [resourceFilter, setResourceFilter] = useState('')
+  const [actorNames, setActorNames] = useState<Record<string, string>>({})
+  const actorFetchedRef = useRef<Set<string>>(new Set())
 
   const authHeaders = (): Record<string, string> =>
     accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
+
+  const actionLabel = (action: string): string =>
+    t(`adminAuditLogs.actions.${action.replace(/\./g, '_')}`, action)
 
   const fetchLogs = async (cursorVal?: string | null) => {
     const seq = ++fetchSeq.current
@@ -73,75 +86,116 @@ export const AdminAuditLogs = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, accessToken])
 
+  // 操作者 ID → 显示名查表（需 user:read 权限；按 ID 缓存，避免重复请求）
+  useEffect(() => {
+    if (!accessToken || !hasPermission(permissions, PERMISSIONS.USER_READ)) return
+    const ids = Array.from(new Set(logs.map(l => l.actorUserId).filter((x): x is string => !!x)))
+      .filter(id => !actorFetchedRef.current.has(id))
+    if (ids.length === 0) return
+    ids.forEach(id => actorFetchedRef.current.add(id))
+    let cancelled = false
+    void (async () => {
+      const entries = await Promise.all(ids.map(async (id) => {
+        const r = await get<{ displayName?: string; username?: string }>(`/admin/users/${id}`, {
+          headers: authHeaders(), skipRefresh: !accessToken,
+        })
+        return r.ok ? ([id, r.data.displayName || r.data.username || id] as const) : null
+      }))
+      if (cancelled) return
+      const map: Record<string, string> = {}
+      for (const e of entries) if (e) map[e[0]] = e[1]
+      if (Object.keys(map).length) setActorNames(prev => ({ ...prev, ...map }))
+    })()
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logs])
+
   if (!authLoading && (!user || !hasPermission(permissions, PERMISSIONS.AUDIT_READ))) {
     return (
-      <main className={styles.container}>
-        <h1 className={styles.heading}>{t('adminAuditLogs.accessDenied')}</h1>
-        <p className={styles.headingDesc}>{t('adminAuditLogs.accessDeniedDetail')}</p>
-      </main>
+      <div className={shell.page}>
+        <EmptyState title={t('adminAuditLogs.accessDenied')} description={t('adminAuditLogs.accessDeniedDetail')} />
+      </div>
     )
   }
 
   if (authLoading) {
     return (
-      <main className={styles.container}>
-        <div className={styles.loading}>{t('adminAuditLogs.loading')}</div>
-      </main>
+      <div className={shell.page}>
+        <Spinner size="md" label={t('adminAuditLogs.loading')} />
+      </div>
     )
   }
 
   return (
-    <main className={styles.container}>
-      <header><h1 className={styles.heading}>{t('adminAuditLogs.title')}</h1></header>
-
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-        <input type="text" value={actionFilter} onChange={e => setActionFilter(e.target.value)}
-          placeholder={t('adminAuditLogs.filterAction')}
-          aria-label={t('adminAuditLogs.filterActionAria', '操作类型筛选')}
-          className={styles.input}
-          style={{ flex: 1, minWidth: '200px', padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
-          onKeyDown={e => { if (e.key === 'Enter') fetchLogs() }} />
-        <input type="text" value={resourceFilter} onChange={e => setResourceFilter(e.target.value)}
-          placeholder={t('adminAuditLogs.filterResource')}
-          aria-label={t('adminAuditLogs.filterResourceAria', '资源类型筛选')}
-          className={styles.input}
-          style={{ flex: 1, minWidth: '150px', padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
-          onKeyDown={e => { if (e.key === 'Enter') fetchLogs() }} />
-        <button className={styles.btnSecondary} onClick={() => fetchLogs()}>{t('adminAuditLogs.search')}</button>
+    <div className={shell.page}>
+      <div className={shell.stickyHead}>
+        <div className={shell.toolbar}>
+          <SearchField
+            value={actionFilter}
+            onValueChange={setActionFilter}
+            onSearch={() => fetchLogs()}
+            placeholder={t('adminAuditLogs.filterAction')}
+            searchAriaLabel={t('adminAuditLogs.filterAction')}
+            clearAriaLabel={t('admin.ui.clear')}
+            fieldClassName={shell.grow}
+          />
+          <SearchField
+            value={resourceFilter}
+            onValueChange={setResourceFilter}
+            onSearch={() => fetchLogs()}
+            placeholder={t('adminAuditLogs.filterResource')}
+            searchAriaLabel={t('adminAuditLogs.filterResource')}
+            clearAriaLabel={t('admin.ui.clear')}
+            fieldClassName={shell.grow}
+          />
+          <AdminButton variant="secondary" onClick={() => fetchLogs()}>{t('adminAuditLogs.search')}</AdminButton>
+        </div>
       </div>
 
-      {error && <div className={styles.errorBox}>{error}</div>}
+      {error && <Alert tone="error">{error}</Alert>}
 
       {loading && logs.length === 0 ? (
-        <div className={styles.loading}>{t('adminAuditLogs.loading')}</div>
+        <Spinner size="md" label={t('adminAuditLogs.loading')} />
       ) : logs.length === 0 ? (
-        <div className={styles.empty}>{t('adminAuditLogs.empty')}</div>
+        <EmptyState title={t('adminAuditLogs.empty')} />
       ) : (
         <>
-          <ul className={styles.list}>
+          <ul className={shell.list}>
             {logs.map(log => (
-              <li key={log.id} className={styles.item}>
-                <div className={styles.itemMain}>
-                  <div className={styles.itemTitle}>{log.action}</div>
-                  <div className={styles.itemMeta}>
-                    {log.resourceType}{log.resourceId ? ` / ${limitByUnicode(log.resourceId, 24)}...` : ''} ·
+              <li key={log.id} className={shell.rowStatic}>
+                <span className={shell.rowMain}>
+                  <span className={shell.rowTitle}>{actionLabel(log.action)}</span>
+                  <span className={shell.rowMeta}>
+                    <code className={shell.code}>{log.action}</code>
+                    <span className={shell.rowMetaSep}>·</span>
                     {log.actorUserId
-                      ? t('adminAuditLogs.actorUser', { id: `${limitByUnicode(log.actorUserId, 16)}...` })
-                      : t('adminAuditLogs.actorSystem')} ·
+                      ? t('adminAuditLogs.actorUser', { id: actorNames[log.actorUserId] ?? `${limitByUnicode(log.actorUserId, 12)}…` })
+                      : t('adminAuditLogs.actorSystem')}
+                    {log.resourceId && (
+                      <>
+                        <span className={shell.rowMetaSep}>·</span>
+                        {`${limitByUnicode(log.resourceId, 24)}…`}
+                      </>
+                    )}
+                    <span className={shell.rowMetaSep}>·</span>
                     {formatTs(log.createdAt)}
-                  </div>
-                </div>
+                  </span>
+                </span>
+                <span className={shell.rowRight}>
+                  <Pill>{log.resourceType}</Pill>
+                </span>
               </li>
             ))}
           </ul>
           {cursor && (
-            <button className={styles.btnSecondary} onClick={() => fetchLogs(cursor)}
-              disabled={loading} style={{ display: 'block', margin: '1rem auto' }}>
-              {t('adminAuditLogs.loadMore')}
-            </button>
+            <div className={shell.loadMoreWrap}>
+              <AdminButton variant="secondary" onClick={() => fetchLogs(cursor)} loading={loading}>
+                {t('adminAuditLogs.loadMore')}
+              </AdminButton>
+            </div>
           )}
         </>
       )}
-    </main>
+    </div>
   )
 }

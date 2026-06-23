@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Outlet, useNavigate, useSearchParams } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
 import { Navbar } from '../components/Navbar'
@@ -18,6 +18,11 @@ export const RootLayout = () => {
   const { t } = useTranslation()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  // 后台路由占满宽度并由 AdminShell 提供唯一的 <main>；非后台路由渲染路径保持不变。
+  const isAdminRoute = location.pathname === '/admin' || location.pathname.startsWith('/admin/')
+  const MainWrapper = isAdminRoute ? 'div' : 'main'
 
   const [rateLimitToast, setRateLimitToast] = useState<string | null>(null)
   const [dismissedToastKey, setDismissedToastKey] = useState<string | null>(null)
@@ -56,12 +61,12 @@ export const RootLayout = () => {
 
 
   return (
-    <div className={styles.appContainer}>
+    <div className={`${styles.appContainer} ${isAdminRoute ? styles.appContainerAdmin : ''}`}>
       <Navbar />
 
-      <main className={styles.mainContent}>
+      <MainWrapper className={`${styles.mainContent} ${isAdminRoute ? styles.mainContentAdmin : ''}`}>
         <Outlet />
-      </main>
+      </MainWrapper>
 
       <LicenseFooter />
 

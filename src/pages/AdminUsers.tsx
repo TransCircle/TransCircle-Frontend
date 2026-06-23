@@ -4,7 +4,22 @@ import { get, post } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
 import { StepUpDialog } from '@/components/StepUpDialog'
-import styles from './Admin.module.css'
+import {
+  AdminButton,
+  Alert,
+  Card,
+  DescriptionList,
+  EmptyState,
+  ReasonPromptDialog,
+  SearchField,
+  SectionLabel,
+  Spinner,
+  StatusBadge,
+  USER_STATUS_TONE,
+  USER_STATUS_LABEL_KEYS,
+  type DescriptionItem,
+} from '@/components/admin'
+import shell from './AdminPages.module.css'
 
 interface ManagedUser {
   id: string
@@ -53,9 +68,13 @@ export const AdminUsers = () => {
   const [detail, setDetail] = useState<DetailedUser | null>(null)
 
   // 危险操作（封禁/解封）可能返回 STEP_UP_REQUIRED → 弹 step-up（IAM 账号走代理 2FA 跳转）。
-  // 完成后 onSuccess 重放原操作（本地因子场景）；IAM 跳转场景回到本页重做即可。
   const [showStepUp, setShowStepUp] = useState(false)
   const pendingActionRef = useRef<(() => Promise<void>) | null>(null)
+
+  // 封禁原因对话框（替代内联输入行）
+  const [banDialogUserId, setBanDialogUserId] = useState<string | null>(null)
+  const [banReason, setBanReason] = useState('')
+  const [banError, setBanError] = useState('')
 
   const authHeaders = useCallback((): Record<string, string> => {
     return accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
@@ -102,24 +121,24 @@ export const AdminUsers = () => {
     else setError(result.error.message)
   }
 
-  const [banReason, setBanReason] = useState('')
-  const [banUserId, setBanUserId] = useState<string | null>(null)
+  const openBan = (userId: string) => {
+    setBanReason('')
+    setBanError('')
+    setError('')
+    setBanDialogUserId(userId)
+  }
 
-  const handleBan = async (userId: string) => {
-    if (banUserId !== userId) {
-      setBanUserId(userId)
-      setBanReason('')
-      setError('')
-      return
-    }
+  const submitBan = async () => {
+    if (!banDialogUserId) return
     const reason = banReason.trim()
     // 封禁理由 1-500 字符（api.md §7.5 / 后端 admin.ts 校验一致）
     if (!reason || reason.length > 500) {
-      setError(t('adminUsers.banReasonRequired'))
+      setBanError(t('adminUsers.banReasonRequired'))
       return
     }
-    setBanUserId(null)
-    setBanReason('')
+    const userId = banDialogUserId
+    setBanDialogUserId(null)
+    setBanError('')
     const doBan = async () => {
       const result = await post(`/admin/users/${userId}/ban`, { reason }, {
         headers: authHeaders(), skipRefresh: !accessToken,
@@ -145,88 +164,117 @@ export const AdminUsers = () => {
 
   if (!authLoading && (!user || !hasPermission(permissions, PERMISSIONS.USER_READ))) {
     return (
-      <main className={styles.container}>
-        <h1 className={styles.heading}>{t('adminUsers.accessDenied')}</h1>
-        <p className={styles.headingDesc}>{t('adminUsers.accessDeniedDetail')}</p>
-      </main>
+      <div className={shell.page}>
+        <EmptyState title={t('adminUsers.accessDenied')} description={t('adminUsers.accessDeniedDetail')} />
+      </div>
     )
   }
 
   if (authLoading) {
     return (
-      <main className={styles.container}>
-        <div className={styles.loading}>{t('adminUsers.loading')}</div>
-      </main>
+      <div className={shell.page}>
+        <Spinner size="md" label={t('adminUsers.loading')} />
+      </div>
     )
   }
 
   if (selectedId && detail) {
+    const metaItems: DescriptionItem[] = [
+      {
+        term: t('adminUsers.email'),
+        value: (
+          <span className={shell.inlineMeta}>
+            {detail.email ?? '—'}
+            <StatusBadge
+              tone={detail.emailVerified ? 'green' : 'red'}
+              label={t(detail.emailVerified ? 'adminUsers.emailVerified' : 'adminUsers.emailUnverified')}
+              size="sm"
+            />
+          </span>
+        ),
+      },
+      { term: t('adminUsers.status'), value: <StatusBadge tone={USER_STATUS_TONE[detail.status] ?? 'neutral'} label={t(USER_STATUS_LABEL_KEYS[detail.status] ?? detail.status)} size="sm" /> },
+      { term: t('adminUsers.createdAt'), value: formatTs(detail.createdAt) || '—' },
+      { term: t('adminUsers.lastLogin'), value: formatTs(detail.lastLoginAt) || '—' },
+      { term: t('adminUsers.passwordLabel'), value: detail.security.hasPassword ? t('adminUsers.hasPassword') : t('adminUsers.noPassword') },
+      { term: 'TOTP', value: detail.security.totpEnabled ? t('adminUsers.totpEnabled') : t('adminUsers.totpDisabled') },
+      { term: 'Passkey', value: `${detail.security.passkeyCount}${t('adminUsers.passkeyUnit')}` },
+    ]
+
     return (
-      <main className={styles.container}>
-        <button className={styles.back} onClick={() => { setSelectedId(null); setDetail(null) }}>
-          {t('adminUsers.backToList')}
-        </button>
-        <div className={styles.detailCard}>
-          <h2 className={styles.detailTitle}>{detail.displayName} (@{detail.username})</h2>
-          <div className={styles.detailMeta}>
-            <p>{t('adminUsers.email')}：{detail.email ?? '-'} {detail.emailVerified ? '✓' : '✗'}</p>
-            <p>{t('adminUsers.status')}：{detail.status}</p>
-            <p>{t('adminUsers.createdAt')}：{formatTs(detail.createdAt)}</p>
-            <p>{t('adminUsers.lastLogin')}：{formatTs(detail.lastLoginAt)}</p>
-            <p>{t('adminUsers.passwordLabel')}：{detail.security.hasPassword ? t('adminUsers.hasPassword') : t('adminUsers.noPassword')} · TOTP：{detail.security.totpEnabled ? t('adminUsers.totpEnabled') : t('adminUsers.totpDisabled')} · Passkey：{detail.security.passkeyCount}{t('adminUsers.passkeyUnit')}</p>
-            {detail.oauthAccounts.map(oa => (
-              <p key={oa.provider}>{t('adminUsers.oauthAccount', { provider: oa.provider, username: oa.providerUsername })}</p>
-            ))}
-          </div>
-          <h3 style={{ marginTop: '1rem', fontWeight: 600 }}>{t('adminUsers.roles')}</h3>
-          <ul>
-            {detail.roles.length === 0 && <li style={{ color: 'var(--text-muted)' }}>{t('adminUsers.noRoles')}</li>}
-            {detail.roles.map(r => (
-              <li key={r.id}>
-                {r.name}（{r.expiresAt ? t('adminUsers.expiresAt', { time: formatTs(r.expiresAt) }) : t('adminUsers.permanent')}）
-              </li>
-            ))}
-          </ul>
-          {/* 授权统一迁移到 IAM：本平台不再人工授予/撤销角色（iam-admin-api.md §4.4） */}
-          <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            {t('adminUsers.rolesManagedInIam')}
-          </p>
-          {error && <div className={styles.errorBox} role="alert">{error}</div>}
-
-          {/* Inline ban reason input */}
-          {banUserId === detail.id && (
-            <div style={{ margin: '1rem 0', padding: '0.75rem', border: '1px solid var(--divider-color)', borderRadius: '8px', background: 'var(--hover-bg)' }}>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-                {t('adminUsers.banReasonPrompt')}
-              </p>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <input type="text" value={banReason} onChange={e => setBanReason(e.target.value)}
-                  placeholder={t('adminUsers.banReasonPlaceholder')}
-                  aria-label={t('adminUsers.banReasonAriaLabel', '封禁原因')}
-                  autoFocus
-                  style={{ flex: 1, padding: '0.4rem 0.6rem', border: '1.5px solid var(--divider-color)', borderRadius: '8px', fontSize: '0.85rem', fontFamily: 'inherit' }}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') handleBan(detail.id)
-                    if (e.key === 'Escape') { setBanUserId(null); setBanReason('') }
-                  }} />
-                <button className={styles.btnPrimary} onClick={() => handleBan(detail.id)}
-                  style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>{t('admin.confirmReason')}</button>
-                <button className={styles.btnSecondary} onClick={() => { setBanUserId(null); setBanReason('') }}
-                  style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>{t('admin.cancelReason')}</button>
-              </div>
-            </div>
-          )}
-
-          {/* 封禁/解封需 user:ban（仅 admin）；editor 仅有 user:read 时只读不可操作 */}
-          {hasPermission(permissions, PERMISSIONS.USER_BAN) && (
-            <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
-              {detail.status === 'banned'
-                ? <button className={styles.btnPrimary} onClick={() => handleUnban(detail.id)}>{t('adminUsers.unban')}</button>
-                : <button className={styles.btnSecondary} onClick={() => handleBan(detail.id)} style={{ color: 'var(--error-color)' }}>{t('adminUsers.ban')}</button>
-              }
-            </div>
-          )}
+      <div className={shell.page}>
+        <div>
+          <AdminButton variant="ghost" size="sm" onClick={() => { setSelectedId(null); setDetail(null) }}>
+            {t('adminUsers.backToList')}
+          </AdminButton>
         </div>
+
+        <Card>
+          <div className={shell.stack}>
+            <h2 className={shell.detailTitle}>{detail.displayName} <span className={shell.detailTitleSub}>@{detail.username}</span></h2>
+
+            <DescriptionList items={metaItems} columns={2} />
+
+            {detail.oauthAccounts.length > 0 && (
+              <div>
+                <SectionLabel>OAuth</SectionLabel>
+                <ul className={shell.history}>
+                  {detail.oauthAccounts.map(oa => (
+                    <li key={oa.provider} className={shell.historyItem}>
+                      {t('adminUsers.oauthAccount', { provider: oa.provider, username: oa.providerUsername })}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div>
+              <SectionLabel>{t('adminUsers.roles')}</SectionLabel>
+              {detail.roles.length === 0 ? (
+                <p className={shell.subtleNote}>{t('adminUsers.noRoles')}</p>
+              ) : (
+                <ul className={shell.history}>
+                  {detail.roles.map(r => (
+                    <li key={r.id} className={shell.historyItem}>
+                      {r.name}（{r.expiresAt ? t('adminUsers.expiresAt', { time: formatTs(r.expiresAt) }) : t('adminUsers.permanent')}）
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {/* 授权统一迁移到 IAM：本平台不再人工授予/撤销角色（iam-admin-api.md §4.4） */}
+              <p className={shell.subtleNoteSpaced}>{t('adminUsers.rolesManagedInIam')}</p>
+            </div>
+
+            {error && <Alert tone="error">{error}</Alert>}
+
+            {/* 封禁/解封需 user:ban（仅 admin）；editor 仅有 user:read 时只读不可操作 */}
+            {hasPermission(permissions, PERMISSIONS.USER_BAN) && (
+              <div className={shell.actions}>
+                {detail.status === 'banned'
+                  ? <AdminButton variant="primary" onClick={() => handleUnban(detail.id)}>{t('adminUsers.unban')}</AdminButton>
+                  : <AdminButton variant="danger" onClick={() => openBan(detail.id)}>{t('adminUsers.ban')}</AdminButton>}
+              </div>
+            )}
+          </div>
+        </Card>
+
+        <ReasonPromptDialog
+          open={banDialogUserId !== null}
+          title={t('adminUsers.banTitle')}
+          prompt={t('adminUsers.banReasonPrompt')}
+          placeholder={t('adminUsers.banReasonPlaceholder')}
+          value={banReason}
+          onChange={setBanReason}
+          onSubmit={submitBan}
+          onCancel={() => { setBanDialogUserId(null); setBanError('') }}
+          submitText={t('adminUsers.ban')}
+          cancelText={t('admin.cancelReason')}
+          maxLength={500}
+          counterText={t('admin.ui.charCount', { n: banReason.length, max: 500 })}
+          error={banError || undefined}
+          variant="danger"
+        />
+
         {showStepUp && accessToken && (
           <StepUpDialog
             accessToken={accessToken}
@@ -234,48 +282,62 @@ export const AdminUsers = () => {
             onCancel={() => { setShowStepUp(false); pendingActionRef.current = null }}
           />
         )}
-      </main>
+      </div>
     )
   }
 
   return (
-    <main className={styles.container}>
-      <header><h1 className={styles.heading}>{t('adminUsers.title')}</h1></header>
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-        <input type="text" value={keyword} onChange={e => setKeyword(e.target.value)}
-          placeholder={t('adminUsers.searchPlaceholder')}
-          aria-label={t('adminUsers.searchAriaLabel', '搜索用户')}
-          className={styles.input} style={{ flex: 1 }}
-          onKeyDown={e => { if (e.key === 'Enter') fetchUsers() }} />
-        <button className={styles.btnSecondary} onClick={() => fetchUsers()}>{t('adminUsers.search')}</button>
+    <div className={shell.page}>
+      <div className={shell.stickyHead}>
+        <div className={shell.toolbar}>
+          <SearchField
+            value={keyword}
+            onValueChange={setKeyword}
+            onSearch={() => fetchUsers()}
+            placeholder={t('adminUsers.searchPlaceholder')}
+            searchAriaLabel={t('adminUsers.searchPlaceholder')}
+            clearAriaLabel={t('admin.ui.clear')}
+            fieldClassName={shell.grow}
+          />
+          <AdminButton variant="secondary" onClick={() => fetchUsers()}>{t('adminUsers.search')}</AdminButton>
+        </div>
       </div>
-      {error && <div className={styles.errorBox}>{error}</div>}
+
+      {error && <Alert tone="error">{error}</Alert>}
+
       {loading && users.length === 0 ? (
-        <div className={styles.loading}>{t('adminUsers.loading')}</div>
+        <Spinner size="md" label={t('adminUsers.loading')} />
+      ) : users.length === 0 ? (
+        <EmptyState title={t('adminUsers.empty')} />
       ) : (
-        <ul className={styles.list}>
+        <ul className={shell.list}>
           {users.map(u => (
             <li key={u.id}>
-              <button
-                type="button"
-                className={styles.itemButton}
-                onClick={() => fetchDetail(u.id)}
-              >
-              <div className={styles.itemMain}>
-                <div className={styles.itemTitle}>{u.displayName}</div>
-                <div className={styles.itemMeta}>@{u.username} · {u.email ?? '-'} · {u.status}</div>
-              </div>
+              <button type="button" className={shell.rowBtn} onClick={() => fetchDetail(u.id)}>
+                <span className={shell.rowMain}>
+                  <span className={shell.rowTitle}>{u.displayName}</span>
+                  <span className={shell.rowMeta}>
+                    @{u.username}
+                    <span className={shell.rowMetaSep}>·</span>
+                    {u.email ?? '—'}
+                  </span>
+                </span>
+                <span className={shell.rowRight}>
+                  <StatusBadge tone={USER_STATUS_TONE[u.status] ?? 'neutral'} label={t(USER_STATUS_LABEL_KEYS[u.status] ?? u.status)} size="sm" />
+                </span>
               </button>
             </li>
           ))}
         </ul>
       )}
+
       {cursor && (
-        <button className={styles.btnSecondary} onClick={() => fetchUsers(cursor)}
-          disabled={loading} style={{ display: 'block', margin: '1rem auto' }}>
-          {t('adminUsers.loadMore')}
-        </button>
+        <div className={shell.loadMoreWrap}>
+          <AdminButton variant="secondary" onClick={() => fetchUsers(cursor)} loading={loading}>
+            {t('adminUsers.loadMore')}
+          </AdminButton>
+        </div>
       )}
-    </main>
+    </div>
   )
 }

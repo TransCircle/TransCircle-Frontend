@@ -1,10 +1,26 @@
-﻿import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { get, post } from '@/api/client'
+import { ERRORS } from '@/api/errors'
 import { useAuth } from '@/context/useAuth'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
 import { limitByUnicode } from '@/utils/string'
-import styles from './Admin.module.css'
+import {
+  AdminButton,
+  Alert,
+  Card,
+  DescriptionList,
+  EmptyState,
+  SectionLabel,
+  Spinner,
+  StatusBadge,
+  TextArea,
+  VoteProgress,
+  EDIT_REQUEST_STATUS_TONE,
+  EDIT_REQUEST_STATUS_LABEL_KEYS,
+  type DescriptionItem,
+} from '@/components/admin'
+import shell from './AdminPages.module.css'
 
 interface EditRequestItem {
   id: string
@@ -56,8 +72,7 @@ function formatTs(ts: number | null | undefined): string {
 
 /**
  * Safely read a proposed-change field, preferring the typed `proposed` sub-object
- * and falling back to the legacy flat field.  Type-safe alternative to
- * `as unknown as Record` (H1).
+ * and falling back to the legacy flat field.
  */
 function getProposedField(
   detail: EditRequestItem | null,
@@ -66,7 +81,6 @@ function getProposedField(
 ): string | null | undefined {
   if (!detail) return undefined
   const nested = detail.proposed?.[nestedKey]
-  // nested can be string or string[] — only return string values here
   if (typeof nested === 'string') return nested
   if (nested === null) return null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -157,6 +171,10 @@ export const AdminEditRequests = () => {
     if (result.ok) {
       setVoteNote('')
       fetchDetail(selectedId)
+    } else if (result.error.code === ERRORS.VERSION_CONFLICT) {
+      // 与 Admin.tsx 一致：版本冲突时提示并刷新详情，使重新投票携带最新版本号
+      setError(t('admin.versionConflictRefreshed'))
+      fetchDetail(selectedId)
     } else {
       setError(result.error.message)
     }
@@ -164,130 +182,168 @@ export const AdminEditRequests = () => {
 
   if (!authLoading && (!user || !isAdmin)) {
     return (
-      <main className={styles.container}>
-        <h1 className={styles.heading}>{t('adminEditRequests.accessDenied')}</h1>
-        <p className={styles.headingDesc}>{t('adminEditRequests.accessDeniedDetail')}</p>
-      </main>
+      <div className={shell.page}>
+        <EmptyState title={t('adminEditRequests.accessDenied')} description={t('adminEditRequests.accessDeniedDetail')} />
+      </div>
     )
   }
 
   if (authLoading) {
     return (
-      <main className={styles.container}>
-        <div className={styles.loading}>{t('adminEditRequests.loading')}</div>
-      </main>
+      <div className={shell.page}>
+        <Spinner size="md" label={t('adminEditRequests.loading')} />
+      </div>
     )
   }
 
   if (selectedId && detail) {
+    const proposedTitle = getProposedField(detail, 'title', 'proposedTitle')
+    const proposedSummary = getProposedField(detail, 'summary', 'proposedSummary')
+    const proposedContent = getProposedField(detail, 'content', 'proposedContent')
+    const proposedTags = getProposedFieldArray(detail, 'tags', 'proposedTags')
+
+    const metaItems: DescriptionItem[] = [
+      { term: t('adminEditRequests.contributionId'), value: detail.contribution?.id ?? detail.contributionId ?? '—' },
+      { term: t('adminEditRequests.status'), value: <StatusBadge tone={EDIT_REQUEST_STATUS_TONE[detail.status] ?? 'neutral'} label={t(EDIT_REQUEST_STATUS_LABEL_KEYS[detail.status] ?? detail.status)} size="sm" /> },
+      { term: t('adminEditRequests.version'), value: `v${detail.version}` },
+      { term: t('adminEditRequests.created'), value: formatTs(detail.createdAt) || '—' },
+    ]
+
     return (
-      <main className={styles.container}>
-        <button className={styles.back} onClick={() => { setSelectedId(null); setDetail(null) }}>
-          {t('adminEditRequests.backToList')}
-        </button>
-        <div className={styles.detailCard}>
-          <h2 className={styles.detailTitle}>{t('adminEditRequests.detailTitle')}</h2>
-          <div className={styles.detailMeta}>
-            <span>{t('adminEditRequests.contributionId')}: {detail.contribution?.id ?? detail.contributionId ?? '—'}</span>
-            <span>{t('adminEditRequests.status')}: {detail.status}</span>
-            <span>{t('adminEditRequests.version')}: v{detail.version}</span>
-            <span>{t('adminEditRequests.created')}: {formatTs(detail.createdAt)}</span>
-          </div>
-          <div className={styles.detailContent}><strong>{t('adminEditRequests.reason')}：</strong>{detail.reason}</div>
-
-          {/* Votes progress */}
-          {detail.votes && (
-            <div style={{ margin: '1rem 0', padding: '0.75rem', background: 'var(--hover-bg)', borderRadius: '8px' }}>
-              <strong>{t('adminEditRequests.voteProgress')}：</strong>
-              {t('adminEditRequests.voteApprove')} {detail.votes.approve} · {t('adminEditRequests.voteReject')} {detail.votes.reject}
-              · {t('adminEditRequests.votesTotal')} {detail.votes.total} · {t('adminEditRequests.votesRequired')} {detail.votes.required} 票
-              {detail.myVote && <span> · {t('adminEditRequests.myVote')}：{detail.myVote === 'approve' ? t('adminEditRequests.voteApprove') : t('adminEditRequests.voteReject')}</span>}
-            </div>
-          )}
-
-          {/* Proposed changes — prefer nested fields, fall back to flat (via type guard, H1) */}
-          {getProposedField(detail, 'title', 'proposedTitle') && (
-            <p><strong>{t('adminEditRequests.proposedTitle')}：</strong>{getProposedField(detail, 'title', 'proposedTitle')}</p>
-          )}
-          {getProposedField(detail, 'summary', 'proposedSummary') && (
-            <p><strong>{t('adminEditRequests.proposedSummary')}：</strong>{getProposedField(detail, 'summary', 'proposedSummary')}</p>
-          )}
-          {getProposedField(detail, 'content', 'proposedContent') && (
-            <div className={styles.detailContent}>
-              <strong>{t('adminEditRequests.proposedContent')}：</strong>
-              <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>
-                {getProposedField(detail, 'content', 'proposedContent')}
-              </pre>
-            </div>
-          )}
-          {getProposedFieldArray(detail, 'tags', 'proposedTags') && (
-            <p><strong>{t('adminEditRequests.proposedTags')}：</strong>{(getProposedFieldArray(detail, 'tags', 'proposedTags') ?? []).join(', ')}</p>
-          )}
-
-          {error && <div className={styles.errorBox}>{error}</div>}
-
-          {detail.status === 'pending' && hasPermission(permissions, PERMISSIONS.CONTRIBUTION_EDIT_REQUEST_VOTE) && (
-            <>
-              <textarea className={styles.reviewTextarea} value={voteNote}
-                onChange={e => setVoteNote(e.target.value)} placeholder={t('adminEditRequests.voteNotePlaceholder')} />
-              <div className={styles.reviewActions}>
-                <button className={styles.btnPrimary} onClick={() => handleVote('approve')} disabled={voteSubmitting}>
-                  {voteSubmitting ? t('adminEditRequests.voteSubmitting') : t('adminEditRequests.voteApprove')}
-                </button>
-                <button className={styles.btnReject} onClick={() => handleVote('reject')} disabled={voteSubmitting}>
-                  {voteSubmitting ? t('adminEditRequests.voteSubmitting') : t('adminEditRequests.voteReject')}
-                </button>
-              </div>
-            </>
-          )}
-
-          {detail.votes?.history && detail.votes.history.length > 0 && (
-            <div style={{ marginTop: '1rem' }}>
-              <strong>{t('adminEditRequests.voteHistory')}</strong>
-              <ul style={{ margin: '0.5rem 0 0', padding: '0 0 0 1.2rem', fontSize: '0.85rem', lineHeight: 1.8 }}>
-                {detail.votes.history.map(v => (
-                  <li key={v.reviewerId}>{v.vote === 'approve' ? '✅' : '❌'} {v.vote} · {v.note || t('adminEditRequests.noNote')} · {formatTs(v.createdAt)}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+      <div className={shell.page}>
+        <div>
+          <AdminButton variant="ghost" size="sm" onClick={() => { setSelectedId(null); setDetail(null) }}>
+            {t('adminEditRequests.backToList')}
+          </AdminButton>
         </div>
-      </main>
+
+        <Card>
+          <div className={shell.stack}>
+            <h2 className={shell.detailTitle}>{t('adminEditRequests.detailTitle')}</h2>
+
+            <DescriptionList items={metaItems} columns={2} />
+
+            <div className={shell.contentBlock}>
+              <strong>{t('adminEditRequests.reason')}：</strong>{detail.reason}
+            </div>
+
+            {/* Votes progress */}
+            {detail.votes && (
+              <Card tone="subtle" padding="sm">
+                <SectionLabel>{t('adminEditRequests.voteProgress')}</SectionLabel>
+                <VoteProgress
+                  approve={detail.votes.approve}
+                  reject={detail.votes.reject}
+                  required={detail.votes.required}
+                  total={detail.votes.total}
+                  approveLabel={t('adminEditRequests.voteApprove')}
+                  rejectLabel={t('adminEditRequests.voteReject')}
+                  thresholdLabel={t('adminEditRequests.votesRequired')}
+                />
+                {detail.myVote && (
+                  <p className={shell.subtleNoteSpaced}>
+                    {t('adminEditRequests.myVote')}：{detail.myVote === 'approve' ? t('adminEditRequests.voteApprove') : t('adminEditRequests.voteReject')}
+                  </p>
+                )}
+              </Card>
+            )}
+
+            {/* Proposed changes — prefer nested fields, fall back to flat (via type guard) */}
+            {(proposedTitle || proposedSummary || proposedContent || (proposedTags && proposedTags.length > 0)) && (
+              <div className={shell.stackSm}>
+                {proposedTitle && (
+                  <p className={shell.noteText}><strong>{t('adminEditRequests.proposedTitle')}：</strong>{proposedTitle}</p>
+                )}
+                {proposedSummary && (
+                  <p className={shell.noteText}><strong>{t('adminEditRequests.proposedSummary')}：</strong>{proposedSummary}</p>
+                )}
+                {proposedContent && (
+                  <div className={shell.contentBlock}>
+                    <strong>{t('adminEditRequests.proposedContent')}：</strong>
+                    <div>{proposedContent}</div>
+                  </div>
+                )}
+                {proposedTags && proposedTags.length > 0 && (
+                  <p className={shell.noteText}><strong>{t('adminEditRequests.proposedTags')}：</strong>{proposedTags.join(', ')}</p>
+                )}
+              </div>
+            )}
+
+            {error && <Alert tone="error">{error}</Alert>}
+
+            {detail.status === 'pending' && hasPermission(permissions, PERMISSIONS.CONTRIBUTION_EDIT_REQUEST_VOTE) && (
+              <div className={shell.stackSm}>
+                <TextArea value={voteNote} onChange={e => setVoteNote(e.target.value)} placeholder={t('adminEditRequests.voteNotePlaceholder')} />
+                <div className={shell.actions}>
+                  <AdminButton variant="primary" onClick={() => handleVote('approve')} loading={voteSubmitting}>
+                    {t('adminEditRequests.voteApprove')}
+                  </AdminButton>
+                  <AdminButton variant="danger" onClick={() => handleVote('reject')} loading={voteSubmitting}>
+                    {t('adminEditRequests.voteReject')}
+                  </AdminButton>
+                </div>
+              </div>
+            )}
+
+            {detail.votes?.history && detail.votes.history.length > 0 && (
+              <Card tone="subtle" padding="sm">
+                <SectionLabel>{t('adminEditRequests.voteHistory')}</SectionLabel>
+                <ul className={shell.history}>
+                  {detail.votes.history.map(v => (
+                    <li key={v.reviewerId} className={shell.historyItem}>
+                      <span className={shell.historyHead}>
+                        <StatusBadge
+                          tone={v.vote === 'approve' ? 'green' : 'red'}
+                          label={v.vote === 'approve' ? t('adminEditRequests.voteApprove') : t('adminEditRequests.voteReject')}
+                          size="sm"
+                        />
+                        <span>{v.note || t('adminEditRequests.noNote')}</span>
+                      </span>
+                      <span className={shell.historyTime}>{formatTs(v.createdAt)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
+          </div>
+        </Card>
+      </div>
     )
   }
 
   return (
-    <main className={styles.container}>
-      <header><h1 className={styles.heading}>{t('adminEditRequests.title')}</h1></header>
-      {error && <div className={styles.errorBox}>{error}</div>}
+    <div className={shell.page}>
+      {error && <Alert tone="error">{error}</Alert>}
       {loading && items.length === 0 ? (
-        <div className={styles.loading}>{t('adminEditRequests.loading')}</div>
+        <Spinner size="md" label={t('adminEditRequests.loading')} />
       ) : items.length === 0 ? (
-        <div className={styles.empty}>{t('adminEditRequests.empty')}</div>
+        <EmptyState title={t('adminEditRequests.empty')} />
       ) : (
-        <ul className={styles.list}>
+        <ul className={shell.list}>
           {items.map(item => (
             <li key={item.id}>
-              <button
-                type="button"
-                className={styles.itemButton}
-                onClick={() => fetchDetail(item.id)}
-              >
-              <div className={styles.itemMain}>
-                <div className={styles.itemTitle}>{t('adminEditRequests.contribPrefix')} {limitByUnicode(item.contribution?.id ?? item.contributionId ?? '', 20)}... · {item.status}</div>
-                <div className={styles.itemMeta}>{limitByUnicode(item.reason, 60)} · {formatTs(item.createdAt)}</div>
-              </div>
+              <button type="button" className={shell.rowBtn} onClick={() => fetchDetail(item.id)}>
+                <span className={shell.rowMain}>
+                  <span className={shell.rowTitle}>
+                    {item.contribution?.title ?? `${t('adminEditRequests.contribPrefix')} ${limitByUnicode(item.contribution?.id ?? item.contributionId ?? '', 20)}…`}
+                  </span>
+                  <span className={shell.rowMeta}>{limitByUnicode(item.reason, 60)}</span>
+                </span>
+                <span className={shell.rowRight}>
+                  <StatusBadge tone={EDIT_REQUEST_STATUS_TONE[item.status] ?? 'neutral'} label={t(EDIT_REQUEST_STATUS_LABEL_KEYS[item.status] ?? item.status)} size="sm" />
+                </span>
               </button>
             </li>
           ))}
         </ul>
       )}
       {cursor && (
-        <button className={styles.btnSecondary} onClick={() => fetchList(cursor)}
-          disabled={loading} style={{ display: 'block', margin: '1rem auto' }}>
-          {t('adminEditRequests.loadMore')}
-        </button>
+        <div className={shell.loadMoreWrap}>
+          <AdminButton variant="secondary" onClick={() => fetchList(cursor)} loading={loading}>
+            {t('adminEditRequests.loadMore')}
+          </AdminButton>
+        </div>
       )}
-    </main>
+    </div>
   )
 }

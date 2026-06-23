@@ -1,10 +1,10 @@
-import { useState, useRef, useEffect, type ReactNode } from "react";
+import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ThemeToggle } from "./ThemeToggle";
+import { ThemeToggle } from './ThemeToggle';
 import { useAuth } from '@/context/useAuth'
 import { LOGOUT_REDIRECT } from '@/config'
-import styles from "./Navbar.module.css";
+import styles from './Navbar.module.css';
 
 const ExternalLinkIcon = () => (
   <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginLeft: 4, verticalAlign: -1 }}>
@@ -48,7 +48,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
   };
 
   useEffect(() => {
-    const main = document.querySelector<HTMLElement>("main");
+    const main = document.querySelector<HTMLElement>('main');
     if (main && window.innerWidth <= MOBILE_BREAKPOINT) {
       main.inert = isOpen;
     }
@@ -60,7 +60,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if (e.key === 'Escape') {
         closeMenu();
         hamburgerRef.current?.focus();
       }
@@ -68,11 +68,11 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
     const handleResize = () => {
       if (window.innerWidth > MOBILE_BREAKPOINT) closeMenu();
     };
-    document.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("resize", handleResize);
+    document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('resize', handleResize);
     return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("resize", handleResize);
+      document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('resize', handleResize);
     };
   }, [isOpen]);
 
@@ -83,7 +83,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
   };
 
   const handleDropdownKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-    if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
       e.preventDefault();
       setDropdownOpen(true);
       requestAnimationFrame(() => {
@@ -92,14 +92,14 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
           ?.querySelector<HTMLElement>('.dropdown-menu-link')
           ?.focus();
       });
-    } else if (e.key === "Escape") {
+    } else if (e.key === 'Escape') {
       setDropdownOpen(false);
       dropdownRef.current?.focus();
     }
   };
 
   const handleDropdownMenuKeyDown = (e: React.KeyboardEvent<HTMLUListElement>) => {
-    if (e.key === "Escape") {
+    if (e.key === 'Escape') {
       setDropdownOpen(false);
       dropdownRef.current?.focus();
     }
@@ -136,11 +136,11 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
           <ul
             ref={menuRef}
             id="nav-menu"
-            className={`${styles.navLinks} ${isOpen ? styles.active : ""}`}
+            className={`${styles.navLinks} ${isOpen ? styles.active : ''}`}
           >
-            <li><a href="https://transcircle.org" onClick={closeMenu}>{t('nav.home')}</a></li>
+            <li><Link to="/" onClick={closeMenu}>{t('nav.home')}</Link></li>
             <li
-              className={`${styles.dropdown} ${dropdownOpen ? styles.dropdownOpen : ""}`}
+              className={`${styles.dropdown} ${dropdownOpen ? styles.dropdownOpen : ''}`}
               onBlur={handleDropdownBlur}
             >
               <button
@@ -238,7 +238,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
       </nav>
 
       <div
-        className={`${styles.overlay} ${isOpen ? styles.overlayActive : ""}`}
+        className={`${styles.overlay} ${isOpen ? styles.overlayActive : ''}`}
         onClick={closeMenu}
         aria-hidden="true"
       ></div>

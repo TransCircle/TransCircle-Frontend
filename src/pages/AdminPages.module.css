@@ -1,0 +1,293 @@
+/* 后台各页共享的页面级布局类（行级控件统一来自 components/admin 原语）。 */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  /* 顶部留白由页面自身提供（详情页直接生效；列表页由 .stickyHead 负边距抵消并自带） */
+  padding-top: 1.3rem;
+}
+
+/* 列表页头部（标签/搜索栏）：随内容区滚动时固定在顶部，不跟列表一起滑走。
+   负上边距抵消 .page 的 padding-top，并把该留白纳入 sticky 头部自身，
+   使其贴住滚动容器顶端、完整覆盖滚动经过的内容。 */
+.stickyHead {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  margin-top: -1.3rem;
+  background-color: var(--bg-color);
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: 1.3rem 0 0.7rem;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.toolbar .grow {
+  flex: 1;
+  min-width: 220px;
+}
+
+.count {
+  font-size: 0.83rem;
+  color: var(--text-muted);
+}
+
+.tabpanel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  outline: none;
+}
+
+/* ── Data list ───────────────────────────────────────────── */
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.rowBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-align: left;
+  padding: 0.9rem 1.1rem;
+  background-color: var(--surface-card);
+  border: 1px solid var(--divider-color);
+  border-radius: 12px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.rowBtn:hover {
+  border-color: var(--primary-pink);
+  background-color: var(--hover-bg);
+  box-shadow: 0 2px 10px var(--shadow-color);
+}
+
+@supports (background-color: color-mix(in srgb, red 15%, white)) {
+  .rowBtn:hover {
+    background-color: var(--hover-bg-mix);
+  }
+}
+
+/* 静态行（无下钻，如审计日志） */
+.rowStatic {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1.1rem;
+  background-color: var(--surface-card);
+  border: 1px solid var(--divider-color);
+  border-radius: 12px;
+}
+
+.rowMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.rowTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowMeta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  align-items: center;
+  word-break: break-word;
+}
+
+.rowMetaSep {
+  opacity: 0.5;
+}
+
+.code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.74rem;
+  color: var(--text-secondary);
+  background-color: var(--hover-bg);
+  padding: 0.05rem 0.4rem;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+.rowRight {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+.chevron {
+  display: inline-flex;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ── Detail view ─────────────────────────────────────────── */
+
+.detailHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.detailTitle {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+}
+
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.25rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.metaItem {
+  display: inline-flex;
+  align-items: center;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.stackSm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.contentBlock {
+  padding: 1.1rem 1.25rem;
+  background-color: var(--hover-bg);
+  border: 1px solid var(--divider-color);
+  border-radius: 10px;
+  line-height: 1.75;
+  font-size: 0.92rem;
+  color: var(--text-body);
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.loadMoreWrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.25rem;
+}
+
+/* ── History / timeline ──────────────────────────────────── */
+
+.history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.historyItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding-left: 0.9rem;
+  border-left: 2px solid var(--divider-color);
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+}
+
+.historyHead {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.historyTime {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+.noteText {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--text-body);
+}
+
+.subtleNote {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.subtleNoteSpaced {
+  margin: 0.5rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.detailTitleSub {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.inlineMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .rowBtn,
+  .rowStatic {
+    align-items: flex-start;
+  }
+}

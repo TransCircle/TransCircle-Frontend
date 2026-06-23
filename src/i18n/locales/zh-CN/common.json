@@ -183,7 +183,30 @@
     "deleteButton": "删除",
     "reasonPlaceholder": "输入原因...",
     "confirmReason": "确认",
-    "cancelReason": "取消"
+    "cancelReason": "取消",
+    "tabsAriaLabel": "投稿审核",
+    "hideTitle": "隐藏投稿",
+    "deleteTitle": "删除投稿",
+    "ui": {
+      "charCount": "{{n}}/{{max}}",
+      "clear": "清除"
+    }
+  },
+  "adminShell": {
+    "brand": "管理后台",
+    "navAriaLabel": "后台导航",
+    "navReview": "审核队列",
+    "navEditRequests": "编辑申请",
+    "navUsers": "用户管理",
+    "navAudit": "审计日志",
+    "collapse": "收起侧栏",
+    "expand": "展开侧栏",
+    "openNav": "打开导航",
+    "closeNav": "关闭导航",
+    "skipToContent": "跳到主要内容",
+    "roleAdmin": "管理员",
+    "roleEditor": "编辑",
+    "roleReviewer": "审核员"
   },
   "register": {
     "title": "完成注册",
@@ -305,7 +328,8 @@
   "footer": {
     "heading": "LICENSE",
     "text1": "对于此页面的文字和素材：CC BY 4.0 or later",
-    "text2": "对于其他人提供的材料，依照她们的版权要求。届时我们会提供单独的版权页面。"
+    "text2": "对于其他人提供的材料，依照她们的版权要求。届时我们会提供单独的版权页面。",
+    "copyright": "© {{year}} TransCircle"
   },
   "toc": {
     "label": "目录"
@@ -454,7 +478,10 @@
     "iamPolling": "正在确认验证结果...",
     "iamVerified": "验证通过，正在返回...",
     "iamFailed": "验证未通过或已过期，请重试",
-    "iamBack": "返回管理后台"
+    "iamBack": "返回管理后台",
+    "iamWaiting": "请在弹出的窗口中完成统一身份验证…",
+    "iamSuccess": "验证通过，正在执行操作…",
+    "iamPopupClose": "验证完成，可关闭此窗口"
   },
   "settings": {
     "iamManagedNotice": "你的账户通过「TransCircle 统一身份登录(管理员)」管理，密码、Passkey、两步验证、第三方绑定与账户注销等安全设置请前往 IAM 控制台操作，本页不提供。",
@@ -710,7 +737,16 @@
     "permanent": "永久",
     "noRoles": "（无角色）",
     "rolesManagedInIam": "角色与权限已统一在 IAM 控制台管理；如需调整，请在 IAM 授予/撤销后让该用户重新使用统一身份登录。",
-    "oauthAccount": "OAuth {{provider}}: @{{username}}"
+    "oauthAccount": "OAuth {{provider}}: @{{username}}",
+    "empty": "暂无用户",
+    "banTitle": "封禁用户",
+    "emailVerified": "已验证",
+    "emailUnverified": "未验证",
+    "statusActive": "正常",
+    "statusBanned": "已封禁",
+    "statusPendingDeletion": "待注销",
+    "statusMerged": "已合并",
+    "statusDeleted": "已注销"
   },
   "adminAuditLogs": {
     "title": "审计日志",
@@ -724,7 +760,41 @@
     "filterResource": "按资源类型过滤（如 contribution）",
     "search": "搜索",
     "actorUser": "操作者 {{id}}",
-    "actorSystem": "系统"
+    "actorSystem": "系统",
+    "actions": {
+      "auth_register": "用户注册",
+      "auth_login": "登录",
+      "auth_step_up": "二次验证",
+      "oauth_bind": "绑定第三方账号",
+      "oauth_bind_start": "发起绑定第三方账号",
+      "oauth_unbind": "解绑第三方账号",
+      "oauth_provider_token_discard": "丢弃第三方令牌",
+      "account_merge": "账号合并",
+      "mfa_recovery_codes_regenerate": "重新生成恢复码",
+      "passkey_create": "创建 Passkey",
+      "session_refresh": "刷新会话",
+      "session_refresh_reuse_detected": "检测到刷新令牌重放",
+      "session_revoke": "吊销会话",
+      "session_revoke_all": "吊销全部会话",
+      "me_export": "导出个人数据",
+      "me_delete": "申请注销账户",
+      "me_delete_cancel": "撤销账户注销",
+      "password_change": "修改密码",
+      "contribution_submit": "提交投稿",
+      "contribution_review": "审核投稿",
+      "contribution_publish": "发布投稿",
+      "contribution_hide": "隐藏投稿",
+      "contribution_restore": "恢复投稿",
+      "contribution_delete": "删除投稿",
+      "contribution_edit_request_create": "发起编辑申请",
+      "contribution_edit_request_vote": "编辑申请投票",
+      "contribution_edit_request_resolve": "编辑申请决议",
+      "role_grant": "授予角色",
+      "role_revoke": "撤销角色",
+      "user_ban": "封禁用户",
+      "user_unban": "解封用户",
+      "image_upload": "上传图片"
+    }
   },
   "adminEditRequests": {
     "title": "编辑申请审核",
@@ -755,6 +825,11 @@
     "voteSubmitting": "提交中...",
     "voteHistory": "投票记录",
     "noNote": "无备注",
-    "contribPrefix": "投稿"
+    "contribPrefix": "投稿",
+    "statusPending": "待处理",
+    "statusApproved": "已通过",
+    "statusRejected": "已拒绝",
+    "statusApplied": "已应用",
+    "statusSuperseded": "已被取代"
   }
 }
