@@ -22,12 +22,11 @@ jobs:
         with:
           node-version: 22
           cache: 'pnpm'
-          package-manager-cache: false
 
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 11.4.0
-          standalone: true
+      - name: Enable Corepack and activate pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.4.0 --activate
 
       - run: pnpm install --frozen-lockfile
 
