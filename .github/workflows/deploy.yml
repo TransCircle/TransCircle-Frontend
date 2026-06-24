@@ -29,7 +29,7 @@ jobs:
           cache: 'pnpm'
           package-manager-cache: false
 
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --ignore-scripts
 
       - run: pnpm run build
 
