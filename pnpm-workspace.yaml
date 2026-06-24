@@ -3,8 +3,6 @@ packages:
 allowBuilds:
   argon2: true
   esbuild: true
-  simple-git-hooks: set this to true or false
-onlyBuiltDependencies:
-  - simple-git-hooks
-  - argon2
+  simple-git-hooks: true
+  workerd: true
 preferOffline: true
