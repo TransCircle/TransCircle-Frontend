@@ -42,8 +42,9 @@ export const router = createBrowserRouter([
         element: lazyNamed(() => import('../pages/Login'), 'Login'),
       },
       {
+        // 本地注册已迁移到 TransCircle Pass，故事站不再承载 → 重定向到登录
         path: 'register',
-        element: lazyNamed(() => import('../pages/Register'), 'Register'),
+        element: <Navigate to="/login" replace />,
       },
       {
         path: 'admin',
@@ -80,11 +81,11 @@ export const router = createBrowserRouter([
       },
       {
         path: 'auth/oauth/continue',
-        element: lazyNamed(() => import('../pages/OAuthContinue'), 'OAuthContinue'),
+        element: <Navigate to="/login" replace />,
       },
       {
         path: 'auth/oauth/merge',
-        element: lazyNamed(() => import('../pages/OAuthMerge'), 'OAuthMerge'),
+        element: <Navigate to="/login" replace />,
       },
       {
         path: 'auth/step-up/done',
@@ -99,32 +100,34 @@ export const router = createBrowserRouter([
         element: lazyNamed(() => import('../pages/SettingsSecurity'), 'SettingsSecurity'),
       },
       {
+        // 以下本地账户流程（OAuth 绑定/直接注册/邮箱验证/密码找回/撤销注销）均迁移到
+        // TransCircle Pass，故事站不再承载 → 统一重定向到登录页。
         path: 'settings/security/oauth-bind/confirm',
-        element: lazyNamed(() => import('../pages/OAuthBinding'), 'OAuthBinding'),
+        element: <Navigate to="/login" replace />,
       },
       {
         path: 'register-direct',
-        element: lazyNamed(() => import('../pages/RegisterDirect'), 'RegisterDirect'),
+        element: <Navigate to="/login" replace />,
       },
       {
         path: 'auth/email/verify',
-        element: lazyNamed(() => import('../pages/EmailVerify'), 'EmailVerify'),
+        element: <Navigate to="/login" replace />,
       },
       {
         path: 'auth/email/resend',
-        element: lazyNamed(() => import('../pages/EmailResend'), 'EmailResend'),
+        element: <Navigate to="/login" replace />,
       },
       {
         path: 'auth/password/forgot',
-        element: lazyNamed(() => import('../pages/ForgotPassword'), 'ForgotPassword'),
+        element: <Navigate to="/login" replace />,
       },
       {
         path: 'auth/password/reset',
-        element: lazyNamed(() => import('../pages/ResetPassword'), 'ResetPassword'),
+        element: <Navigate to="/login" replace />,
       },
       {
         path: 'auth/cancel-deletion',
-        element: lazyNamed(() => import('../pages/CancelDeletion'), 'CancelDeletion'),
+        element: <Navigate to="/login" replace />,
       },
       {
         path: 'me/contributions',

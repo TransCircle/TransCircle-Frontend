@@ -1,9 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { post, setAccessToken, getAccessToken } from '@/api/client'
-import { arrayBufferToBase64url, base64urlToArrayBuffer } from '@/utils/string'
-import { useAuth } from '@/context/useAuth'
-import { Select } from '@/components/ui'
 import styles from './StepUpDialog.module.css'
 
 interface StepUpDialogProps {
@@ -13,7 +10,6 @@ interface StepUpDialogProps {
   accessToken: string
 }
 
-type StepUpMethod = 'password' | 'passkey' | 'totp' | 'recovery_code'
 /** IAM 代理 2FA 的弹窗子状态：发起 → 等待弹窗 → 回查 → 成功。 */
 type IamPhase = 'iam' | 'waiting' | 'polling' | 'verified'
 
@@ -23,24 +19,6 @@ const IAM_POLL_INTERVAL_MS = 600
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
-interface StartResponse {
-  challengeId: string
-  expiresIn: number
-  availableMethods: StepUpMethod[]
-  passkey?: {
-    publicKey: {
-      challenge: string
-      rpId: string
-      userVerification: string
-      allowCredentials: Array<{
-        id: string
-        type: 'public-key'
-        transports: string[]
-      }>
-    }
-  }
-}
-
 const CheckIcon = () => (
   <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
     <path d="M20 6 9 17l-5-5" />
@@ -49,14 +27,8 @@ const CheckIcon = () => (
 
 export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogProps) => {
   const { t } = useTranslation()
-  const { user } = useAuth()
   const dialogRef = useRef<HTMLDivElement>(null)
-  const [challengeId, setChallengeId] = useState('')
-  const [availableMethods, setAvailableMethods] = useState<StepUpMethod[]>([])
-  const [passkeyChallenge, setPasskeyChallenge] = useState<StartResponse['passkey'] | null>(null)
-  const [selectedMethod, setSelectedMethod] = useState<StepUpMethod | null>(null)
-  // IAM 账号无本地因子 → 走 IAM 代理 2FA（弹窗 verify_url，主窗口保持对话框打开）
-  const [iamMode, setIamMode] = useState(false)
+  // 所有账户（Pass / IAM）的二次验证均由统一身份代理完成（弹窗 verify_url，主窗口保持对话框打开）
   const [iamPhase, setIamPhase] = useState<IamPhase>('iam')
   const iamVerificationIdRef = useRef<string>('')
   const popupRef = useRef<Window | null>(null)
@@ -67,14 +39,8 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
   // 成功后自动重放的定时器：卸载时需清理，避免在错误时机触发。
   const successTimerRef = useRef<number | null>(null)
 
-  const [password, setPassword] = useState('')
-  const [code, setCode] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-  /** Tracks whether handlePasskey has been triggered (for render — ref is used for the actual guard) */
-  const [passkeyProcessing, setPasskeyProcessing] = useState(false)
-
-  const passkeyProcessed = useRef(false)
 
   // Sync accessToken into client memory so step-up API calls use correct auth.
   // Restore the previous token on unmount to avoid leaking the dialog's token
@@ -90,7 +56,7 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
     const el = dialogRef.current
     if (!el) return
     const restore = document.activeElement as HTMLElement | null
-    // 实时查询可聚焦元素（异步加载方式 / 切换到 IAM 模式后 DOM 会变化，不能用挂载时的快照），
+    // 实时查询可聚焦元素（切换 IAM 阶段后 DOM 会变化，不能用挂载时的快照），
     // 并过滤掉不可见（如移动端隐藏的折叠按钮）节点。
     const visibleFocusables = () =>
       Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
@@ -120,37 +86,6 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
     }
   }, [onCancel])
 
-  // Fetch available methods on mount
-  useEffect(() => {
-    const ac = new AbortController()
-    let cancelled = false
-    const init = async () => {
-      const result = await post<StartResponse>(
-        '/auth/step-up/start',
-        {},
-        { signal: ac.signal },
-      )
-      if (cancelled) return
-      const methods = result.ok ? (result.data.availableMethods || []) : []
-      if (result.ok && result.data.challengeId && methods.length > 0) {
-        setChallengeId(result.data.challengeId)
-        setAvailableMethods(methods)
-        setPasskeyChallenge(result.data.passkey ?? null)
-        // Default to password, fallback to first available
-        setSelectedMethod(methods.includes('password') ? 'password' : (methods[0] ?? null))
-        return
-      }
-      // 无可用本地因子：IAM 账号改走代理 2FA，否则报错
-      if (user?.iamLinked) {
-        setIamMode(true)
-        return
-      }
-      setError(t('stepUp.errorInit'))
-    }
-    init()
-    return () => { cancelled = true; ac.abort() }
-  }, [accessToken, t, user])
-
   // ── IAM 代理 2FA：弹窗流程（避免整页跳转丢失发起页状态）──────
 
   // 后端权威回查（主窗口持有有效 access token；弹窗仅负责回传信号后自行关闭）
@@ -172,7 +107,7 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
         const result = await post<{ verified?: boolean }>('/auth/step-up/iam/poll', { verificationId: vid })
         if (result.ok && result.data.verified) {
           setIamPhase('verified')
-          // 成功态展示片刻后自动重放原操作（无需管理员二次确认）
+          // 成功态展示片刻后自动重放原操作（无需二次确认）
           successTimerRef.current = window.setTimeout(() => onSuccess(), 900)
           return
         }
@@ -251,134 +186,6 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
     setIamPhase('waiting')
   }
 
-  const handleSubmit = async () => {
-    if (!challengeId || !selectedMethod) return
-    setSubmitting(true)
-    setError('')
-
-    try {
-      const body: Record<string, unknown> = { challengeId, method: selectedMethod }
-
-      if (selectedMethod === 'password') {
-        if (!password) {
-          setError(t('stepUp.errorPasswordEmpty'))
-          setSubmitting(false)
-          return
-        }
-        body.password = password
-      } else if (selectedMethod === 'totp' || selectedMethod === 'recovery_code') {
-        if (!code) {
-          setError(t('stepUp.errorCodeEmpty'))
-          setSubmitting(false)
-          return
-        }
-        body.code = code
-      } else if (selectedMethod === 'passkey') {
-        setSubmitting(false)
-        return
-      }
-
-      const result = await post('/auth/step-up/verify', body)
-
-      if (!result.ok) {
-        throw new Error(result.error.message || t('stepUp.errorFailed'))
-      }
-
-      onSuccess()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('stepUp.errorFailed'))
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const handlePasskey = async () => {
-    if (!challengeId || !passkeyChallenge || passkeyProcessed.current) return
-    passkeyProcessed.current = true
-    setPasskeyProcessing(true)
-    setSubmitting(true)
-    setError('')
-
-    try {
-      // Convert base64url challenge to ArrayBuffer for WebAuthn API
-      const allowCreds: PublicKeyCredentialDescriptor[] | undefined =
-        passkeyChallenge.publicKey.allowCredentials?.map((c: { id: string; type: 'public-key'; transports: string[] }) => ({
-          type: 'public-key' as const,
-          id: base64urlToArrayBuffer(c.id),
-          transports: c.transports as AuthenticatorTransport[],
-        }))
-      const publicKeyCredOpts: PublicKeyCredentialRequestOptions = {
-        challenge: base64urlToArrayBuffer(passkeyChallenge.publicKey.challenge),
-        rpId: passkeyChallenge.publicKey.rpId,
-        userVerification: passkeyChallenge.publicKey.userVerification as UserVerificationRequirement,
-        allowCredentials: allowCreds,
-      }
-      const credential = await navigator.credentials.get({ publicKey: publicKeyCredOpts })
-
-      if (!credential) {
-        setError(t('stepUp.errorUserCancel'))
-        setSubmitting(false)
-        return
-      }
-
-      const pkCred = credential as PublicKeyCredential
-      const response = pkCred.response as AuthenticatorAssertionResponse
-
-      const result = await post('/auth/step-up/verify', {
-        challengeId,
-        method: 'passkey',
-        passkeyAssertion: {
-          id: arrayBufferToBase64url(pkCred.rawId),
-          rawId: arrayBufferToBase64url(pkCred.rawId),
-          type: pkCred.type,
-          response: {
-            clientDataJSON: arrayBufferToBase64url(response.clientDataJSON),
-            authenticatorData: arrayBufferToBase64url(response.authenticatorData),
-            signature: arrayBufferToBase64url(response.signature),
-            userHandle: response.userHandle ? arrayBufferToBase64url(response.userHandle) : null,
-          },
-          clientExtensionResults: pkCred.getClientExtensionResults(),
-        },
-      })
-
-      if (!result.ok) {
-        throw new Error(result.error.message || t('stepUp.errorPasskeyFailed'))
-      }
-
-      onSuccess()
-    } catch (err) {
-      passkeyProcessed.current = false  // Allow retry on cancel/error
-      setPasskeyProcessing(false)
-      setError(err instanceof Error ? err.message : t('stepUp.errorPasskeyFailed'))
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  // Reset passkey guard when method switches away from passkey (M7)
-  useEffect(() => {
-    if (selectedMethod !== 'passkey') {
-      passkeyProcessed.current = false
-    }
-  }, [selectedMethod])
-
-  // Auto-trigger passkey flow when selected
-  useEffect(() => {
-    if (selectedMethod === 'passkey' && challengeId && passkeyChallenge) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      handlePasskey()
-    }
-    // Only run when selectedMethod changes to passkey
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMethod, challengeId, passkeyChallenge])
-
-  const methodLabels: Record<StepUpMethod, string> = {
-    password: t('stepUp.methodPassword'),
-    passkey: t('stepUp.methodPasskey'),
-    totp: t('stepUp.methodTotp'),
-    recovery_code: t('stepUp.methodRecoveryCode'),
-  }
-
   return (
     <div
       ref={dialogRef}
@@ -391,107 +198,33 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
         <h3 id="stepup-title" className={styles.title}>{t('stepUp.title')}</h3>
         <p className={styles.desc}>{t('stepUp.description')}</p>
 
-        {iamMode ? (
-          iamPhase === 'verified' ? (
-            <div className={styles.successState}>
-              <span className={styles.successCheck}><CheckIcon /></span>
-              <p className={styles.successText} role="status">{t('stepUp.iamSuccess')}</p>
+        {iamPhase === 'verified' ? (
+          <div className={styles.successState}>
+            <span className={styles.successCheck}><CheckIcon /></span>
+            <p className={styles.successText} role="status">{t('stepUp.iamSuccess')}</p>
+          </div>
+        ) : iamPhase === 'waiting' || iamPhase === 'polling' ? (
+          <div className={styles.waitState}>
+            <span className={styles.spinner} aria-hidden="true" />
+            <p className={styles.waitText} role="status">
+              {iamPhase === 'polling' ? t('stepUp.iamPolling') : t('stepUp.iamWaiting')}
+            </p>
+            {error && <p className={styles.error} role="alert">{error}</p>}
+            <div className={styles.actions}>
+              <button type="button" className={styles.btnGhost} onClick={onCancel}>{t('stepUp.cancel')}</button>
             </div>
-          ) : iamPhase === 'waiting' || iamPhase === 'polling' ? (
-            <div className={styles.waitState}>
-              <span className={styles.spinner} aria-hidden="true" />
-              <p className={styles.waitText} role="status">
-                {iamPhase === 'polling' ? t('stepUp.iamPolling') : t('stepUp.iamWaiting')}
-              </p>
-              {error && <p className={styles.error} role="alert">{error}</p>}
-              <div className={styles.actions}>
-                <button type="button" className={styles.btnGhost} onClick={onCancel}>{t('stepUp.cancel')}</button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <p className={styles.iamPrompt}>{t('stepUp.iamPrompt')}</p>
-              {error && <p className={styles.error} role="alert">{error}</p>}
-              <div className={styles.actions}>
-                <button type="button" className={styles.btnGhost} onClick={onCancel} disabled={submitting}>
-                  {t('stepUp.cancel')}
-                </button>
-                <button type="button" className={styles.btnPrimary} onClick={handleIamStepUp} disabled={submitting}>
-                  {submitting ? t('stepUp.iamRedirecting') : t('stepUp.iamStart')}
-                </button>
-              </div>
-            </>
-          )
+          </div>
         ) : (
           <>
-            {/* Method selector */}
-            {availableMethods.length > 1 && (
-              <Select
-                label={t('stepUp.methodLabel')}
-                value={selectedMethod}
-                onChange={(v) => setSelectedMethod(v)}
-                options={availableMethods.map((m) => ({ value: m, label: methodLabels[m] }))}
-              />
-            )}
-
-            {selectedMethod === 'password' && (
-              <input
-                type="password"
-                className={styles.input}
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder={t('stepUp.passwordPlaceholder')}
-                autoFocus
-              />
-            )}
-
-            {(selectedMethod === 'totp' || selectedMethod === 'recovery_code') && (
-              <input
-                type="text"
-                inputMode={selectedMethod === 'totp' ? 'numeric' : 'text'}
-                className={styles.input}
-                value={code}
-                onChange={e => setCode(e.target.value)}
-                placeholder={selectedMethod === 'totp' ? t('stepUp.totpPlaceholder') : t('stepUp.recoveryCodePlaceholder')}
-                maxLength={selectedMethod === 'totp' ? 6 : undefined}
-                autoFocus
-              />
-            )}
-
-            {selectedMethod === 'passkey' && (
-              <div>
-                <p className={styles.iamPrompt}>
-                  {passkeyProcessing ? t('stepUp.passkeyPrompting') : t('stepUp.passkeyPrompt')}
-                </p>
-                {!passkeyProcessing && (
-                  <button
-                    type="button"
-                    className={styles.btnPrimaryFull}
-                    onClick={() => { setPasskeyProcessing(true); handlePasskey() }}
-                    disabled={submitting}
-                  >
-                    {submitting ? t('stepUp.verifying') : t('stepUp.passkeyStart')}
-                  </button>
-                )}
-              </div>
-            )}
-
+            <p className={styles.iamPrompt}>{t('stepUp.iamPrompt')}</p>
             {error && <p className={styles.error} role="alert">{error}</p>}
-
             <div className={styles.actions}>
               <button type="button" className={styles.btnGhost} onClick={onCancel} disabled={submitting}>
                 {t('stepUp.cancel')}
               </button>
-              {selectedMethod !== 'passkey' && (
-                <button
-                  type="button"
-                  className={styles.btnPrimary}
-                  onClick={handleSubmit}
-                  disabled={submitting || !selectedMethod}
-                >
-                  {submitting ? t('stepUp.verifying') : t('stepUp.confirm')}
-                </button>
-              )}
+              <button type="button" className={styles.btnPrimary} onClick={handleIamStepUp} disabled={submitting}>
+                {submitting ? t('stepUp.iamRedirecting') : t('stepUp.iamStart')}
+              </button>
             </div>
           </>
         )}

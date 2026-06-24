@@ -328,7 +328,9 @@
     },
     "forgotPassword": "忘记密码？",
     "noAccount": "没有账号？",
-    "registerNow": "注册新账号"
+    "registerNow": "注册新账号",
+    "passLogin": "使用 TransCircle Pass 登录",
+    "adminAlternative": "管理员入口"
   },
   "notFound": {
     "title": "页面未找到",
@@ -646,7 +648,16 @@
     "sessionsRevoking": "吊销中...",
     "sessionsRevoke": "吊销",
     "sessionsLoadMore": "加载更多会话",
-    "loading": "加载中..."
+    "loading": "加载中...",
+    "securityHeading": "账户安全",
+    "passManagedNotice": "您的登录与账户安全（密码、两步验证、通行密钥、登录设备、账户注销等）由 TransCircle 统一账户中心管理，请前往 TransCircle.org 进行修改。",
+    "passLinks": {
+      "password": "修改密码",
+      "totp": "两步验证",
+      "passkey": "通行密钥",
+      "sessions": "登录设备",
+      "logout": "注销账户"
+    }
   },
   "loading": "加载中...",
   "myContributions": {

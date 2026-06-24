@@ -65,7 +65,7 @@ const validate = (data: FormData, t: (key: string, options?: Record<string, unkn
 
 export const SubmitForm = () => {
   const { t } = useTranslation()
-  const { user, loading, loginProvider, loginWithGitHub, loginWithX } = useAuth()
+  const { user, loading, loginProvider, loginWithPass } = useAuth()
   const [form, setForm] = useState<FormData>(INITIAL_FORM)
   const [errors, setErrors] = useState<FormErrors>({})
   const [status, setStatus] = useState<FormStatus>('idle')
@@ -191,8 +191,8 @@ export const SubmitForm = () => {
         <div className={styles.loginHint}>
           {user ? (
             <span className={styles.userBadge}>
-              {(loginProvider === 'github' || loginProvider === 'x') && (
-                <span className={styles.userProvider}>{loginProvider === 'github' ? 'GitHub' : 'X'}</span>
+              {loginProvider === 'pass' && (
+                <span className={styles.userProvider}>TransCircle Pass</span>
               )}
               <span className={styles.userName}>{user.username}</span>
               <span className={styles.userTag}>{t('submit.loggedInAs')}</span>
@@ -200,11 +200,8 @@ export const SubmitForm = () => {
           ) : (
             <span className={styles.loginActions}>
               {t('submit.loginHint')}
-              <AdminButton type="button" variant="secondary" size="sm" onClick={loginWithGitHub}>
-                {t('submit.loginWithGithub')}
-              </AdminButton>
-              <AdminButton type="button" variant="secondary" size="sm" onClick={loginWithX}>
-                {t('submit.loginWithX')}
+              <AdminButton type="button" variant="primary" size="sm" onClick={loginWithPass}>
+                {t('login.passLogin')}
               </AdminButton>
             </span>
           )}

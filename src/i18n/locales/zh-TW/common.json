@@ -328,7 +328,9 @@
     },
     "forgotPassword": "忘記密碼？",
     "noAccount": "沒有帳號？",
-    "registerNow": "註冊新帳號"
+    "registerNow": "註冊新帳號",
+    "passLogin": "使用 TransCircle Pass 登入",
+    "adminAlternative": "管理員入口"
   },
   "notFound": {
     "title": "頁面未找到",
@@ -646,7 +648,16 @@
     "sessionsRevoking": "撤銷中...",
     "sessionsRevoke": "撤銷",
     "sessionsLoadMore": "載入更多會話",
-    "loading": "載入中..."
+    "loading": "載入中...",
+    "securityHeading": "帳戶安全",
+    "passManagedNotice": "您的登入與帳戶安全（密碼、兩步驗證、通行密鑰、登入裝置、帳戶註銷等）由 TransCircle 統一帳戶中心管理，請前往 TransCircle.org 進行修改。",
+    "passLinks": {
+      "password": "修改密碼",
+      "totp": "兩步驗證",
+      "passkey": "通行密鑰",
+      "sessions": "登入裝置",
+      "logout": "註銷帳戶"
+    }
   },
   "loading": "載入中...",
   "myContributions": {
