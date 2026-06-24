@@ -3,6 +3,7 @@ packages:
 allowBuilds:
   argon2: true
   esbuild: true
+  sharp: true
   simple-git-hooks: true
   workerd: true
 preferOffline: true
