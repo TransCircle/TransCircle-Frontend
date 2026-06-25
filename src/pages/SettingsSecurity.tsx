@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { get, post, patch } from '@/api/client'
+import { post, patch } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import {
   AdminButton,
@@ -59,10 +59,26 @@ export const SettingsSecurity = () => {
   const hasAnyGrant = roles.length > 0 || permissions.length > 0
   const isIam = !!authUser?.iamLinked
 
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-
   // ── Profile edit state (api.md §2.2) ──
-  const [profileDisplayName, setProfileDisplayName] = useState('')
+  // 使用 AuthContext 已加载的用户资料（authUser），避免额外调用 /me
+  const [profile, setProfile] = useState<UserProfile | null>(
+    authUser
+      ? {
+          id: authUser.id,
+          username: authUser.username,
+          email: authUser.email,
+          displayName: authUser.displayName,
+          avatarUrl: authUser.avatarUrl,
+          emailVerified: authUser.emailVerified,
+          status: authUser.status,
+          roles: authUser.roles ?? [],
+          security: authUser.security as UserSecurity,
+          createdAt: authUser.createdAt,
+          lastLoginAt: authUser.lastLoginAt,
+        }
+      : null,
+  )
+  const [profileDisplayName, setProfileDisplayName] = useState(authUser?.displayName ?? '')
   const [profileError, setProfileError] = useState('')
   const [profileSubmitting, setProfileSubmitting] = useState(false)
   const [profileSuccess, setProfileSuccess] = useState(false)
@@ -70,35 +86,6 @@ export const SettingsSecurity = () => {
   // ── GDPR export state (api.md §2.3) ──
   const [exportStatus, setExportStatus] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle')
   const [exportError, setExportError] = useState('')
-
-  // ── Load profile on mount ──
-  useEffect(() => {
-    if (authLoading || !authUser) return
-    let cancelled = false
-    const load = async () => {
-      const result = await get<Record<string, unknown>>('/me')
-      if (cancelled) return
-      if (result.ok) {
-        const d = result.data
-        setProfile({
-          id: d.id as string,
-          username: d.username as string,
-          email: (d.email as string) ?? null,
-          displayName: d.displayName as string,
-          avatarUrl: (d.avatarUrl as string) ?? null,
-          emailVerified: !!(d.emailVerified),
-          status: d.status as string,
-          roles: Array.isArray(d.roles) ? d.roles as string[] : [],
-          security: d.security as UserSecurity,
-          createdAt: d.createdAt as number,
-          lastLoginAt: (d.lastLoginAt as number) ?? null,
-        })
-        setProfileDisplayName((d.displayName as string) ?? '')
-      }
-    }
-    load()
-    return () => { cancelled = true }
-  }, [authLoading, authUser])
 
   // ── Profile Edit (api.md §2.2) ──
   const handleProfileUpdate = async () => {

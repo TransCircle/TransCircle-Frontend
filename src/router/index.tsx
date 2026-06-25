@@ -1,5 +1,5 @@
 ﻿import { createBrowserRouter, Navigate } from 'react-router-dom'
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, Component, type ReactNode, type ErrorInfo } from 'react'
 
 import { RootLayout } from '../layouts/RootLayout'
 import { ErrorBoundaryPage } from '../pages/ErrorBoundaryPage'
@@ -10,6 +10,48 @@ import { AdminOnlyGuard } from '../pages/AdminOnlyGuard'
 
 import { Home } from '../pages/Home'
 
+// 惰性加载错误边界：捕获 chunk 加载失败（网络断开/部署后 404等），显示重试提示
+const FALLBACK_STYLE: Record<string, string> = {
+  textAlign: 'center',
+  padding: '2rem',
+  color: 'var(--text-muted)',
+}
+const SPINNER_STYLE: Record<string, string> = {
+  textAlign: 'center',
+  padding: '2rem',
+  color: 'var(--text-muted)',
+}
+
+class LazyErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props)
+    this.state = { hasError: false }
+  }
+  static getDerivedStateFromError(): { hasError: boolean } {
+    return { hasError: true }
+  }
+  override componentDidCatch(error: Error, _info: ErrorInfo): void {
+    console.warn('[router] Lazy load error:', error.message)
+    void _info
+  }
+  handleRetry = (): void => {
+    this.setState({ hasError: false })
+  }
+  override render(): ReactNode {
+    if (this.state.hasError) {
+      return (
+        <div role="alert" style={FALLBACK_STYLE}>
+          <p>页面加载失败，请检查网络连接</p>
+          <button onClick={this.handleRetry} style={{ marginTop: '1rem', cursor: 'pointer' }}>
+            重试
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 function lazyNamed(
   importFn: () => Promise<Record<string, unknown>>,
   name: string,
@@ -18,9 +60,13 @@ function lazyNamed(
     const mod = await importFn()
     return { default: mod[name] as React.ComponentType<unknown> }
   })
-  return <Suspense fallback={<div role="status" aria-live="polite" aria-busy="true" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>{'Loading...'}</div>}>
-    <LazyComponent />
-  </Suspense>
+  return (
+    <LazyErrorBoundary>
+      <Suspense fallback={<div role="status" aria-live="polite" aria-busy="true" style={SPINNER_STYLE}>{'Loading...'}</div>}>
+        <LazyComponent />
+      </Suspense>
+    </LazyErrorBoundary>
+  )
 }
 
 export const router = createBrowserRouter([

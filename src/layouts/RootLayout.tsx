@@ -28,9 +28,8 @@ export const RootLayout = () => {
   const [dismissedToastKey, setDismissedToastKey] = useState<string | null>(null)
 
   const toastKey = searchParams.get('toast')
-  const toastMessage = (toastKey && TOAST_MESSAGE_KEYS[toastKey] && dismissedToastKey !== toastKey)
-    ? t(TOAST_MESSAGE_KEYS[toastKey])
-    : null
+  const toastMessage =
+    toastKey && TOAST_MESSAGE_KEYS[toastKey] && dismissedToastKey !== toastKey ? t(TOAST_MESSAGE_KEYS[toastKey]) : null
 
   // L15/A: Auto-dismiss and URL cleanup for ?toast= (supports SPA navigation)
   useEffect(() => {
@@ -59,7 +58,6 @@ export const RootLayout = () => {
     return () => window.removeEventListener('api:rate-limit', handler)
   }, [t])
 
-
   return (
     <div className={`${styles.appContainer} ${isAdminRoute ? styles.appContainerAdmin : ''}`}>
       <Navbar />
@@ -70,22 +68,13 @@ export const RootLayout = () => {
 
       <LicenseFooter />
 
-
       {rateLimitToast && (
-        <div
-          className={styles.toastError}
-          role="alert"
-          onClick={() => setRateLimitToast(null)}
-        >
+        <div className={styles.toastError} role="alert" onClick={() => setRateLimitToast(null)}>
           {rateLimitToast}
         </div>
       )}
       {toastMessage && (
-        <div
-          className={styles.toastInfo}
-          role="status"
-          aria-live="polite"
-        >
+        <div className={styles.toastInfo} role="status" aria-live="polite">
           {toastMessage}
         </div>
       )}

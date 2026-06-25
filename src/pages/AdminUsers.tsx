@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { get, post } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
@@ -76,10 +76,6 @@ export const AdminUsers = () => {
   const [banReason, setBanReason] = useState('')
   const [banError, setBanError] = useState('')
 
-  const authHeaders = useCallback((): Record<string, string> => {
-    return accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
-  }, [accessToken])
-
   const fetchUsers = async (cursorVal?: string | null) => {
     const seq = ++fetchSeq.current
     setLoading(true)
@@ -89,7 +85,7 @@ export const AdminUsers = () => {
       if (keyword.trim()) params.set('keyword', keyword.trim())
       if (cursorVal) params.set('cursor', cursorVal)
       const result = await get<ManagedUser[]>(`/admin/users?${params}`, {
-        headers: authHeaders(), skipRefresh: !accessToken,
+        /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
       })
       if (seq !== fetchSeq.current) return
       if (!result.ok) throw new Error(result.error.message)
@@ -115,7 +111,7 @@ export const AdminUsers = () => {
   const fetchDetail = async (userId: string) => {
     setSelectedId(userId)
     const result = await get<DetailedUser>(`/admin/users/${userId}`, {
-      headers: authHeaders(), skipRefresh: !accessToken,
+      /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
     })
     if (result.ok) setDetail(result.data)
     else setError(result.error.message)
@@ -141,7 +137,7 @@ export const AdminUsers = () => {
     setBanError('')
     const doBan = async () => {
       const result = await post(`/admin/users/${userId}/ban`, { reason }, {
-        headers: authHeaders(), skipRefresh: !accessToken,
+        /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
       })
       if (result.ok) { fetchDetail(userId); fetchUsers() }
       else if (result.error.code === 'STEP_UP_REQUIRED') { pendingActionRef.current = doBan; setShowStepUp(true) }
@@ -153,7 +149,7 @@ export const AdminUsers = () => {
   const handleUnban = async (userId: string) => {
     const doUnban = async () => {
       const result = await post(`/admin/users/${userId}/unban`, { reason: t('adminUsers.adminUnban') }, {
-        headers: authHeaders(), skipRefresh: !accessToken,
+        /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
       })
       if (result.ok) { fetchDetail(userId); fetchUsers() }
       else if (result.error.code === 'STEP_UP_REQUIRED') { pendingActionRef.current = doUnban; setShowStepUp(true) }

@@ -25,9 +25,13 @@ export const LanguageToggle = ({ variant = 'card', className = '' }: LanguageTog
   const current = i18n.language === 'zh-TW' ? 'zh-TW' : 'zh-CN'
 
   const select = useCallback(
-    (id: string) => {
+    async (id: string) => {
       localStorage.setItem('transcircle-lang', id)
-      void i18n.changeLanguage(id)
+      try {
+        await i18n.changeLanguage(id)
+      } catch {
+        // 语言资源加载失败时静默忽略，当前语言保持不变
+      }
     },
     [i18n],
   )

@@ -41,7 +41,7 @@
     "searchSubmit": "搜尋",
     "searchLabel": "搜尋投稿",
     "clearSearch": "清除搜尋",
-    "localSearchHint": "找到 {{count}} 條結果",
+    "localSearchHint": "找到 {{count}} 條結果（關鍵詞: {{keyword}}）",
     "searchExpanding": "正在搜尋...",
     "noMatches": "無匹配的投稿，試試其他關鍵詞",
     "empty": "暫無已發布的投稿",
@@ -877,6 +877,8 @@
     "statusApproved": "已通過",
     "statusRejected": "已拒絕",
     "statusApplied": "已套用",
-    "statusSuperseded": "已被取代"
+    "statusSuperseded": "已被取代",
+    "filterLabel": "按狀態篩選",
+    "emptyWithFilter": "暫無 {{status}} 狀態的編輯申請"
   }
 }

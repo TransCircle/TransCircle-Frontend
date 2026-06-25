@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react';
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ThemeToggle } from './ThemeToggle';
 import { LanguageToggle } from '@/components/ui'
@@ -30,6 +30,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
   const { t } = useTranslation()
   const { user, isAdmin, logout } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
@@ -189,7 +190,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
                 <li><Link to="/me/contributions" onClick={closeMenu}>{t('nav.myContributions')}</Link></li>
                 <li><Link to="/settings/security" onClick={closeMenu}>{t('nav.securitySettings')}</Link></li>
                 {isAdmin && <li><Link to="/admin" onClick={closeMenu}>{t('nav.adminDashboard')}</Link></li>}
-                <li><Link to="/" onClick={async (e) => { e.preventDefault(); await logout(); closeMenu(); window.location.href = LOGOUT_REDIRECT }}>{t('nav.logout')}</Link></li>
+                <li><Link to="/" onClick={async (e) => { e.preventDefault(); await logout(); closeMenu(); if (LOGOUT_REDIRECT.startsWith('/')) { navigate(LOGOUT_REDIRECT, { replace: true }) } else { window.location.href = LOGOUT_REDIRECT } }}>{t('nav.logout')}</Link></li>
               </>
             )}
             {!user && (

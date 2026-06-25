@@ -95,7 +95,11 @@ export function getCsrfToken(): string {
 
 /** Persist CSRF token to sessionStorage so it survives page navigation */
 export function saveCsrfToken(token: string): void {
-  sessionStorage.setItem('oauth_pending_csrf', token)
+  try {
+    sessionStorage.setItem('oauth_pending_csrf', token)
+  } catch {
+    // 隐私模式/存储满时忽略写入失败，CSRF 校验将继续依赖 cookie
+  }
 }
 
 /** Clean up CSRF token after use */
@@ -187,6 +191,8 @@ type ApiResultBase = {
 export type ApiResult<T = unknown> = ApiResultBase & ({
   ok: true
   data: T
+  /** 非 JSON 响应的原始 Response 对象（如 blob/image），此时 data=undefined */
+  raw?: Response
   pagination?: {
     limit: number
     nextCursor: string | null
@@ -392,8 +398,9 @@ export async function apiRequest<T = unknown>(
   }
 
   // Non-JSON response (e.g. image, plain text)
+  // 返回 raw Response 供调用方自行处理（二进制/流等）
   if (status >= 200 && status < 300) {
-    return { ok: true, data: res as unknown as T, requestId: '', status, rateLimit }
+    return { ok: true, data: undefined as T, raw: res, requestId: '', status, rateLimit }
   }
 
   return { ok: false, error: { code: 'HTTP_ERROR', message: `HTTP ${status}` }, requestId: '', status, rateLimit }
@@ -441,18 +448,24 @@ export async function uploadFile<T = {
   if (tk) headers.set('Authorization', `Bearer ${tk}`)
   headers.set('X-Request-Id', newRequestId())
 
-  let res = await fetch(`${API_BASE}/images`, {
-    method: 'POST',
-    headers,
-    credentials: 'include',
-    body: formData,
-    signal,
-  })
+  let res: Response
+  try {
+    res = await fetch(`${API_BASE}/images`, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+      body: formData,
+      signal,
+    })
 
-  // 401 时自动刷新重试（共享逻辑，与 apiRequest 一致）
-  res = await autoRefreshOn401(res, `${API_BASE}/images`, {
-    method: 'POST', headers, credentials: 'include', body: formData, signal,
-  }, headers)
+    // 401 时自动刷新重试（共享逻辑，与 apiRequest 一致）
+    res = await autoRefreshOn401(res, `${API_BASE}/images`, {
+      method: 'POST', headers, credentials: 'include', body: formData, signal,
+    }, headers)
+  } catch {
+    // 网络错误（断开/DNS/超时等），与 apiRequest 一致的错误格式
+    return { ok: false, error: { code: 'NETWORK_ERROR', message: '' }, requestId: '', status: 0 }
+  }
 
   const status = res.status
   const contentType = res.headers.get('content-type') || ''
@@ -460,7 +473,7 @@ export async function uploadFile<T = {
 
   if (status >= 200 && status < 300) {
     if (!contentType.includes('application/json')) {
-      return { ok: true, data: res as unknown as T, requestId, status }
+      return { ok: true, data: undefined as T, raw: res, requestId, status }
     }
     const json = await res.json() as Record<string, unknown>
     return { ok: true, data: json.data as T, requestId: (json.requestId as string) || requestId, status }

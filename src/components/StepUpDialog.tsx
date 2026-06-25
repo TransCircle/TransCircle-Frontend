@@ -43,12 +43,12 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
   const [error, setError] = useState('')
 
   // Sync accessToken into client memory so step-up API calls use correct auth.
-  // Restore the previous token on unmount to avoid leaking the dialog's token
-  // to subsequent API calls from other components.
+  // Restore the original token on unmount via ref (不受 accessToken prop 变化影响)。
+  const origTokenRef = useRef(getAccessToken())
   useEffect(() => {
-    const prevToken = getAccessToken()
+    const tokenAtRender = origTokenRef.current
     if (accessToken) setAccessToken(accessToken)
-    return () => setAccessToken(prevToken)
+    return () => setAccessToken(tokenAtRender)
   }, [accessToken])
 
   // Focus trap: trap focus inside dialog when open

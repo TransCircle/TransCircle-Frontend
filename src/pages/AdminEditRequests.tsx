@@ -14,11 +14,13 @@ import {
   SectionLabel,
   Spinner,
   StatusBadge,
+  Tabs,
   TextArea,
   VoteProgress,
   EDIT_REQUEST_STATUS_TONE,
   EDIT_REQUEST_STATUS_LABEL_KEYS,
   type DescriptionItem,
+  type TabItem,
 } from '@/components/admin'
 import shell from './Page.module.css'
 
@@ -74,6 +76,9 @@ function formatTs(ts: number | null | undefined): string {
  * Safely read a proposed-change field, preferring the typed `proposed` sub-object
  * and falling back to the legacy flat field.
  */
+/** @deprecated 旧扁平字段映射（迁移兼容），使用属性存在性检查替代 any 断言 */
+type OldFlatFieldMap = Record<string, string | string[] | null | undefined>
+
 function getProposedField(
   detail: EditRequestItem | null,
   nestedKey: keyof NonNullable<EditRequestItem['proposed']>,
@@ -83,8 +88,9 @@ function getProposedField(
   const nested = detail.proposed?.[nestedKey]
   if (typeof nested === 'string') return nested
   if (nested === null) return null
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (detail as any)[flatKey]
+  // 旧扁平结构回退：检查 key 存在后再读取
+  const old = detail as unknown as OldFlatFieldMap
+  return flatKey in detail ? old[flatKey] as string | undefined : undefined
 }
 
 function getProposedFieldArray(
@@ -96,8 +102,9 @@ function getProposedFieldArray(
   const nested = detail.proposed?.[nestedKey]
   if (Array.isArray(nested)) return nested
   if (nested === null) return null
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (detail as any)[flatKey]
+  // 旧扁平结构回退
+  const old = detail as unknown as OldFlatFieldMap
+  return flatKey in detail ? old[flatKey] as string[] | undefined : undefined
 }
 
 export const AdminEditRequests = () => {
@@ -105,6 +112,9 @@ export const AdminEditRequests = () => {
   const { accessToken, loading: authLoading, user, isAdmin, permissions } = useAuth()
   const loadedRef = useRef(false)
   const fetchSeq = useRef(0)
+
+  // 编辑申请状态筛选：pending / approved / rejected / applied / superseded
+  const [statusFilter, setStatusFilter] = useState('pending')
 
   const [items, setItems] = useState<EditRequestItem[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
@@ -115,18 +125,15 @@ export const AdminEditRequests = () => {
   const [voteSubmitting, setVoteSubmitting] = useState(false)
   const [voteNote, setVoteNote] = useState('')
 
-  const authHeaders = (): Record<string, string> =>
-    accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
-
   const fetchList = async (cursorVal?: string | null) => {
     const seq = ++fetchSeq.current
     setLoading(true)
     setError('')
     try {
-      const params = new URLSearchParams({ limit: '20', status: 'pending' })
+      const params = new URLSearchParams({ limit: '20', status: statusFilter })
       if (cursorVal) params.set('cursor', cursorVal)
       const result = await get<EditRequestItem[]>(`/admin/edit-requests?${params}`, {
-        headers: authHeaders(), skipRefresh: !accessToken,
+        /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
       })
       if (seq !== fetchSeq.current) return
       if (!result.ok) throw new Error(result.error.message)
@@ -142,18 +149,18 @@ export const AdminEditRequests = () => {
 
   useEffect(() => {
     if (authLoading || !accessToken) return
-    if (loadedRef.current) return
     loadedRef.current = true
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setItems([])
+    setCursor(null)
     fetchList()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, accessToken])
+  }, [authLoading, accessToken, statusFilter])
 
   const fetchDetail = async (id: string) => {
     setSelectedId(id)
     setVoteNote('')
-    const result = await get<EditRequestItem>(`/admin/edit-requests/${id}`, {
-      headers: authHeaders(), skipRefresh: !accessToken,
-    })
+    const result = await get<EditRequestItem>(`/admin/edit-requests/${id}`)
     if (result.ok) setDetail(result.data)
     else setError(result.error.message)
   }
@@ -166,7 +173,7 @@ export const AdminEditRequests = () => {
       vote,
       note: voteNote.trim() || null,
       expectedVersion: detail.version,
-    }, { headers: authHeaders(), skipRefresh: !accessToken })
+    }, { /* apiRequest 自动注入 Authorization 并处理 401 刷新 */ })
     setVoteSubmitting(false)
     if (result.ok) {
       setVoteNote('')
@@ -311,13 +318,22 @@ export const AdminEditRequests = () => {
     )
   }
 
+  const statusTabs: TabItem[] = [
+    { key: 'pending', label: t(EDIT_REQUEST_STATUS_LABEL_KEYS['pending'] ?? 'statusPending') },
+    { key: 'approved', label: t(EDIT_REQUEST_STATUS_LABEL_KEYS['approved'] ?? 'statusApproved') },
+    { key: 'rejected', label: t(EDIT_REQUEST_STATUS_LABEL_KEYS['rejected'] ?? 'statusRejected') },
+    { key: 'applied', label: t(EDIT_REQUEST_STATUS_LABEL_KEYS['applied'] ?? 'statusApplied') },
+    { key: 'superseded', label: t(EDIT_REQUEST_STATUS_LABEL_KEYS['superseded'] ?? 'statusSuperseded') },
+  ]
+
   return (
     <div className={shell.page}>
       {error && <Alert tone="error">{error}</Alert>}
+      <Tabs items={statusTabs} value={statusFilter} onChange={setStatusFilter} ariaLabel={t('adminEditRequests.filterLabel')} variant="underline" panelId="edit-request-panel" />
       {loading && items.length === 0 ? (
         <Spinner size="md" label={t('adminEditRequests.loading')} />
       ) : items.length === 0 ? (
-        <EmptyState title={t('adminEditRequests.empty')} />
+        <EmptyState title={statusFilter === 'pending' ? t('adminEditRequests.empty') : t('adminEditRequests.emptyWithFilter', { status: t(EDIT_REQUEST_STATUS_LABEL_KEYS[statusFilter] ?? statusFilter) })} />
       ) : (
         <ul className={shell.list}>
           {items.map(item => (

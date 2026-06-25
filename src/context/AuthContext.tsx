@@ -62,7 +62,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   )
   // 管理入口改为权限驱动（不再纯角色判断），以支持 editor 与 IAM 细粒度授权：
   // 拥有任一管理权限即可进入审核后台；具体页面/动作仍按各自所需权限进一步门控。
-  const isAdmin = permissions.includes('*') || permissions.includes('contribution:read')
+  const isAdmin = permissions.includes('*')
+    || permissions.includes('contribution:read')
+    || permissions.includes('user:read')
+    || permissions.includes('audit:read')
   const updateAccessToken = useCallback((token: string | null) => {
     setAccessToken(token)
   }, [])

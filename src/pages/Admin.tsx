@@ -120,27 +120,21 @@ export const Admin = () => {
   const [actionReason, setActionReason] = useState('')
   const [reasonError, setReasonError] = useState('')
 
-  const authHeaders = useCallback((): Record<string, string> => {
-    const h: Record<string, string> = {}
-    if (accessToken) h.Authorization = `Bearer ${accessToken}`
-    return h
-  }, [accessToken])
-
   const fetchSubmissions = useCallback(async (cursor?: string | null) => {
     const seq = ++fetchSeq.current
     setLoading(true)
     setError('')
     try {
-      const params = new URLSearchParams({ status: activeTab, limit: '50' })
+      const params = new URLSearchParams({ status: activeTab, limit: '20' })
       if (cursor) params.set('cursor', cursor)
 
-      const result = await get<Submission[]>(`/admin/contributions?${params}`, {
-        headers: authHeaders(),
-        skipRefresh: !accessToken,
-      })
+      // 不传 authHeaders / skipRefresh：apiRequest 自动从 _memoryToken 注入 Authorization 并处理 401 刷新
+      const result = await get<Submission[]>(`/admin/contributions?${params}`)
       if (seq !== fetchSeq.current) return
       if (result.status === 403 || result.status === 401) {
         setLoading(false)
+        setSubmissions([])
+        setError(t('admin.accessDenied'))
         return
       }
       if (!result.ok) {
@@ -167,31 +161,28 @@ export const Admin = () => {
     } finally {
       if (seq === fetchSeq.current) setLoading(false)
     }
-  }, [activeTab, authHeaders, t, accessToken])
+  }, [activeTab, t])
 
   useEffect(() => {
     if (!isAdmin) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchSubmissions()
-  }, [activeTab, isAdmin, authHeaders, t, accessToken]) // eslint-disable-line react-hooks/exhaustive-deps
+  // fetchSubmissions 不含在 deps 中是有意为之：effect 仅用于"切换 tab/首次加载"，
+  // 异步操作的 seq 机关已确保竞态安全；加 fetchSubmissions 会导致无限重渲染环。
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, isAdmin])
 
   const fetchDetail = async (id: string) => {
     setError('')
     try {
-      const result = await get<Submission>(`/admin/contributions/${id}`, {
-        headers: authHeaders(),
-        skipRefresh: !accessToken,
-      })
+      const result = await get<Submission>(`/admin/contributions/${id}`)
       if (!result.ok) throw new Error(t('admin.errorDetail'))
       setSelected(result.data)
       setReviewNotes('')
       setInternalNote('')
       // Also fetch review history (api.md §6.3)
       setReviewEventsLoading(true)
-      const eventsResult = await get<ReviewEvent[]>(`/admin/contributions/${id}/review-events`, {
-        headers: authHeaders(),
-        skipRefresh: !accessToken,
-      })
+      const eventsResult = await get<ReviewEvent[]>(`/admin/contributions/${id}/review-events`)
       if (eventsResult.ok) {
         setReviewEvents(eventsResult.data)
       } else {
@@ -213,7 +204,7 @@ export const Admin = () => {
         publicNote: reviewNotes || null,
         internalNote: internalNote || null,
         expectedVersion: v,
-      }, { headers: authHeaders(), skipRefresh: !accessToken })
+      }, { /* apiRequest 自动注入 Authorization 并处理 401 刷新 */ })
 
       if (!result.ok) {
         if (result.error.code === ERRORS.VERSION_CONFLICT && selected) {
@@ -239,7 +230,7 @@ export const Admin = () => {
       const result = await post(`/admin/contributions/${id}/publish`, {
         expectedVersion: v,
         publicNote: null,
-      }, { headers: authHeaders(), skipRefresh: !accessToken })
+      }, { /* apiRequest 自动注入 Authorization 并处理 401 刷新 */ })
       if (!result.ok) {
         if (result.error.code === ERRORS.STEP_UP_REQUIRED) {
           pendingActionRef.current = doPublish
@@ -268,7 +259,7 @@ export const Admin = () => {
         reason,
         publicNote: null,
         internalNote: null,
-      }, { headers: authHeaders(), skipRefresh: !accessToken })
+      }, { /* apiRequest 自动注入 Authorization 并处理 401 刷新 */ })
       if (!result.ok) {
         if (result.error.code === ERRORS.STEP_UP_REQUIRED) {
           pendingActionRef.current = doHide
@@ -295,7 +286,7 @@ export const Admin = () => {
       reason: t('admin.restoreReason'),
       publicNote: null,
       internalNote: null,
-    }, { headers: authHeaders(), skipRefresh: !accessToken })
+    }, { /* apiRequest 自动注入 Authorization 并处理 401 刷新 */ })
     if (!result.ok) {
       if (result.error.code === ERRORS.VERSION_CONFLICT && selected) {
         setError(t('admin.versionConflictRefreshed'))
@@ -317,7 +308,7 @@ export const Admin = () => {
       const result = await post(`/admin/contributions/${id}/delete`, {
         expectedVersion: v,
         reason,
-      }, { headers: authHeaders(), skipRefresh: !accessToken })
+      }, { /* apiRequest 自动注入 Authorization 并处理 401 刷新 */ })
       if (!result.ok) {
         if (result.error.code === ERRORS.STEP_UP_REQUIRED) {
           pendingActionRef.current = doDelete

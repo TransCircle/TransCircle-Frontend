@@ -76,7 +76,7 @@ export const Home = () => {
     initialLoaded.current = true
     setSearchInput(searchTerm)
     doLoad(searchTerm || undefined)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [doLoad, searchTerm])
 
   const runSearch = () => {
@@ -131,7 +131,9 @@ export const Home = () => {
           />
           {searchTerm && (
             <span className={shell.count}>
-              {loading ? t('home.searchExpanding') : t('home.localSearchHint', { count: items.length })}
+              {loading
+                ? t('home.searchExpanding')
+                : t('home.localSearchHint', { count: items.length, keyword: searchTerm })}
             </span>
           )}
         </div>

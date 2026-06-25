@@ -11,18 +11,22 @@ export const resources = {
   'zh-TW': { common: zhTW },
 } as const
 
-// Persisted preference > browser detection > zh-CN fallback
-const storedLang = typeof localStorage !== 'undefined'
-  ? localStorage.getItem('transcircle-lang')
-  : null
-const detectedLang = storedLang || (typeof navigator !== 'undefined'
-  ? (navigator.language?.startsWith('zh-TW') ? 'zh-TW' : 'zh-CN')
-  : 'zh-CN')
+// 惰性语言检测：封装在函数内而非模块顶层，避免 SSR 构建时读取 localStorage/navigator 失败
+function detectLanguage(): string {
+  try {
+    const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('transcircle-lang') : null
+    if (stored) return stored
+    if (typeof navigator !== 'undefined' && navigator.language?.startsWith('zh-TW')) return 'zh-TW'
+  } catch {
+    // 隐私模式/SSR 环境无法访问 localStorage，静默回退
+  }
+  return 'zh-CN'
+}
 
 i18n.use(initReactI18next).init({
   resources,
   defaultNS,
-  lng: detectedLang,
+  lng: detectLanguage(),
   fallbackLng: 'zh-CN',
   interpolation: {
     // React 的 JSX 默认转义 HTML，escapeValue: true 提供双层防御。

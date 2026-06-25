@@ -47,9 +47,6 @@ export const AdminAuditLogs = () => {
   const [actorNames, setActorNames] = useState<Record<string, string>>({})
   const actorFetchedRef = useRef<Set<string>>(new Set())
 
-  const authHeaders = (): Record<string, string> =>
-    accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
-
   const actionLabel = (action: string): string =>
     t(`adminAuditLogs.actions.${action.replace(/\./g, '_')}`, action)
 
@@ -63,7 +60,7 @@ export const AdminAuditLogs = () => {
       if (resourceFilter.trim()) params.set('resourceType', resourceFilter.trim())
       if (cursorVal) params.set('cursor', cursorVal)
       const result = await get<AuditLogEntry[]>(`/admin/audit-logs?${params}`, {
-        headers: authHeaders(), skipRefresh: !accessToken,
+        /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
       })
       if (seq !== fetchSeq.current) return
       if (!result.ok) throw new Error(result.error.message)
@@ -95,13 +92,20 @@ export const AdminAuditLogs = () => {
     ids.forEach(id => actorFetchedRef.current.add(id))
     let cancelled = false
     void (async () => {
-      const entries = await Promise.all(ids.map(async (id) => {
-        const r = await get<{ displayName?: string; username?: string }>(`/admin/users/${id}`, {
-          headers: authHeaders(), skipRefresh: !accessToken,
-        })
-        return r.ok ? ([id, r.data.displayName || r.data.username || id] as const) : null
-      }))
-      if (cancelled) return
+      // 限制并发数到 4，避免同时发起大量请求触发后端限流
+      const CONCURRENCY = 4
+      const entries: Array<[string, string] | null> = []
+      for (let i = 0; i < ids.length; i += CONCURRENCY) {
+        const batch = ids.slice(i, i + CONCURRENCY)
+        const batchResults = await Promise.all(batch.map(async (id) => {
+          const r = await get<{ displayName?: string; username?: string }>(`/admin/users/${id}`, {
+            /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
+          })
+          return r.ok ? ([id, r.data.displayName || r.data.username || id] as [string, string]) : null
+        }))
+        if (cancelled) return
+        entries.push(...batchResults)
+      }
       const map: Record<string, string> = {}
       for (const e of entries) if (e) map[e[0]] = e[1]
       if (Object.keys(map).length) setActorNames(prev => ({ ...prev, ...map }))

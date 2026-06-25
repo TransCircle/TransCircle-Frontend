@@ -96,10 +96,13 @@ export const Login = () => {
 /** 校验重定向 URL 防止开放重定向：仅允许站内相对路径 */
 function isValidRedirect(url: string): boolean {
   if (!url.startsWith('/')) return false
-  if (url.startsWith('//')) return false
+  if (url.startsWith('//') || url.startsWith('/\\')) return false
+  if (url.length > 200) return false
   try {
     // 用 URL 确保不包含非法协议结构
-    new URL(url, 'http://localhost')
+    const parsed = new URL(url, 'http://localhost')
+    // 确认解析后的 pathname 与原 url 一致，防止 /%2Fevil.com 等编码绕过
+    if (parsed.pathname !== url.split('?')[0]! && decodeURIComponent(parsed.pathname) !== url.split('?')[0]!) return false
     return true
   } catch {
     return false
