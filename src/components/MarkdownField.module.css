@@ -28,7 +28,7 @@
   border: 1px solid var(--divider-color);
   color: var(--text-secondary);
   background: var(--surface-card);
-  padding: 0.3rem 0.6rem;
+  padding: 0.3rem 0.45rem;
   border-radius: 6px;
   font-size: 0.8rem;
   font-family: inherit;
