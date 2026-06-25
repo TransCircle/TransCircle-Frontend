@@ -21,7 +21,7 @@
   height: 400px;
 }
 
-.editorWrapper :global(.md-editor-toolbar-item) {
+.editorWrapper :global(.md-editor .md-editor-stn .md-editor-toolbar-item) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -37,13 +37,13 @@
   white-space: nowrap;
 }
 
-.editorWrapper :global(.md-editor-toolbar-item):hover {
+.editorWrapper :global(.md-editor .md-editor-stn .md-editor-toolbar-item):hover {
   border-color: var(--primary-pink);
   color: var(--text-main);
   background-color: var(--hover-bg);
 }
 
-.editorWrapper :global(.md-editor-toolbar-active) {
+.editorWrapper :global(.md-editor .md-editor-stn .md-editor-toolbar-active) {
   background-color: var(--hover-bg);
   color: var(--primary-pink);
   border-color: var(--primary-pink);
