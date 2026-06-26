@@ -140,7 +140,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
             id="nav-menu"
             className={`${styles.navLinks} ${isOpen ? styles.active : ''}`}
           >
-            <li><Link to="/" onClick={closeMenu}>{t('nav.home')}</Link></li>
+            <li><a href="https://transcircle.org/" onClick={closeMenu}>{t('nav.home')}</a></li>
             <li
               className={`${styles.dropdown} ${dropdownOpen ? styles.dropdownOpen : ''}`}
               onBlur={handleDropdownBlur}
