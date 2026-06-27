@@ -141,6 +141,9 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
             className={`${styles.navLinks} ${isOpen ? styles.active : ''}`}
           >
             <li><a href="https://transcircle.org/" onClick={closeMenu}>{t('nav.home')}</a></li>
+            <li><Link to={location.pathname === '/submit' ? '/' : '/submit'} onClick={closeMenu}>{location.pathname === '/submit' ? t('nav.submitView') : t('nav.submit')}</Link></li>
+            <li><span className={styles.disabled}>{t('nav.archive')}</span></li>
+            <li><span className={styles.disabled}>{t('nav.community')}</span></li>
             <li
               className={`${styles.dropdown} ${dropdownOpen ? styles.dropdownOpen : ''}`}
               onBlur={handleDropdownBlur}
@@ -180,9 +183,6 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
                 <li role="none"><a role="menuitem" href="https://search.transcircle.org/" target="_blank" rel="noopener noreferrer" onClick={closeMenu}>{t('nav.explore')}<ExternalLinkIcon /></a></li>
               </ul>
             </li>
-            <li><Link to={location.pathname === '/submit' ? '/' : '/submit'} onClick={closeMenu}>{location.pathname === '/submit' ? t('nav.submitView') : t('nav.submit')}</Link></li>
-            <li><span className={styles.disabled}>{t('nav.archive')}</span></li>
-            <li><span className={styles.disabled}>{t('nav.community')}</span></li>
 
             {user && (
               <>
@@ -194,7 +194,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
               </>
             )}
             {!user && (
-              <li><Link to="/login" onClick={closeMenu}>{t('nav.login')}</Link></li>
+              <li className={styles.mobileOnly}><Link to="/login" onClick={closeMenu}>{t('nav.login')}</Link></li>
             )}
 
             {mobileLinks && (
@@ -226,7 +226,13 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
           </ul>
 
           <div className={styles.rightSection}>
+            <LanguageToggle variant="plain" />
                         <ThemeToggle />
+            {!user && (
+              <Link to="/login" className={styles.loginBtn} onClick={closeMenu}>
+                {t('nav.login')}
+              </Link>
+            )}
           </div>
         </div>
       </nav>
