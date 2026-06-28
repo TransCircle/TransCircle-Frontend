@@ -226,8 +226,10 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
           </ul>
 
           <div className={styles.rightSection}>
-            <LanguageToggle variant="plain" />
-                        <ThemeToggle />
+            <div className={styles.toggles}>
+              <LanguageToggle variant="plain" />
+              <ThemeToggle />
+            </div>
             {!user && (
               <Link to="/login" className={styles.loginBtn} onClick={closeMenu}>
                 {t('nav.login')}

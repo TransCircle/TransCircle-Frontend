@@ -80,13 +80,9 @@
   background-color: #cc8800;
 }
 
-/* Comfortable touch targets on touch devices (visual size unchanged on desktop). */
-@media (pointer: coarse) {
-  .toggleBtn {
-    width: 40px;
-    height: 40px;
-  }
-}
+/* ── REMOVED: @media (pointer: coarse) enlarge — causes visual size mismatch
+ *     with adjacent nav buttons. All nav controls use a consistent 32px height
+ *     regardless of pointer type, matching transcircle.org. ── */
 
 @media (prefers-reduced-motion: reduce) {
   .toggleBtn {

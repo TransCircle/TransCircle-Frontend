@@ -33,6 +33,13 @@
   margin-left: auto;
 }
 
+/* Wrap LanguageToggle + ThemeToggle with slightly tighter spacing, matching transcircle.org. */
+.toggles {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .mobileThemeToggle {
   display: none;
 }
