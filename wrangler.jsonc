@@ -17,5 +17,8 @@
   ],
   "routes": [
     { "pattern": "story.transcircle.org", "zone_id": "759a1eeae75b405b37d76959b926bb7f" }
-  ]
+  ],
+  "vars": {
+    "API_BACKEND_URL": "https://api.transcircle.org/story"
+  }
 }
