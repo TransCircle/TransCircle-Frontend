@@ -51,23 +51,25 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
 
   // Manage <main> inert: when the mobile drawer is open, the main content
   // should be inert so keyboard/tab navigation stays inside the drawer.
-  // Uses a ref-based approach (not querySelector in a stale closure) and
-  // always resets inert= on cleanup regardless of the guard condition.
-  const mainRef = useRef<HTMLElement | null>(null);
+  // 注意：不使用 ref 缓存 DOM 引用来避免 React 19 StrictMode 双重渲染导致的过期引用；
+  //       清理函数和安全阀 effect 均直接重新查询 DOM，确保 inert 一定能被正确重置。
   useEffect(() => {
     const el = document.querySelector<HTMLElement>('main');
-    mainRef.current = el;
     if (el && window.innerWidth <= MOBILE_BREAKPOINT) {
       el.inert = isOpen;
     }
     return () => {
-      // Always restore inert, even if the guard condition no longer matches
-      // (e.g. window was resized).  Use the ref in case the DOM has changed
-      // between effect runs — the ref always points at the correct element.
-      const m = mainRef.current ?? document.querySelector<HTMLElement>('main');
-      if (m) m.inert = false;
+      const el = document.querySelector<HTMLElement>('main');
+      if (el) el.inert = false;
     };
   }, [isOpen]);
+
+  // Close mobile drawer on route change — prevents <main> from staying inert
+  // after programmatic navigation (redirects from guards, navigate() calls, etc.)
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    closeMenu()
+  }, [location.pathname])
 
   useEffect(() => {
     if (!isOpen) return;
