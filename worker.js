@@ -21,6 +21,28 @@ export default {
       if (!backend) {
         return new Response('API_BACKEND_URL not configured', { status: 502 });
       }
+
+      // 用户没有 refresh_token cookie 时跳过向后端转发 /auth/refresh，
+      // 直接返回 200（accessToken: null），避免产生 400/401 响应。
+      if (url.pathname === '/v1/auth/refresh' && request.method === 'POST') {
+        const cookies = request.headers.get('cookie') || '';
+        const hasRefreshToken = cookies.split(';').some(c =>
+          c.trim().startsWith('refresh_token='),
+        );
+        if (!hasRefreshToken) {
+          return new Response(
+            JSON.stringify({
+              data: { accessToken: null, tokenType: 'Bearer', expiresIn: 0 },
+              requestId: `req_skipped`,
+            }),
+            {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            },
+          );
+        }
+      }
+
       return fetch(`${backend}${url.pathname}${url.search}`, {
         method: request.method,
         headers: request.headers,
