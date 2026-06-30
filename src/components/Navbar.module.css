@@ -513,7 +513,13 @@
   visibility: hidden;
   pointer-events: none;
   transition: opacity 0.3s ease, visibility 0s linear 0.3s;
-  z-index: 999;
+  /* 必须低于 .navbar(z-index:50)。
+     .navbar 是 sticky + z-index:50，会创建层叠上下文，导致 .navLinks(抽屉,z-1000)
+     被困在 navbar 的上下文内、只能以 z-50 参与根层叠比较。若 overlay 设 999（根上下文），
+     999 > 50，遮罩会整屏盖在抽屉之上，吃掉菜单内所有链接的点击。
+     降到 40 后：overlay 仍高于 static 的 main/footer（点空白可关菜单），
+     但低于 navbar(50)，顶栏与抽屉都在遮罩之上，链接恢复可点。 */
+  z-index: 40;
 }
 
 .overlayActive {
