@@ -73,6 +73,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Try to get current user via stored token or refresh
   useEffect(() => {
     const init = async () => {
+      // 在 /auth/error 页面上跳过 token refresh — 用户因登录失败被重定向至此，
+      // 不可能有有效 session，发起 refresh 只会得到 400/401，是不必要的网络请求（CF_ERROR）。
+      if (window.location.pathname.startsWith('/auth/error')) {
+        setLoading(false)
+        return
+      }
       try {
         // Try refresh to get an access token — cookie-based, must include credentials
         const token = await tryRefreshToken()
