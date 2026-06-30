@@ -511,6 +511,7 @@
   background: var(--overlay-bg);
   opacity: 0;
   visibility: hidden;
+  pointer-events: none;
   transition: opacity 0.3s ease, visibility 0s linear 0.3s;
   z-index: 999;
 }
@@ -518,6 +519,7 @@
 .overlayActive {
   opacity: 1;
   visibility: visible;
+  pointer-events: auto;
   transition: opacity 0.3s ease, visibility 0s linear 0s;
 }
 

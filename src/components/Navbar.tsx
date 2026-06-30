@@ -49,13 +49,23 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
     });
   };
 
+  // Manage <main> inert: when the mobile drawer is open, the main content
+  // should be inert so keyboard/tab navigation stays inside the drawer.
+  // Uses a ref-based approach (not querySelector in a stale closure) and
+  // always resets inert= on cleanup regardless of the guard condition.
+  const mainRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
-    const main = document.querySelector<HTMLElement>('main');
-    if (main && window.innerWidth <= MOBILE_BREAKPOINT) {
-      main.inert = isOpen;
+    const el = document.querySelector<HTMLElement>('main');
+    mainRef.current = el;
+    if (el && window.innerWidth <= MOBILE_BREAKPOINT) {
+      el.inert = isOpen;
     }
     return () => {
-      if (main) main.inert = false;
+      // Always restore inert, even if the guard condition no longer matches
+      // (e.g. window was resized).  Use the ref in case the DOM has changed
+      // between effect runs — the ref always points at the correct element.
+      const m = mainRef.current ?? document.querySelector<HTMLElement>('main');
+      if (m) m.inert = false;
     };
   }, [isOpen]);
 
