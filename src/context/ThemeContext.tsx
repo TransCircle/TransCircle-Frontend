@@ -1,15 +1,15 @@
-import { createContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useEffect, useState, type ReactNode } from 'react';
 
-export type Theme = "light" | "dark" | "contrast";
+export type Theme = 'light' | 'dark';
 
 interface ThemeContextValue {
   theme: Theme;
   setTheme: (theme: Theme) => void;
 }
 
-const STORAGE_KEY = "transcircle-theme";
-const VALID_THEMES: readonly Theme[] = ["light", "dark", "contrast"];
-const DEFAULT_THEME: Theme = "light";
+const STORAGE_KEY = 'transcircle-theme';
+const VALID_THEMES: readonly Theme[] = ['light', 'dark'];
+const DEFAULT_THEME: Theme = 'light';
 
 /**
  * 验证主题值是否合法。
@@ -63,7 +63,7 @@ const clearStoredTheme = (): void => {
  * 所有 DOM 副作用统一收口于此，避免分散管理导致的漏改风险。
  */
 const applyTheme = (theme: Theme): void => {
-  document.documentElement.setAttribute("data-theme", theme);
+  document.documentElement.setAttribute('data-theme', theme);
 };
 
 /**
@@ -71,7 +71,7 @@ const applyTheme = (theme: Theme): void => {
  * 优先级：本地存储(校验后) > 系统偏好 > 默认值
  */
 const getInitialTheme = (): Theme => {
-  if (typeof window === "undefined") return DEFAULT_THEME;
+  if (typeof window === 'undefined') return DEFAULT_THEME;
 
   const stored = getStoredTheme();
   if (stored) {
@@ -85,8 +85,8 @@ const getInitialTheme = (): Theme => {
   }
 
   try {
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    return prefersDark ? "dark" : DEFAULT_THEME;
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return prefersDark ? 'dark' : DEFAULT_THEME;
   } catch {
     return DEFAULT_THEME;
   }
@@ -111,19 +111,19 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
   // 监听系统主题偏好变化
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleChange = (e: MediaQueryListEvent) => {
       const stored = getStoredTheme();
       // 只有当存储值为空或无效时，才跟随系统主题
       if (!stored || !VALID_THEMES.includes(stored as Theme)) {
-        const newTheme = e.matches ? "dark" : DEFAULT_THEME;
+        const newTheme = e.matches ? 'dark' : DEFAULT_THEME;
         setThemeState(newTheme);
         applyTheme(newTheme);
       }
     };
 
-    mediaQuery.addEventListener("change", handleChange);
-    return () => mediaQuery.removeEventListener("change", handleChange);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
   return (

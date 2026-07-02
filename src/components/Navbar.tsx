@@ -8,7 +8,7 @@ import { LOGOUT_REDIRECT } from '@/config'
 import styles from './Navbar.module.css';
 
 const ExternalLinkIcon = () => (
-  <svg className={styles.externalIcon} width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg className={styles.externalIcon} width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M6 2h8v8" />
     <path d="M14 2 4 12" />
   </svg>
@@ -231,7 +231,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
             <li className={`${styles.mobileOnly} ${styles.mobileThemeToggle}`}>
               <div className={styles.mobileThemeLabel}>{t('nav.mobileThemeLabel')}</div>
               <div className={styles.mobileToggleRow}>
-                <ThemeToggle variant="plain" />
+                <ThemeToggle />
                 <LanguageToggle variant="plain" />
               </div>
             </li>

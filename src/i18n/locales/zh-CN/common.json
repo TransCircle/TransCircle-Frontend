@@ -23,9 +23,7 @@
   },
   "theme": {
     "light": "亮色模式",
-    "dark": "深色模式",
-    "contrast": "高对比度模式",
-    "selectLabel": "主题选择"
+    "dark": "深色模式"
   },
   "language": {
     "selectLabel": "语言选择",
