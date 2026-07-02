@@ -46,7 +46,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
   const hamburgerRef = useRef<HTMLButtonElement>(null)
-  const menuRef = useRef<HTMLUListElement>(null)
+  const drawerRef = useRef<HTMLDivElement>(null)
   const dropdownRef = useRef<HTMLButtonElement>(null)
 
   const closeMenu = () => setIsOpen(false)
@@ -54,7 +54,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
   const openMenu = () => {
     setIsOpen(true)
     requestAnimationFrame(() => {
-      menuRef.current
+      drawerRef.current
         ?.querySelector<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])')
         ?.focus()
     })
@@ -100,7 +100,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
     return () => {
       document.body.style.overflow = prev
       document.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('resize', handleResize)
+      document.removeEventListener('resize', handleResize)
     }
   }, [isOpen])
 
@@ -148,7 +148,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
               onClick={() => (isOpen ? closeMenu() : openMenu())}
               aria-label={isOpen ? t('nav.closeMenu') : t('nav.openMenu')}
               aria-expanded={isOpen}
-              aria-controls="nav-menu"
+              aria-controls="nav-drawer"
             >
               <span className={styles.bar}></span>
               <span className={styles.bar}></span>
@@ -160,22 +160,17 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
             </div>
           </div>
 
-          <ul ref={menuRef} id="nav-menu" className={`${styles.navLinks} ${isOpen ? styles.active : ''}`}>
+          {/* Desktop navigation — hidden on mobile via CSS */}
+          <ul className={styles.navLinks}>
             <li>
-              <a href="https://transcircle.org/" onClick={closeMenu}>
+              <a href="https://transcircle.org/">
                 {t('nav.home')}
               </a>
             </li>
             <li>
-              <Link to={location.pathname === '/submit' ? '/' : '/submit'} onClick={closeMenu}>
+              <Link to={location.pathname === '/submit' ? '/' : '/submit'}>
                 {location.pathname === '/submit' ? t('nav.submitView') : t('nav.submit')}
               </Link>
-            </li>
-            <li>
-              <span className={styles.disabled}>{t('nav.archive')}</span>
-            </li>
-            <li>
-              <span className={styles.disabled}>{t('nav.community')}</span>
             </li>
             <li className={`${styles.dropdown} ${dropdownOpen ? styles.dropdownOpen : ''}`} onBlur={handleDropdownBlur}>
               <button
@@ -215,7 +210,6 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
                     href="https://blog.transcircle.org/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={closeMenu}
                   >
                     {t('nav.blog')}
                     <ExternalLinkIcon />
@@ -227,7 +221,6 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
                     href="https://search.transcircle.org/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={closeMenu}
                   >
                     {t('nav.explore')}
                     <ExternalLinkIcon />
@@ -235,84 +228,6 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
                 </li>
               </ul>
             </li>
-
-            <li className={styles.mobileExternalLinks}>
-              <a href="https://blog.transcircle.org/" target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
-                {t('nav.blog')}
-                <ExternalLinkIcon />
-              </a>
-              <a href="https://search.transcircle.org/" target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
-                {t('nav.explore')}
-                <ExternalLinkIcon />
-              </a>
-            </li>
-
-            {user && (
-              <>
-                <li className={styles.mobileDivider}></li>
-                <li>
-                  <Link to="/me/contributions" onClick={closeMenu}>
-                    {t('nav.myContributions')}
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/settings/security" onClick={closeMenu}>
-                    {t('nav.securitySettings')}
-                  </Link>
-                </li>
-                {isAdmin && (
-                  <li>
-                    <Link to="/admin" onClick={closeMenu}>
-                      {t('nav.adminDashboard')}
-                    </Link>
-                  </li>
-                )}
-                <li>
-                  <Link
-                    to="/"
-                    onClick={async (e) => {
-                      e.preventDefault()
-                      await logout()
-                      closeMenu()
-                      if (LOGOUT_REDIRECT.startsWith('/')) {
-                        navigate(LOGOUT_REDIRECT, { replace: true })
-                      } else {
-                        window.location.href = LOGOUT_REDIRECT
-                      }
-                    }}
-                  >
-                    {t('nav.logout')}
-                  </Link>
-                </li>
-              </>
-            )}
-            {!user && (
-              <li className={styles.mobileOnly}>
-                <Link to="/login" onClick={closeMenu}>
-                  {t('nav.login')}
-                </Link>
-              </li>
-            )}
-
-            {mobileLinks && (
-              <>
-                <li className={styles.mobileDivider}></li>
-                {customMobileLinkLabel && (
-                  <li className={styles.mobileOnly}>
-                    <span className={styles.mobileLinkLabel}>{customMobileLinkLabel}</span>
-                  </li>
-                )}
-                <li className={styles.mobileOnly}>
-                  <div className={styles.mobileTOCGroup}>
-                    {mobileLinks.map(({ key, node }) => (
-                      <div key={key} className={styles.mobileTOCItem}>
-                        {node}
-                      </div>
-                    ))}
-                  </div>
-                </li>
-              </>
-            )}
           </ul>
 
           <div className={styles.rightSection}>
@@ -321,7 +236,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
               <ThemeToggle />
             </div>
             {!user && (
-              <Link to="/login" className={styles.loginBtn} onClick={closeMenu}>
+              <Link to="/login" className={styles.loginBtn}>
                 {t('nav.login')}
               </Link>
             )}
@@ -329,8 +244,96 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
         </div>
       </nav>
 
+      {/* Mobile drawer — always rendered, hidden via transform */}
       <div
-        className={`${styles.overlay} ${isOpen ? styles.overlayActive : ''}`}
+        ref={drawerRef}
+        id="nav-drawer"
+        className={`${styles.drawer} ${isOpen ? styles.drawerOpen : ''}`}
+        inert={!isOpen ? true : undefined}
+      >
+        <div className={styles.drawerInner}>
+          <a href="https://transcircle.org/" className={styles.drawerLink} onClick={closeMenu}>
+            {t('nav.home')}
+          </a>
+          <Link to={location.pathname === '/submit' ? '/' : '/submit'} className={styles.drawerLink} onClick={closeMenu}>
+            {location.pathname === '/submit' ? t('nav.submitView') : t('nav.submit')}
+          </Link>
+          <span className={`${styles.drawerLink} ${styles.disabled}`}>
+            {t('nav.archive')}
+          </span>
+          <span className={`${styles.drawerLink} ${styles.disabled}`}>
+            {t('nav.community')}
+          </span>
+
+          <a href="https://blog.transcircle.org/" className={styles.drawerLink} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
+            {t('nav.blog')}
+            <ExternalLinkIcon />
+          </a>
+          <a href="https://search.transcircle.org/" className={styles.drawerLink} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
+            {t('nav.explore')}
+            <ExternalLinkIcon />
+          </a>
+
+          <div className={styles.drawerDivider}></div>
+
+          {user && (
+            <>
+              <Link to="/me/contributions" className={styles.drawerLink} onClick={closeMenu}>
+                {t('nav.myContributions')}
+              </Link>
+              <Link to="/settings/security" className={styles.drawerLink} onClick={closeMenu}>
+                {t('nav.securitySettings')}
+              </Link>
+              {isAdmin && (
+                <Link to="/admin" className={styles.drawerLink} onClick={closeMenu}>
+                  {t('nav.adminDashboard')}
+                </Link>
+              )}
+              <Link
+                to="/"
+                className={styles.drawerLink}
+                onClick={async (e) => {
+                  e.preventDefault()
+                  await logout()
+                  closeMenu()
+                  if (LOGOUT_REDIRECT.startsWith('/')) {
+                    navigate(LOGOUT_REDIRECT, { replace: true })
+                  } else {
+                    window.location.href = LOGOUT_REDIRECT
+                  }
+                }}
+              >
+                {t('nav.logout')}
+              </Link>
+            </>
+          )}
+          {!user && (
+            <Link to="/login" className={styles.drawerLink} onClick={closeMenu}>
+              {t('nav.login')}
+            </Link>
+          )}
+
+          {mobileLinks && (
+            <>
+              <div className={styles.drawerDivider}></div>
+              {customMobileLinkLabel && (
+                <span className={styles.mobileLinkLabel}>{customMobileLinkLabel}</span>
+              )}
+              <div className={styles.mobileTOCGroup}>
+                {mobileLinks.map(({ key, node }) => (
+                  <div key={key} className={styles.mobileTOCItem}>
+                    {node}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Overlay backdrop */}
+      <div
+        className={`${styles.overlay} ${isOpen ? styles.overlayOn : ''}`}
         onClick={closeMenu}
         aria-hidden="true"
       ></div>
