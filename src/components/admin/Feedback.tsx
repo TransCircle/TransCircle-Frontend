@@ -32,10 +32,7 @@ export interface AlertProps {
 
 export function Alert({ tone = 'error', children, className }: AlertProps) {
   return (
-    <div
-      className={cx(styles.alert, styles[`alert_${tone}`], className)}
-      role={tone === 'error' ? 'alert' : 'status'}
-    >
+    <div className={cx(styles.alert, styles[`alert_${tone}`], className)} role={tone === 'error' ? 'alert' : 'status'}>
       {children}
     </div>
   )
@@ -53,7 +50,11 @@ export interface EmptyStateProps {
 export function EmptyState({ title, description, icon, action }: EmptyStateProps) {
   return (
     <div className={styles.empty}>
-      {icon && <span className={styles.emptyIcon} aria-hidden="true">{icon}</span>}
+      {icon && (
+        <span className={styles.emptyIcon} aria-hidden="true">
+          {icon}
+        </span>
+      )}
       <p className={styles.emptyTitle}>{title}</p>
       {description && <p className={styles.emptyDesc}>{description}</p>}
       {action && <div className={styles.emptyAction}>{action}</div>}

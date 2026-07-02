@@ -44,14 +44,18 @@
   border: 1.5px solid var(--divider-color);
   border-radius: 6px;
   background-color: var(--surface-card);
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .check {
   color: #ffffff;
   opacity: 0;
   transform: scale(0.6);
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
 }
 
 .dash {

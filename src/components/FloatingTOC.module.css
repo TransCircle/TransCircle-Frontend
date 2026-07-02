@@ -65,7 +65,9 @@
   padding: 0.5rem 0.9rem;
   border-radius: var(--radius-sm);
   white-space: nowrap;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .link:hover {

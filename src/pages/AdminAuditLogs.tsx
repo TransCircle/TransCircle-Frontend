@@ -4,14 +4,7 @@ import { get } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
 import { limitByUnicode } from '@/utils/string'
-import {
-  AdminButton,
-  Alert,
-  EmptyState,
-  Pill,
-  SearchField,
-  Spinner,
-} from '@/components/admin'
+import { AdminButton, Alert, EmptyState, Pill, SearchField, Spinner } from '@/components/admin'
 import shell from './Page.module.css'
 
 interface AuditLogEntry {
@@ -47,8 +40,7 @@ export const AdminAuditLogs = () => {
   const [actorNames, setActorNames] = useState<Record<string, string>>({})
   const actorFetchedRef = useRef<Set<string>>(new Set())
 
-  const actionLabel = (action: string): string =>
-    t(`adminAuditLogs.actions.${action.replace(/\./g, '_')}`, action)
+  const actionLabel = (action: string): string => t(`adminAuditLogs.actions.${action.replace(/\./g, '_')}`, action)
 
   const fetchLogs = async (cursorVal?: string | null) => {
     const seq = ++fetchSeq.current
@@ -64,7 +56,7 @@ export const AdminAuditLogs = () => {
       })
       if (seq !== fetchSeq.current) return
       if (!result.ok) throw new Error(result.error.message)
-      if (cursorVal) setLogs(prev => [...prev, ...result.data])
+      if (cursorVal) setLogs((prev) => [...prev, ...result.data])
       else setLogs(result.data)
       setCursor(result.pagination?.nextCursor || null)
     } catch (err) {
@@ -76,20 +68,21 @@ export const AdminAuditLogs = () => {
 
   useEffect(() => {
     if (authLoading || !accessToken) return
-    if (!hasPermission(permissions, PERMISSIONS.AUDIT_READ)) return  // 无 audit:read 直接拒绝页，免发无谓 403
+    if (!hasPermission(permissions, PERMISSIONS.AUDIT_READ)) return // 无 audit:read 直接拒绝页，免发无谓 403
     if (loadedRef.current) return
     loadedRef.current = true
     fetchLogs()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, accessToken])
 
   // 操作者 ID → 显示名查表（需 user:read 权限；按 ID 缓存，避免重复请求）
   useEffect(() => {
     if (!accessToken || !hasPermission(permissions, PERMISSIONS.USER_READ)) return
-    const ids = Array.from(new Set(logs.map(l => l.actorUserId).filter((x): x is string => !!x)))
-      .filter(id => !actorFetchedRef.current.has(id))
+    const ids = Array.from(new Set(logs.map((l) => l.actorUserId).filter((x): x is string => !!x))).filter(
+      (id) => !actorFetchedRef.current.has(id),
+    )
     if (ids.length === 0) return
-    ids.forEach(id => actorFetchedRef.current.add(id))
+    ids.forEach((id) => actorFetchedRef.current.add(id))
     let cancelled = false
     void (async () => {
       // 限制并发数到 4，避免同时发起大量请求触发后端限流
@@ -97,21 +90,25 @@ export const AdminAuditLogs = () => {
       const entries: Array<[string, string] | null> = []
       for (let i = 0; i < ids.length; i += CONCURRENCY) {
         const batch = ids.slice(i, i + CONCURRENCY)
-        const batchResults = await Promise.all(batch.map(async (id) => {
-          const r = await get<{ displayName?: string; username?: string }>(`/admin/users/${id}`, {
-            /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
-          })
-          return r.ok ? ([id, r.data.displayName || r.data.username || id] as [string, string]) : null
-        }))
+        const batchResults = await Promise.all(
+          batch.map(async (id) => {
+            const r = await get<{ displayName?: string; username?: string }>(`/admin/users/${id}`, {
+              /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
+            })
+            return r.ok ? ([id, r.data.displayName || r.data.username || id] as [string, string]) : null
+          }),
+        )
         if (cancelled) return
         entries.push(...batchResults)
       }
       const map: Record<string, string> = {}
       for (const e of entries) if (e) map[e[0]] = e[1]
-      if (Object.keys(map).length) setActorNames(prev => ({ ...prev, ...map }))
+      if (Object.keys(map).length) setActorNames((prev) => ({ ...prev, ...map }))
     })()
-    return () => { cancelled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [logs])
 
   if (!authLoading && (!user || !hasPermission(permissions, PERMISSIONS.AUDIT_READ))) {
@@ -152,7 +149,9 @@ export const AdminAuditLogs = () => {
             clearAriaLabel={t('admin.ui.clear')}
             fieldClassName={shell.grow}
           />
-          <AdminButton variant="secondary" onClick={() => fetchLogs()}>{t('adminAuditLogs.search')}</AdminButton>
+          <AdminButton variant="secondary" onClick={() => fetchLogs()}>
+            {t('adminAuditLogs.search')}
+          </AdminButton>
         </div>
       </div>
 
@@ -165,7 +164,7 @@ export const AdminAuditLogs = () => {
       ) : (
         <>
           <ul className={shell.list}>
-            {logs.map(log => (
+            {logs.map((log) => (
               <li key={log.id} className={shell.rowStatic}>
                 <span className={shell.rowMain}>
                   <span className={shell.rowTitle}>{actionLabel(log.action)}</span>
@@ -173,7 +172,9 @@ export const AdminAuditLogs = () => {
                     <code className={shell.code}>{log.action}</code>
                     <span className={shell.rowMetaSep}>·</span>
                     {log.actorUserId
-                      ? t('adminAuditLogs.actorUser', { id: actorNames[log.actorUserId] ?? `${limitByUnicode(log.actorUserId, 12)}…` })
+                      ? t('adminAuditLogs.actorUser', {
+                          id: actorNames[log.actorUserId] ?? `${limitByUnicode(log.actorUserId, 12)}…`,
+                        })
                       : t('adminAuditLogs.actorSystem')}
                     {log.resourceId && (
                       <>

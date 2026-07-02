@@ -11,7 +11,9 @@ export function LicenseFooter() {
         <p className={styles.license}>
           <span className={styles.heading}>{t('footer.heading')}</span>
           <span>{t('footer.text1')}</span>
-          <span className={styles.sep} aria-hidden="true">·</span>
+          <span className={styles.sep} aria-hidden="true">
+            ·
+          </span>
           <span>{t('footer.text2')}</span>
         </p>
         <p className={styles.copyright}>{t('footer.copyright', { year })}</p>

@@ -83,7 +83,18 @@ const STATUS_LABEL_KEYS: Record<Status, string> = {
 }
 
 const ChevronRight = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
     <path d="m9 18 6-6-6-6" />
   </svg>
 )
@@ -120,56 +131,59 @@ export const Admin = () => {
   const [actionReason, setActionReason] = useState('')
   const [reasonError, setReasonError] = useState('')
 
-  const fetchSubmissions = useCallback(async (cursor?: string | null) => {
-    const seq = ++fetchSeq.current
-    setLoading(true)
-    setError('')
-    try {
-      const params = new URLSearchParams({ status: activeTab, limit: '20' })
-      if (cursor) params.set('cursor', cursor)
+  const fetchSubmissions = useCallback(
+    async (cursor?: string | null) => {
+      const seq = ++fetchSeq.current
+      setLoading(true)
+      setError('')
+      try {
+        const params = new URLSearchParams({ status: activeTab, limit: '20' })
+        if (cursor) params.set('cursor', cursor)
 
-      // 不传 authHeaders / skipRefresh：apiRequest 自动从 _memoryToken 注入 Authorization 并处理 401 刷新
-      const result = await get<Submission[]>(`/admin/contributions?${params}`)
-      if (seq !== fetchSeq.current) return
-      if (result.status === 403 || result.status === 401) {
-        setLoading(false)
-        setSubmissions([])
-        setError(t('admin.accessDenied'))
-        return
-      }
-      if (!result.ok) {
+        // 不传 authHeaders / skipRefresh：apiRequest 自动从 _memoryToken 注入 Authorization 并处理 401 刷新
+        const result = await get<Submission[]>(`/admin/contributions?${params}`)
         if (seq !== fetchSeq.current) return
-        throw new Error(result.error.message || t('admin.errorLoad'))
+        if (result.status === 403 || result.status === 401) {
+          setLoading(false)
+          setSubmissions([])
+          setError(t('admin.accessDenied'))
+          return
+        }
+        if (!result.ok) {
+          if (seq !== fetchSeq.current) return
+          throw new Error(result.error.message || t('admin.errorLoad'))
+        }
+
+        if (seq !== fetchSeq.current) return
+
+        const items = result.data
+        const isLoadMore = !!cursor
+
+        if (isLoadMore) {
+          setSubmissions((prev) => [...prev, ...items])
+        } else {
+          setSubmissions(items)
+        }
+        const pagination = result.pagination
+        setNextCursor(pagination?.nextCursor || null)
+        setHasMore(pagination?.hasMore ?? false)
+      } catch (err) {
+        if (seq !== fetchSeq.current) return
+        setError(err instanceof Error ? err.message : t('admin.errorLoad'))
+      } finally {
+        if (seq === fetchSeq.current) setLoading(false)
       }
-
-      if (seq !== fetchSeq.current) return
-
-      const items = result.data
-      const isLoadMore = !!cursor
-
-      if (isLoadMore) {
-        setSubmissions(prev => [...prev, ...items])
-      } else {
-        setSubmissions(items)
-      }
-      const pagination = result.pagination
-      setNextCursor(pagination?.nextCursor || null)
-      setHasMore(pagination?.hasMore ?? false)
-    } catch (err) {
-      if (seq !== fetchSeq.current) return
-      setError(err instanceof Error ? err.message : t('admin.errorLoad'))
-    } finally {
-      if (seq === fetchSeq.current) setLoading(false)
-    }
-  }, [activeTab, t])
+    },
+    [activeTab, t],
+  )
 
   useEffect(() => {
     if (!isAdmin) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchSubmissions()
-  // fetchSubmissions 不含在 deps 中是有意为之：effect 仅用于"切换 tab/首次加载"，
-  // 异步操作的 seq 机关已确保竞态安全；加 fetchSubmissions 会导致无限重渲染环。
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // fetchSubmissions 不含在 deps 中是有意为之：effect 仅用于"切换 tab/首次加载"，
+    // 异步操作的 seq 机关已确保竞态安全；加 fetchSubmissions 会导致无限重渲染环。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, isAdmin])
 
   const fetchDetail = async (id: string) => {
@@ -199,12 +213,18 @@ export const Admin = () => {
     if (!selected) return
     const v = selected.version || 1
     try {
-      const result = await post(`/admin/contributions/${selected.id}/review`, {
-        decision: action,
-        publicNote: reviewNotes || null,
-        internalNote: internalNote || null,
-        expectedVersion: v,
-      }, { /* apiRequest 自动注入 Authorization 并处理 401 刷新 */ })
+      const result = await post(
+        `/admin/contributions/${selected.id}/review`,
+        {
+          decision: action,
+          publicNote: reviewNotes || null,
+          internalNote: internalNote || null,
+          expectedVersion: v,
+        },
+        {
+          /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
+        },
+      )
 
       if (!result.ok) {
         if (result.error.code === ERRORS.VERSION_CONFLICT && selected) {
@@ -227,10 +247,16 @@ export const Admin = () => {
     const id = selected.id
     const v = selected.version || 1
     const doPublish = async () => {
-      const result = await post(`/admin/contributions/${id}/publish`, {
-        expectedVersion: v,
-        publicNote: null,
-      }, { /* apiRequest 自动注入 Authorization 并处理 401 刷新 */ })
+      const result = await post(
+        `/admin/contributions/${id}/publish`,
+        {
+          expectedVersion: v,
+          publicNote: null,
+        },
+        {
+          /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
+        },
+      )
       if (!result.ok) {
         if (result.error.code === ERRORS.STEP_UP_REQUIRED) {
           pendingActionRef.current = doPublish
@@ -254,12 +280,18 @@ export const Admin = () => {
     const id = selected.id
     const v = selected.version || 1
     const doHide = async () => {
-      const result = await post(`/admin/contributions/${id}/hide`, {
-        expectedVersion: v,
-        reason,
-        publicNote: null,
-        internalNote: null,
-      }, { /* apiRequest 自动注入 Authorization 并处理 401 刷新 */ })
+      const result = await post(
+        `/admin/contributions/${id}/hide`,
+        {
+          expectedVersion: v,
+          reason,
+          publicNote: null,
+          internalNote: null,
+        },
+        {
+          /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
+        },
+      )
       if (!result.ok) {
         if (result.error.code === ERRORS.STEP_UP_REQUIRED) {
           pendingActionRef.current = doHide
@@ -281,12 +313,18 @@ export const Admin = () => {
   const handleRestore = async () => {
     if (!selected) return
     const v = selected.version || 1
-    const result = await post(`/admin/contributions/${selected.id}/restore`, {
-      expectedVersion: v,
-      reason: t('admin.restoreReason'),
-      publicNote: null,
-      internalNote: null,
-    }, { /* apiRequest 自动注入 Authorization 并处理 401 刷新 */ })
+    const result = await post(
+      `/admin/contributions/${selected.id}/restore`,
+      {
+        expectedVersion: v,
+        reason: t('admin.restoreReason'),
+        publicNote: null,
+        internalNote: null,
+      },
+      {
+        /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
+      },
+    )
     if (!result.ok) {
       if (result.error.code === ERRORS.VERSION_CONFLICT && selected) {
         setError(t('admin.versionConflictRefreshed'))
@@ -305,10 +343,16 @@ export const Admin = () => {
     const id = selected.id
     const v = selected.version || 1
     const doDelete = async () => {
-      const result = await post(`/admin/contributions/${id}/delete`, {
-        expectedVersion: v,
-        reason,
-      }, { /* apiRequest 自动注入 Authorization 并处理 401 刷新 */ })
+      const result = await post(
+        `/admin/contributions/${id}/delete`,
+        {
+          expectedVersion: v,
+          reason,
+        },
+        {
+          /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
+        },
+      )
       if (!result.ok) {
         if (result.error.code === ERRORS.STEP_UP_REQUIRED) {
           pendingActionRef.current = doDelete
@@ -390,16 +434,19 @@ export const Admin = () => {
     return (
       <div className={shell.page}>
         <div className={shell.stickyHead}>
-          <Tabs items={tabs} value={activeTab} onChange={setActiveTab} ariaLabel={t('admin.tabsAriaLabel', '投稿审核')} panelId="admin-review-panel" />
+          <Tabs
+            items={tabs}
+            value={activeTab}
+            onChange={setActiveTab}
+            ariaLabel={t('admin.tabsAriaLabel', '投稿审核')}
+            panelId="admin-review-panel"
+          />
         </div>
 
-        <div
-          id="admin-review-panel"
-          role="tabpanel"
-          aria-labelledby={`tab-${activeTab}`}
-          className={shell.tabpanel}
-        >
-          <div className={shell.count} role="status" aria-live="polite">{countLabel}</div>
+        <div id="admin-review-panel" role="tabpanel" aria-labelledby={`tab-${activeTab}`} className={shell.tabpanel}>
+          <div className={shell.count} role="status" aria-live="polite">
+            {countLabel}
+          </div>
 
           {error && <Alert tone="error">{error}</Alert>}
 
@@ -423,8 +470,14 @@ export const Admin = () => {
                       </span>
                       <span className={shell.rowRight}>
                         {s.summary && <Pill>{limitByUnicode(s.summary, 20)}</Pill>}
-                        <StatusBadge tone={CONTRIB_STATUS_TONE[s.status] ?? 'neutral'} label={t(STATUS_LABEL_KEYS[s.status])} size="sm" />
-                        <span className={shell.chevron} aria-hidden="true"><ChevronRight /></span>
+                        <StatusBadge
+                          tone={CONTRIB_STATUS_TONE[s.status] ?? 'neutral'}
+                          label={t(STATUS_LABEL_KEYS[s.status])}
+                          size="sm"
+                        />
+                        <span className={shell.chevron} aria-hidden="true">
+                          <ChevronRight />
+                        </span>
                       </span>
                     </button>
                   </li>
@@ -462,12 +515,18 @@ export const Admin = () => {
         <div className={shell.stack}>
           <div className={shell.detailHead}>
             <h2 className={shell.detailTitle}>{selected.title}</h2>
-            <StatusBadge tone={CONTRIB_STATUS_TONE[selected.status] ?? 'neutral'} label={t(STATUS_LABEL_KEYS[selected.status])} />
+            <StatusBadge
+              tone={CONTRIB_STATUS_TONE[selected.status] ?? 'neutral'}
+              label={t(STATUS_LABEL_KEYS[selected.status])}
+            />
           </div>
 
           <div className={shell.metaRow}>
             <span className={shell.metaItem}>{t('admin.category', { category: selected.tags?.[0] || '—' })}</span>
-            <span className={shell.metaItem}>{t('admin.authorLabel')}{authorDisplay}</span>
+            <span className={shell.metaItem}>
+              {t('admin.authorLabel')}
+              {authorDisplay}
+            </span>
             <span className={shell.metaItem}>{t('admin.submitTime', { time: formatTs(selected.createdAt) })}</span>
           </div>
 
@@ -484,22 +543,36 @@ export const Admin = () => {
           {/* Review history (api.md §6.3: audit trail) */}
           {reviewEventsLoading ? (
             <Spinner size="sm" label={t('admin.reviewEventsLoading')} />
-          ) : reviewEvents.length > 0 && (
-            <Card tone="subtle" padding="sm">
-              <SectionLabel>{t('admin.reviewEventsTitle')}</SectionLabel>
-              <ul className={shell.history}>
-                {reviewEvents.map(ev => (
-                  <li key={ev.id} className={shell.historyItem}>
-                    <span className={shell.historyHead}>
-                      <span>{ev.fromStatus} → {ev.toStatus}</span>
-                      {ev.reviewer?.displayName && <span>· {t('admin.reviewerPrefix')}{ev.reviewer.displayName}</span>}
-                    </span>
-                    {ev.publicNote && <span>{t('admin.notePrefix')}{ev.publicNote}</span>}
-                    {ev.createdAt ? <span className={shell.historyTime}>{formatTs(ev.createdAt)}</span> : null}
-                  </li>
-                ))}
-              </ul>
-            </Card>
+          ) : (
+            reviewEvents.length > 0 && (
+              <Card tone="subtle" padding="sm">
+                <SectionLabel>{t('admin.reviewEventsTitle')}</SectionLabel>
+                <ul className={shell.history}>
+                  {reviewEvents.map((ev) => (
+                    <li key={ev.id} className={shell.historyItem}>
+                      <span className={shell.historyHead}>
+                        <span>
+                          {ev.fromStatus} → {ev.toStatus}
+                        </span>
+                        {ev.reviewer?.displayName && (
+                          <span>
+                            · {t('admin.reviewerPrefix')}
+                            {ev.reviewer.displayName}
+                          </span>
+                        )}
+                      </span>
+                      {ev.publicNote && (
+                        <span>
+                          {t('admin.notePrefix')}
+                          {ev.publicNote}
+                        </span>
+                      )}
+                      {ev.createdAt ? <span className={shell.historyTime}>{formatTs(ev.createdAt)}</span> : null}
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )
           )}
 
           {selected.review?.publicNote && (
@@ -548,34 +621,46 @@ export const Admin = () => {
           {selected.status === 'approved' && (
             <div className={shell.actions}>
               {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_PUBLISH) && (
-                <AdminButton variant="primary" onClick={handlePublish}>{t('admin.publishButton')}</AdminButton>
+                <AdminButton variant="primary" onClick={handlePublish}>
+                  {t('admin.publishButton')}
+                </AdminButton>
               )}
               {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_DELETE) && (
-                <AdminButton variant="danger" onClick={() => openReasonDialog('delete')}>{t('admin.deleteButton')}</AdminButton>
+                <AdminButton variant="danger" onClick={() => openReasonDialog('delete')}>
+                  {t('admin.deleteButton')}
+                </AdminButton>
               )}
             </div>
           )}
           {selected.status === 'published' && (
             <div className={shell.actions}>
               {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_HIDE) && (
-                <AdminButton variant="danger" onClick={() => openReasonDialog('hide')}>{t('admin.hideButton')}</AdminButton>
+                <AdminButton variant="danger" onClick={() => openReasonDialog('hide')}>
+                  {t('admin.hideButton')}
+                </AdminButton>
               )}
             </div>
           )}
           {selected.status === 'hidden' && (
             <div className={shell.actions}>
               {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_RESTORE) && (
-                <AdminButton variant="primary" onClick={handleRestore}>{t('admin.restoreButton')}</AdminButton>
+                <AdminButton variant="primary" onClick={handleRestore}>
+                  {t('admin.restoreButton')}
+                </AdminButton>
               )}
               {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_DELETE) && (
-                <AdminButton variant="danger" onClick={() => openReasonDialog('delete')}>{t('admin.deleteButton')}</AdminButton>
+                <AdminButton variant="danger" onClick={() => openReasonDialog('delete')}>
+                  {t('admin.deleteButton')}
+                </AdminButton>
               )}
             </div>
           )}
           {selected.status === 'rejected' && (
             <div className={shell.actions}>
               {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_DELETE) && (
-                <AdminButton variant="danger" onClick={() => openReasonDialog('delete')}>{t('admin.deleteButton')}</AdminButton>
+                <AdminButton variant="danger" onClick={() => openReasonDialog('delete')}>
+                  {t('admin.deleteButton')}
+                </AdminButton>
               )}
             </div>
           )}
@@ -590,7 +675,10 @@ export const Admin = () => {
         value={actionReason}
         onChange={setActionReason}
         onSubmit={submitReason}
-        onCancel={() => { setReasonDialog(null); setReasonError('') }}
+        onCancel={() => {
+          setReasonDialog(null)
+          setReasonError('')
+        }}
         submitText={t('admin.hideButton')}
         cancelText={t('admin.cancelReason')}
         maxLength={200}
@@ -606,7 +694,10 @@ export const Admin = () => {
         value={actionReason}
         onChange={setActionReason}
         onSubmit={submitReason}
-        onCancel={() => { setReasonDialog(null); setReasonError('') }}
+        onCancel={() => {
+          setReasonDialog(null)
+          setReasonError('')
+        }}
         submitText={t('admin.deleteButton')}
         cancelText={t('admin.cancelReason')}
         maxLength={200}
@@ -618,8 +709,16 @@ export const Admin = () => {
       {showStepUp && accessToken && (
         <StepUpDialog
           accessToken={accessToken}
-          onSuccess={() => { setShowStepUp(false); const a = pendingActionRef.current; pendingActionRef.current = null; void a?.() }}
-          onCancel={() => { setShowStepUp(false); pendingActionRef.current = null }}
+          onSuccess={() => {
+            setShowStepUp(false)
+            const a = pendingActionRef.current
+            pendingActionRef.current = null
+            void a?.()
+          }}
+          onCancel={() => {
+            setShowStepUp(false)
+            pendingActionRef.current = null
+          }}
         />
       )}
     </div>

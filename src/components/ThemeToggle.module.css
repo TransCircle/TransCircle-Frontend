@@ -33,11 +33,11 @@
   mix-blend-mode: normal;
 }
 
-.ripple[data-theme="dark"] {
+.ripple[data-theme='dark'] {
   background-color: #12121a;
 }
 
-.ripple[data-theme="light"] {
+.ripple[data-theme='light'] {
   background-color: #fff9fb;
 }
 

@@ -2,7 +2,9 @@
   border: 1.5px solid var(--divider-color);
   border-radius: var(--radius-sm);
   overflow: hidden;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .editorWrapper:focus-within {
@@ -33,7 +35,10 @@
   font-size: 0.8rem;
   font-family: inherit;
   cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    background-color 0.15s ease;
   white-space: nowrap;
 }
 

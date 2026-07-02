@@ -27,7 +27,10 @@ export const RequireReviewerOrAdminLayout = () => {
   if (!allowed) {
     return (
       <div className={shell.page}>
-        <EmptyState title={t('admin.accessDenied')} description={t('admin.accessDeniedDetail', { username: user.username })} />
+        <EmptyState
+          title={t('admin.accessDenied')}
+          description={t('admin.accessDeniedDetail', { username: user.username })}
+        />
       </div>
     )
   }

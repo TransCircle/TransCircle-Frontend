@@ -9,7 +9,18 @@ interface ImageUploaderProps {
 }
 
 const UploadIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
     <path d="M17 8l-5-5-5 5" />
     <path d="M12 3v12" />
@@ -96,7 +107,7 @@ export const ImageUploader = ({ onUploaded }: ImageUploaderProps) => {
         aria-hidden="true"
         tabIndex={-1}
         style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }}
-        onChange={e => {
+        onChange={(e) => {
           handleFile(e.target.files?.[0])
           e.target.value = ''
         }}

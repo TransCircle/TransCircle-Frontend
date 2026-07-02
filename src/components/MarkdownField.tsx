@@ -29,7 +29,9 @@ export const MarkdownField = ({ label, value, onChange, required, error, imageHi
   // Keep the latest value in a ref (synced via effect, not during render) so the
   // async image-upload callback appends to current content without a stale closure.
   const valueRef = useRef(value)
-  useEffect(() => { valueRef.current = value }, [value])
+  useEffect(() => {
+    valueRef.current = value
+  }, [value])
 
   // Map the high-contrast theme to the editor's dark skin (its 'light' skin would
   // render a white surface on the black contrast page).

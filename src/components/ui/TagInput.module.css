@@ -23,7 +23,9 @@
   border: 1.5px solid var(--divider-color);
   border-radius: var(--radius-sm);
   background-color: var(--surface-card);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .box:focus-within {
@@ -75,7 +77,9 @@
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 /* Expand the tap target to >=40px without bloating the chip visually. */

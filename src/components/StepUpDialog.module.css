@@ -51,7 +51,9 @@
   background-color: var(--surface-card);
   outline: none;
   margin-bottom: 0.9rem;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .input::placeholder {
@@ -89,7 +91,10 @@
   padding: 0.55rem 1.25rem;
   cursor: pointer;
   border: 1.5px solid transparent;
-  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
 }
 
 .btnPrimary,

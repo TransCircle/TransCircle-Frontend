@@ -41,9 +41,10 @@ export const AuthError = () => {
   }, [status, code])
 
   // login_blocked: use code to distinguish specific ban reasons (api.md §1.6.2)
-  const messageKey = status === 'login_blocked' && BLOCKED_CODE_MESSAGES[code]
-    ? BLOCKED_CODE_MESSAGES[code]
-    : (ERROR_MESSAGES[status] || (ALLOWED_REASONS.has(reasonKey) ? reasonKey : 'oauth.errorDescription'))
+  const messageKey =
+    status === 'login_blocked' && BLOCKED_CODE_MESSAGES[code]
+      ? BLOCKED_CODE_MESSAGES[code]
+      : ERROR_MESSAGES[status] || (ALLOWED_REASONS.has(reasonKey) ? reasonKey : 'oauth.errorDescription')
 
   return (
     <StatusScreen
@@ -51,7 +52,9 @@ export const AuthError = () => {
       title={t('oauth.errorTitle')}
       description={t(messageKey)}
       detail={code ? `(${code})` : undefined}
-      actions={[{ label: t('oauth.errorBackToHome'), variant: 'secondary', onClick: () => navigate('/', { replace: true }) }]}
+      actions={[
+        { label: t('oauth.errorBackToHome'), variant: 'secondary', onClick: () => navigate('/', { replace: true }) },
+      ]}
     />
   )
 }

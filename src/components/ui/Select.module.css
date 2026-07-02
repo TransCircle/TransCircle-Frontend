@@ -34,7 +34,9 @@
   cursor: pointer;
   text-align: left;
   outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .trigger:focus-visible,

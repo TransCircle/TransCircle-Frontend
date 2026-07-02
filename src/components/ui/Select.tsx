@@ -1,22 +1,39 @@
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type ReactNode,
-} from 'react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { cx } from '../admin/cx'
 import styles from './Select.module.css'
 
 const ChevronIcon = () => (
-  <svg className={styles.chevron} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+  <svg
+    className={styles.chevron}
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
     <path d="m6 9 6 6 6-6" />
   </svg>
 )
 
 const CheckIcon = () => (
-  <svg className={styles.check} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+  <svg
+    className={styles.check}
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.4"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
     <path d="M20 6 9 17l-5-5" />
   </svg>
 )
@@ -131,14 +148,20 @@ export function Select<V extends string = string>({
         break
       case 'ArrowDown': {
         e.preventDefault()
-        if (!open) { openWith(selectedIndex); break }
+        if (!open) {
+          openWith(selectedIndex)
+          break
+        }
         const n = findEnabled(active + 1, 1)
         if (n !== -1) setActive(n)
         break
       }
       case 'ArrowUp': {
         e.preventDefault()
-        if (!open) { openWith(selectedIndex >= 0 ? selectedIndex : findEnabled(last, -1)); break }
+        if (!open) {
+          openWith(selectedIndex >= 0 ? selectedIndex : findEnabled(last, -1))
+          break
+        }
         const n = findEnabled(active - 1, -1)
         if (n !== -1) setActive(n)
         break
@@ -158,7 +181,10 @@ export function Select<V extends string = string>({
         break
       }
       case 'Escape':
-        if (open) { e.preventDefault(); setOpen(false) }
+        if (open) {
+          e.preventDefault()
+          setOpen(false)
+        }
         break
       case 'Tab':
         if (open) setOpen(false)
@@ -168,9 +194,14 @@ export function Select<V extends string = string>({
           const buf = typeahead.current.buf + e.key.toLowerCase()
           typeahead.current.buf = buf
           window.clearTimeout(typeahead.current.timer)
-          typeahead.current.timer = window.setTimeout(() => { typeahead.current.buf = '' }, 500)
+          typeahead.current.timer = window.setTimeout(() => {
+            typeahead.current.buf = ''
+          }, 500)
           const match = options.findIndex((o) => !o.disabled && o.label.toLowerCase().startsWith(buf))
-          if (match !== -1) { setActive(match); if (!open) setOpen(true) }
+          if (match !== -1) {
+            setActive(match)
+            if (!open) setOpen(true)
+          }
         }
     }
   }
@@ -207,7 +238,14 @@ export function Select<V extends string = string>({
           <ChevronIcon />
         </button>
         {open && (
-          <ul ref={listRef} id={listId} role="listbox" aria-labelledby={labelId} className={styles.listbox} tabIndex={-1}>
+          <ul
+            ref={listRef}
+            id={listId}
+            role="listbox"
+            aria-labelledby={labelId}
+            className={styles.listbox}
+            tabIndex={-1}
+          >
             {options.map((o, i) => {
               const isSelected = o.value === value
               return (

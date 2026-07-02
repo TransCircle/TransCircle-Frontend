@@ -87,7 +87,9 @@
   background: var(--bg-color);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .collapseBtn:hover {
@@ -124,7 +126,9 @@
   font-size: 0.9rem;
   font-weight: 500;
   white-space: nowrap;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .navItem:hover {

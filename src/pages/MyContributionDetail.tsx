@@ -53,11 +53,19 @@ export const MyContributionDetail = () => {
   const { t } = useTranslation()
   const formatTs = useFormatTs()
 
-  const STATUS_LABELS: Record<string, string> = useMemo(() => ({
-    draft: t('myContributionDetail.statusDraft'), pending: t('myContributionDetail.statusPending'), in_review: t('myContributionDetail.statusInReview'),
-    approved: t('myContributionDetail.statusApproved'), rejected: t('myContributionDetail.statusRejected'), published: t('myContributionDetail.statusPublished'),
-    hidden: t('myContributionDetail.statusHidden'), withdrawn: t('myContributionDetail.statusWithdrawn'),
-  }), [t])
+  const STATUS_LABELS: Record<string, string> = useMemo(
+    () => ({
+      draft: t('myContributionDetail.statusDraft'),
+      pending: t('myContributionDetail.statusPending'),
+      in_review: t('myContributionDetail.statusInReview'),
+      approved: t('myContributionDetail.statusApproved'),
+      rejected: t('myContributionDetail.statusRejected'),
+      published: t('myContributionDetail.statusPublished'),
+      hidden: t('myContributionDetail.statusHidden'),
+      withdrawn: t('myContributionDetail.statusWithdrawn'),
+    }),
+    [t],
+  )
 
   const [contrib, setContrib] = useState<ContributionDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -99,9 +107,12 @@ export const MyContributionDetail = () => {
     setSaving(true)
     setActionError('')
     const result = await patch(`/me/contributions/${contrib.id}`, {
-      title, content, contentFormat: 'markdown',
+      title,
+      content,
+      contentFormat: 'markdown',
       summary: summary || null,
-      tags, language,
+      tags,
+      language,
       expectedVersion: contrib.version,
     })
     setSaving(false)
@@ -130,7 +141,15 @@ export const MyContributionDetail = () => {
     setConfirmBusy(false)
     setConfirmAction(null)
     if (result.ok) {
-      setContrib(prev => prev ? { ...prev, status: nextStatus, version: (result.data as unknown as Record<string, number>).version ?? prev.version } : prev)
+      setContrib((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: nextStatus,
+              version: (result.data as unknown as Record<string, number>).version ?? prev.version,
+            }
+          : prev,
+      )
     } else if (result.error.code === ERRORS.VERSION_CONFLICT) {
       setActionError(t('myContributionDetail.versionConflict'))
     } else {
@@ -216,33 +235,45 @@ export const MyContributionDetail = () => {
           <div className={shell.stack}>
             <div className={shell.detailHead}>
               <h1 className={shell.detailTitle}>{contrib.title}</h1>
-              <StatusBadge tone={CONTRIB_STATUS_TONE[contrib.status] ?? 'neutral'} label={STATUS_LABELS[contrib.status] || contrib.status} />
+              <StatusBadge
+                tone={CONTRIB_STATUS_TONE[contrib.status] ?? 'neutral'}
+                label={STATUS_LABELS[contrib.status] || contrib.status}
+              />
             </div>
             <div className={shell.metaRow}>
               <span className={shell.metaItem}>v{contrib.version}</span>
               <span className={shell.metaItem}>{formatTs(contrib.createdAt)}</span>
               {contrib.submittedAt && (
-                <span className={shell.metaItem}>{t('myContributionDetail.submittedAt', { time: formatTs(contrib.submittedAt) })}</span>
+                <span className={shell.metaItem}>
+                  {t('myContributionDetail.submittedAt', { time: formatTs(contrib.submittedAt) })}
+                </span>
               )}
             </div>
             {contrib.summary && <p className={shell.subtleNote}>{contrib.summary}</p>}
             <div className={shell.contentBlock}>{contrib.contentRaw}</div>
             {contrib.review.publicNote && (
               <div className={shell.contentBlock}>
-                <strong>{t('myContributionDetail.reviewNote')}：</strong>{contrib.review.publicNote}
+                <strong>{t('myContributionDetail.reviewNote')}：</strong>
+                {contrib.review.publicNote}
                 {contrib.review.reviewedAt && ` (${formatTs(contrib.review.reviewedAt)})`}
               </div>
             )}
             {actionError && <Alert tone="error">{actionError}</Alert>}
             <div className={shell.actions}>
               {isEditable && (
-                <AdminButton variant="primary" onClick={() => setEditMode(true)}>{t('myContributionDetail.edit')}</AdminButton>
+                <AdminButton variant="primary" onClick={() => setEditMode(true)}>
+                  {t('myContributionDetail.edit')}
+                </AdminButton>
               )}
               {isEditable && (
-                <AdminButton variant="secondary" onClick={() => setConfirmAction('submit')}>{t('myContributionDetail.submitReview')}</AdminButton>
+                <AdminButton variant="secondary" onClick={() => setConfirmAction('submit')}>
+                  {t('myContributionDetail.submitReview')}
+                </AdminButton>
               )}
               {canWithdraw && (
-                <AdminButton variant="danger" onClick={() => setConfirmAction('withdraw')}>{t('myContributionDetail.withdraw')}</AdminButton>
+                <AdminButton variant="danger" onClick={() => setConfirmAction('withdraw')}>
+                  {t('myContributionDetail.withdraw')}
+                </AdminButton>
               )}
             </div>
           </div>
@@ -251,9 +282,17 @@ export const MyContributionDetail = () => {
 
       <ConfirmDialog
         open={confirmAction !== null}
-        title={confirmAction === 'withdraw' ? t('myContributionDetail.withdraw') : t('myContributionDetail.submitReview')}
-        message={confirmAction === 'withdraw' ? t('myContributionDetail.confirmWithdraw') : t('myContributionDetail.confirmSubmit')}
-        confirmText={confirmAction === 'withdraw' ? t('myContributionDetail.withdraw') : t('myContributionDetail.submitReview')}
+        title={
+          confirmAction === 'withdraw' ? t('myContributionDetail.withdraw') : t('myContributionDetail.submitReview')
+        }
+        message={
+          confirmAction === 'withdraw'
+            ? t('myContributionDetail.confirmWithdraw')
+            : t('myContributionDetail.confirmSubmit')
+        }
+        confirmText={
+          confirmAction === 'withdraw' ? t('myContributionDetail.withdraw') : t('myContributionDetail.submitReview')
+        }
         cancelText={t('myContributionDetail.cancel')}
         variant={confirmAction === 'withdraw' ? 'danger' : 'default'}
         confirmLoading={confirmBusy}

@@ -52,17 +52,20 @@ class LazyErrorBoundary extends Component<{ children: ReactNode }, { hasError: b
   }
 }
 
-function lazyNamed(
-  importFn: () => Promise<Record<string, unknown>>,
-  name: string,
-) {
+function lazyNamed(importFn: () => Promise<Record<string, unknown>>, name: string) {
   const LazyComponent = lazy(async () => {
     const mod = await importFn()
     return { default: mod[name] as React.ComponentType<unknown> }
   })
   return (
     <LazyErrorBoundary>
-      <Suspense fallback={<div role="status" aria-live="polite" aria-busy="true" style={SPINNER_STYLE}>{'Loading...'}</div>}>
+      <Suspense
+        fallback={
+          <div role="status" aria-live="polite" aria-busy="true" style={SPINNER_STYLE}>
+            {'Loading...'}
+          </div>
+        }
+      >
         <LazyComponent />
       </Suspense>
     </LazyErrorBoundary>
@@ -100,7 +103,10 @@ export const router = createBrowserRouter([
             element: <RequireReviewerOrAdminLayout />,
             children: [
               { index: true, element: lazyNamed(() => import('../pages/Admin'), 'Admin') },
-              { path: 'edit-requests', element: lazyNamed(() => import('../pages/AdminEditRequests'), 'AdminEditRequests') },
+              {
+                path: 'edit-requests',
+                element: lazyNamed(() => import('../pages/AdminEditRequests'), 'AdminEditRequests'),
+              },
             ],
           },
           {

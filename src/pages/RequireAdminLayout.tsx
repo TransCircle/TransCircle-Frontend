@@ -23,11 +23,15 @@ export const RequireAdminLayout = () => {
   }
 
   // 用户管理 / 审计子树：需要查看用户或审计的权限（具体页面再按各自权限细化）
-  const allowed = hasPermission(permissions, PERMISSIONS.USER_READ) || hasPermission(permissions, PERMISSIONS.AUDIT_READ)
+  const allowed =
+    hasPermission(permissions, PERMISSIONS.USER_READ) || hasPermission(permissions, PERMISSIONS.AUDIT_READ)
   if (!allowed) {
     return (
       <div className={shell.page}>
-        <EmptyState title={t('admin.accessDenied')} description={t('admin.accessDeniedDetail', { username: user.username })} />
+        <EmptyState
+          title={t('admin.accessDenied')}
+          description={t('admin.accessDeniedDetail', { username: user.username })}
+        />
       </div>
     )
   }

@@ -20,7 +20,9 @@ export const ErrorBoundaryPage = () => {
       title={title}
       description={description}
       detail={detail}
-      actions={[{ label: t('common.backToHome'), variant: 'secondary', onClick: () => navigate('/', { replace: true }) }]}
+      actions={[
+        { label: t('common.backToHome'), variant: 'secondary', onClick: () => navigate('/', { replace: true }) },
+      ]}
     />
   )
 }

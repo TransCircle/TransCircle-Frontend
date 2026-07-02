@@ -48,7 +48,9 @@ export const PublicContributionDetail = () => {
       setLoading(false)
     }
     load()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [id, t])
 
   if (loading) {
@@ -80,7 +82,9 @@ export const PublicContributionDetail = () => {
           <div className={shell.stackSm}>
             <h1 className={shell.detailTitle}>{detail.title}</h1>
             <div className={shell.metaRow}>
-              <span className={shell.metaItem}>{t('publicContributionDetail.author')}: {detail.author.displayName}</span>
+              <span className={shell.metaItem}>
+                {t('publicContributionDetail.author')}: {detail.author.displayName}
+              </span>
               <span className={shell.metaItem}>{formatTs(detail.publishedAt)}</span>
               <span className={shell.metaItem}>{detail.language}</span>
               {detail.tags?.map((tag) => (

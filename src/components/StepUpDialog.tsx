@@ -20,7 +20,18 @@ const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 const CheckIcon = () => (
-  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+  <svg
+    width="26"
+    height="26"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="3"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
     <path d="M20 6 9 17l-5-5" />
   </svg>
 )
@@ -59,24 +70,33 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
     // 实时查询可聚焦元素（切换 IAM 阶段后 DOM 会变化，不能用挂载时的快照），
     // 并过滤掉不可见（如移动端隐藏的折叠按钮）节点。
     const visibleFocusables = () =>
-      Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
-        .filter(n => n.offsetParent !== null || n === document.activeElement)
+      Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+        (n) => n.offsetParent !== null || n === document.activeElement,
+      )
     visibleFocusables()[0]?.focus()
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         // 验证成功 / 回查进行中不响应 Escape，避免打断自动重放导致已验证操作被丢弃
         if (iamPhaseRef.current === 'verified' || iamPhaseRef.current === 'polling') return
-        onCancel(); return
+        onCancel()
+        return
       }
       if (e.key !== 'Tab') return
       const nodes = visibleFocusables()
-      if (nodes.length === 0) { e.preventDefault(); return }
+      if (nodes.length === 0) {
+        e.preventDefault()
+        return
+      }
       const first = nodes[0]!
       const last = nodes[nodes.length - 1]!
       if (e.shiftKey) {
-        if (document.activeElement === first || !el.contains(document.activeElement)) { e.preventDefault(); last.focus() }
+        if (document.activeElement === first || !el.contains(document.activeElement)) {
+          e.preventDefault()
+          last.focus()
+        }
       } else if (document.activeElement === last) {
-        e.preventDefault(); first.focus()
+        e.preventDefault()
+        first.focus()
       }
     }
     el.addEventListener('keydown', handler)
@@ -114,7 +134,7 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
       } catch {
         // 忽略本次异常，继续重试
       }
-      await new Promise(resolve => window.setTimeout(resolve, IAM_POLL_INTERVAL_MS))
+      await new Promise((resolve) => window.setTimeout(resolve, IAM_POLL_INTERVAL_MS))
     }
     // 多次回查仍未通过：解除回查闩锁以允许后续重试，回到发起态
     iamPolledRef.current = false
@@ -149,13 +169,18 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
   }, [iamPhase])
 
   // 同步当前 IAM 阶段到 ref（供按键闭包读取）
-  useEffect(() => { iamPhaseRef.current = iamPhase }, [iamPhase])
+  useEffect(() => {
+    iamPhaseRef.current = iamPhase
+  }, [iamPhase])
 
   // 对话框卸载时关闭可能仍开着的弹窗，并清理成功重放定时器
-  useEffect(() => () => {
-    if (popupRef.current && !popupRef.current.closed) popupRef.current.close()
-    if (successTimerRef.current) window.clearTimeout(successTimerRef.current)
-  }, [])
+  useEffect(
+    () => () => {
+      if (popupRef.current && !popupRef.current.closed) popupRef.current.close()
+      if (successTimerRef.current) window.clearTimeout(successTimerRef.current)
+    },
+    [],
+  )
 
   const handleIamStepUp = async () => {
     setSubmitting(true)
@@ -187,21 +212,21 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
   }
 
   return (
-    <div
-      ref={dialogRef}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="stepup-title"
-      className={styles.overlay}
-    >
+    <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="stepup-title" className={styles.overlay}>
       <div className={styles.panel}>
-        <h3 id="stepup-title" className={styles.title}>{t('stepUp.title')}</h3>
+        <h3 id="stepup-title" className={styles.title}>
+          {t('stepUp.title')}
+        </h3>
         <p className={styles.desc}>{t('stepUp.description')}</p>
 
         {iamPhase === 'verified' ? (
           <div className={styles.successState}>
-            <span className={styles.successCheck}><CheckIcon /></span>
-            <p className={styles.successText} role="status">{t('stepUp.iamSuccess')}</p>
+            <span className={styles.successCheck}>
+              <CheckIcon />
+            </span>
+            <p className={styles.successText} role="status">
+              {t('stepUp.iamSuccess')}
+            </p>
           </div>
         ) : iamPhase === 'waiting' || iamPhase === 'polling' ? (
           <div className={styles.waitState}>
@@ -209,15 +234,25 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
             <p className={styles.waitText} role="status">
               {iamPhase === 'polling' ? t('stepUp.iamPolling') : t('stepUp.iamWaiting')}
             </p>
-            {error && <p className={styles.error} role="alert">{error}</p>}
+            {error && (
+              <p className={styles.error} role="alert">
+                {error}
+              </p>
+            )}
             <div className={styles.actions}>
-              <button type="button" className={styles.btnGhost} onClick={onCancel}>{t('stepUp.cancel')}</button>
+              <button type="button" className={styles.btnGhost} onClick={onCancel}>
+                {t('stepUp.cancel')}
+              </button>
             </div>
           </div>
         ) : (
           <>
             <p className={styles.iamPrompt}>{t('stepUp.iamPrompt')}</p>
-            {error && <p className={styles.error} role="alert">{error}</p>}
+            {error && (
+              <p className={styles.error} role="alert">
+                {error}
+              </p>
+            )}
             <div className={styles.actions}>
               <button type="button" className={styles.btnGhost} onClick={onCancel} disabled={submitting}>
                 {t('stepUp.cancel')}

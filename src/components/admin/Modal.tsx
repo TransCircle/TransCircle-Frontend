@@ -68,9 +68,7 @@ export function Modal({
     document.body.style.overflow = 'hidden'
 
     const focusTarget =
-      initialFocusRef?.current ??
-      panelRef.current?.querySelector<HTMLElement>(FOCUSABLE) ??
-      panelRef.current
+      initialFocusRef?.current ?? panelRef.current?.querySelector<HTMLElement>(FOCUSABLE) ?? panelRef.current
     focusTarget?.focus()
 
     return () => {
@@ -230,11 +228,7 @@ export function ReasonPromptDialog({
           <AdminButton variant="secondary" onClick={onCancel}>
             {cancelText}
           </AdminButton>
-          <AdminButton
-            variant={variant === 'danger' ? 'danger' : 'primary'}
-            onClick={onSubmit}
-            loading={submitting}
-          >
+          <AdminButton variant={variant === 'danger' ? 'danger' : 'primary'} onClick={onSubmit} loading={submitting}>
             {submitText}
           </AdminButton>
         </>

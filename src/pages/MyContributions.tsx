@@ -39,10 +39,31 @@ const STATUS_LABEL_KEYS: Record<string, string> = {
   withdrawn: 'myContributions.filterWithdrawn',
 }
 
-const FILTERS = ['all', 'draft', 'pending', 'in_review', 'approved', 'rejected', 'published', 'hidden', 'withdrawn'] as const
+const FILTERS = [
+  'all',
+  'draft',
+  'pending',
+  'in_review',
+  'approved',
+  'rejected',
+  'published',
+  'hidden',
+  'withdrawn',
+] as const
 
 const ChevronIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
     <path d="m9 18 6-6-6-6" />
   </svg>
 )
@@ -71,17 +92,17 @@ export const MyContributions = () => {
       if (cursorVal) params.set('cursor', cursorVal)
 
       const result = await get<MyContribution[]>(`/me/contributions?${params}`)
-      if (seq !== fetchSeq.current) return  // Stale response, discard
+      if (seq !== fetchSeq.current) return // Stale response, discard
       if (!result.ok) throw new Error(result.error.message)
 
       if (cursorVal) {
-        setItems(prev => [...prev, ...result.data])
+        setItems((prev) => [...prev, ...result.data])
       } else {
         setItems(result.data)
       }
       setCursor(result.pagination?.nextCursor || null)
     } catch (err) {
-      if (seq !== fetchSeq.current) return  // Stale response, discard
+      if (seq !== fetchSeq.current) return // Stale response, discard
       setError(err instanceof Error ? err.message : t('myContributions.error'))
     } finally {
       if (seq === fetchSeq.current) setLoading(false)
@@ -122,7 +143,12 @@ export const MyContributions = () => {
         />
       </div>
 
-      <div id="my-contributions-panel" role="tabpanel" aria-labelledby={`tab-${filterStatus}`} className={shell.tabpanel}>
+      <div
+        id="my-contributions-panel"
+        role="tabpanel"
+        aria-labelledby={`tab-${filterStatus}`}
+        className={shell.tabpanel}
+      >
         {error && <Alert tone="error">{error}</Alert>}
 
         {loading && items.length === 0 ? (
@@ -134,7 +160,11 @@ export const MyContributions = () => {
             <ul className={shell.list}>
               {items.map((item) => (
                 <li key={item.id}>
-                  <button type="button" className={shell.rowBtn} onClick={() => navigate(`/me/contributions/${item.id}`)}>
+                  <button
+                    type="button"
+                    className={shell.rowBtn}
+                    onClick={() => navigate(`/me/contributions/${item.id}`)}
+                  >
                     <span className={shell.rowMain}>
                       <span className={shell.rowTitle}>{item.title}</span>
                       <span className={shell.rowMeta}>
@@ -153,7 +183,9 @@ export const MyContributions = () => {
                         label={STATUS_LABEL_KEYS[item.status] ? t(STATUS_LABEL_KEYS[item.status]!) : item.status}
                         size="sm"
                       />
-                      <span className={shell.chevron} aria-hidden="true"><ChevronIcon /></span>
+                      <span className={shell.chevron} aria-hidden="true">
+                        <ChevronIcon />
+                      </span>
                     </span>
                   </button>
                 </li>

@@ -1,15 +1,15 @@
-import { createContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useEffect, useState, type ReactNode } from 'react'
 
-export type Theme = 'light' | 'dark';
+export type Theme = 'light' | 'dark'
 
 interface ThemeContextValue {
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
+  theme: Theme
+  setTheme: (theme: Theme) => void
 }
 
-const STORAGE_KEY = 'transcircle-theme';
-const VALID_THEMES: readonly Theme[] = ['light', 'dark'];
-const DEFAULT_THEME: Theme = 'light';
+const STORAGE_KEY = 'transcircle-theme'
+const VALID_THEMES: readonly Theme[] = ['light', 'dark']
+const DEFAULT_THEME: Theme = 'light'
 
 /**
  * 验证主题值是否合法。
@@ -17,10 +17,10 @@ const DEFAULT_THEME: Theme = 'light';
  */
 const validateTheme = (value: string | null): Theme => {
   if (value && VALID_THEMES.includes(value as Theme)) {
-    return value as Theme;
+    return value as Theme
   }
-  return DEFAULT_THEME;
-};
+  return DEFAULT_THEME
+}
 
 /**
  * 安全地读取 localStorage 中的主题设置。
@@ -28,11 +28,11 @@ const validateTheme = (value: string | null): Theme => {
  */
 const getStoredTheme = (): string | null => {
   try {
-    return localStorage.getItem(STORAGE_KEY);
+    return localStorage.getItem(STORAGE_KEY)
   } catch {
-    return null;
+    return null
   }
-};
+}
 
 /**
  * 安全地将主题写入 localStorage。
@@ -40,11 +40,11 @@ const getStoredTheme = (): string | null => {
  */
 const setStoredTheme = (theme: Theme): void => {
   try {
-    localStorage.setItem(STORAGE_KEY, theme);
+    localStorage.setItem(STORAGE_KEY, theme)
   } catch {
     // 静默忽略写入失败
   }
-};
+}
 
 /**
  * 清理 localStorage 中的无效主题值。
@@ -52,85 +52,81 @@ const setStoredTheme = (theme: Theme): void => {
  */
 const clearStoredTheme = (): void => {
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_KEY)
   } catch {
     // 静默忽略
   }
-};
+}
 
 /**
  * 将主题应用到 DOM：设置 data-theme 属性。
  * 所有 DOM 副作用统一收口于此，避免分散管理导致的漏改风险。
  */
 const applyTheme = (theme: Theme): void => {
-  document.documentElement.setAttribute('data-theme', theme);
-};
+  document.documentElement.setAttribute('data-theme', theme)
+}
 
 /**
  * 获取初始主题。
  * 优先级：本地存储(校验后) > 系统偏好 > 默认值
  */
 const getInitialTheme = (): Theme => {
-  if (typeof window === 'undefined') return DEFAULT_THEME;
+  if (typeof window === 'undefined') return DEFAULT_THEME
 
-  const stored = getStoredTheme();
+  const stored = getStoredTheme()
   if (stored) {
-    const valid = validateTheme(stored);
+    const valid = validateTheme(stored)
     if (valid === stored) {
-      return valid;
+      return valid
     }
     // 存储值无效，清理脏数据
-    clearStoredTheme();
-    return DEFAULT_THEME;
+    clearStoredTheme()
+    return DEFAULT_THEME
   }
 
   try {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    return prefersDark ? 'dark' : DEFAULT_THEME;
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    return prefersDark ? 'dark' : DEFAULT_THEME
   } catch {
-    return DEFAULT_THEME;
+    return DEFAULT_THEME
   }
-};
+}
 
-const ThemeContext = createContext<ThemeContextValue | null>(null);
+const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
+  const [theme, setThemeState] = useState<Theme>(getInitialTheme)
 
   const setTheme = (newTheme: Theme) => {
-    const validTheme = validateTheme(newTheme);
-    setThemeState(validTheme);
-    setStoredTheme(validTheme);
-    applyTheme(validTheme);
-  };
+    const validTheme = validateTheme(newTheme)
+    setThemeState(validTheme)
+    setStoredTheme(validTheme)
+    applyTheme(validTheme)
+  }
 
   // 主题变更时同步 DOM
   useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
+    applyTheme(theme)
+  }, [theme])
 
   // 监听系统主题偏好变化
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     const handleChange = (e: MediaQueryListEvent) => {
-      const stored = getStoredTheme();
+      const stored = getStoredTheme()
       // 只有当存储值为空或无效时，才跟随系统主题
       if (!stored || !VALID_THEMES.includes(stored as Theme)) {
-        const newTheme = e.matches ? 'dark' : DEFAULT_THEME;
-        setThemeState(newTheme);
-        applyTheme(newTheme);
+        const newTheme = e.matches ? 'dark' : DEFAULT_THEME
+        setThemeState(newTheme)
+        applyTheme(newTheme)
       }
-    };
+    }
 
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [])
 
-  return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
-};
+  return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>
+}
 
 export { ThemeContext, type ThemeContextValue }

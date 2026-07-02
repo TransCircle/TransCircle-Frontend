@@ -89,7 +89,7 @@ export const AdminUsers = () => {
       })
       if (seq !== fetchSeq.current) return
       if (!result.ok) throw new Error(result.error.message)
-      if (cursorVal) setUsers(prev => [...prev, ...result.data])
+      if (cursorVal) setUsers((prev) => [...prev, ...result.data])
       else setUsers(result.data)
       setCursor(result.pagination?.nextCursor || null)
     } catch (err) {
@@ -101,11 +101,11 @@ export const AdminUsers = () => {
 
   useEffect(() => {
     if (authLoading || !accessToken) return
-    if (!hasPermission(permissions, PERMISSIONS.USER_READ)) return  // 无 user:read 直接拒绝页，免发无谓 403
+    if (!hasPermission(permissions, PERMISSIONS.USER_READ)) return // 无 user:read 直接拒绝页，免发无谓 403
     if (loadedRef.current) return
     loadedRef.current = true
     fetchUsers()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, accessToken])
 
   const fetchDetail = async (userId: string) => {
@@ -136,24 +136,40 @@ export const AdminUsers = () => {
     setBanDialogUserId(null)
     setBanError('')
     const doBan = async () => {
-      const result = await post(`/admin/users/${userId}/ban`, { reason }, {
-        /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
-      })
-      if (result.ok) { fetchDetail(userId); fetchUsers() }
-      else if (result.error.code === 'STEP_UP_REQUIRED') { pendingActionRef.current = doBan; setShowStepUp(true) }
-      else setError(result.error.message)
+      const result = await post(
+        `/admin/users/${userId}/ban`,
+        { reason },
+        {
+          /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
+        },
+      )
+      if (result.ok) {
+        fetchDetail(userId)
+        fetchUsers()
+      } else if (result.error.code === 'STEP_UP_REQUIRED') {
+        pendingActionRef.current = doBan
+        setShowStepUp(true)
+      } else setError(result.error.message)
     }
     await doBan()
   }
 
   const handleUnban = async (userId: string) => {
     const doUnban = async () => {
-      const result = await post(`/admin/users/${userId}/unban`, { reason: t('adminUsers.adminUnban') }, {
-        /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
-      })
-      if (result.ok) { fetchDetail(userId); fetchUsers() }
-      else if (result.error.code === 'STEP_UP_REQUIRED') { pendingActionRef.current = doUnban; setShowStepUp(true) }
-      else setError(result.error.message)
+      const result = await post(
+        `/admin/users/${userId}/unban`,
+        { reason: t('adminUsers.adminUnban') },
+        {
+          /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
+        },
+      )
+      if (result.ok) {
+        fetchDetail(userId)
+        fetchUsers()
+      } else if (result.error.code === 'STEP_UP_REQUIRED') {
+        pendingActionRef.current = doUnban
+        setShowStepUp(true)
+      } else setError(result.error.message)
     }
     await doUnban()
   }
@@ -189,10 +205,22 @@ export const AdminUsers = () => {
           </span>
         ),
       },
-      { term: t('adminUsers.status'), value: <StatusBadge tone={USER_STATUS_TONE[detail.status] ?? 'neutral'} label={t(USER_STATUS_LABEL_KEYS[detail.status] ?? detail.status)} size="sm" /> },
+      {
+        term: t('adminUsers.status'),
+        value: (
+          <StatusBadge
+            tone={USER_STATUS_TONE[detail.status] ?? 'neutral'}
+            label={t(USER_STATUS_LABEL_KEYS[detail.status] ?? detail.status)}
+            size="sm"
+          />
+        ),
+      },
       { term: t('adminUsers.createdAt'), value: formatTs(detail.createdAt) || '—' },
       { term: t('adminUsers.lastLogin'), value: formatTs(detail.lastLoginAt) || '—' },
-      { term: t('adminUsers.passwordLabel'), value: detail.security.hasPassword ? t('adminUsers.hasPassword') : t('adminUsers.noPassword') },
+      {
+        term: t('adminUsers.passwordLabel'),
+        value: detail.security.hasPassword ? t('adminUsers.hasPassword') : t('adminUsers.noPassword'),
+      },
       { term: 'TOTP', value: detail.security.totpEnabled ? t('adminUsers.totpEnabled') : t('adminUsers.totpDisabled') },
       { term: 'Passkey', value: `${detail.security.passkeyCount}${t('adminUsers.passkeyUnit')}` },
     ]
@@ -200,14 +228,23 @@ export const AdminUsers = () => {
     return (
       <div className={shell.page}>
         <div>
-          <AdminButton variant="ghost" size="sm" onClick={() => { setSelectedId(null); setDetail(null) }}>
+          <AdminButton
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSelectedId(null)
+              setDetail(null)
+            }}
+          >
             {t('adminUsers.backToList')}
           </AdminButton>
         </div>
 
         <Card>
           <div className={shell.stack}>
-            <h2 className={shell.detailTitle}>{detail.displayName} <span className={shell.detailTitleSub}>@{detail.username}</span></h2>
+            <h2 className={shell.detailTitle}>
+              {detail.displayName} <span className={shell.detailTitleSub}>@{detail.username}</span>
+            </h2>
 
             <DescriptionList items={metaItems} columns={2} />
 
@@ -215,7 +252,7 @@ export const AdminUsers = () => {
               <div>
                 <SectionLabel>OAuth</SectionLabel>
                 <ul className={shell.history}>
-                  {detail.oauthAccounts.map(oa => (
+                  {detail.oauthAccounts.map((oa) => (
                     <li key={oa.provider} className={shell.historyItem}>
                       {t('adminUsers.oauthAccount', { provider: oa.provider, username: oa.providerUsername })}
                     </li>
@@ -230,9 +267,13 @@ export const AdminUsers = () => {
                 <p className={shell.subtleNote}>{t('adminUsers.noRoles')}</p>
               ) : (
                 <ul className={shell.history}>
-                  {detail.roles.map(r => (
+                  {detail.roles.map((r) => (
                     <li key={r.id} className={shell.historyItem}>
-                      {r.name}（{r.expiresAt ? t('adminUsers.expiresAt', { time: formatTs(r.expiresAt) }) : t('adminUsers.permanent')}）
+                      {r.name}（
+                      {r.expiresAt
+                        ? t('adminUsers.expiresAt', { time: formatTs(r.expiresAt) })
+                        : t('adminUsers.permanent')}
+                      ）
                     </li>
                   ))}
                 </ul>
@@ -246,9 +287,15 @@ export const AdminUsers = () => {
             {/* 封禁/解封需 user:ban（仅 admin）；editor 仅有 user:read 时只读不可操作 */}
             {hasPermission(permissions, PERMISSIONS.USER_BAN) && (
               <div className={shell.actions}>
-                {detail.status === 'banned'
-                  ? <AdminButton variant="primary" onClick={() => handleUnban(detail.id)}>{t('adminUsers.unban')}</AdminButton>
-                  : <AdminButton variant="danger" onClick={() => openBan(detail.id)}>{t('adminUsers.ban')}</AdminButton>}
+                {detail.status === 'banned' ? (
+                  <AdminButton variant="primary" onClick={() => handleUnban(detail.id)}>
+                    {t('adminUsers.unban')}
+                  </AdminButton>
+                ) : (
+                  <AdminButton variant="danger" onClick={() => openBan(detail.id)}>
+                    {t('adminUsers.ban')}
+                  </AdminButton>
+                )}
               </div>
             )}
           </div>
@@ -262,7 +309,10 @@ export const AdminUsers = () => {
           value={banReason}
           onChange={setBanReason}
           onSubmit={submitBan}
-          onCancel={() => { setBanDialogUserId(null); setBanError('') }}
+          onCancel={() => {
+            setBanDialogUserId(null)
+            setBanError('')
+          }}
           submitText={t('adminUsers.ban')}
           cancelText={t('admin.cancelReason')}
           maxLength={500}
@@ -274,8 +324,16 @@ export const AdminUsers = () => {
         {showStepUp && accessToken && (
           <StepUpDialog
             accessToken={accessToken}
-            onSuccess={() => { setShowStepUp(false); const a = pendingActionRef.current; pendingActionRef.current = null; void a?.() }}
-            onCancel={() => { setShowStepUp(false); pendingActionRef.current = null }}
+            onSuccess={() => {
+              setShowStepUp(false)
+              const a = pendingActionRef.current
+              pendingActionRef.current = null
+              void a?.()
+            }}
+            onCancel={() => {
+              setShowStepUp(false)
+              pendingActionRef.current = null
+            }}
           />
         )}
       </div>
@@ -295,7 +353,9 @@ export const AdminUsers = () => {
             clearAriaLabel={t('admin.ui.clear')}
             fieldClassName={shell.grow}
           />
-          <AdminButton variant="secondary" onClick={() => fetchUsers()}>{t('adminUsers.search')}</AdminButton>
+          <AdminButton variant="secondary" onClick={() => fetchUsers()}>
+            {t('adminUsers.search')}
+          </AdminButton>
         </div>
       </div>
 
@@ -307,7 +367,7 @@ export const AdminUsers = () => {
         <EmptyState title={t('adminUsers.empty')} />
       ) : (
         <ul className={shell.list}>
-          {users.map(u => (
+          {users.map((u) => (
             <li key={u.id}>
               <button type="button" className={shell.rowBtn} onClick={() => fetchDetail(u.id)}>
                 <span className={shell.rowMain}>
@@ -319,7 +379,11 @@ export const AdminUsers = () => {
                   </span>
                 </span>
                 <span className={shell.rowRight}>
-                  <StatusBadge tone={USER_STATUS_TONE[u.status] ?? 'neutral'} label={t(USER_STATUS_LABEL_KEYS[u.status] ?? u.status)} size="sm" />
+                  <StatusBadge
+                    tone={USER_STATUS_TONE[u.status] ?? 'neutral'}
+                    label={t(USER_STATUS_LABEL_KEYS[u.status] ?? u.status)}
+                    size="sm"
+                  />
                 </span>
               </button>
             </li>

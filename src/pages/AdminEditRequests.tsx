@@ -90,7 +90,7 @@ function getProposedField(
   if (nested === null) return null
   // 旧扁平结构回退：检查 key 存在后再读取
   const old = detail as unknown as OldFlatFieldMap
-  return flatKey in detail ? old[flatKey] as string | undefined : undefined
+  return flatKey in detail ? (old[flatKey] as string | undefined) : undefined
 }
 
 function getProposedFieldArray(
@@ -104,7 +104,7 @@ function getProposedFieldArray(
   if (nested === null) return null
   // 旧扁平结构回退
   const old = detail as unknown as OldFlatFieldMap
-  return flatKey in detail ? old[flatKey] as string[] | undefined : undefined
+  return flatKey in detail ? (old[flatKey] as string[] | undefined) : undefined
 }
 
 export const AdminEditRequests = () => {
@@ -137,7 +137,7 @@ export const AdminEditRequests = () => {
       })
       if (seq !== fetchSeq.current) return
       if (!result.ok) throw new Error(result.error.message)
-      if (cursorVal) setItems(prev => [...prev, ...result.data])
+      if (cursorVal) setItems((prev) => [...prev, ...result.data])
       else setItems(result.data)
       setCursor(result.pagination?.nextCursor || null)
     } catch (err) {
@@ -154,7 +154,7 @@ export const AdminEditRequests = () => {
     setItems([])
     setCursor(null)
     fetchList()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, accessToken, statusFilter])
 
   const fetchDetail = async (id: string) => {
@@ -169,11 +169,17 @@ export const AdminEditRequests = () => {
     if (!selectedId || !detail) return
     setVoteSubmitting(true)
     setError('')
-    const result = await post(`/admin/edit-requests/${selectedId}/vote`, {
-      vote,
-      note: voteNote.trim() || null,
-      expectedVersion: detail.version,
-    }, { /* apiRequest 自动注入 Authorization 并处理 401 刷新 */ })
+    const result = await post(
+      `/admin/edit-requests/${selectedId}/vote`,
+      {
+        vote,
+        note: voteNote.trim() || null,
+        expectedVersion: detail.version,
+      },
+      {
+        /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
+      },
+    )
     setVoteSubmitting(false)
     if (result.ok) {
       setVoteNote('')
@@ -190,7 +196,10 @@ export const AdminEditRequests = () => {
   if (!authLoading && (!user || !isAdmin)) {
     return (
       <div className={shell.page}>
-        <EmptyState title={t('adminEditRequests.accessDenied')} description={t('adminEditRequests.accessDeniedDetail')} />
+        <EmptyState
+          title={t('adminEditRequests.accessDenied')}
+          description={t('adminEditRequests.accessDeniedDetail')}
+        />
       </div>
     )
   }
@@ -211,7 +220,16 @@ export const AdminEditRequests = () => {
 
     const metaItems: DescriptionItem[] = [
       { term: t('adminEditRequests.contributionId'), value: detail.contribution?.id ?? detail.contributionId ?? '—' },
-      { term: t('adminEditRequests.status'), value: <StatusBadge tone={EDIT_REQUEST_STATUS_TONE[detail.status] ?? 'neutral'} label={t(EDIT_REQUEST_STATUS_LABEL_KEYS[detail.status] ?? detail.status)} size="sm" /> },
+      {
+        term: t('adminEditRequests.status'),
+        value: (
+          <StatusBadge
+            tone={EDIT_REQUEST_STATUS_TONE[detail.status] ?? 'neutral'}
+            label={t(EDIT_REQUEST_STATUS_LABEL_KEYS[detail.status] ?? detail.status)}
+            size="sm"
+          />
+        ),
+      },
       { term: t('adminEditRequests.version'), value: `v${detail.version}` },
       { term: t('adminEditRequests.created'), value: formatTs(detail.createdAt) || '—' },
     ]
@@ -219,7 +237,14 @@ export const AdminEditRequests = () => {
     return (
       <div className={shell.page}>
         <div>
-          <AdminButton variant="ghost" size="sm" onClick={() => { setSelectedId(null); setDetail(null) }}>
+          <AdminButton
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSelectedId(null)
+              setDetail(null)
+            }}
+          >
             {t('adminEditRequests.backToList')}
           </AdminButton>
         </div>
@@ -231,7 +256,8 @@ export const AdminEditRequests = () => {
             <DescriptionList items={metaItems} columns={2} />
 
             <div className={shell.contentBlock}>
-              <strong>{t('adminEditRequests.reason')}：</strong>{detail.reason}
+              <strong>{t('adminEditRequests.reason')}：</strong>
+              {detail.reason}
             </div>
 
             {/* Votes progress */}
@@ -249,7 +275,10 @@ export const AdminEditRequests = () => {
                 />
                 {detail.myVote && (
                   <p className={shell.subtleNoteSpaced}>
-                    {t('adminEditRequests.myVote')}：{detail.myVote === 'approve' ? t('adminEditRequests.voteApprove') : t('adminEditRequests.voteReject')}
+                    {t('adminEditRequests.myVote')}：
+                    {detail.myVote === 'approve'
+                      ? t('adminEditRequests.voteApprove')
+                      : t('adminEditRequests.voteReject')}
                   </p>
                 )}
               </Card>
@@ -259,10 +288,16 @@ export const AdminEditRequests = () => {
             {(proposedTitle || proposedSummary || proposedContent || (proposedTags && proposedTags.length > 0)) && (
               <div className={shell.stackSm}>
                 {proposedTitle && (
-                  <p className={shell.noteText}><strong>{t('adminEditRequests.proposedTitle')}：</strong>{proposedTitle}</p>
+                  <p className={shell.noteText}>
+                    <strong>{t('adminEditRequests.proposedTitle')}：</strong>
+                    {proposedTitle}
+                  </p>
                 )}
                 {proposedSummary && (
-                  <p className={shell.noteText}><strong>{t('adminEditRequests.proposedSummary')}：</strong>{proposedSummary}</p>
+                  <p className={shell.noteText}>
+                    <strong>{t('adminEditRequests.proposedSummary')}：</strong>
+                    {proposedSummary}
+                  </p>
                 )}
                 {proposedContent && (
                   <div className={shell.contentBlock}>
@@ -271,7 +306,10 @@ export const AdminEditRequests = () => {
                   </div>
                 )}
                 {proposedTags && proposedTags.length > 0 && (
-                  <p className={shell.noteText}><strong>{t('adminEditRequests.proposedTags')}：</strong>{proposedTags.join(', ')}</p>
+                  <p className={shell.noteText}>
+                    <strong>{t('adminEditRequests.proposedTags')}：</strong>
+                    {proposedTags.join(', ')}
+                  </p>
                 )}
               </div>
             )}
@@ -280,7 +318,11 @@ export const AdminEditRequests = () => {
 
             {detail.status === 'pending' && hasPermission(permissions, PERMISSIONS.CONTRIBUTION_EDIT_REQUEST_VOTE) && (
               <div className={shell.stackSm}>
-                <TextArea value={voteNote} onChange={e => setVoteNote(e.target.value)} placeholder={t('adminEditRequests.voteNotePlaceholder')} />
+                <TextArea
+                  value={voteNote}
+                  onChange={(e) => setVoteNote(e.target.value)}
+                  placeholder={t('adminEditRequests.voteNotePlaceholder')}
+                />
                 <div className={shell.actions}>
                   <AdminButton variant="primary" onClick={() => handleVote('approve')} loading={voteSubmitting}>
                     {t('adminEditRequests.voteApprove')}
@@ -296,12 +338,16 @@ export const AdminEditRequests = () => {
               <Card tone="subtle" padding="sm">
                 <SectionLabel>{t('adminEditRequests.voteHistory')}</SectionLabel>
                 <ul className={shell.history}>
-                  {detail.votes.history.map(v => (
+                  {detail.votes.history.map((v) => (
                     <li key={v.reviewerId} className={shell.historyItem}>
                       <span className={shell.historyHead}>
                         <StatusBadge
                           tone={v.vote === 'approve' ? 'green' : 'red'}
-                          label={v.vote === 'approve' ? t('adminEditRequests.voteApprove') : t('adminEditRequests.voteReject')}
+                          label={
+                            v.vote === 'approve'
+                              ? t('adminEditRequests.voteApprove')
+                              : t('adminEditRequests.voteReject')
+                          }
                           size="sm"
                         />
                         <span>{v.note || t('adminEditRequests.noNote')}</span>
@@ -329,24 +375,44 @@ export const AdminEditRequests = () => {
   return (
     <div className={shell.page}>
       {error && <Alert tone="error">{error}</Alert>}
-      <Tabs items={statusTabs} value={statusFilter} onChange={setStatusFilter} ariaLabel={t('adminEditRequests.filterLabel')} variant="underline" panelId="edit-request-panel" />
+      <Tabs
+        items={statusTabs}
+        value={statusFilter}
+        onChange={setStatusFilter}
+        ariaLabel={t('adminEditRequests.filterLabel')}
+        variant="underline"
+        panelId="edit-request-panel"
+      />
       {loading && items.length === 0 ? (
         <Spinner size="md" label={t('adminEditRequests.loading')} />
       ) : items.length === 0 ? (
-        <EmptyState title={statusFilter === 'pending' ? t('adminEditRequests.empty') : t('adminEditRequests.emptyWithFilter', { status: t(EDIT_REQUEST_STATUS_LABEL_KEYS[statusFilter] ?? statusFilter) })} />
+        <EmptyState
+          title={
+            statusFilter === 'pending'
+              ? t('adminEditRequests.empty')
+              : t('adminEditRequests.emptyWithFilter', {
+                  status: t(EDIT_REQUEST_STATUS_LABEL_KEYS[statusFilter] ?? statusFilter),
+                })
+          }
+        />
       ) : (
         <ul className={shell.list}>
-          {items.map(item => (
+          {items.map((item) => (
             <li key={item.id}>
               <button type="button" className={shell.rowBtn} onClick={() => fetchDetail(item.id)}>
                 <span className={shell.rowMain}>
                   <span className={shell.rowTitle}>
-                    {item.contribution?.title ?? `${t('adminEditRequests.contribPrefix')} ${limitByUnicode(item.contribution?.id ?? item.contributionId ?? '', 20)}…`}
+                    {item.contribution?.title ??
+                      `${t('adminEditRequests.contribPrefix')} ${limitByUnicode(item.contribution?.id ?? item.contributionId ?? '', 20)}…`}
                   </span>
                   <span className={shell.rowMeta}>{limitByUnicode(item.reason, 60)}</span>
                 </span>
                 <span className={shell.rowRight}>
-                  <StatusBadge tone={EDIT_REQUEST_STATUS_TONE[item.status] ?? 'neutral'} label={t(EDIT_REQUEST_STATUS_LABEL_KEYS[item.status] ?? item.status)} size="sm" />
+                  <StatusBadge
+                    tone={EDIT_REQUEST_STATUS_TONE[item.status] ?? 'neutral'}
+                    label={t(EDIT_REQUEST_STATUS_LABEL_KEYS[item.status] ?? item.status)}
+                    size="sm"
+                  />
                 </span>
               </button>
             </li>

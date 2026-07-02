@@ -52,7 +52,18 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(function Che
           {...rest}
         />
         <span className={styles.box} aria-hidden="true">
-          <svg className={styles.check} viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" focusable="false">
+          <svg
+            className={styles.check}
+            viewBox="0 0 24 24"
+            width="14"
+            height="14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            focusable="false"
+          >
             <path d="M20 6 9 17l-5-5" />
           </svg>
           <span className={styles.dash} />

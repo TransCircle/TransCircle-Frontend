@@ -3,16 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { post, patch } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
-import {
-  AdminButton,
-  Alert,
-  Card,
-  DescriptionList,
-  PageHeader,
-  Pill,
-  Spinner,
-  TextField,
-} from '@/components/ui'
+import { AdminButton, Alert, Card, DescriptionList, PageHeader, Pill, Spinner, TextField } from '@/components/ui'
 import { PERMISSION_LABEL_KEYS, ROLE_LABEL_KEYS } from '@/api/permissions'
 import shell from './Page.module.css'
 import s from './SettingsSecurity.module.css'
@@ -104,7 +95,7 @@ export const SettingsSecurity = () => {
 
     if (result.ok) {
       setProfileSuccess(true)
-      setProfile(prev => prev ? { ...prev, displayName: dn } : prev)
+      setProfile((prev) => (prev ? { ...prev, displayName: dn } : prev))
     } else {
       setProfileError(result.error.message)
     }
@@ -158,7 +149,10 @@ export const SettingsSecurity = () => {
               items={[
                 { term: t('settings.username'), value: profile.username },
                 { term: t('settings.email'), value: profile.email ?? '-' },
-                { term: t('settings.emailVerified'), value: profile.emailVerified ? t('settings.yes') : t('settings.no') },
+                {
+                  term: t('settings.emailVerified'),
+                  value: profile.emailVerified ? t('settings.yes') : t('settings.no'),
+                },
               ]}
             />
           )}
@@ -166,7 +160,7 @@ export const SettingsSecurity = () => {
           <TextField
             label={t('settings.displayNameLabel')}
             value={profileDisplayName}
-            onChange={e => setProfileDisplayName(e.target.value)}
+            onChange={(e) => setProfileDisplayName(e.target.value)}
             maxLength={50}
             required
             autoComplete="nickname"
@@ -176,7 +170,12 @@ export const SettingsSecurity = () => {
           {profileError && <Alert tone="error">{profileError}</Alert>}
 
           <div className={shell.actions}>
-            <AdminButton variant="primary" loading={profileSubmitting} disabled={!profileDisplayName.trim()} onClick={handleProfileUpdate}>
+            <AdminButton
+              variant="primary"
+              loading={profileSubmitting}
+              disabled={!profileDisplayName.trim()}
+              onClick={handleProfileUpdate}
+            >
               {t('settings.saveProfile')}
             </AdminButton>
           </div>
@@ -217,15 +216,21 @@ export const SettingsSecurity = () => {
         <Card>
           <div className={shell.stack}>
             <h2 className={shell.detailTitle}>{t('settings.permissionsHeading')}</h2>
-            <p className={s.note}>{isIam ? t('settings.permissionsDescriptionIam') : t('settings.permissionsDescription')}</p>
+            <p className={s.note}>
+              {isIam ? t('settings.permissionsDescriptionIam') : t('settings.permissionsDescription')}
+            </p>
 
             {roles.length > 0 && (
               <div className={s.permGroup}>
                 <p className={s.permGroupLabel}>{t('settings.permissionsRoles')}</p>
                 <div className={s.chips}>
-                  {roles.map(r => {
+                  {roles.map((r) => {
                     const key = ROLE_LABEL_KEYS[r]
-                    return <Pill key={r} tone="accent">{key ? t(key) : r}</Pill>
+                    return (
+                      <Pill key={r} tone="accent">
+                        {key ? t(key) : r}
+                      </Pill>
+                    )
                   })}
                 </div>
               </div>
@@ -241,7 +246,7 @@ export const SettingsSecurity = () => {
                 <p className={s.note}>{t('settings.permissionsNone')}</p>
               ) : (
                 <div className={s.chips}>
-                  {permissions.map(p => {
+                  {permissions.map((p) => {
                     const key = PERMISSION_LABEL_KEYS[p]
                     return <Pill key={p}>{key ? t(key) : p}</Pill>
                   })}

@@ -38,7 +38,9 @@
   font-size: 0.9rem;
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .option:hover:not(:disabled) {

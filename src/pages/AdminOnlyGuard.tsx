@@ -21,7 +21,8 @@ export const AdminOnlyGuard = () => {
     )
   }
 
-  const allowed = !!user && (hasPermission(permissions, PERMISSIONS.USER_READ) || hasPermission(permissions, PERMISSIONS.AUDIT_READ))
+  const allowed =
+    !!user && (hasPermission(permissions, PERMISSIONS.USER_READ) || hasPermission(permissions, PERMISSIONS.AUDIT_READ))
   if (!allowed) {
     return (
       <div className={shell.page}>

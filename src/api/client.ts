@@ -134,9 +134,9 @@ async function autoRefreshOn401(res: Response, url: string, init: RequestInit, h
 export function newIdempotencyKey(): string {
   if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
   // Safari 15.3- fallback: UUID v4
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0
-    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16)
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
   })
 }
 
@@ -188,20 +188,24 @@ type ApiResultBase = {
   rateLimit?: RateLimitInfo
 }
 
-export type ApiResult<T = unknown> = ApiResultBase & ({
-  ok: true
-  data: T
-  /** 非 JSON 响应的原始 Response 对象（如 blob/image），此时 data=undefined */
-  raw?: Response
-  pagination?: {
-    limit: number
-    nextCursor: string | null
-    hasMore: boolean
-  }
-} | {
-  ok: false
-  error: ApiErrorBody['error']
-})
+export type ApiResult<T = unknown> = ApiResultBase &
+  (
+    | {
+        ok: true
+        data: T
+        /** 非 JSON 响应的原始 Response 对象（如 blob/image），此时 data=undefined */
+        raw?: Response
+        pagination?: {
+          limit: number
+          nextCursor: string | null
+          hasMore: boolean
+        }
+      }
+    | {
+        ok: false
+        error: ApiErrorBody['error']
+      }
+  )
 
 // ─── Request Options ───────────────────────────────────────────
 
@@ -275,9 +279,7 @@ export async function apiRequest<T = unknown>(
   }
 
   // Idempotency-Key — 提升到业务意图层，超时重试复用同一 key（M9）
-  const idempotencyKey = options.idempotent
-    ? (_intentKey || newIdempotencyKey())
-    : undefined
+  const idempotencyKey = options.idempotent ? _intentKey || newIdempotencyKey() : undefined
   if (idempotencyKey && !_intentKey) {
     _intentKey = idempotencyKey
   }
@@ -297,8 +299,13 @@ export async function apiRequest<T = unknown>(
     signal: options.signal,
   }
   if (body !== undefined) {
-    if (body instanceof FormData || body instanceof Blob || body instanceof ArrayBuffer ||
-        body instanceof URLSearchParams || body instanceof ReadableStream) {
+    if (
+      body instanceof FormData ||
+      body instanceof Blob ||
+      body instanceof ArrayBuffer ||
+      body instanceof URLSearchParams ||
+      body instanceof ReadableStream
+    ) {
       init.body = body
       if (body instanceof FormData) {
         headers.delete('Content-Type')
@@ -360,7 +367,11 @@ export async function apiRequest<T = unknown>(
     // Log rate limit info for 429 responses (L1)
     if (status === 429 && rateLimit?.retryAfter) {
       console.warn(`[api] Rate limited: retry after ${rateLimit.retryAfter}s (${rateLimit.limit} req/window)`)
-      try { window.dispatchEvent(new CustomEvent('api:rate-limit', { detail: rateLimit })) } catch {/* noop */}
+      try {
+        window.dispatchEvent(new CustomEvent('api:rate-limit', { detail: rateLimit }))
+      } catch {
+        /* noop */
+      }
     }
 
     if (status >= 200 && status < 300) {
@@ -381,7 +392,14 @@ export async function apiRequest<T = unknown>(
     // Also extract CSRF token from error responses (H1)
     const errorCsrf = json.csrfToken as string | undefined
     if (errorCsrf) saveCsrfToken(errorCsrf)
-    const errorData = json.error as { code: string; message: string; details?: Array<{ field: string; reason: string }>; data?: Record<string, unknown> } | undefined
+    const errorData = json.error as
+      | {
+          code: string
+          message: string
+          details?: Array<{ field: string; reason: string }>
+          data?: Record<string, unknown>
+        }
+      | undefined
 
     // Append retry-after info to rate-limited error messages so pages display it automatically (L1)
     if (status === 429 && rateLimit?.retryAfter && errorData?.message) {
@@ -427,19 +445,18 @@ export function del<T = unknown>(path: string, body?: unknown, options?: ApiRequ
 /**
  * Upload a file via multipart/form-data (api.md §11.1).
  */
-export async function uploadFile<T = {
-  id: string
-  url: string
-  mimeType: string
-  size: number
-  width: number
-  height: number
-  sha256: string
-  createdAt: number
-}>(
-  file: File,
-  signal?: AbortSignal,
-): Promise<ApiResult<T>> {
+export async function uploadFile<
+  T = {
+    id: string
+    url: string
+    mimeType: string
+    size: number
+    width: number
+    height: number
+    sha256: string
+    createdAt: number
+  },
+>(file: File, signal?: AbortSignal): Promise<ApiResult<T>> {
   const formData = new FormData()
   formData.append('file', file)
 
@@ -459,9 +476,18 @@ export async function uploadFile<T = {
     })
 
     // 401 时自动刷新重试（共享逻辑，与 apiRequest 一致）
-    res = await autoRefreshOn401(res, `${API_BASE}/images`, {
-      method: 'POST', headers, credentials: 'include', body: formData, signal,
-    }, headers)
+    res = await autoRefreshOn401(
+      res,
+      `${API_BASE}/images`,
+      {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: formData,
+        signal,
+      },
+      headers,
+    )
   } catch {
     // 网络错误（断开/DNS/超时等），与 apiRequest 一致的错误格式
     return { ok: false, error: { code: 'NETWORK_ERROR', message: '' }, requestId: '', status: 0 }
@@ -475,23 +501,28 @@ export async function uploadFile<T = {
     if (!contentType.includes('application/json')) {
       return { ok: true, data: undefined as T, raw: res, requestId, status }
     }
-    const json = await res.json() as Record<string, unknown>
+    const json = (await res.json()) as Record<string, unknown>
     return { ok: true, data: json.data as T, requestId: (json.requestId as string) || requestId, status }
   }
 
   if (contentType.includes('application/json')) {
-    const json = await res.json() as Record<string, unknown>
+    const json = (await res.json()) as Record<string, unknown>
     return {
       ok: false,
-      error: (json as { error?: { code: string; message: string } }).error || { code: 'UNKNOWN', message: 'Upload failed' },
-      requestId: (json.requestId as string) || requestId, status,
+      error: (json as { error?: { code: string; message: string } }).error || {
+        code: 'UNKNOWN',
+        message: 'Upload failed',
+      },
+      requestId: (json.requestId as string) || requestId,
+      status,
     }
   }
 
   return {
     ok: false,
     error: { code: 'UPLOAD_ERROR', message: `HTTP ${status}` },
-    requestId, status,
+    requestId,
+    status,
   }
 }
 

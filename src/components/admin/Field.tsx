@@ -1,21 +1,38 @@
-import {
-  forwardRef,
-  useId,
-  type InputHTMLAttributes,
-  type TextareaHTMLAttributes,
-} from 'react'
+import { forwardRef, useId, type InputHTMLAttributes, type TextareaHTMLAttributes } from 'react'
 import { cx } from './cx'
 import styles from './Field.module.css'
 
 const SearchIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
     <circle cx="11" cy="11" r="7" />
     <path d="m21 21-4.3-4.3" />
   </svg>
 )
 
 const ClearIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
     <path d="M18 6 6 18" />
     <path d="m6 6 12 12" />
   </svg>
@@ -43,7 +60,11 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function T
       {label && (
         <label htmlFor={inputId} className={styles.label}>
           {label}
-          {required && <span className={styles.required} aria-hidden="true">*</span>}
+          {required && (
+            <span className={styles.required} aria-hidden="true">
+              *
+            </span>
+          )}
         </label>
       )}
       <input
@@ -86,7 +107,11 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(function 
       {label && (
         <label htmlFor={areaId} className={styles.label}>
           {label}
-          {required && <span className={styles.required} aria-hidden="true">*</span>}
+          {required && (
+            <span className={styles.required} aria-hidden="true">
+              *
+            </span>
+          )}
         </label>
       )}
       <textarea
@@ -109,8 +134,7 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(function 
 
 /* ── SearchField ─────────────────────────────────────────── */
 
-export interface SearchFieldProps
-  extends Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'> {
+export interface SearchFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'> {
   value: string
   onValueChange: (value: string) => void
   onSearch?: () => void

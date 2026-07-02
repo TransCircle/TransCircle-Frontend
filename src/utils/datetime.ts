@@ -14,11 +14,7 @@ import i18n from '@/i18n/config'
  * @param locale BCP-47 tag; defaults to the current `i18n.language`.
  * @param opts   `{ utc: true }` forces UTC display (audit fidelity); default is local time.
  */
-export function formatTs(
-  ts: number | string | null | undefined,
-  locale?: string,
-  opts?: { utc?: boolean },
-): string {
+export function formatTs(ts: number | string | null | undefined, locale?: string, opts?: { utc?: boolean }): string {
   if (ts === null || ts === undefined || ts === '') return ''
   const n = typeof ts === 'string' ? Number(ts) : ts
   if (typeof n !== 'number' || Number.isNaN(n)) return String(ts)
@@ -41,8 +37,7 @@ export function formatTs(
 export function useFormatTs() {
   const { i18n: instance } = useTranslation()
   return useCallback(
-    (ts: number | string | null | undefined, opts?: { utc?: boolean }) =>
-      formatTs(ts, instance.language, opts),
+    (ts: number | string | null | undefined, opts?: { utc?: boolean }) => formatTs(ts, instance.language, opts),
     [instance.language],
   )
 }

@@ -25,8 +25,7 @@ export const StepUpDone = () => {
     if (ran.current) return
     ran.current = true
 
-    const verificationId =
-      params.get('verification_id') || sessionStorage.getItem('iamStepUpVerificationId') || ''
+    const verificationId = params.get('verification_id') || sessionStorage.getItem('iamStepUpVerificationId') || ''
 
     // 弹窗模式：携带 verificationId 通知发起方主窗口后自行关闭。
     const isPopup = !!window.opener && window.opener !== window
@@ -39,7 +38,11 @@ export const StepUpDone = () => {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setState('popup')
       window.setTimeout(() => {
-        try { window.close() } catch { /* 某些浏览器禁止脚本关闭，保留提示 */ }
+        try {
+          window.close()
+        } catch {
+          /* 某些浏览器禁止脚本关闭，保留提示 */
+        }
       }, 200)
       return
     }
@@ -85,7 +88,9 @@ export const StepUpDone = () => {
       kind="error"
       title={t('stepUp.iamDoneTitle')}
       description={t('stepUp.iamFailed')}
-      actions={[{ label: t('stepUp.iamBack'), variant: 'secondary', onClick: () => navigate('/admin', { replace: true }) }]}
+      actions={[
+        { label: t('stepUp.iamBack'), variant: 'secondary', onClick: () => navigate('/admin', { replace: true }) },
+      ]}
     />
   )
 }

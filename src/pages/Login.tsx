@@ -18,10 +18,12 @@ export const Login = () => {
   const [iamEnabled, setIamEnabled] = useState(false)
   useEffect(() => {
     let active = true
-    get<{ providers: string[] }>('/auth/oauth/providers').then(r => {
+    get<{ providers: string[] }>('/auth/oauth/providers').then((r) => {
       if (active && r.ok) setIamEnabled(r.data.providers.includes('iam'))
     })
-    return () => { active = false }
+    return () => {
+      active = false
+    }
   }, [])
 
   // Navigate after auth context loads full profile (with roles) from /v1/me
@@ -48,9 +50,10 @@ export const Login = () => {
   useEffect(() => {
     if (authLoading || justLoggedInRef.current || !authUser) return
     const redirect = searchParams.get('redirect')
-    const safe = redirect && redirect.startsWith('/') && !redirect.startsWith('//') && !/^\/(login|register)\b/.test(redirect)
-      ? redirect
-      : '/settings/security?tab=profile'
+    const safe =
+      redirect && redirect.startsWith('/') && !redirect.startsWith('//') && !/^\/(login|register)\b/.test(redirect)
+        ? redirect
+        : '/settings/security?tab=profile'
     navigate(safe, { replace: true })
   }, [authUser, authLoading, navigate, searchParams])
 
@@ -83,7 +86,13 @@ export const Login = () => {
         {iamEnabled && (
           <>
             <div className={auth.divider}>{t('login.adminAlternative')}</div>
-            <AdminButton type="button" variant="secondary" fullWidth onClick={loginWithIam} aria-label={t('oauth.providerIam')}>
+            <AdminButton
+              type="button"
+              variant="secondary"
+              fullWidth
+              onClick={loginWithIam}
+              aria-label={t('oauth.providerIam')}
+            >
               {t('oauth.providerIam')}
             </AdminButton>
           </>
@@ -102,7 +111,8 @@ function isValidRedirect(url: string): boolean {
     // 用 URL 确保不包含非法协议结构
     const parsed = new URL(url, 'http://localhost')
     // 确认解析后的 pathname 与原 url 一致，防止 /%2Fevil.com 等编码绕过
-    if (parsed.pathname !== url.split('?')[0]! && decodeURIComponent(parsed.pathname) !== url.split('?')[0]!) return false
+    if (parsed.pathname !== url.split('?')[0]! && decodeURIComponent(parsed.pathname) !== url.split('?')[0]!)
+      return false
     return true
   } catch {
     return false

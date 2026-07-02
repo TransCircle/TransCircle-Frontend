@@ -32,7 +32,18 @@ async function fetchPage(cursorVal?: string | null, keywordVal?: string): Promis
 }
 
 const ChevronIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
     <path d="m9 18 6-6-6-6" />
   </svg>
 )
@@ -53,18 +64,21 @@ export const Home = () => {
   const [searchInput, setSearchInput] = useState(searchTerm)
   const initialLoaded = useRef(false)
 
-  const doLoad = useCallback(async (keyword?: string) => {
-    setLoading(true)
-    const result = await fetchPage(undefined, keyword || undefined)
-    if (result.ok) {
-      setItems(result.data)
-      setCursor(result.pagination?.nextCursor || null)
-      setError('')
-    } else {
-      setError(result.error.message || t('home.errorLoad'))
-    }
-    setLoading(false)
-  }, [t])
+  const doLoad = useCallback(
+    async (keyword?: string) => {
+      setLoading(true)
+      const result = await fetchPage(undefined, keyword || undefined)
+      if (result.ok) {
+        setItems(result.data)
+        setCursor(result.pagination?.nextCursor || null)
+        setError('')
+      } else {
+        setError(result.error.message || t('home.errorLoad'))
+      }
+      setLoading(false)
+    },
+    [t],
+  )
 
   // 初始加载（无搜索词）或搜索词变化时重新加载
   useEffect(() => {
@@ -76,7 +90,6 @@ export const Home = () => {
     initialLoaded.current = true
     setSearchInput(searchTerm)
     doLoad(searchTerm || undefined)
-     
   }, [doLoad, searchTerm])
 
   const runSearch = () => {
@@ -111,12 +124,18 @@ export const Home = () => {
         <PageHeader
           title={t('home.title')}
           description={t('home.subtitle')}
-          actions={user ? (
-            <>
-              <AdminButton variant="primary" onClick={() => navigate('/submit')}>{t('home.submitLink')}</AdminButton>
-              <AdminButton variant="secondary" onClick={() => navigate('/me/contributions')}>{t('home.myContributions')}</AdminButton>
-            </>
-          ) : undefined}
+          actions={
+            user ? (
+              <>
+                <AdminButton variant="primary" onClick={() => navigate('/submit')}>
+                  {t('home.submitLink')}
+                </AdminButton>
+                <AdminButton variant="secondary" onClick={() => navigate('/me/contributions')}>
+                  {t('home.myContributions')}
+                </AdminButton>
+              </>
+            ) : undefined
+          }
         />
         <div className={shell.toolbar}>
           <SearchField
@@ -166,7 +185,9 @@ export const Home = () => {
                     </span>
                   </span>
                   <span className={shell.rowRight}>
-                    <span className={shell.chevron} aria-hidden="true"><ChevronIcon /></span>
+                    <span className={shell.chevron} aria-hidden="true">
+                      <ChevronIcon />
+                    </span>
                   </span>
                 </Link>
               </li>

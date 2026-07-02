@@ -26,13 +26,20 @@ export const EditRequestForm = () => {
 
   const clearFieldError = (field: string) => {
     if (fieldErrors[field]) {
-      setFieldErrors(prev => { const n = { ...prev }; delete n[field]; return n })
+      setFieldErrors((prev) => {
+        const n = { ...prev }
+        delete n[field]
+        return n
+      })
     }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!reason.trim()) { setError(t('editRequest.reasonRequired')); return }
+    if (!reason.trim()) {
+      setError(t('editRequest.reasonRequired'))
+      return
+    }
     // Trim title/summary to match send logic — prevents whitespace-only input
     // from passing validation but sending undefined (L9)
     const trimmedTitle = proposedTitle.trim()
@@ -57,14 +64,18 @@ export const EditRequestForm = () => {
     setError('')
     try {
       setIntentKey(newIdempotencyKey())
-      const result = await post(`/contributions/${id}/edit-requests`, {
-        reason: reason.trim(),
-        proposedTitle: proposedTitle.trim() || undefined,
-        proposedContent: proposedContent || undefined,
-        proposedContentFormat: proposedContent ? 'markdown' : undefined,
-        proposedSummary: proposedSummary.trim() || undefined,
-        proposedTags: proposedTags.length > 0 ? proposedTags : undefined,
-      }, { idempotent: true })
+      const result = await post(
+        `/contributions/${id}/edit-requests`,
+        {
+          reason: reason.trim(),
+          proposedTitle: proposedTitle.trim() || undefined,
+          proposedContent: proposedContent || undefined,
+          proposedContentFormat: proposedContent ? 'markdown' : undefined,
+          proposedSummary: proposedSummary.trim() || undefined,
+          proposedTags: proposedTags.length > 0 ? proposedTags : undefined,
+        },
+        { idempotent: true },
+      )
       if (result.ok) {
         setSuccess(true)
       } else {
@@ -129,7 +140,10 @@ export const EditRequestForm = () => {
             label={t('editRequest.reasonLabel')}
             required
             value={reason}
-            onChange={(e) => { setReason(e.target.value); clearFieldError('reason') }}
+            onChange={(e) => {
+              setReason(e.target.value)
+              clearFieldError('reason')
+            }}
             rows={3}
             maxLength={500}
             invalid={!!fieldErrors.reason}
@@ -138,20 +152,29 @@ export const EditRequestForm = () => {
           <TextField
             label={t('editRequest.proposedTitle')}
             value={proposedTitle}
-            onChange={(e) => { setProposedTitle(limitByUnicode(e.target.value, 120)); clearFieldError('proposedTitle') }}
+            onChange={(e) => {
+              setProposedTitle(limitByUnicode(e.target.value, 120))
+              clearFieldError('proposedTitle')
+            }}
             invalid={!!fieldErrors.proposedTitle}
             hint={fieldErrors.proposedTitle || undefined}
           />
           <MarkdownField
             label={t('editRequest.proposedContent')}
             value={proposedContent}
-            onChange={(v) => { setProposedContent(v); clearFieldError('proposedContent') }}
+            onChange={(v) => {
+              setProposedContent(v)
+              clearFieldError('proposedContent')
+            }}
             error={fieldErrors.proposedContent}
           />
           <TextField
             label={t('editRequest.proposedSummary')}
             value={proposedSummary}
-            onChange={(e) => { setProposedSummary(limitByUnicode(e.target.value, 300)); clearFieldError('proposedSummary') }}
+            onChange={(e) => {
+              setProposedSummary(limitByUnicode(e.target.value, 300))
+              clearFieldError('proposedSummary')
+            }}
             maxLength={300}
             invalid={!!fieldErrors.proposedSummary}
             hint={fieldErrors.proposedSummary || undefined}

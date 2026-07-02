@@ -191,9 +191,7 @@ export const SubmitForm = () => {
         <div className={styles.loginHint}>
           {user ? (
             <span className={styles.userBadge}>
-              {loginProvider === 'pass' && (
-                <span className={styles.userProvider}>TransCircle Pass</span>
-              )}
+              {loginProvider === 'pass' && <span className={styles.userProvider}>TransCircle Pass</span>}
               <span className={styles.userName}>{user.username}</span>
               <span className={styles.userTag}>{t('submit.loggedInAs')}</span>
             </span>

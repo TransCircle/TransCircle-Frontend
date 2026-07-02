@@ -32,7 +32,7 @@ export const PERMISSIONS = {
   AUDIT_READ: 'audit:read',
 } as const
 
-export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS]
+export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS]
 
 /**
  * 权限 key → i18n 文案 key 映射，用于「我的权限」等展示场景。
