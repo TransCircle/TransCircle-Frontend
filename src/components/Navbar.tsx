@@ -313,15 +313,6 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
                 </li>
               </>
             )}
-
-            <li className={styles.mobileDivider}></li>
-            <li className={`${styles.mobileOnly} ${styles.mobileThemeToggle}`}>
-              <div className={styles.mobileThemeLabel}>{t('nav.mobileThemeLabel')}</div>
-              <div className={styles.mobileToggleRow}>
-                <ThemeToggle />
-                <LanguageToggle variant="plain" />
-              </div>
-            </li>
           </ul>
 
           <div className={styles.rightSection}>

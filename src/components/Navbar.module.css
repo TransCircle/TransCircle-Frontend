@@ -41,10 +41,6 @@
   gap: 0.5rem;
 }
 
-.mobileThemeToggle {
-  display: none;
-}
-
 /* ── Login pill button ─────────────────────────── */
 .loginBtn {
   display: inline-flex;
@@ -85,11 +81,16 @@
   width: 38px;
   height: 38px;
   padding: 9px 8px;
+  margin-top: 5px;
   box-sizing: border-box;
+  border-radius: var(--radius-sm);
   background: transparent;
   border: none;
   cursor: pointer;
   z-index: 1001;
+}
+.hamburger:hover {
+  background-color: var(--hover-bg);
 }
 
 .externalIcon {
@@ -98,10 +99,14 @@
 }
 
 .bar {
-  width: 100%;
+  display: block;
   height: 2px;
+  width: 100%;
   background-color: var(--text-main);
-  transition: all 0.3s ease;
+  border-radius: 2px;
+  transition: transform 0.25s ease, opacity 0.2s ease;
+  transform-origin: center center;
+  will-change: transform, opacity;
 }
 
 .logo {
@@ -175,7 +180,6 @@
   box-sizing: border-box;
   white-space: nowrap;
   color: var(--text-secondary);
-  opacity: 0.5;
   cursor: default;
 }
 
@@ -325,7 +329,7 @@
     padding: 0.6rem 1rem;
   }
 
-  .rightSection {
+  .loginBtn {
     display: none;
   }
 
@@ -422,7 +426,6 @@
     font-size: 0.95rem;
     width: 100%;
     color: var(--text-body);
-    opacity: 0.45;
     cursor: default;
   }
 
@@ -531,28 +534,6 @@
     color: var(--text-body);
   }
 
-  .mobileThemeToggle {
-    display: block;
-    padding: 0.5rem 0;
-  }
-
-  .mobileToggleRow {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.75rem;
-    margin-top: 0.25rem;
-  }
-
-  .mobileThemeLabel {
-    font-size: 0.68rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--text-muted);
-    margin-bottom: 0.5rem;
-    user-select: none;
-  }
 }
 
 @media (max-width: 1200px) and (prefers-reduced-motion: reduce) {
