@@ -29,8 +29,9 @@
 .rightSection {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.6rem;
-  margin-left: auto;
+  flex: 1;
 }
 
 /* Wrap LanguageToggle + ThemeToggle with slightly tighter spacing, matching transcircle.org. */
@@ -70,6 +71,7 @@
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  flex: 1;
 }
 
 .hamburger {
@@ -220,7 +222,6 @@
   animation: menuIn 0.15s ease;
 }
 
-.dropdown:hover .dropdownMenu,
 .dropdownOpen .dropdownMenu {
   opacity: 1;
   visibility: visible;
@@ -236,7 +237,6 @@
   .dropdownTrigger,
   .dropdownMenu,
   .link, .menuItem, .acctBtn, .loginBtn, .drawer, .overlay, .hamburger,
-  .dropdown:hover .dropdownMenu,
   .dropdownOpen .dropdownMenu {
     transition: none;
     transform: none;
