@@ -35,8 +35,15 @@ export const OAuthCallback = () => {
         const conflictUserId = searchParams.get('conflictUserId') || ''
 
         // Persist CSRF token to sessionStorage for registration/binding pages
-        const csrfMatch = document.cookie.match(/oauth_pending_csrf=([^;]+)/)
-        if (csrfMatch?.[1]) saveCsrfToken(csrfMatch[1])
+        // 优先从 URL 参数读取（Pass 后端跨域 cookie 不可读时的兜底通道 — H1 方案 B），
+        // cookie 作为同源场景的降级路径
+        const csrfFromUrl = searchParams.get('csrfToken')
+        if (csrfFromUrl) {
+          saveCsrfToken(csrfFromUrl)
+        } else {
+          const csrfMatch = document.cookie.match(/oauth_pending_csrf=([^;]+)/)
+          if (csrfMatch?.[1]) saveCsrfToken(csrfMatch[1])
+        }
 
         switch (status) {
           case 'login_ok':
