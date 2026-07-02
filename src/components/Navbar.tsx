@@ -172,6 +172,16 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
                 {location.pathname === '/submit' ? t('nav.submitView') : t('nav.submit')}
               </Link>
             </li>
+            <li>
+              <a href="https://transcircle.org/#archive" target="_blank" rel="noopener noreferrer">
+                {t('nav.archive')}
+              </a>
+            </li>
+            <li>
+              <a href="https://transcircle.org/#community" target="_blank" rel="noopener noreferrer">
+                {t('nav.community')}
+              </a>
+            </li>
             <li className={`${styles.dropdown} ${dropdownOpen ? styles.dropdownOpen : ''}`} onBlur={handleDropdownBlur}>
               <button
                 ref={dropdownRef}
@@ -258,12 +268,12 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
           <Link to={location.pathname === '/submit' ? '/' : '/submit'} className={styles.drawerLink} onClick={closeMenu}>
             {location.pathname === '/submit' ? t('nav.submitView') : t('nav.submit')}
           </Link>
-          <span className={`${styles.drawerLink} ${styles.disabled}`}>
+          <a href="https://transcircle.org/#archive" className={styles.drawerLink} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
             {t('nav.archive')}
-          </span>
-          <span className={`${styles.drawerLink} ${styles.disabled}`}>
+          </a>
+          <a href="https://transcircle.org/#community" className={styles.drawerLink} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
             {t('nav.community')}
-          </span>
+          </a>
 
           <a href="https://blog.transcircle.org/" className={styles.drawerLink} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
             {t('nav.blog')}
