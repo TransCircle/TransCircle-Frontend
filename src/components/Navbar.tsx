@@ -1,68 +1,79 @@
-import { useState, useRef, useEffect, type ReactNode } from 'react';
+import { useState, useRef, useEffect, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ThemeToggle } from './ThemeToggle';
+import { ThemeToggle } from './ThemeToggle'
 import { LanguageToggle } from '@/components/ui'
 import { useAuth } from '@/context/useAuth'
 import { LOGOUT_REDIRECT } from '@/config'
-import styles from './Navbar.module.css';
+import styles from './Navbar.module.css'
 
 const ExternalLinkIcon = () => (
-  <svg className={styles.externalIcon} width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg
+    className={styles.externalIcon}
+    width="11"
+    height="11"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
     <path d="M6 2h8v8" />
     <path d="M14 2 4 12" />
   </svg>
-);
+)
 
 interface MobileLink {
-  key: string;
-  node: ReactNode;
+  key: string
+  node: ReactNode
 }
 
 interface NavbarProps {
-  customMobileLinks?: (closeMenu: () => void) => MobileLink[];
-  customMobileLinkLabel?: string;
+  customMobileLinks?: (closeMenu: () => void) => MobileLink[]
+  customMobileLinkLabel?: string
 }
 
-const MOBILE_BREAKPOINT = 1200;
+const MOBILE_BREAKPOINT = 1200
 
 export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
   const { t } = useTranslation()
   const { user, isAdmin, logout } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
-  const [isOpen, setIsOpen] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
 
-  const hamburgerRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLUListElement>(null);
-  const dropdownRef = useRef<HTMLButtonElement>(null);
+  const hamburgerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLUListElement>(null)
+  const dropdownRef = useRef<HTMLButtonElement>(null)
 
-  const closeMenu = () => setIsOpen(false);
+  const closeMenu = () => setIsOpen(false)
 
   const openMenu = () => {
-    setIsOpen(true);
+    setIsOpen(true)
     requestAnimationFrame(() => {
       menuRef.current
         ?.querySelector<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])')
-        ?.focus();
-    });
-  };
+        ?.focus()
+    })
+  }
 
   // Manage <main> inert: when the mobile drawer is open, the main content
   // should be inert so keyboard/tab navigation stays inside the drawer.
   // 注意：不使用 ref 缓存 DOM 引用来避免 React 19 StrictMode 双重渲染导致的过期引用；
   //       清理函数和安全阀 effect 均直接重新查询 DOM，确保 inert 一定能被正确重置。
   useEffect(() => {
-    const el = document.querySelector<HTMLElement>('main');
+    const el = document.querySelector<HTMLElement>('main')
     if (el && window.innerWidth <= MOBILE_BREAKPOINT) {
-      el.inert = isOpen;
+      el.inert = isOpen
     }
     return () => {
-      const el = document.querySelector<HTMLElement>('main');
-      if (el) el.inert = false;
-    };
-  }, [isOpen]);
+      const el = document.querySelector<HTMLElement>('main')
+      if (el) el.inert = false
+    }
+  }, [isOpen])
 
   // Close mobile drawer on route change — prevents <main> from staying inert
   // after programmatic navigation (redirects from guards, navigate() calls, etc.)
@@ -72,58 +83,58 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
   }, [location.pathname])
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        closeMenu();
-        hamburgerRef.current?.focus();
+        closeMenu()
+        hamburgerRef.current?.focus()
       }
-    };
+    }
     const handleResize = () => {
-      if (window.innerWidth > MOBILE_BREAKPOINT) closeMenu();
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('resize', handleResize);
+      if (window.innerWidth > MOBILE_BREAKPOINT) closeMenu()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('resize', handleResize)
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [isOpen]);
+      document.body.style.overflow = prev
+      document.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [isOpen])
 
-  const mobileLinks = customMobileLinks?.(closeMenu);
+  const mobileLinks = customMobileLinks?.(closeMenu)
 
   const handleDropdownToggle = () => {
-    setDropdownOpen((prev) => !prev);
-  };
+    setDropdownOpen((prev) => !prev)
+  }
 
   const handleDropdownKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
     if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
-      e.preventDefault();
-      setDropdownOpen(true);
+      e.preventDefault()
+      setDropdownOpen(true)
       requestAnimationFrame(() => {
-        dropdownRef.current
-          ?.closest(`.${styles.dropdown}`)
-          ?.querySelector<HTMLElement>('a[role="menuitem"]')
-          ?.focus();
-      });
+        dropdownRef.current?.closest(`.${styles.dropdown}`)?.querySelector<HTMLElement>('a[role="menuitem"]')?.focus()
+      })
     } else if (e.key === 'Escape') {
-      setDropdownOpen(false);
-      dropdownRef.current?.focus();
+      setDropdownOpen(false)
+      dropdownRef.current?.focus()
     }
-  };
+  }
 
   const handleDropdownMenuKeyDown = (e: React.KeyboardEvent<HTMLUListElement>) => {
     if (e.key === 'Escape') {
-      setDropdownOpen(false);
-      dropdownRef.current?.focus();
+      setDropdownOpen(false)
+      dropdownRef.current?.focus()
     }
-  };
+  }
 
   const handleDropdownBlur = (e: React.FocusEvent<HTMLElement>) => {
     if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-      setDropdownOpen(false);
+      setDropdownOpen(false)
     }
-  };
+  }
 
   return (
     <>
@@ -144,22 +155,29 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
               <span className={styles.bar}></span>
             </button>
 
-            <div className={styles.logo}><a href="https://transcircle.org">{t('nav.logo')}</a></div>
+            <div className={styles.logo}>
+              <a href="https://transcircle.org">{t('nav.logo')}</a>
+            </div>
           </div>
 
-          <ul
-            ref={menuRef}
-            id="nav-menu"
-            className={`${styles.navLinks} ${isOpen ? styles.active : ''}`}
-          >
-            <li><a href="https://transcircle.org/" onClick={closeMenu}>{t('nav.home')}</a></li>
-            <li><Link to={location.pathname === '/submit' ? '/' : '/submit'} onClick={closeMenu}>{location.pathname === '/submit' ? t('nav.submitView') : t('nav.submit')}</Link></li>
-            <li><span className={styles.disabled}>{t('nav.archive')}</span></li>
-            <li><span className={styles.disabled}>{t('nav.community')}</span></li>
-            <li
-              className={`${styles.dropdown} ${dropdownOpen ? styles.dropdownOpen : ''}`}
-              onBlur={handleDropdownBlur}
-            >
+          <ul ref={menuRef} id="nav-menu" className={`${styles.navLinks} ${isOpen ? styles.active : ''}`}>
+            <li>
+              <a href="https://transcircle.org/" onClick={closeMenu}>
+                {t('nav.home')}
+              </a>
+            </li>
+            <li>
+              <Link to={location.pathname === '/submit' ? '/' : '/submit'} onClick={closeMenu}>
+                {location.pathname === '/submit' ? t('nav.submitView') : t('nav.submit')}
+              </Link>
+            </li>
+            <li>
+              <span className={styles.disabled}>{t('nav.archive')}</span>
+            </li>
+            <li>
+              <span className={styles.disabled}>{t('nav.community')}</span>
+            </li>
+            <li className={`${styles.dropdown} ${dropdownOpen ? styles.dropdownOpen : ''}`} onBlur={handleDropdownBlur}>
               <button
                 ref={dropdownRef}
                 type="button"
@@ -191,22 +209,89 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
                 role="menu"
                 onKeyDown={handleDropdownMenuKeyDown}
               >
-                <li role="none"><a role="menuitem" href="https://blog.transcircle.org/" target="_blank" rel="noopener noreferrer" onClick={closeMenu}>{t('nav.blog')}<ExternalLinkIcon /></a></li>
-                <li role="none"><a role="menuitem" href="https://search.transcircle.org/" target="_blank" rel="noopener noreferrer" onClick={closeMenu}>{t('nav.explore')}<ExternalLinkIcon /></a></li>
+                <li role="none">
+                  <a
+                    role="menuitem"
+                    href="https://blog.transcircle.org/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={closeMenu}
+                  >
+                    {t('nav.blog')}
+                    <ExternalLinkIcon />
+                  </a>
+                </li>
+                <li role="none">
+                  <a
+                    role="menuitem"
+                    href="https://search.transcircle.org/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={closeMenu}
+                  >
+                    {t('nav.explore')}
+                    <ExternalLinkIcon />
+                  </a>
+                </li>
               </ul>
+            </li>
+
+            <li className={styles.mobileExternalLinks}>
+              <a href="https://blog.transcircle.org/" target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
+                {t('nav.blog')}
+                <ExternalLinkIcon />
+              </a>
+              <a href="https://search.transcircle.org/" target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
+                {t('nav.explore')}
+                <ExternalLinkIcon />
+              </a>
             </li>
 
             {user && (
               <>
                 <li className={styles.mobileDivider}></li>
-                <li><Link to="/me/contributions" onClick={closeMenu}>{t('nav.myContributions')}</Link></li>
-                <li><Link to="/settings/security" onClick={closeMenu}>{t('nav.securitySettings')}</Link></li>
-                {isAdmin && <li><Link to="/admin" onClick={closeMenu}>{t('nav.adminDashboard')}</Link></li>}
-                <li><Link to="/" onClick={async (e) => { e.preventDefault(); await logout(); closeMenu(); if (LOGOUT_REDIRECT.startsWith('/')) { navigate(LOGOUT_REDIRECT, { replace: true }) } else { window.location.href = LOGOUT_REDIRECT } }}>{t('nav.logout')}</Link></li>
+                <li>
+                  <Link to="/me/contributions" onClick={closeMenu}>
+                    {t('nav.myContributions')}
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/settings/security" onClick={closeMenu}>
+                    {t('nav.securitySettings')}
+                  </Link>
+                </li>
+                {isAdmin && (
+                  <li>
+                    <Link to="/admin" onClick={closeMenu}>
+                      {t('nav.adminDashboard')}
+                    </Link>
+                  </li>
+                )}
+                <li>
+                  <Link
+                    to="/"
+                    onClick={async (e) => {
+                      e.preventDefault()
+                      await logout()
+                      closeMenu()
+                      if (LOGOUT_REDIRECT.startsWith('/')) {
+                        navigate(LOGOUT_REDIRECT, { replace: true })
+                      } else {
+                        window.location.href = LOGOUT_REDIRECT
+                      }
+                    }}
+                  >
+                    {t('nav.logout')}
+                  </Link>
+                </li>
               </>
             )}
             {!user && (
-              <li className={styles.mobileOnly}><Link to="/login" onClick={closeMenu}>{t('nav.login')}</Link></li>
+              <li className={styles.mobileOnly}>
+                <Link to="/login" onClick={closeMenu}>
+                  {t('nav.login')}
+                </Link>
+              </li>
             )}
 
             {mobileLinks && (
@@ -220,7 +305,9 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
                 <li className={styles.mobileOnly}>
                   <div className={styles.mobileTOCGroup}>
                     {mobileLinks.map(({ key, node }) => (
-                      <div key={key} className={styles.mobileTOCItem}>{node}</div>
+                      <div key={key} className={styles.mobileTOCItem}>
+                        {node}
+                      </div>
                     ))}
                   </div>
                 </li>
@@ -257,5 +344,5 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
         aria-hidden="true"
       ></div>
     </>
-  );
-};
+  )
+}

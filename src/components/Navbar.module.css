@@ -58,14 +58,18 @@
   text-decoration: none;
   white-space: nowrap;
   box-shadow: 0 2px 8px var(--shadow-color);
-  transition: background-color 0.15s ease, transform 0.1s ease;
+  transition:
+    background-color 0.15s ease,
+    transform 0.1s ease;
 }
 .loginBtn:hover {
   background-color: var(--cta-hover);
   transform: translateY(-1px);
 }
 @supports (background-color: color-mix(in srgb, red 85%, black)) {
-  .loginBtn:hover { background-color: var(--cta-hover-mix); }
+  .loginBtn:hover {
+    background-color: var(--cta-hover-mix);
+  }
 }
 .leftSection {
   display: flex;
@@ -107,12 +111,14 @@
   color: var(--text-main);
 }
 
-.logo a{
+.logo a {
   text-decoration: none;
   color: inherit;
   cursor: pointer;
 }
-.logo a:hover { color: var(--accent-pink); }
+.logo a:hover {
+  color: var(--accent-pink);
+}
 
 .navLinks {
   list-style: none;
@@ -137,7 +143,9 @@
   color: var(--text-secondary);
   font-size: 0.9rem;
   line-height: 1.5;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
   padding: 0.4rem 0.75rem;
   border-radius: var(--radius-sm);
   box-sizing: border-box;
@@ -194,7 +202,7 @@
 }
 
 .dropdownOpen .chevron,
-.dropdownTrigger[aria-expanded="true"] .chevron {
+.dropdownTrigger[aria-expanded='true'] .chevron {
   transform: rotate(180deg);
 }
 
@@ -229,14 +237,23 @@
 }
 
 @keyframes menuIn {
-  from { opacity: 0; transform: translateY(-4px); }
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .navLinks li a,
   .dropdownTrigger,
   .dropdownMenu,
-  .link, .menuItem, .acctBtn, .loginBtn, .drawer, .overlay, .hamburger,
+  .link,
+  .menuItem,
+  .acctBtn,
+  .loginBtn,
+  .drawer,
+  .overlay,
+  .hamburger,
   .dropdownOpen .dropdownMenu {
     transition: none;
     transform: none;
@@ -244,13 +261,17 @@
 
   .chevron,
   .dropdownOpen .chevron,
-  .dropdownTrigger[aria-expanded="true"] .chevron {
+  .dropdownTrigger[aria-expanded='true'] .chevron {
     transition: none;
     transform: none;
   }
 
-  .menu { animation: none; }
-  .loginBtn:hover { transform: none; }
+  .menu {
+    animation: none;
+  }
+  .loginBtn:hover {
+    transform: none;
+  }
 }
 
 .dropdownMenu li a {
@@ -264,14 +285,18 @@
   color: var(--text-body);
   white-space: nowrap;
   text-decoration: none;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 .dropdownMenu li a:hover {
   background-color: var(--hover-bg);
   color: var(--text-main);
 }
 @supports (background-color: color-mix(in srgb, red 15%, white)) {
-  .dropdownMenu li a:hover { background-color: var(--hover-bg-mix); }
+  .dropdownMenu li a:hover {
+    background-color: var(--hover-bg-mix);
+  }
 }
 
 .mobileDivider {
@@ -279,6 +304,10 @@
 }
 
 .mobileOnly {
+  display: none;
+}
+
+.mobileExternalLinks {
   display: none;
 }
 
@@ -315,6 +344,28 @@
     display: block;
   }
 
+  .mobileExternalLinks {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .mobileExternalLinks a {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.7rem 0.8rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.95rem;
+    color: var(--text-body);
+    text-decoration: none;
+    transition: background-color 0.15s ease;
+  }
+
+  .mobileExternalLinks a:hover {
+    background-color: var(--hover-bg);
+  }
+
   .hamburger {
     display: flex;
   }
@@ -325,59 +376,83 @@
     top: 0;
     left: 0;
     width: 280px;
-    height: 100vh;
-    background-color: var(--bg-color);
+    max-width: 84vw;
+    height: 100dvh;
+    background-color: var(--surface-card);
     flex-direction: column;
-    padding: 4rem 0 1rem 0;
-    gap: 0;
+    padding: 4.5rem 1rem 1.25rem;
+    gap: 0.2rem;
     border-right: 1px solid var(--divider-color);
-    box-shadow: 4px 0 16px var(--shadow-color);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
     transform: translateX(-100%);
     visibility: hidden;
     pointer-events: none;
-    transition: transform 0.3s ease-in-out, visibility 0s linear 0.3s;
+    transition:
+      transform 0.3s ease-in-out,
+      visibility 0s linear 0.3s;
     z-index: 1000;
+    overflow-y: auto;
   }
 
   .navLinks.active {
     transform: translateX(0);
     visibility: visible;
     pointer-events: auto;
-    transition: transform 0.3s ease-in-out, visibility 0s linear 0s;
+    transition:
+      transform 0.3s ease-in-out,
+      visibility 0s linear 0s;
   }
 
   .navLinks li {
     width: 100%;
   }
 
-  .navLinks li a {
-    display: block;
-    padding: 0.8rem 2rem;
-    font-size: 1rem;
+  .navLinks li a,
+  .navLinks li button {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.7rem 0.8rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.95rem;
     width: 100%;
-    color: var(--text-main);
+    color: var(--text-body);
+    text-decoration: none;
+    text-align: left;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font: inherit;
+    transition: background-color 0.15s ease;
   }
 
-  .navLinks li a:hover {
-    transform: translateX(3px);
+  .navLinks li a:hover,
+  .navLinks li button:hover {
+    background-color: var(--hover-bg);
   }
 
   .navLinks li .disabled {
-    display: block;
-    padding: 0.8rem 2rem;
-    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    padding: 0.7rem 0.8rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.95rem;
     width: 100%;
-    color: var(--text-secondary);
-    opacity: 0.5;
+    color: var(--text-body);
+    opacity: 0.45;
     cursor: default;
   }
 
   .mobileOnly a {
-    display: block;
-    padding: 0.8rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.7rem 0.8rem;
+    border-radius: var(--radius-sm);
     text-decoration: none;
-    color: var(--text-main);
-    font-size: 1rem;
+    color: var(--text-body);
+    font-size: 0.95rem;
+    transition: background-color 0.15s ease;
   }
 
   .mobileTOCGroup {
@@ -388,9 +463,9 @@
   }
 
   .navLinks .mobileTOCItem a {
-    padding: 0.3rem 2rem;
+    padding: 0.3rem 0.8rem;
     font-size: 0.9rem;
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
   }
 
   @supports (background-color: color-mix(in srgb, red 15%, white)) {
@@ -400,25 +475,29 @@
   }
 
   .mobileOnly a:hover {
-    transform: translateX(3px);
-    background-color: var(--nav-bg);
-    color: var(--primary-pink);
+    background-color: var(--hover-bg);
   }
 
   .dropdownTrigger {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 0.4rem;
     width: 100%;
     text-align: left;
-    padding: 0.8rem 2rem;
-    font-size: 1rem;
-    color: var(--text-main);
-    transition: color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+    padding: 0.7rem 0.8rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.95rem;
+    color: var(--text-body);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    transition: background-color 0.15s ease;
   }
 
   .dropdownTrigger:hover {
-    transform: translateX(3px);
+    background-color: var(--hover-bg);
   }
 
   .dropdownMenu {
@@ -434,7 +513,11 @@
     margin: 0;
     border-radius: 0;
     overflow: hidden;
-    transition: max-height 0.2s ease, opacity 0.2s ease, transform 0.2s ease, visibility 0s linear 0.2s;
+    transition:
+      max-height 0.2s ease,
+      opacity 0.2s ease,
+      transform 0.2s ease,
+      visibility 0s linear 0.2s;
   }
 
   .dropdownOpen .dropdownMenu {
@@ -442,18 +525,32 @@
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
-    transition: max-height 0.2s ease, opacity 0.2s ease, transform 0.2s ease, visibility 0s linear 0s;
+    transition:
+      max-height 0.2s ease,
+      opacity 0.2s ease,
+      transform 0.2s ease,
+      visibility 0s linear 0s;
   }
 
   .dropdownMenu li a {
-    padding: 0.6rem 2rem 0.6rem 3rem;
-    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 0.8rem 0.55rem 1.6rem;
+    font-size: 0.9rem;
     color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    transition: background-color 0.15s ease;
+  }
+
+  .dropdownMenu li a:hover {
+    background-color: var(--hover-bg);
+    color: var(--text-body);
   }
 
   .mobileThemeToggle {
     display: block;
-    padding: 0.8rem 1.5rem;
+    padding: 0.5rem 0;
   }
 
   .mobileToggleRow {
@@ -510,7 +607,9 @@
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+  transition:
+    opacity 0.3s ease,
+    visibility 0s linear 0.3s;
   /* 必须低于 .navbar(z-index:50)。
      .navbar 是 sticky + z-index:50，会创建层叠上下文，导致 .navLinks(抽屉,z-1000)
      被困在 navbar 的上下文内、只能以 z-50 参与根层叠比较。若 overlay 设 999（根上下文），
@@ -524,7 +623,9 @@
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
-  transition: opacity 0.3s ease, visibility 0s linear 0s;
+  transition:
+    opacity 0.3s ease,
+    visibility 0s linear 0s;
 }
 
 @media (prefers-reduced-motion: reduce) {
