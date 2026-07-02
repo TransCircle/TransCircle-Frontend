@@ -333,9 +333,7 @@
     display: block;
     height: 1px;
     background-color: var(--divider-color);
-    width: calc(100% - 3rem);
-    margin: 0.2rem auto;
-    opacity: 0.5;
+    margin: 0.5rem 0;
   }
 
   .mobileOnly {
@@ -345,27 +343,14 @@
   .mobileExternalLinks {
     display: flex;
     flex-direction: column;
-    gap: 0;
-  }
-
-  .mobileExternalLinks a {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.7rem 0.8rem;
-    border-radius: var(--radius-sm);
-    font-size: 0.95rem;
-    color: var(--text-body);
-    text-decoration: none;
-    transition: background-color 0.15s ease;
-  }
-
-  .mobileExternalLinks a:hover {
-    background-color: var(--hover-bg);
   }
 
   .hamburger {
     display: flex;
+  }
+
+  .navLinks li.dropdown {
+    display: none;
   }
 
   .navLinks {
