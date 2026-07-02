@@ -131,7 +131,6 @@
   gap: 0.25rem;
   margin: 0;
   padding: 0;
-  margin-left: 0.5rem;
   flex-wrap: nowrap;
 }
 
@@ -362,9 +361,9 @@
     position: fixed;
     top: 0;
     left: 0;
+    bottom: 0;
     width: 280px;
     max-width: 84vw;
-    height: 100dvh;
     background-color: var(--surface-card);
     flex-direction: column;
     padding: 4.5rem 1rem 1.25rem;
