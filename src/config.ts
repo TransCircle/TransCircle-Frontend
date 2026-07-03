@@ -12,3 +12,9 @@ export const LOGOUT_REDIRECT: string =
  * 可通过 VITE_PASS_ACCOUNT_BASE 覆盖。
  */
 export const PASS_ACCOUNT_BASE: string = import.meta.env.VITE_PASS_ACCOUNT_BASE || 'https://transcircle.org/account'
+
+/**
+ * 图片/静态资源基址。头像等资源由后端 /me 返回相对路径，
+ * 前端拼接此前缀。可通过 VITE_IMAGE_BASE 覆盖。
+ */
+export const IMAGE_BASE: string = import.meta.env.VITE_IMAGE_BASE || 'https://api.transcircle.org/pass'

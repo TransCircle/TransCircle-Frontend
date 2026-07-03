@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
+import { IMAGE_BASE } from '@/config'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
 import { cx, Spinner } from '@/components/admin'
 import styles from './AdminShell.module.css'
@@ -207,6 +208,12 @@ export const AdminShell = () => {
   const roleLabel = primaryRole ? t(ROLE_LABEL_KEYS[primaryRole] ?? primaryRole) : ''
   const initials = displayName.trim().slice(0, 1).toUpperCase()
 
+  const resolveImage = (url: string | null) => {
+    if (!url) return undefined
+    if (url.startsWith('http')) return url
+    return IMAGE_BASE + url
+  }
+
   // 抽屉在移动端表现为模态：背景内容设为 inert，焦点已在打开时移入侧栏。
   const drawerModal = drawerOpen && isMobile
 
@@ -276,7 +283,7 @@ export const AdminShell = () => {
 
           <div className={styles.identity}>
             <span className={styles.avatar} aria-hidden="true">
-              {user.avatarUrl ? <img src={user.avatarUrl} alt="" className={styles.avatarImg} /> : initials}
+              {user.avatarUrl ? <img src={resolveImage(user.avatarUrl)} alt="" className={styles.avatarImg} /> : initials}
             </span>
             <span className={styles.identityText}>
               <span className={styles.identityName}>{displayName}</span>
