@@ -80,10 +80,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false)
         return
       }
+      // 静默 SSO 跳过条件：已在登录/回调页，或本轮已尝试过（防循环）
+      const isLoginPage = window.location.pathname.startsWith('/login')
+      const isCallbackPage = window.location.pathname.startsWith('/auth/callback')
+      const ssoAttempted = sessionStorage.getItem('sso_attempted') === 'true'
+      const skipSSO = isLoginPage || isCallbackPage || ssoAttempted
+
+      let redirecting = false
       try {
         // Try refresh to get an access token — cookie-based, must include credentials
         const token = await tryRefreshToken()
         if (token) {
+          sessionStorage.removeItem('sso_attempted')
           setAccessToken(token)
           // Token obtained: fetch full user profile from /v1/me (api.md §2.1)
           // If /me fails transiently, user stays null and auth-required pages redirect
@@ -98,10 +106,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             // valid so a subsequent page load may succeed.
             console.warn('[auth] /me failed after successful refresh, user profile not loaded')
           }
+        } else if (!skipSSO) {
+          // 无本地 session → 通过 Pass OIDC prompt=none 尝试静默 SSO
+          sessionStorage.setItem('sso_attempted', 'true')
+          const redirectAfter = encodeURIComponent(window.location.pathname + window.location.search)
+          const result = await get<{ authorizationUrl: string }>(
+            `/auth/oauth/pass/start?prompt=none&redirectAfter=${redirectAfter}`,
+          )
+          if (result.ok && result.data.authorizationUrl) {
+            redirecting = true
+            window.location.href = result.data.authorizationUrl
+          }
         }
       } finally {
-        // No token: user is not logged in, skip /me to avoid a pointless 401
-        setLoading(false)
+        if (!redirecting) setLoading(false)
       }
     }
     init()
@@ -196,6 +214,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.warn('[auth] logout API failed, clearing local state anyway', result.error)
     }
     clearAuth()
+    sessionStorage.removeItem('sso_attempted')
     setAccessToken(null)
     setUser(null)
     setLoginProvider(null)
@@ -206,6 +225,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const result = await post<{ revokedSessions: number }>('/auth/logout-all')
     if (result.ok) {
       clearAuth()
+      sessionStorage.removeItem('sso_attempted')
       setAccessToken(null)
       setUser(null)
       setLoginProvider(null)
