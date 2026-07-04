@@ -67,10 +67,7 @@ interface EditRequestItem {
   updatedAt: number
 }
 
-function formatTs(ts: number | null | undefined): string {
-  if (!ts) return ''
-  return new Date(ts).toISOString().slice(0, 16).replace('T', ' ')
-}
+import { useFormatTs } from '@/utils/datetime'
 
 /**
  * Safely read a proposed-change field, preferring the typed `proposed` sub-object
@@ -110,6 +107,7 @@ function getProposedFieldArray(
 export const AdminEditRequests = () => {
   const { t } = useTranslation()
   const { accessToken, loading: authLoading, user, isAdmin, permissions } = useAuth()
+  const formatTs = useFormatTs()
   const loadedRef = useRef(false)
   const fetchSeq = useRef(0)
 

@@ -51,7 +51,7 @@ export const Login = () => {
     if (authLoading || justLoggedInRef.current || !authUser) return
     const redirect = searchParams.get('redirect')
     const safe =
-      redirect && redirect.startsWith('/') && !redirect.startsWith('//') && !/^\/(login|register)\b/.test(redirect)
+      redirect && redirect.startsWith('/') && !redirect.startsWith('//') && !/^\/(auth|login|register)\b/.test(redirect)
         ? redirect
         : '/settings/security?tab=profile'
     navigate(safe, { replace: true })
@@ -102,11 +102,13 @@ export const Login = () => {
   )
 }
 
-/** 校验重定向 URL 防止开放重定向：仅允许站内相对路径 */
+/** 校验重定向 URL 防止开放重定向：仅允许站内相对路径，排除鉴权相关路由 */
 function isValidRedirect(url: string): boolean {
   if (!url.startsWith('/')) return false
   if (url.startsWith('//') || url.startsWith('/\\')) return false
   if (url.length > 200) return false
+  // 阻止以 /auth、/login、/register 开头的鉴权路由作为重定向目标
+  if (/^\/(auth|login|register)\b/.test(url)) return false
   try {
     // 用 URL 确保不包含非法协议结构
     const parsed = new URL(url, 'http://localhost')

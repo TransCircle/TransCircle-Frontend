@@ -50,6 +50,27 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+// Normalize user data from different API response shapes into the canonical User type
+// GET /v1/me returns full profile; OAuth exchange returns minimal profile as fallback
+function normalizeUser(raw: Record<string, unknown>): User {
+  return {
+    id: (raw.id as string) ?? '',
+    username: (raw.username as string) ?? '',
+    email: (raw.email as string | null) ?? null,
+    displayName: (raw.displayName as string) ?? '',
+    avatarUrl: (raw.avatarUrl as string | null) ?? null,
+    emailVerified: (raw.emailVerified as boolean) ?? false,
+    status: (raw.status as string) ?? 'active',
+    roles: Array.isArray(raw.roles) ? (raw.roles as string[]) : [],
+    permissions: Array.isArray(raw.permissions) ? (raw.permissions as string[]) : undefined,
+    iamLinked: (raw.iamLinked as boolean) ?? false,
+    passLinked: (raw.passLinked as boolean) ?? false,
+    security: raw.security as User['security'] | undefined,
+    createdAt: (raw.createdAt as number) ?? 0,
+    lastLoginAt: (raw.lastLoginAt as number | null) ?? null,
+  }
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
@@ -62,11 +83,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   )
   // 管理入口改为权限驱动（不再纯角色判断），以支持 editor 与 IAM 细粒度授权：
   // 拥有任一管理权限即可进入审核后台；具体页面/动作仍按各自所需权限进一步门控。
-  const isAdmin =
-    permissions.includes('*') ||
-    permissions.includes('contribution:read') ||
-    permissions.includes('user:read') ||
-    permissions.includes('audit:read')
+  const isAdmin = useMemo(
+    () =>
+      permissions.includes('*') ||
+      permissions.includes('contribution:read') ||
+      permissions.includes('user:read') ||
+      permissions.includes('audit:read'),
+    [permissions],
+  )
   const updateAccessToken = useCallback((token: string | null) => {
     setAccessToken(token)
   }, [])
@@ -145,27 +169,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const loginWithPass = useCallback(() => startOAuth('pass'), [startOAuth])
   const loginWithIam = useCallback(() => startOAuth('iam'), [startOAuth])
-
-  // Normalize user data from different API response shapes into the canonical User type
-  // GET /v1/me returns full profile; OAuth exchange returns minimal profile as fallback
-  function normalizeUser(raw: Record<string, unknown>): User {
-    return {
-      id: (raw.id as string) ?? '',
-      username: (raw.username as string) ?? '',
-      email: (raw.email as string | null) ?? null,
-      displayName: (raw.displayName as string) ?? '',
-      avatarUrl: (raw.avatarUrl as string | null) ?? null,
-      emailVerified: (raw.emailVerified as boolean) ?? false,
-      status: (raw.status as string) ?? 'active',
-      roles: Array.isArray(raw.roles) ? (raw.roles as string[]) : [],
-      permissions: Array.isArray(raw.permissions) ? (raw.permissions as string[]) : undefined,
-      iamLinked: (raw.iamLinked as boolean) ?? false,
-      passLinked: (raw.passLinked as boolean) ?? false,
-      security: raw.security as User['security'] | undefined,
-      createdAt: (raw.createdAt as number) ?? 0,
-      lastLoginAt: (raw.lastLoginAt as number | null) ?? null,
-    }
-  }
 
   // Exchange loginCode for access token (called from callback page)
   // After exchange, fetch full /v1/me to get complete user profile

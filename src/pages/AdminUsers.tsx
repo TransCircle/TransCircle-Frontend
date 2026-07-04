@@ -48,14 +48,12 @@ interface DetailedUser extends Omit<ManagedUser, 'roles'> {
   roles: RoleEntry[]
 }
 
-function formatTs(ts: number | null | undefined): string {
-  if (!ts) return ''
-  return new Date(ts).toISOString().slice(0, 16).replace('T', ' ')
-}
+import { useFormatTs } from '@/utils/datetime'
 
 export const AdminUsers = () => {
   const { t } = useTranslation()
   const { accessToken, loading: authLoading, user, permissions } = useAuth()
+  const formatTs = useFormatTs()
   const loadedRef = useRef(false)
   const fetchSeq = useRef(0)
 
