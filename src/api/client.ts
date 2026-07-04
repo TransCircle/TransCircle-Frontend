@@ -56,11 +56,19 @@ async function doRefresh(): Promise<string | null> {
 
       if (res.status === 401) {
         // REFRESH_TOKEN_REVOKED or INVALID_REFRESH_TOKEN
+        console.warn('[auth] refresh failed: 401 — session expired or revoked')
         _memoryToken = null
         return null
       }
 
-      if (!res.ok) return null
+      if (!res.ok) {
+        console.warn(`[auth] refresh failed: HTTP ${res.status} — transient error, token preserved`)
+        try {
+          const body = await res.json().catch(() => ({}))
+          console.warn('[auth] refresh error body:', body)
+        } catch { /* empty */ }
+        return null
+      }
 
       const body = (await res.json()) as {
         data?: { accessToken?: string }
@@ -70,8 +78,10 @@ async function doRefresh(): Promise<string | null> {
         _memoryToken = body.data.accessToken
         return _memoryToken
       }
+      console.warn('[auth] refresh response missing accessToken, body:', body)
       return null
-    } catch {
+    } catch (err) {
+      console.warn('[auth] refresh network error:', err)
       return null
     } finally {
       _refreshPromise = null
@@ -234,7 +244,7 @@ function logRequestId(label: string, body: { requestId?: string }): void {
 
 // ─── Core Request Function ─────────────────────────────────────
 
-const EMPTY_HEADERS = {} as const
+const EMPTY_HEADERS = {}
 
 /**
  * Generate an X-Request-Id for client-side request tracing (api.md §12).
@@ -319,8 +329,10 @@ export async function apiRequest<T = unknown>(
   try {
     res = await fetch(url, init)
   } catch (e) {
-    // Network error — clear intent key to prevent stale key from blocking retry
-    if (options.idempotent) _intentKey = null
+    // Network error — keep _intentKey so retries reuse the same key (api.md §12).
+    // If the request never reached the server, the server won't know the key and
+    // will process it normally. If the request did reach the server but the response
+    // was lost, reusing the key lets the server deduplicate.
     throw e
   }
 
@@ -376,7 +388,7 @@ export async function apiRequest<T = unknown>(
 
     if (status >= 200 && status < 300) {
       // path 可能含敏感 query（如 /admin/users?keyword=email），仅记录路径部分（api.md 安全基线）
-      logRequestId(`${method} ${path.split('?')[0]!}`, json)
+      logRequestId(`${method} ${path.split('?')[0] ?? ''}`, json)
       // Persist CSRF token from response body if present (H1 — supports cross-origin OAuth flows)
       const responseCsrf = json.csrfToken as string | undefined
       if (responseCsrf) saveCsrfToken(responseCsrf)
