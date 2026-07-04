@@ -27,7 +27,7 @@ export default {
       if (url.pathname === '/v1/auth/refresh' && request.method === 'POST') {
         const cookies = request.headers.get('cookie') || '';
         const hasRefreshToken = cookies.split(';').some(c =>
-          c.trim().startsWith('tcpass_refresh_token='),
+          c.trim().startsWith('refresh_token='),
         );
         if (!hasRefreshToken) {
           return new Response(
