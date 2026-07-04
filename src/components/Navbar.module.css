@@ -311,12 +311,114 @@
   user-select: none;
 }
 
+/* ── Account avatar / dropdown ─────────────────── */
+.acctDropdown {
+  position: relative;
+}
+
+.acctBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+  transition: box-shadow 0.15s ease;
+}
+.acctBtn:hover,
+.acctBtn:focus-visible {
+  box-shadow: 0 0 0 2px var(--primary-pink);
+}
+.acctBtn:focus-visible {
+  outline: none;
+}
+
+.acctAvatar {
+  display: block;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.acctAvatarFallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background-color: var(--primary-pink);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  user-select: none;
+}
+
+.acctMenu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem;
+  background-color: var(--surface-card);
+  border: 1px solid var(--divider-color);
+  border-radius: var(--radius-md);
+  min-width: 12rem;
+  box-shadow: var(--shadow-pop);
+  z-index: 60;
+  animation: menuIn 0.15s ease;
+}
+
+.acctMenu li a,
+.acctMenu li button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  color: var(--text-body);
+  text-decoration: none;
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font: inherit;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  box-sizing: border-box;
+}
+
+.acctMenu li a:hover,
+.acctMenu li button:hover {
+  background-color: var(--hover-bg);
+  color: var(--text-main);
+}
+
+@supports (background-color: color-mix(in srgb, red 15%, white)) {
+  .acctMenu li a:hover,
+  .acctMenu li button:hover {
+    background-color: var(--hover-bg-mix);
+  }
+}
+
 @media (max-width: 1200px) {
   .navbar {
     padding: 0.6rem 1rem;
   }
 
   .loginBtn {
+    display: none;
+  }
+
+  .acctBtn {
     display: none;
   }
 

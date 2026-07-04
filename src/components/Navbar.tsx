@@ -43,11 +43,13 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
   const location = useLocation()
   const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState(false)
-  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [linksDropdownOpen, setLinksDropdownOpen] = useState(false)
+  const [acctDropdownOpen, setAcctDropdownOpen] = useState(false)
 
   const hamburgerRef = useRef<HTMLButtonElement>(null)
   const drawerRef = useRef<HTMLDivElement>(null)
-  const dropdownRef = useRef<HTMLButtonElement>(null)
+  const linksDropdownRef = useRef<HTMLButtonElement>(null)
+  const acctDropdownRef = useRef<HTMLButtonElement>(null)
 
   const closeMenu = () => setIsOpen(false)
 
@@ -106,33 +108,63 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
 
   const mobileLinks = customMobileLinks?.(closeMenu)
 
-  const handleDropdownToggle = () => {
-    setDropdownOpen((prev) => !prev)
+  const handleLinksToggle = () => {
+    setLinksDropdownOpen((prev) => !prev)
   }
 
-  const handleDropdownKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+  const handleLinksKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
     if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
       e.preventDefault()
-      setDropdownOpen(true)
+      setLinksDropdownOpen(true)
       requestAnimationFrame(() => {
-        dropdownRef.current?.closest(`.${styles.dropdown}`)?.querySelector<HTMLElement>('a[role="menuitem"]')?.focus()
+        linksDropdownRef.current?.closest(`.${styles.dropdown}`)?.querySelector<HTMLElement>('a[role="menuitem"]')?.focus()
       })
     } else if (e.key === 'Escape') {
-      setDropdownOpen(false)
-      dropdownRef.current?.focus()
+      setLinksDropdownOpen(false)
+      linksDropdownRef.current?.focus()
     }
   }
 
-  const handleDropdownMenuKeyDown = (e: React.KeyboardEvent<HTMLUListElement>) => {
+  const handleLinksMenuKeyDown = (e: React.KeyboardEvent<HTMLUListElement>) => {
     if (e.key === 'Escape') {
-      setDropdownOpen(false)
-      dropdownRef.current?.focus()
+      setLinksDropdownOpen(false)
+      linksDropdownRef.current?.focus()
     }
   }
 
-  const handleDropdownBlur = (e: React.FocusEvent<HTMLElement>) => {
+  const handleLinksBlur = (e: React.FocusEvent<HTMLElement>) => {
     if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-      setDropdownOpen(false)
+      setLinksDropdownOpen(false)
+    }
+  }
+
+  const handleAcctToggle = () => {
+    setAcctDropdownOpen((prev) => !prev)
+  }
+
+  const handleAcctKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+      e.preventDefault()
+      setAcctDropdownOpen(true)
+      requestAnimationFrame(() => {
+        acctDropdownRef.current?.closest(`.${styles.acctDropdown}`)?.querySelector<HTMLElement>('a[role="menuitem"]')?.focus()
+      })
+    } else if (e.key === 'Escape') {
+      setAcctDropdownOpen(false)
+      acctDropdownRef.current?.focus()
+    }
+  }
+
+  const handleAcctMenuKeyDown = (e: React.KeyboardEvent<HTMLUListElement>) => {
+    if (e.key === 'Escape') {
+      setAcctDropdownOpen(false)
+      acctDropdownRef.current?.focus()
+    }
+  }
+
+  const handleAcctBlur = (e: React.FocusEvent<HTMLElement>) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setAcctDropdownOpen(false)
     }
   }
 
@@ -182,15 +214,15 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
                 {t('nav.community')}
               </a>
             </li>
-            <li className={`${styles.dropdown} ${dropdownOpen ? styles.dropdownOpen : ''}`} onBlur={handleDropdownBlur}>
+            <li className={`${styles.dropdown} ${linksDropdownOpen ? styles.dropdownOpen : ''}`} onBlur={handleLinksBlur}>
               <button
-                ref={dropdownRef}
+                ref={linksDropdownRef}
                 type="button"
                 className={styles.dropdownTrigger}
                 aria-haspopup="menu"
-                aria-expanded={dropdownOpen}
-                onClick={handleDropdownToggle}
-                onKeyDown={handleDropdownKeyDown}
+                aria-expanded={linksDropdownOpen}
+                onClick={handleLinksToggle}
+                onKeyDown={handleLinksKeyDown}
               >
                 {t('nav.links')}
                 <svg
@@ -212,7 +244,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
                 className={styles.dropdownMenu}
                 aria-label={t('nav.externalLinks')}
                 role="menu"
-                onKeyDown={handleDropdownMenuKeyDown}
+                onKeyDown={handleLinksMenuKeyDown}
               >
                 <li role="none">
                   <a
@@ -245,7 +277,66 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
               <LanguageToggle variant="plain" />
               <ThemeToggle />
             </div>
-            {!user && (
+            {user ? (
+              <div className={styles.acctDropdown} onBlur={handleAcctBlur}>
+                <button
+                  ref={acctDropdownRef}
+                  type="button"
+                  className={styles.acctBtn}
+                  aria-haspopup="menu"
+                  aria-expanded={acctDropdownOpen}
+                  aria-label={user.displayName ?? user.username}
+                  onClick={handleAcctToggle}
+                  onKeyDown={handleAcctKeyDown}
+                >
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt="" className={styles.acctAvatar} width={34} height={34} />
+                  ) : (
+                    <span className={styles.acctAvatarFallback}>
+                      {(user.displayName ?? user.username).charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                </button>
+                {acctDropdownOpen && (
+                  <ul className={styles.acctMenu} role="menu" onKeyDown={handleAcctMenuKeyDown}>
+                    <li role="none">
+                      <Link role="menuitem" to="/me/contributions" onClick={closeMenu}>
+                        {t('nav.myContributions')}
+                      </Link>
+                    </li>
+                    <li role="none">
+                      <Link role="menuitem" to="/settings/security" onClick={closeMenu}>
+                        {t('nav.securitySettings')}
+                      </Link>
+                    </li>
+                    {isAdmin && (
+                      <li role="none">
+                        <Link role="menuitem" to="/admin" onClick={closeMenu}>
+                          {t('nav.adminDashboard')}
+                        </Link>
+                      </li>
+                    )}
+                    <li role="none">
+                      <button
+                        role="menuitem"
+                        type="button"
+                        className={styles.acctLogout}
+                        onClick={async () => {
+                          await logout()
+                          if (LOGOUT_REDIRECT.startsWith('/')) {
+                            navigate(LOGOUT_REDIRECT, { replace: true })
+                          } else {
+                            window.location.href = LOGOUT_REDIRECT
+                          }
+                        }}
+                      >
+                        {t('nav.logout')}
+                      </button>
+                    </li>
+                  </ul>
+                )}
+              </div>
+            ) : (
               <Link to="/login" className={styles.loginBtn}>
                 {t('nav.login')}
               </Link>
