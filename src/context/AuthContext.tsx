@@ -217,7 +217,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.warn('[auth] logout API failed, clearing local state anyway', result.error)
     }
     clearAuth()
-    sessionStorage.removeItem('sso_attempted')
+    sessionStorage.setItem('sso_attempted', 'true')
     setAccessToken(null)
     setUser(null)
     setLoginProvider(null)
@@ -228,7 +228,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const result = await post<{ revokedSessions: number }>('/auth/logout-all')
     if (result.ok) {
       clearAuth()
-      sessionStorage.removeItem('sso_attempted')
+      sessionStorage.setItem('sso_attempted', 'true')
       setAccessToken(null)
       setUser(null)
       setLoginProvider(null)
