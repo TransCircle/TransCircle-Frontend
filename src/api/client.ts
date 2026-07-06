@@ -130,7 +130,8 @@ async function autoRefreshOn401(res: Response, url: string, init: RequestInit, h
       headers.set('Authorization', `Bearer ${newToken}`)
       return fetch(url, { ...init, headers })
     }
-    _memoryToken = null
+    // doRefresh 已独占 token 生命周期：仅在 401/吊销时清空 _memoryToken，
+    // 瞬时错误（5xx/网络）保留 token。此处不再无条件清空，避免瞬时故障误登出。
   }
   return res
 }
@@ -325,16 +326,12 @@ export async function apiRequest<T = unknown>(
     }
   }
 
-  let res: Response
-  try {
-    res = await fetch(url, init)
-  } catch (e) {
-    // Network error — keep _intentKey so retries reuse the same key (api.md §12).
-    // If the request never reached the server, the server won't know the key and
-    // will process it normally. If the request did reach the server but the response
-    // was lost, reusing the key lets the server deduplicate.
-    throw e
-  }
+  // Network error — keep _intentKey so retries reuse the same key (api.md §12).
+  // If the request never reached the server, the server won't know the key and
+  // will process it normally. If the request did reach the server but the response
+  // was lost, reusing the key lets the server deduplicate. The error propagates
+  // to the caller unchanged.
+  let res = await fetch(url, init)
 
   // ── Auto-refresh on 401 ──
   if (!options.skipRefresh) {
