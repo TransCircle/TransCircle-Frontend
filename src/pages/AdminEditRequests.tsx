@@ -108,7 +108,6 @@ export const AdminEditRequests = () => {
   const { t } = useTranslation()
   const { accessToken, loading: authLoading, user, isAdmin, permissions } = useAuth()
   const formatTs = useFormatTs()
-  const loadedRef = useRef(false)
   const fetchSeq = useRef(0)
 
   // 编辑申请状态筛选：pending / approved / rejected / applied / superseded
@@ -147,7 +146,6 @@ export const AdminEditRequests = () => {
 
   useEffect(() => {
     if (authLoading || !accessToken) return
-    loadedRef.current = true
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setItems([])
     setCursor(null)
