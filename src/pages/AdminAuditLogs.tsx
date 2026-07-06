@@ -4,6 +4,7 @@ import { get } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
 import { limitByUnicode } from '@/utils/string'
+import { useFormatTs } from '@/utils/datetime'
 import { AdminButton, Alert, EmptyState, Pill, SearchField, Spinner } from '@/components/admin'
 import shell from './Page.module.css'
 
@@ -20,13 +21,9 @@ interface AuditLogEntry {
   // 后端审计列表不返回 metadata / ipHash（api.md §8）；如未来返回再设为可选字段
 }
 
-function formatTs(ts: number | null | undefined): string {
-  if (!ts) return ''
-  return new Date(ts).toISOString().slice(0, 16).replace('T', ' ')
-}
-
 export const AdminAuditLogs = () => {
   const { t } = useTranslation()
+  const formatTs = useFormatTs()
   const { accessToken, loading: authLoading, user, permissions } = useAuth()
   const loadedRef = useRef(false)
   const fetchSeq = useRef(0)
@@ -95,7 +92,10 @@ export const AdminAuditLogs = () => {
             const r = await get<{ displayName?: string; username?: string }>(`/admin/users/${id}`, {
               /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
             })
-            return r.ok ? ([id, r.data.displayName || r.data.username || id] as [string, string]) : null
+            if (r.ok) return [id, r.data.displayName || r.data.username || id] as [string, string]
+            // 查询失败：撤销"已查"标记，以便下次 effect 重试，避免显示名长期缺失
+            actorFetchedRef.current.delete(id)
+            return null
           }),
         )
         if (cancelled) return

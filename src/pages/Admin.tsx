@@ -5,6 +5,7 @@ import { get, post } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
 import { limitByUnicode } from '@/utils/string'
+import { useFormatTs } from '@/utils/datetime'
 import { StepUpDialog } from '@/components/StepUpDialog'
 import {
   AdminButton,
@@ -99,15 +100,9 @@ const ChevronRight = () => (
   </svg>
 )
 
-function formatTs(ts: number | string | null): string {
-  if (!ts) return ''
-  const n = typeof ts === 'string' ? Number(ts) : ts
-  if (isNaN(n)) return String(ts)
-  return new Date(n).toISOString().slice(0, 16).replace('T', ' ')
-}
-
 export const Admin = () => {
   const { t } = useTranslation()
+  const formatTs = useFormatTs()
   const { user, loading: authLoading, accessToken, isAdmin, permissions } = useAuth()
   // 危险操作（隐藏/删除，及配置开启时的发布）可能返回 STEP_UP_REQUIRED → 弹 step-up；
   // 本地因子账号 onSuccess 后重放原操作；IAM 账号在对话框内跳转 IAM 完成后回本页重做。
