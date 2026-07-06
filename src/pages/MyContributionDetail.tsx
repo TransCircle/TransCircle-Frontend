@@ -84,8 +84,10 @@ export const MyContributionDetail = () => {
 
   useEffect(() => {
     if (!id || authLoading) return
+    let cancelled = false
     const load = async () => {
       const result = await get<ContributionDetail>(`/me/contributions/${id}`)
+      if (cancelled) return
       if (result.ok) {
         setContrib(result.data)
         setTitle(result.data.title)
@@ -99,6 +101,9 @@ export const MyContributionDetail = () => {
       setLoading(false)
     }
     load()
+    return () => {
+      cancelled = true
+    }
   }, [id, authLoading])
 
   const handleSave = async () => {
