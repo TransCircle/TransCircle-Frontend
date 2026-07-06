@@ -24,7 +24,7 @@ const COMMIT_TYPES = [
 ];
 
 const EMOJI_PATTERN = /^:[a-z0-9_+-]+:\s+/;
-const FORMAT_PATTERN = /^:[a-z0-9_+-]+:\s+([a-z]+)(\([a-z0-9_-]+\))?(!)?:\s+.+/;
+const FORMAT_PATTERN = /^:[a-z0-9_+-]+:\s+([a-z0-9]+)(\([a-z0-9_-]+\))?(!)?:\s+.+/;
 
 function validate(filePath) {
   const content = readFileSync(filePath, 'utf-8');
