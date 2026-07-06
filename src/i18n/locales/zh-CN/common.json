@@ -352,6 +352,8 @@
     "errorBoundaryTitle": "出错了",
     "errorBoundaryDescription": "页面发生了意外错误，请稍后重试。",
     "loading": "加载中...",
+    "chunkLoadError": "页面加载失败，请检查网络连接",
+    "retry": "重试",
     "refresh": "刷新",
     "save": "保存",
     "cancel": "取消",

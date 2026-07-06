@@ -1,6 +1,7 @@
 ﻿import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { lazy, Suspense, Component, type ReactNode, type ErrorInfo } from 'react'
 
+import i18n from '@/i18n/config'
 import { RootLayout } from '../layouts/RootLayout'
 import { ErrorBoundaryPage } from '../pages/ErrorBoundaryPage'
 import { AdminShell } from '../pages/AdminShell'
@@ -41,9 +42,9 @@ class LazyErrorBoundary extends Component<{ children: ReactNode }, { hasError: b
     if (this.state.hasError) {
       return (
         <div role="alert" style={FALLBACK_STYLE}>
-          <p>页面加载失败，请检查网络连接</p>
+          <p>{i18n.t('common.chunkLoadError')}</p>
           <button onClick={this.handleRetry} style={{ marginTop: '1rem', cursor: 'pointer' }}>
-            重试
+            {i18n.t('common.retry')}
           </button>
         </div>
       )
@@ -62,7 +63,7 @@ function lazyNamed(importFn: () => Promise<Record<string, unknown>>, name: strin
       <Suspense
         fallback={
           <div role="status" aria-live="polite" aria-busy="true" style={SPINNER_STYLE}>
-            {'Loading...'}
+            {i18n.t('common.loading')}
           </div>
         }
       >

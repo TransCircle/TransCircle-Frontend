@@ -352,6 +352,8 @@
     "errorBoundaryTitle": "出錯了",
     "errorBoundaryDescription": "頁面發生了意外錯誤，請稍後重試。",
     "loading": "載入中...",
+    "chunkLoadError": "頁面載入失敗，請檢查網路連線",
+    "retry": "重試",
     "refresh": "重新整理",
     "save": "儲存",
     "cancel": "取消",
