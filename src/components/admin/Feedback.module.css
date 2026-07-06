@@ -99,24 +99,6 @@
   color: #6ea8ff;
 }
 
-[data-theme='contrast'] .alert_error {
-  background-color: #000000;
-  border-color: #ff6666;
-  color: #ff6666;
-}
-
-[data-theme='contrast'] .alert_success {
-  background-color: #000000;
-  border-color: #66ff66;
-  color: #66ff66;
-}
-
-[data-theme='contrast'] .alert_info {
-  background-color: #000000;
-  border-color: #66ccff;
-  color: #66ccff;
-}
-
 /* ── EmptyState ──────────────────────────────────────────── */
 
 .empty {

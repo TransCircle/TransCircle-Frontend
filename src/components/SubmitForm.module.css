@@ -40,10 +40,6 @@
   color: #ffffff;
 }
 
-[data-theme='contrast'] .userProvider {
-  color: #000000;
-}
-
 .userName {
   font-weight: 600;
   color: var(--text-main);

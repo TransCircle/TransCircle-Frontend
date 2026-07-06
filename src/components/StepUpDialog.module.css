@@ -119,11 +119,6 @@
   }
 }
 
-[data-theme='contrast'] .btnPrimary,
-[data-theme='contrast'] .btnPrimaryFull {
-  color: #000000;
-}
-
 .btnGhost {
   background-color: var(--surface-card);
   color: var(--text-main);
@@ -206,12 +201,6 @@
   background-color: rgba(46, 160, 75, 0.14);
   color: #66bb6a;
   border-color: rgba(46, 160, 75, 0.3);
-}
-
-[data-theme='contrast'] .successCheck {
-  background-color: #000000;
-  color: #66ff66;
-  border-color: #66ff66;
 }
 
 /* ── Animations ──────────────────────────────────────────── */

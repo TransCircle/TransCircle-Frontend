@@ -64,11 +64,6 @@
   }
 }
 
-/* 高对比度：橙色底配黑字（白字对比不足） */
-[data-theme='contrast'] .primary {
-  color: #000000;
-}
-
 /* ── Secondary ───────────────────────────────────────────── */
 
 .secondary {
@@ -120,17 +115,6 @@
 
 [data-theme='dark'] .danger:not(:disabled):hover {
   background-color: rgba(244, 67, 54, 0.08);
-}
-
-[data-theme='contrast'] .danger {
-  background-color: #000000;
-  color: #ff6666;
-  border-color: #ffaa00;
-}
-
-[data-theme='contrast'] .danger:not(:disabled):hover {
-  border-color: #ffaa00;
-  background-color: #332200;
 }
 
 /* Comfortable touch targets on touch devices. */

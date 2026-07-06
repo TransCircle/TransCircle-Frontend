@@ -27,10 +27,6 @@
   color: #ef5350;
 }
 
-[data-theme='contrast'] .error .icon {
-  color: #ff6666;
-}
-
 /* Cancel PageHeader's bottom margin inside the stacked screen. */
 .header {
   margin-bottom: 0;
@@ -92,10 +88,6 @@
   .linkPrimary:hover {
     background-color: var(--cta-hover-mix);
   }
-}
-
-[data-theme='contrast'] .linkPrimary {
-  color: #000000;
 }
 
 .linkSecondary {

@@ -114,36 +114,6 @@
   --soft-success-text: #66bb6a;
 }
 
-/* ── High Contrast Theme ───────────────────────── */
-[data-theme='contrast'] {
-  --bg-color: #000000;
-  --text-main: #ffffff;
-  --text-secondary: #e0e0e0;
-  --text-muted: #cccccc;
-  --text-body: #f0f0f0;
-
-  --primary-pink: #ffaa00;
-  --soft-pink: #332200;
-  --accent-pink: #ffaa00;
-  --nav-bg: rgba(0, 0, 0, 0.95);
-  --divider-color: #ffffff;
-  --surface-card: #000000;
-
-  --hover-bg: #332200;
-  --hover-bg-mix: #332200;
-  --cta-bg: #ffaa00;
-  --cta-color: #000000;
-  --cta-hover: #cc8800;
-  --cta-hover-mix: #cc8800;
-  --shadow-color: rgba(255, 170, 0, 0.3);
-  --shadow-color-hover: rgba(255, 170, 0, 0.5);
-  --overlay-bg: rgba(0, 0, 0, 0.8);
-
-  --soft-success-bg: #000000;
-  --soft-success-border: #66ff66;
-  --soft-success-text: #66ff66;
-}
-
 *,
 *::before,
 *::after {
@@ -193,8 +163,8 @@ body {
 
   body {
     transition:
-      background-color 0.3s ease,
-      color 0.3s ease;
+      background-color 0.2s ease,
+      color 0.2s ease;
   }
 }
 

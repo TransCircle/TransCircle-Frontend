@@ -144,12 +144,6 @@
 [data-theme='dark'] .voteReject {
   background-color: #ef5350;
 }
-[data-theme='contrast'] .voteApprove {
-  background-color: #66ff66;
-}
-[data-theme='contrast'] .voteReject {
-  background-color: #ff6666;
-}
 
 .voteLegend {
   display: flex;
@@ -178,13 +172,6 @@
 
 .voteDotReject {
   background-color: #e5534b;
-}
-
-[data-theme='contrast'] .voteDotApprove {
-  background-color: #66ff66;
-}
-[data-theme='contrast'] .voteDotReject {
-  background-color: #ff6666;
 }
 
 .voteThresholdLabel {

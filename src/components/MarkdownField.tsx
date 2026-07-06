@@ -33,8 +33,7 @@ export const MarkdownField = ({ label, value, onChange, required, error, imageHi
     valueRef.current = value
   }, [value])
 
-  // Map the high-contrast theme to the editor's dark skin (its 'light' skin would
-  // render a white surface on the black contrast page).
+  // The rich-text editor only ships 'light' / 'dark' skins; map the app theme through.
   const editorTheme = theme === 'light' ? 'light' : 'dark'
   const editorLanguage = i18n.language.startsWith('en') ? 'en-US' : 'zh-CN'
 
