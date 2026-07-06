@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
 import { saveCsrfToken } from '@/api/client'
 import { computePermissions, landingPath } from '@/api/permissions'
+import { isValidRedirect } from '@/utils/redirect'
 import { StatusScreen } from '@/components/ui'
 
 // login_blocked 子错误码文案映射
@@ -60,13 +61,8 @@ export const OAuthCallback = () => {
               // Read redirectAfter from URL params and validate it's a safe relative path
               const redirectAfter = searchParams.get('redirectAfter') || ''
               const perms = Array.isArray(user.permissions) ? user.permissions : computePermissions(user.roles ?? [])
-              // 安全相对路径且非鉴权页才采用，否则按权限落地，避免回到 /login、/register
-              const safeRedirect =
-                redirectAfter.startsWith('/') &&
-                !redirectAfter.startsWith('//') &&
-                !/^\/(login|register)\b/.test(redirectAfter)
-                  ? redirectAfter
-                  : landingPath(perms)
+              // 与登录页共用同一套开放重定向校验，避免两处强度不一致；否则按权限落地
+              const safeRedirect = isValidRedirect(redirectAfter) ? redirectAfter : landingPath(perms)
               navigate(safeRedirect, { replace: true })
             }
             break

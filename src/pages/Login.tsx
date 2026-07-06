@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
 import { get } from '@/api/client'
 import { computePermissions, landingPath } from '@/api/permissions'
+import { isValidRedirect } from '@/utils/redirect'
 import { AdminButton, Alert, CenteredCard, PageHeader } from '@/components/ui'
 import auth from './Auth.module.css'
 
@@ -100,23 +101,4 @@ export const Login = () => {
       </div>
     </CenteredCard>
   )
-}
-
-/** 校验重定向 URL 防止开放重定向：仅允许站内相对路径，排除鉴权相关路由 */
-function isValidRedirect(url: string): boolean {
-  if (!url.startsWith('/')) return false
-  if (url.startsWith('//') || url.startsWith('/\\')) return false
-  if (url.length > 200) return false
-  // 阻止以 /auth、/login、/register 开头的鉴权路由作为重定向目标
-  if (/^\/(auth|login|register)\b/.test(url)) return false
-  try {
-    // 用 URL 确保不包含非法协议结构
-    const parsed = new URL(url, 'http://localhost')
-    // 确认解析后的 pathname 与原 url 一致，防止 /%2Fevil.com 等编码绕过
-    if (parsed.pathname !== url.split('?')[0]! && decodeURIComponent(parsed.pathname) !== url.split('?')[0]!)
-      return false
-    return true
-  } catch {
-    return false
-  }
 }
