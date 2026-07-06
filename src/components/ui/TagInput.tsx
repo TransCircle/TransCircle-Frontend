@@ -88,7 +88,10 @@ export function TagInput({
   }
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === ',') {
+    // Ignore keystrokes during IME composition (e.g. an Enter that only commits
+    // a pinyin candidate); keyCode 229 covers Android/legacy composition.
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return
+    if (e.key === 'Enter' || e.key === ',' || e.key === '，') {
       e.preventDefault()
       commit(buffer)
     } else if (e.key === 'Backspace' && !buffer && value.length) {
@@ -112,6 +115,9 @@ export function TagInput({
               type="button"
               className={styles.remove}
               aria-label={removeTagLabel(tag)}
+              // Prevent the input from blurring (which would auto-commit the
+              // buffer as a spurious tag) before this click removes the chip.
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => remove(tag)}
             >
               <CloseIcon />

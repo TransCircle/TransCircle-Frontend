@@ -29,6 +29,11 @@ export function Tabs<K extends string = string>({
 }: TabsProps<K>) {
   const refs = useRef<HTMLButtonElement[]>([])
 
+  // Roving tabindex: the selected tab is focusable. If `value` matches no item,
+  // fall back to the first tab so the tablist never drops out of the tab order.
+  const selectedIndex = items.findIndex((t) => t.key === value)
+  const rovingIndex = selectedIndex >= 0 ? selectedIndex : 0
+
   const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
     let next: number
     switch (e.key) {
@@ -75,7 +80,7 @@ export function Tabs<K extends string = string>({
             type="button"
             aria-selected={active}
             aria-controls={panelId ?? `tabpanel-${item.key}`}
-            tabIndex={active ? 0 : -1}
+            tabIndex={i === rovingIndex ? 0 : -1}
             className={cx(styles.tab, active && styles.active)}
             onClick={() => onChange(item.key)}
             onKeyDown={(e) => handleKeyDown(e, i)}

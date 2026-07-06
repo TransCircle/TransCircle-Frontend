@@ -30,6 +30,36 @@ function trapFocus(e: KeyboardEvent, container: HTMLElement | null) {
   }
 }
 
+/* ── Body scroll lock (refcounted) + modal stack ─────────── */
+
+const modalStack: symbol[] = []
+let lockCount = 0
+let savedOverflow = ''
+let savedPaddingRight = ''
+
+function lockScroll() {
+  if (lockCount === 0) {
+    const { body, documentElement } = document
+    savedOverflow = body.style.overflow
+    savedPaddingRight = body.style.paddingRight
+    const scrollbarWidth = window.innerWidth - documentElement.clientWidth
+    body.style.overflow = 'hidden'
+    if (scrollbarWidth > 0) {
+      const current = parseFloat(getComputedStyle(body).paddingRight) || 0
+      body.style.paddingRight = `${current + scrollbarWidth}px`
+    }
+  }
+  lockCount++
+}
+
+function unlockScroll() {
+  lockCount = Math.max(0, lockCount - 1)
+  if (lockCount === 0) {
+    document.body.style.overflow = savedOverflow
+    document.body.style.paddingRight = savedPaddingRight
+  }
+}
+
 /* ── Modal base ──────────────────────────────────────────── */
 
 export interface ModalProps {
@@ -57,22 +87,28 @@ export function Modal({
 }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const restoreRef = useRef<HTMLElement | null>(null)
+  const stackIdRef = useRef<symbol | null>(null)
   const baseId = useId()
   const titleId = `${baseId}-title`
   const descId = `${baseId}-desc`
 
   useEffect(() => {
     if (!open) return
+    const id = Symbol('modal')
+    stackIdRef.current = id
+    modalStack.push(id)
     restoreRef.current = document.activeElement as HTMLElement | null
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    lockScroll()
 
     const focusTarget =
       initialFocusRef?.current ?? panelRef.current?.querySelector<HTMLElement>(FOCUSABLE) ?? panelRef.current
     focusTarget?.focus()
 
     return () => {
-      document.body.style.overflow = prevOverflow
+      const idx = modalStack.lastIndexOf(id)
+      if (idx !== -1) modalStack.splice(idx, 1)
+      stackIdRef.current = null
+      unlockScroll()
       restoreRef.current?.focus?.()
     }
     // initialFocusRef is read once on open; intentionally not a dependency.
@@ -82,6 +118,9 @@ export function Modal({
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
+      // Only the top-most modal handles Esc / focus-trap Tab, so stacked
+      // dialogs neither co-close nor fight over focus.
+      if (modalStack[modalStack.length - 1] !== stackIdRef.current) return
       if (e.key === 'Escape') {
         e.stopPropagation()
         onClose()
