@@ -125,11 +125,28 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
     }
   }
 
+  // WAI-ARIA menu 键盘契约：在 role="menuitem" 之间用方向键/Home/End 滚动焦点。
+  const moveMenuFocus = (e: React.KeyboardEvent<HTMLUListElement>) => {
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return
+    e.preventDefault()
+    const items = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]'))
+    if (items.length === 0) return
+    const current = items.findIndex((el) => el === document.activeElement)
+    let next: number
+    if (e.key === 'Home') next = 0
+    else if (e.key === 'End') next = items.length - 1
+    else if (e.key === 'ArrowDown') next = current < 0 ? 0 : (current + 1) % items.length
+    else next = current < 0 ? items.length - 1 : (current - 1 + items.length) % items.length
+    items[next]?.focus()
+  }
+
   const handleLinksMenuKeyDown = (e: React.KeyboardEvent<HTMLUListElement>) => {
     if (e.key === 'Escape') {
       setLinksDropdownOpen(false)
       linksDropdownRef.current?.focus()
+      return
     }
+    moveMenuFocus(e)
   }
 
   const handleLinksBlur = (e: React.FocusEvent<HTMLElement>) => {
@@ -159,7 +176,9 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
     if (e.key === 'Escape') {
       setAcctDropdownOpen(false)
       acctDropdownRef.current?.focus()
+      return
     }
+    moveMenuFocus(e)
   }
 
   const handleAcctBlur = (e: React.FocusEvent<HTMLElement>) => {
