@@ -34,15 +34,28 @@ function trapFocus(e: KeyboardEvent, container: HTMLElement | null) {
 
 const modalStack: symbol[] = []
 let lockCount = 0
+let savedScrollY = 0
 let savedOverflow = ''
 let savedPaddingRight = ''
+let savedPosition = ''
+let savedTop = ''
+let savedWidth = ''
 
 function lockScroll() {
   if (lockCount === 0) {
     const { body, documentElement } = document
+    savedScrollY = window.scrollY
     savedOverflow = body.style.overflow
     savedPaddingRight = body.style.paddingRight
+    savedPosition = body.style.position
+    savedTop = body.style.top
+    savedWidth = body.style.width
     const scrollbarWidth = window.innerWidth - documentElement.clientWidth
+    // position:fixed also stops iOS Safari's rubber-band scroll of the page
+    // behind the modal, which overflow:hidden alone does not.
+    body.style.position = 'fixed'
+    body.style.top = `-${savedScrollY}px`
+    body.style.width = '100%'
     body.style.overflow = 'hidden'
     if (scrollbarWidth > 0) {
       const current = parseFloat(getComputedStyle(body).paddingRight) || 0
@@ -55,8 +68,13 @@ function lockScroll() {
 function unlockScroll() {
   lockCount = Math.max(0, lockCount - 1)
   if (lockCount === 0) {
-    document.body.style.overflow = savedOverflow
-    document.body.style.paddingRight = savedPaddingRight
+    const { body } = document
+    body.style.overflow = savedOverflow
+    body.style.paddingRight = savedPaddingRight
+    body.style.position = savedPosition
+    body.style.top = savedTop
+    body.style.width = savedWidth
+    window.scrollTo(0, savedScrollY)
   }
 }
 

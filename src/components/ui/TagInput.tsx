@@ -1,7 +1,10 @@
-import { useId, useRef, useState, type KeyboardEvent } from 'react'
+import { useId, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react'
 import { cx } from '../admin/cx'
 import { limitByUnicode } from '@/utils/string'
 import styles from './TagInput.module.css'
+
+/** Separators that trigger multi-value paste splitting (comma incl. full-width, tab, newline). */
+const PASTE_SPLIT = /[\n\r\t,，]+/
 
 const CloseIcon = () => (
   <svg
@@ -100,6 +103,27 @@ export function TagInput({
     }
   }
 
+  // A paste containing separators splits into multiple tags at once; a
+  // separator-free paste falls through to the native handler (fills the buffer).
+  const onPaste = (e: ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData.getData('text')
+    if (!PASTE_SPLIT.test(text)) return
+    e.preventDefault()
+    const next = [...value]
+    const added: string[] = []
+    for (const part of text.split(PASTE_SPLIT)) {
+      const tag = limitByUnicode(part.trim(), maxTagLength)
+      if (tag && next.length < maxTags && !next.includes(tag)) {
+        next.push(tag)
+        added.push(tag)
+      }
+    }
+    if (added.length) {
+      onChange(next)
+      if (announce) setLive(announce.added(added.join('、')))
+    }
+  }
+
   return (
     <div className={cx(styles.field, fieldClassName)}>
       {label && (
@@ -136,6 +160,7 @@ export function TagInput({
           aria-describedby={hintId}
           onChange={(e) => setBuffer(e.target.value)}
           onKeyDown={onKeyDown}
+          onPaste={onPaste}
           onBlur={() => buffer.trim() && commit(buffer)}
         />
       </div>
