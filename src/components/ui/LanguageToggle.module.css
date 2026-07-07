@@ -47,7 +47,7 @@
 }
 
 .btn.active {
-  background-color: var(--primary-pink);
+  background-color: var(--accent-pink);
   color: #ffffff;
   font-weight: 600;
 }
