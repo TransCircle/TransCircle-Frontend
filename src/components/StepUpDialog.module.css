@@ -99,8 +99,8 @@
 
 .btnPrimary,
 .btnPrimaryFull {
-  background-color: var(--accent-pink);
-  color: #ffffff;
+  background-color: var(--cta-bg);
+  color: var(--cta-color);
 }
 
 .btnPrimaryFull {

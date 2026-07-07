@@ -37,7 +37,7 @@
   padding: 0.15rem 0.45rem;
   border-radius: var(--radius-pill);
   background-color: var(--accent-pink);
-  color: #ffffff;
+  color: var(--on-accent);
 }
 
 .userName {

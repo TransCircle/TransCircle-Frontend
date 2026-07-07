@@ -50,7 +50,7 @@
 }
 
 .check {
-  color: #ffffff;
+  color: var(--on-accent);
   opacity: 0;
   transform: scale(0.6);
   transition:
@@ -63,7 +63,7 @@
   width: 10px;
   height: 2px;
   border-radius: 2px;
-  background-color: #ffffff;
+  background-color: var(--on-accent);
   opacity: 0;
 }
 
