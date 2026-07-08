@@ -195,15 +195,15 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
             <button
               ref={hamburgerRef}
               type="button"
-              className={styles.hamburger}
+              className={`${styles.hamburger} ${isOpen ? styles.hamburgerOpen : ''}`}
               onClick={() => (isOpen ? closeMenu() : openMenu())}
               aria-label={isOpen ? t('nav.closeMenu') : t('nav.openMenu')}
               aria-expanded={isOpen}
               aria-controls="nav-drawer"
             >
-              <span className={styles.bar}></span>
-              <span className={styles.bar}></span>
-              <span className={styles.bar}></span>
+              <span className={`${styles.bar} ${styles.barTop}`}></span>
+              <span className={`${styles.bar} ${styles.barMid}`}></span>
+              <span className={`${styles.bar} ${styles.barBot}`}></span>
             </button>
 
             <div className={styles.logo}>
