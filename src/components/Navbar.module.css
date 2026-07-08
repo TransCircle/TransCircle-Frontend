@@ -328,14 +328,21 @@
   cursor: pointer;
   padding: 0;
   overflow: hidden;
-  transition: box-shadow 0.15s ease;
+  transition: box-shadow var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-standard);
 }
-.acctBtn:hover,
-.acctBtn:focus-visible {
+.acctBtn:hover {
+  box-shadow: 0 0 0 2px var(--soft-pink);
+}
+.acctBtn[aria-expanded='true'] {
   box-shadow: 0 0 0 2px var(--primary-pink);
 }
+.acctBtn:active {
+  transform: scale(0.96);
+}
 .acctBtn:focus-visible {
-  outline: none;
+  outline: 2px solid var(--primary-pink);
+  outline-offset: 2px;
 }
 
 .acctAvatar {
@@ -353,7 +360,7 @@
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background-color: var(--accent-pink);
+  background: linear-gradient(135deg, var(--accent-pink), var(--primary-pink));
   color: var(--on-accent);
   font-size: 0.9rem;
   font-weight: 600;
@@ -418,12 +425,10 @@
     font-size: 1.05rem;
   }
 
+  /* docs 6.1.7: 移动端保留可见登录入口（压扁药丸）+ 头像身份入口，不整体隐藏。 */
   .loginBtn {
-    display: none;
-  }
-
-  .acctBtn {
-    display: none;
+    padding: 0 0.9rem;
+    font-size: 0.82rem;
   }
 
   .hamburger {
