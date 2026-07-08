@@ -35,7 +35,7 @@ interface NavbarProps {
   customMobileLinkLabel?: string
 }
 
-const MOBILE_BREAKPOINT = 1200
+const MOBILE_BREAKPOINT = 1100
 
 export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
   const { t } = useTranslation()
