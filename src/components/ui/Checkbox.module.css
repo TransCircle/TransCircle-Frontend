@@ -92,13 +92,8 @@
 
 .input:focus-visible + .box {
   border-color: var(--primary-pink);
-  box-shadow: 0 0 0 3px rgba(255, 133, 162, 0.18);
-}
-
-@supports (box-shadow: 0 0 0 3px color-mix(in srgb, red 18%, transparent)) {
-  .input:focus-visible + .box {
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-pink) 22%, transparent);
-  }
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .invalid .box {
@@ -118,9 +113,9 @@
   color: var(--error-color);
 }
 
-@media (pointer: coarse) {
+@media (any-pointer: coarse) {
   .row {
-    min-height: 40px;
+    min-height: var(--tap-min);
   }
 }
 

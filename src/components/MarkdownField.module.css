@@ -9,7 +9,8 @@
 
 .editorWrapper:focus-within {
   border-color: var(--primary-pink);
-  box-shadow: 0 0 0 3px rgba(255, 133, 162, 0.15);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 @supports (box-shadow: 0 0 0 3px color-mix(in srgb, red 18%, transparent)) {

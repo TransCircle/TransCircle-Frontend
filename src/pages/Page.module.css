@@ -32,6 +32,14 @@
   padding: 1.3rem 0 0.7rem;
 }
 
+@media (max-width: 640px), (max-height: 500px) {
+  .stickyHead {
+    position: static;
+    margin-top: 0;
+    padding-top: 0;
+  }
+}
+
 /* Non-sticky page header group for customer (document-scroll) pages, where a
    sticky header would pin underneath RootLayout's sticky navbar. Admin pages
    keep .stickyHead because they scroll inside an internal container. */

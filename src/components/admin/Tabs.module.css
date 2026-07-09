@@ -50,7 +50,7 @@
   min-width: 1.2rem;
   height: 1.2rem;
   padding: 0 0.35rem;
-  border-radius: 50px;
+  border-radius: var(--radius-pill);
   background-color: var(--hover-bg);
   color: var(--text-secondary);
   font-size: 0.72rem;

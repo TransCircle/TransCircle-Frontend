@@ -42,18 +42,17 @@
 .trigger:focus-visible,
 .trigger.open {
   border-color: var(--primary-pink);
-  box-shadow: 0 0 0 3px rgba(255, 133, 162, 0.18);
-}
-
-@supports (box-shadow: 0 0 0 3px color-mix(in srgb, red 18%, transparent)) {
-  .trigger:focus-visible,
-  .trigger.open {
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-pink) 22%, transparent);
-  }
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .trigger.invalid {
   border-color: var(--error-border);
+}
+
+.trigger.invalid:focus-visible {
+  border-color: var(--error-border);
+  box-shadow: 0 0 0 3px var(--focus-ring-error);
 }
 
 .trigger:disabled {
@@ -153,7 +152,7 @@
   color: var(--error-color);
 }
 
-@media (pointer: coarse) {
+@media (any-pointer: coarse) {
   .trigger {
     min-height: 44px;
   }

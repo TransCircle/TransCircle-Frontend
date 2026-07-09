@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { get } from '@/api/client'
-import DOMPurify from 'dompurify'
+import { sanitizeHtml } from '@/utils/sanitize'
 import { AdminButton, Alert, Card, Pill, Spinner } from '@/components/ui'
 import { useFormatTs } from '@/utils/datetime'
 import shell from './Page.module.css'
@@ -95,7 +95,7 @@ export const PublicContributionDetail = () => {
 
           {detail.summary && <p className={shell.subtleNote}>{detail.summary}</p>}
 
-          <div className={shell.prose} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(detail.contentHtml) }} />
+          <div className={shell.prose} dangerouslySetInnerHTML={{ __html: sanitizeHtml(detail.contentHtml) }} />
 
           <div className={shell.actions}>
             <AdminButton variant="ghost" size="sm" onClick={() => navigate(`/contributions/${id}/edit-request`)}>

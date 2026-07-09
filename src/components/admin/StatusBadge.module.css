@@ -3,7 +3,7 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.2rem 0.6rem 0.2rem 0.5rem;
-  border-radius: 50px;
+  border-radius: var(--radius-pill);
   border: 1px solid transparent;
   font-size: 0.78rem;
   font-weight: 600;
@@ -28,20 +28,20 @@
 /* ── Light tones ─────────────────────────────────────────── */
 
 .tone_amber {
-  color: #b26a00;
-  background-color: #fff3e0;
+  color: var(--soft-amber-text);
+  background-color: var(--soft-amber-bg);
 }
 .tone_blue {
-  color: #1a56c4;
-  background-color: #e9f1ff;
+  color: var(--soft-info-text);
+  background-color: var(--soft-info-bg);
 }
 .tone_green {
-  color: #1e7d34;
-  background-color: #e7f6ec;
+  color: var(--soft-success-text);
+  background-color: var(--soft-success-bg);
 }
 .tone_red {
-  color: #c62828;
-  background-color: #fbe9e7;
+  color: var(--soft-error-text);
+  background-color: var(--soft-error-bg);
 }
 .tone_accent {
   color: var(--accent-pink);
@@ -56,32 +56,13 @@
   background-color: var(--hover-bg);
 }
 
-/* ── Dark tones ──────────────────────────────────────────── */
-
-[data-theme='dark'] .tone_amber {
-  color: #e0a32e;
-  background-color: rgba(245, 166, 35, 0.13);
-}
-[data-theme='dark'] .tone_blue {
-  color: #6ea8ff;
-  background-color: rgba(59, 130, 246, 0.14);
-}
-[data-theme='dark'] .tone_green {
-  color: #66bb6a;
-  background-color: rgba(46, 160, 75, 0.14);
-}
-[data-theme='dark'] .tone_red {
-  color: #ef5350;
-  background-color: rgba(244, 67, 54, 0.12);
-}
-
 /* ── Pill (neutral marker) ───────────────────────────────── */
 
 .pill {
   display: inline-flex;
   align-items: center;
   padding: 0.15rem 0.6rem;
-  border-radius: 50px;
+  border-radius: var(--radius-pill);
   background-color: var(--hover-bg);
   color: var(--text-secondary);
   font-size: 0.75rem;

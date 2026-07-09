@@ -111,7 +111,7 @@
   position: relative;
   display: flex;
   height: 10px;
-  border-radius: 50px;
+  border-radius: var(--radius-pill);
   background-color: var(--hover-bg);
   overflow: hidden;
   border: 1px solid var(--divider-color);
@@ -119,14 +119,14 @@
 
 .voteApprove {
   height: 100%;
-  background-color: #2e9e4b;
-  transition: width 0.3s ease;
+  background-color: var(--vote-approve);
+  transition: width var(--dur-base) var(--ease-standard);
 }
 
 .voteReject {
   height: 100%;
-  background-color: #e5534b;
-  transition: width 0.3s ease;
+  background-color: var(--vote-reject);
+  transition: width var(--dur-base) var(--ease-standard);
 }
 
 .voteThreshold {
@@ -136,13 +136,6 @@
   width: 2px;
   background-color: var(--text-main);
   opacity: 0.55;
-}
-
-[data-theme='dark'] .voteApprove {
-  background-color: #43a047;
-}
-[data-theme='dark'] .voteReject {
-  background-color: #ef5350;
 }
 
 .voteLegend {

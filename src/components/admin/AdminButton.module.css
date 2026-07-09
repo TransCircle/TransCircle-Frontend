@@ -108,7 +108,7 @@
 }
 
 /* Comfortable touch targets on touch devices. */
-@media (pointer: coarse) {
+@media (any-pointer: coarse) {
   .btn {
     min-height: 44px;
   }

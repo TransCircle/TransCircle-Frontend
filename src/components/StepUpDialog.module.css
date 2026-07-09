@@ -14,10 +14,11 @@
   width: 100%;
   max-width: 420px;
   max-height: calc(100vh - 3rem);
+  max-height: calc(100dvh - 3rem);
   overflow-y: auto;
   background-color: var(--surface-card);
   border: 1px solid var(--divider-color);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
   padding: 1.5rem;
   animation: suPanel 0.2s ease;
@@ -62,7 +63,8 @@
 
 .input:focus {
   border-color: var(--primary-pink);
-  box-shadow: 0 0 0 3px rgba(255, 133, 162, 0.18);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 @supports (box-shadow: 0 0 0 3px color-mix(in srgb, red 18%, transparent)) {
@@ -87,7 +89,7 @@
   font-family: inherit;
   font-weight: 500;
   font-size: 0.88rem;
-  border-radius: 50px;
+  border-radius: var(--radius-pill);
   padding: 0.55rem 1.25rem;
   cursor: pointer;
   border: 1.5px solid transparent;

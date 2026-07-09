@@ -43,6 +43,9 @@
   --soft-amber-border: #f0d9b0;
   --soft-amber-text: #b26a00;
 
+  --vote-approve: #2e9e4b;
+  --vote-reject: #e5534b;
+
   /* Input focus ring (box-shadow), accent-surface foreground, text selection. */
   --focus-ring: rgba(255, 133, 162, 0.28);
   --focus-ring-error: rgba(211, 47, 47, 0.16);
@@ -177,6 +180,9 @@
   --soft-amber-bg: rgba(240, 160, 50, 0.14);
   --soft-amber-border: rgba(240, 160, 50, 0.32);
   --soft-amber-text: #ffb74d;
+
+  --vote-approve: #43a047;
+  --vote-reject: #ef5350;
 
   --focus-ring: rgba(255, 133, 162, 0.28);
   --focus-ring-error: rgba(239, 83, 80, 0.28);

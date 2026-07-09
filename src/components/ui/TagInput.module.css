@@ -30,13 +30,8 @@
 
 .box:focus-within {
   border-color: var(--primary-pink);
-  box-shadow: 0 0 0 3px rgba(255, 133, 162, 0.18);
-}
-
-@supports (box-shadow: 0 0 0 3px color-mix(in srgb, red 18%, transparent)) {
-  .box:focus-within {
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-pink) 22%, transparent);
-  }
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .box.invalid {
