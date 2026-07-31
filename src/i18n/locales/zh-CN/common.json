@@ -563,6 +563,7 @@
     "exportDone": "导出请求已受理，请查收邮件",
     "requesting": "请求中...",
     "requestExport": "请求导出",
+    "requestFailed": "请求失败，请检查网络连接后重试",
     "cancelDeletionHeading": "撤销账户注销",
     "cancelDeletionDescription": "已在冷静期内？在收到注销邮件后，填入邮件中的撤销令牌和账号信息即可恢复账户。",
     "cancelSuccess": "账户已成功撤销注销，请重新登录",

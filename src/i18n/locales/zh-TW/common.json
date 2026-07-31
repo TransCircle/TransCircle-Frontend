@@ -563,6 +563,7 @@
     "exportDone": "匯出請求已受理，請查收郵件",
     "requesting": "請求中...",
     "requestExport": "請求匯出",
+    "requestFailed": "請求失敗，請檢查網路連線後重試",
     "cancelDeletionHeading": "撤銷帳戶刪除",
     "cancelDeletionDescription": "已在冷靜期內？在收到刪除郵件後，填入郵件中的撤銷令牌和帳號資訊即可恢復帳戶。",
     "cancelSuccess": "帳戶已成功撤銷刪除，請重新登入",

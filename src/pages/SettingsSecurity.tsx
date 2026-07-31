@@ -90,14 +90,16 @@ export const SettingsSecurity = () => {
     }
 
     setProfileSubmitting(true)
-    const result = await patch<Record<string, unknown>>('/me', { displayName: dn })
-    setProfileSubmitting(false)
-
-    if (result.ok) {
-      setProfileSuccess(true)
-      setProfile((prev) => (prev ? { ...prev, displayName: dn } : prev))
-    } else {
-      setProfileError(result.error.message)
+    try {
+      const result = await patch<Record<string, unknown>>('/me', { displayName: dn })
+      if (result.ok) {
+        setProfileSuccess(true)
+        setProfile((prev) => (prev ? { ...prev, displayName: dn } : prev))
+      } else {
+        setProfileError(result.error.message || t('settings.requestFailed'))
+      }
+    } finally {
+      setProfileSubmitting(false)
     }
   }
 
@@ -105,12 +107,17 @@ export const SettingsSecurity = () => {
   const handleExport = async () => {
     setExportError('')
     setExportStatus('submitting')
-    const result = await post('/me/export')
-    if (result.ok) {
-      setExportStatus('done')
-    } else {
+    try {
+      const result = await post('/me/export')
+      if (result.ok) {
+        setExportStatus('done')
+      } else {
+        setExportStatus('error')
+        setExportError(result.error.message || t('settings.requestFailed'))
+      }
+    } catch {
       setExportStatus('error')
-      setExportError(result.error.message)
+      setExportError(t('settings.requestFailed'))
     }
   }
 

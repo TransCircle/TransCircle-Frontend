@@ -66,7 +66,9 @@ async function doRefresh(): Promise<string | null> {
         try {
           const body = await res.json().catch(() => ({}))
           console.warn('[auth] refresh error body:', body)
-        } catch { /* empty */ }
+        } catch {
+          /* empty */
+        }
         return null
       }
 
@@ -331,11 +333,23 @@ export async function apiRequest<T = unknown>(
   // will process it normally. If the request did reach the server but the response
   // was lost, reusing the key lets the server deduplicate. The error propagates
   // to the caller unchanged.
-  let res = await fetch(url, init)
+  let res: Response
+  try {
+    res = await fetch(url, init)
 
-  // ── Auto-refresh on 401 ──
-  if (!options.skipRefresh) {
-    res = await autoRefreshOn401(res, url, init, headers)
+    // ── Auto-refresh on 401 ──
+    if (!options.skipRefresh) {
+      res = await autoRefreshOn401(res, url, init, headers)
+    }
+  } catch (err) {
+    // Keep the intent key: a caller retry represents the same business intent and must reuse it.
+    if (err instanceof DOMException && err.name === 'AbortError') throw err
+    return {
+      ok: false,
+      error: { code: 'NETWORK_ERROR', message: '' },
+      requestId: '',
+      status: 0,
+    }
   }
 
   // ── Parse response ──
@@ -370,7 +384,18 @@ export async function apiRequest<T = unknown>(
   }
 
   if (contentType.includes('application/json')) {
-    const json = (await res.json()) as Record<string, unknown>
+    let json: Record<string, unknown>
+    try {
+      json = (await res.json()) as Record<string, unknown>
+    } catch {
+      return {
+        ok: false,
+        error: { code: 'INVALID_RESPONSE', message: '' },
+        requestId: res.headers.get('X-Request-Id') || '',
+        status,
+        rateLimit,
+      }
+    }
     const requestId = (json.requestId as string) || res.headers.get('X-Request-Id') || ''
 
     // Log rate limit info for 429 responses (L1)
