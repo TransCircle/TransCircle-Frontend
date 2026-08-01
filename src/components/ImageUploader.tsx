@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { uploadFile } from '@/api/client'
 import { ERRORS } from '@/api/errors'
+import { IMAGE_BASE } from '@/config'
 import { AdminButton, Alert } from '@/components/ui'
 
 interface ImageUploaderProps {
@@ -69,19 +70,21 @@ export const ImageUploader = ({ onUploaded }: ImageUploaderProps) => {
       currentUploadRef.current = null
 
       if (result.ok) {
-        // 深层防御：验证返回的 URL 是合法的 HTTP(S) 链接
+        // 后端可返回绝对 URL 或同一图片服务内的相对路径。以可信 IMAGE_BASE 解析后，
+        // 仍只允许 HTTP(S) 且必须与配置的图片源同源，防止把上传响应变成开放重定向/XSS 入口。
         const url = result.data.url
         try {
-          const parsed = new URL(url)
-          if (!['http:', 'https:'].includes(parsed.protocol)) {
+          const trustedBase = new URL(IMAGE_BASE, window.location.origin)
+          const parsed = new URL(url, `${trustedBase.toString().replace(/\/$/, '')}/`)
+          if (!['http:', 'https:'].includes(parsed.protocol) || parsed.origin !== trustedBase.origin) {
             setError(t('imageUploader.errorInvalid'))
             return
           }
+          onUploaded(parsed.toString())
         } catch {
           setError(t('imageUploader.errorInvalid'))
           return
         }
-        onUploaded(url)
       } else {
         const code = result.error.code
         if (code === ERRORS.EMAIL_NOT_VERIFIED) setError(t('imageUploader.errorEmailNotVerified'))
