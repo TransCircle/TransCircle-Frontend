@@ -288,6 +288,7 @@
     "bindEmailNotVerified": "信箱未驗證，無法綁定 OAuth"
   },
   "login": {
+    "redirectingToPass": "正在前往 TransCircle Pass…",
     "title": "登入",
     "description": "使用信箱或使用者名稱 + 密碼登入 TransCircle",
     "identifier": "信箱或使用者名稱",

@@ -1,5 +1,5 @@
 import type { FormEvent } from 'react'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
 import { post, setIntentKey, newIdempotencyKey } from '@/api/client'
@@ -66,6 +66,7 @@ const validate = (data: FormData, t: (key: string, options?: Record<string, unkn
 export const SubmitForm = () => {
   const { t } = useTranslation()
   const { user, loading, loginProvider, loginWithPass } = useAuth()
+  const loginStarting = useRef(false)
   const [form, setForm] = useState<FormData>(INITIAL_FORM)
   const [errors, setErrors] = useState<FormErrors>({})
   const [status, setStatus] = useState<FormStatus>('idle')
@@ -198,7 +199,16 @@ export const SubmitForm = () => {
           ) : (
             <span className={styles.loginActions}>
               {t('submit.loginHint')}
-              <AdminButton type="button" variant="primary" size="sm" onClick={loginWithPass}>
+              <AdminButton
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  if (loginStarting.current) return
+                  loginStarting.current = true
+                  void loginWithPass('/submit')
+                }}
+              >
                 {t('login.passLogin')}
               </AdminButton>
             </span>

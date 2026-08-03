@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { get } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
@@ -70,7 +70,8 @@ const ChevronIcon = () => (
 
 export const MyContributions = () => {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const location = useLocation()
+  const { user, loading: authLoading } = useAuth()
   const { t } = useTranslation()
   const formatTs = useFormatTs()
 
@@ -119,9 +120,12 @@ export const MyContributions = () => {
   }, [user, filterStatus])
 
   if (!user) {
+    if (!authLoading) {
+      return <Navigate to={`/auth/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />
+    }
     return (
       <div className={shell.page}>
-        <EmptyState title={t('myContributions.loginRequired')} />
+        <Spinner size="lg" label={t('admin.verifying')} />
       </div>
     )
   }

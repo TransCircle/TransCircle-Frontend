@@ -19,7 +19,7 @@ export const RequireReviewerOrAdminLayout = () => {
   }
 
   if (!user) {
-    return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname)}`} replace />
+    return <Navigate to={`/auth/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />
   }
 
   // 审核后台入口：拥有「查看投稿」权限即可（reviewer/editor/admin 皆有）

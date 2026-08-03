@@ -288,6 +288,7 @@
     "errorLoginBlocked": "登录被拒绝"
   },
   "login": {
+    "redirectingToPass": "正在转到 TransCircle Pass…",
     "title": "登录",
     "description": "使用邮箱或用户名 + 密码登录 TransCircle",
     "identifier": "邮箱或用户名",

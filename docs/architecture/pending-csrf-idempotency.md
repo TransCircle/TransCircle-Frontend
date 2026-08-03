@@ -1,4 +1,6 @@
-# 待讨论架构问题文档
+# 历史架构问题与仍待处理事项
+
+> **状态说明（2026-08）**：本文 H1 描述的是故事站旧 GitHub/X OAuth 注册、绑定页面的 CSRF 通道，相关 `OAuthContinue.tsx`、`OAuthBinding.tsx` 与本地账户流程已退役；普通用户现在通过 Pass OIDC 登录，state、nonce、PKCE 与 code exchange 由故事站后端处理。H1 仅作历史记录，不应用于新实现。M9 的业务意图级幂等讨论仍可独立参考。
 
 ## H1: OAuth CSRF Token 生产部署通道
 

@@ -1,6 +1,7 @@
 import { createContext, useEffect, useState, useCallback, useMemo, type ReactNode } from 'react'
 import { get, post, setAccessToken as setClientToken, clearAuth, tryRefreshToken } from '@/api/client'
 import { computePermissions } from '@/api/permissions'
+import { isValidRedirect } from '@/utils/redirect'
 
 interface User {
   id: string
@@ -38,7 +39,7 @@ interface AuthContextValue {
   /** 手动更新 AuthContext 中的 accessToken（用于改密等需同步 token 的场景） */
   updateAccessToken: (token: string | null) => void
   /** 普通用户登录：跳转后端 /v1/auth/oauth/pass/start（TransCircle Pass，OIDC 流程同 IAM） */
-  loginWithPass: () => Promise<void>
+  loginWithPass: (redirectAfter?: string) => Promise<void>
   /** IAM 统一身份登录(管理员)：provider=iam，OIDC 流程同 pass */
   loginWithIam: () => Promise<void>
   logout: () => Promise<void>
@@ -105,7 +106,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return
       }
       // 静默 SSO 跳过条件：已在登录/回调页，或本轮已尝试过（防循环）
-      const isLoginPage = window.location.pathname.startsWith('/login')
+      const isLoginPage = /^\/(?:login|auth\/login)\b/.test(window.location.pathname)
       const isCallbackPage = window.location.pathname.startsWith('/auth/callback')
       const ssoAttempted = sessionStorage.getItem('sso_attempted') === 'true'
       const skipSSO = isLoginPage || isCallbackPage || ssoAttempted
@@ -151,12 +152,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Start OAuth flow: fetch authorization URL from backend, then redirect.
   // pass = 普通用户（TransCircle Pass），iam = 管理员（统一身份）。两者均为 OIDC 跳转流程。
-  const startOAuth = useCallback(async (provider: 'pass' | 'iam') => {
+  const startOAuth = useCallback(async (provider: 'pass' | 'iam', requestedRedirect?: string) => {
     setLoginProvider(provider)
-    // 不要把鉴权页（/login、/register、/auth/*）作为登录后回跳目标，否则回调会回到登录页、
-    // 看似未登录；此时留空，由回调按权限落地（landingPath）。
-    const isAuthPage = /^\/(login|register|auth)\b/.test(window.location.pathname)
-    const redirectAfter = isAuthPage ? '' : window.location.pathname + window.location.search
+    const currentPath = window.location.pathname + window.location.search
+    const isAuthPage = /^\/(?:login|register|auth)\b/.test(window.location.pathname)
+    const redirectAfter = isValidRedirect(requestedRedirect ?? '')
+      ? requestedRedirect!
+      : isAuthPage
+        ? ''
+        : currentPath
     const result = await get<{ authorizationUrl: string }>(
       `/auth/oauth/${provider}/start?redirectAfter=${encodeURIComponent(redirectAfter)}`,
     )
@@ -167,7 +171,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [])
 
-  const loginWithPass = useCallback(() => startOAuth('pass'), [startOAuth])
+  const loginWithPass = useCallback((redirectAfter?: string) => startOAuth('pass', redirectAfter), [startOAuth])
   const loginWithIam = useCallback(() => startOAuth('iam'), [startOAuth])
 
   // Exchange loginCode for access token (called from callback page)

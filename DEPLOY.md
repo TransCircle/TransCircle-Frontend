@@ -1,163 +1,117 @@
-# TransCircle 部署指南
+# TransCircle 故事站前端部署与统一登录检查
 
-## 架构总览
+## 架构
 
-```
-用户 → submit.transcircle.org (Cloudflare Pages, 前端 SPA)
-           ↓  /v1/*  代理到后端
-           → api.transcircle.org (Express + MySQL，独立部署)
-```
-
-| 组件     | 代码仓库                      | 技术栈                                  |
-| -------- | ----------------------------- | --------------------------------------- |
-| 前端 SPA | `TransCircle-Frontend`        | React + Vite，部署到 Cloudflare Pages   |
-| 后端 API | `TransCircle-Backend-develop` | Express 5 + MySQL (Sequelize)，独立部署 |
-| 数据库   | —                             | MySQL 8+（云服务或自建）                |
-
-> **注意**：后端 API 和数据库由 `TransCircle-Backend-develop` 仓库管理。
-> 本仓库仅负责前端 SPA 的构建和部署。
-
----
-
-## 目录
-
-1. [前置准备](#1-前置准备)
-2. [前端部署（Cloudflare Pages）](#2-前端部署-cloudflare-pages)
-3. [环境变量速查](#3-环境变量速查)
-4. [本地开发快速启动](#4-本地开发快速启动)
-5. [验证清单](#5-验证清单)
-
----
-
-## 1. 前置准备
-
-### 1.1 注册账号
-
-| 服务       | 用途                     | 注册链接                    |
-| ---------- | ------------------------ | --------------------------- |
-| Cloudflare | 前端托管（免费计划即可） | https://dash.cloudflare.com |
-| GitHub     | 代码托管 + CI/CD         | 已有                        |
-
-### 1.2 OAuth App 注册
-
-**GitHub OAuth App：**
-
-1. GitHub → Settings → Developer settings → OAuth Apps → New OAuth App
-2. 填写：
-   - Application name: `TransCircle`
-   - Homepage URL: `https://submit.transcircle.org`（开发期用 `http://localhost:5173`）
-   - Authorization callback URL: `https://api.transcircle.org/v1/auth/oauth/github/callback`
-3. 保存后复制 **Client ID** 和 **Client Secret**
-
-**X (Twitter) OAuth 2.0：**
-
-1. https://developer.twitter.com → Projects & Apps → 你的项目 → User authentication settings
-2. App permissions: `Read`
-3. Type of App: `Web App, Automated App or Bot`
-4. Callback URI / Redirect URL: `https://api.transcircle.org/v1/auth/oauth/x/callback`
-5. 保存后复制 **Client ID** 和 **Client Secret**
-
----
-
-## 2. 前端部署（Cloudflare Pages）
-
-### 2.1 配置生产 API 地址
-
-部署前确保 `src/config.ts` 的生产环境 `API_BASE` 指向实际后端域名：
-
-```ts
-export const API_BASE: string = '/v1'
+```text
+浏览器 → 故事站前端（React/Vite）
+             │ 同源 /v1
+             ▼
+         故事站 Backend :1145
+             │ 普通用户 OIDC
+             ▼
+         TransCircle Pass :1146 / https://api.transcircle.org/pass
+             │ 需要认证时的 interaction
+             ▼
+         主站 Pass 门户 :5174 / https://transcircle.org/login
 ```
 
-> 生产和开发均使用相对路径，通过 Cloudflare 的 `wrangler.jsonc` 代理配置将 `/v1/*` 指向后端。
+- 故事站不承载账号密码、注册、Passkey、TOTP 或第三方账号登录界面。
+- 普通登录 CTA 由前端请求 Backend `/v1/auth/oauth/pass/start`，再整页跳转到 Pass 授权地址。
+- Pass 无登录态时跳到主站门户登录；已有 Pass 会话时直接完成 SSO。
+- OIDC callback 落故事站 Backend；Backend 验证 state、PKCE、nonce、ID Token 与 UserInfo 后建立**故事站独立业务会话**。
+- 管理员身份通过独立 IAM `tc_story` 流程获得；Pass 登录不携带或同步管理权限。
 
-### 2.2 方式 A：通过 GitHub Actions（推荐）
+权威接入文档：
 
-已有 `.github/workflows/deploy.yml`，在仓库 Settings → Secrets and variables → Actions 添加：
+- `docs-main/pass-guide.md`
+- `docs-main/iam-admin-api.md`
+- `docs-main/AGENTS.md`
 
-| Secret                  | 值                                     |
-| ----------------------- | -------------------------------------- |
-| `CLOUDFLARE_API_TOKEN`  | Cloudflare API Token                   |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare Dashboard 右侧的 Account ID |
-
-**获取 Cloudflare API Token：**
-
-1. Cloudflare Dashboard → My Profile → API Tokens → Create Token
-2. 选 **Create Custom Token**：
-
-| 字段                                     | 值       |
-| ---------------------------------------- | -------- |
-| Permissions → Account → Cloudflare Pages | `Edit`   |
-| Account Resources                        | 当前账号 |
-| TTL                                      | 365 days |
-
-3. 复制生成的 token
-
-### 2.3 方式 B：手动部署
-
-```bash
-# 1. 构建
-pnpm install
-pnpm run build
-
-# 2. 部署
-npx wrangler pages deploy dist --project-name=transcircle-submit --branch=main
-```
-
-### 2.4 绑定自定义域名
-
-1. Cloudflare Dashboard → Workers & Pages → `transcircle-submit`
-2. Custom domains → Add custom domain → 输入 `submit.transcircle.org`
-3. 在 DNS 提供商处添加 CNAME 记录指向 `transcircle-submit.pages.dev`
-4. 等待 SSL 证书签发（几分钟）
-
----
-
-## 3. 环境变量速查
-
-所有配置通过 Cloudflare Pages 的 Environment Variables 或 `wrangler.jsonc` 设置。
-
-| 变量                    | 说明                                |
-| ----------------------- | ----------------------------------- |
-| `CLOUDFLARE_API_TOKEN`  | Cloudflare API Token（仅 CI 使用）  |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare Account ID（仅 CI 使用） |
-
----
-
-## 4. 本地开发快速启动
-
-### 4.1 启动前端
+## 前端构建
 
 ```bash
 cd TransCircle-Frontend
 pnpm install
-pnpm run dev
-# → http://localhost:5173 （自动代理 /v1 → http://localhost:1145）
+pnpm typecheck
+pnpm lint
+pnpm build
 ```
 
-### 4.2 重要提醒
+开发服务器：
 
-后端 API 由 `TransCircle-Backend-develop` 仓库管理。
-本地开发时需同时启动该仓库的后端服务，或通过 `vite.config.ts` 的 proxy 配置指向远程 API。
+```bash
+pnpm dev
+# 默认 http://localhost:5173
+# vite.config.ts 将 /v1 代理到 http://localhost:1145
+```
 
----
+当前仓库尚未配置前端自动化测试；`pnpm test` 只输出 `no tests configured`，不能视为回归覆盖。
 
-## 5. 验证清单
+## 前端环境变量
 
-### 前端验证
+以 `.env.example` 为准。Vite 只会将 `VITE_*` 打入浏览器产物：
 
-- [ ] `submit.transcircle.org` 可访问，页面正常渲染
-- [ ] 投稿页面 → 填写表单 → 投稿成功，返回 ID
-- [ ] GitHub OAuth 登录 → 跳转到 GitHub → 授权 → 跳回，登录状态显示
-- [ ] X OAuth 登录 → 同理
-- [ ] 已登录用户投稿 → 投稿关联到账号
-- [ ] 响应式布局正常（移动端/桌面端）
-- [ ] 主题切换（亮色/暗色/高对比度）正常工作
-- [ ] 中/繁切换正常工作
+- `VITE_LOGOUT_REDIRECT`：故事站登出后的跳转目标。
+- `VITE_PASS_ACCOUNT_BASE`：主站 Pass 账户中心地址。
+- `VITE_IMAGE_BASE`：图片资源基址。
 
-### 安全验证
+禁止在前端环境变量中保存 Pass/IAM `client_secret`、机器令牌、数据库凭据或服务端会话密钥。
 
-- [ ] Refresh token 是 `HttpOnly` cookie，JS 不可读
-- [ ] HTTPS 已启用（Cloudflare 自动）
-- [ ] 所有用户可见文本均通过 i18n 包装
-- [ ] 无障碍属性正确（aria-\*、role、键盘导航）
+## Backend / Pass 配置要求
+
+### 故事站 Backend
+
+`TransCircle-Backend/config.example.toml` 中：
+
+- `[FRONTEND].FRONTEND_URL` 指向故事站公开 origin。
+- `[PASS].ISSUER`：生产为 `https://api.transcircle.org/pass`，本地通常为 `http://localhost:1146`。
+- Pass `OIDC_REDIRECT_URI` 必须与 Pass 后台登记值逐字符一致，并落在故事站 Backend。
+- client secret 仅由 Backend 保存。
+
+### Pass
+
+`TransCircle-Pass/config.toml.example` 中：
+
+- `[OIDC_PROVIDER].ISSUER` 配置真实公开 issuer。
+- `[FRONTEND].FRONTEND_URL` 指向主站门户 origin，生产通常为 `https://transcircle.org`。
+- 故事站 client 使用最小 scope `openid profile email`；可信第一方策略由 Pass 管理员明确设置。
+
+不存在 `pass.transcircle.org`。生产 Pass issuer 固定使用：
+
+```text
+https://api.transcircle.org/pass
+```
+
+## 发布验证
+
+### 登录与会话
+
+- [ ] 故事站 Navbar 桌面和移动“登录”均直接发起 Pass OIDC，不显示故事站登录选择页。
+- [ ] 未登录 Pass：跳主站登录，完成后回到原故事站 path + query。
+- [ ] 已登录 Pass、无故事站会话：静默 SSO 或主动授权无需再次输入凭据，并建立故事站本地会话。
+- [ ] `/login`、`/register` 和历史本地账户 URL 不显示旧表单，只进入 Pass 授权或安全错误页。
+- [ ] `/auth/callback` 使用一次性 loginCode 交换故事站 access token，完成后 URL 不保留可复用 code。
+- [ ] 故事站登出只吊销故事站会话，不宣称同时退出 Pass；登出后刷新不会立刻静默回登。
+- [ ] 主站/Pass access token、refresh token 或 Cookie 未作为故事站 API 凭据复用。
+
+### 管理权限
+
+- [ ] 普通 Pass 用户访问 `/admin` 只看到无权限状态，不获得 IAM 权限，也不循环登录。
+- [ ] 明确的 IAM 管理流程强校验 `tc_app === "tc_story"`。
+- [ ] IAM 权限按 `tc_story` 获取；Pass token 不解析 `tc_roles` / `tc_permissions`。
+
+### 安全
+
+- [ ] Pass OIDC 使用 Authorization Code + PKCE S256、state、nonce、RS256/JWKS。
+- [ ] `redirectAfter` 拒绝绝对 URL、`//host`、反斜杠、控制字符和认证路由。
+- [ ] callback 响应使用 `Cache-Control: no-store` 与 `Referrer-Policy: no-referrer`。
+- [ ] Refresh Cookie 为 HttpOnly、Secure（生产）、适当 SameSite，且故事站与 Pass Cookie 名称/用途隔离。
+- [ ] 无 token、code、secret、完整会话或敏感用户信息进入日志。
+
+### UI
+
+- [ ] light/dark 两主题正常；不存在独立 high-contrast 模式要求。
+- [ ] `zh-CN` / `zh-TW` 文案同步。
+- [ ] 登录按钮使用真实 button，支持键盘和可见焦点。
+- [ ] 移动抽屉开始登录前正确关闭，主内容不会残留 `inert`。
+- [ ] 加载与错误状态有屏幕阅读器可读的 status/alert。

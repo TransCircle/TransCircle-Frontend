@@ -19,7 +19,7 @@ export const RequireAdminLayout = () => {
   }
 
   if (!user) {
-    return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname)}`} replace />
+    return <Navigate to={`/auth/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />
   }
 
   // 用户管理 / 审计子树：需要查看用户或审计的权限（具体页面再按各自权限细化）

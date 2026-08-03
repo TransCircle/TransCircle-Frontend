@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { post, patch } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
@@ -36,6 +36,7 @@ interface UserProfile {
 export const SettingsSecurity = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
   const { user: authUser, loading: authLoading } = useAuth()
 
   // 全部账户（普通用户走 Pass、管理员走 IAM）的凭据/账户均由统一身份托管：
@@ -124,9 +125,9 @@ export const SettingsSecurity = () => {
   // Not loading and not logged in — redirect to login
   useEffect(() => {
     if (!authUser && !authLoading) {
-      navigate('/login', { replace: true })
+      navigate(`/auth/login?redirect=${encodeURIComponent(location.pathname + location.search)}`, { replace: true })
     }
-  }, [authUser, authLoading, navigate])
+  }, [authUser, authLoading, location.pathname, location.search, navigate])
 
   if (!authUser) {
     if (authLoading) {

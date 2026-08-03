@@ -8,6 +8,7 @@ import { AdminShell } from '../pages/AdminShell'
 import { RequireAdminLayout } from '../pages/RequireAdminLayout'
 import { RequireReviewerOrAdminLayout } from '../pages/RequireReviewerOrAdminLayout'
 import { AdminOnlyGuard } from '../pages/AdminOnlyGuard'
+import { LegacyLoginRedirect } from '../pages/LegacyLoginRedirect'
 
 import { Home } from '../pages/Home'
 
@@ -89,12 +90,16 @@ export const router = createBrowserRouter([
       },
       {
         path: 'login',
+        element: <LegacyLoginRedirect />,
+      },
+      {
+        path: 'auth/login',
         element: lazyNamed(() => import('../pages/Login'), 'Login'),
       },
       {
-        // 本地注册已迁移到 TransCircle Pass，故事站不再承载 → 重定向到登录
+        // 本地注册已迁移到 TransCircle Pass，故事站不再承载。
         path: 'register',
-        element: <Navigate to="/login" replace />,
+        element: <Navigate to="/auth/login" replace />,
       },
       {
         path: 'admin',
@@ -134,11 +139,11 @@ export const router = createBrowserRouter([
       },
       {
         path: 'auth/oauth/continue',
-        element: <Navigate to="/login" replace />,
+        element: <Navigate to="/auth/login" replace />,
       },
       {
         path: 'auth/oauth/merge',
-        element: <Navigate to="/login" replace />,
+        element: <Navigate to="/auth/error?status=oauth_error" replace />,
       },
       {
         path: 'auth/step-up/done',
@@ -156,31 +161,31 @@ export const router = createBrowserRouter([
         // 以下本地账户流程（OAuth 绑定/直接注册/邮箱验证/密码找回/撤销注销）均迁移到
         // TransCircle Pass，故事站不再承载 → 统一重定向到登录页。
         path: 'settings/security/oauth-bind/confirm',
-        element: <Navigate to="/login" replace />,
+        element: <Navigate to="/auth/login" replace />,
       },
       {
         path: 'register-direct',
-        element: <Navigate to="/login" replace />,
+        element: <Navigate to="/auth/login" replace />,
       },
       {
         path: 'auth/email/verify',
-        element: <Navigate to="/login" replace />,
+        element: <Navigate to="/auth/login" replace />,
       },
       {
         path: 'auth/email/resend',
-        element: <Navigate to="/login" replace />,
+        element: <Navigate to="/auth/login" replace />,
       },
       {
         path: 'auth/password/forgot',
-        element: <Navigate to="/login" replace />,
+        element: <Navigate to="/auth/login" replace />,
       },
       {
         path: 'auth/password/reset',
-        element: <Navigate to="/login" replace />,
+        element: <Navigate to="/auth/login" replace />,
       },
       {
         path: 'auth/cancel-deletion',
-        element: <Navigate to="/login" replace />,
+        element: <Navigate to="/auth/login" replace />,
       },
       {
         path: 'me/contributions',

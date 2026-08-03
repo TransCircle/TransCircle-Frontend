@@ -39,7 +39,7 @@ const MOBILE_BREAKPOINT = 1100
 
 export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
   const { t } = useTranslation()
-  const { user, isAdmin, logout } = useAuth()
+  const { user, isAdmin, logout, loginWithPass } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState(false)
@@ -50,8 +50,16 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
   const drawerRef = useRef<HTMLDivElement>(null)
   const linksDropdownRef = useRef<HTMLButtonElement>(null)
   const acctDropdownRef = useRef<HTMLButtonElement>(null)
+  const loginStartingRef = useRef(false)
 
   const closeMenu = () => setIsOpen(false)
+
+  const startPassLogin = () => {
+    if (loginStartingRef.current) return
+    loginStartingRef.current = true
+    closeMenu()
+    void loginWithPass()
+  }
 
   const openMenu = () => {
     setIsOpen(true)
@@ -356,9 +364,9 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
                 )}
               </div>
             ) : (
-              <Link to="/login" className={styles.loginBtn}>
+              <button type="button" className={styles.loginBtn} onClick={startPassLogin}>
                 {t('nav.login')}
-              </Link>
+              </button>
             )}
           </div>
         </div>
@@ -428,9 +436,9 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
             </>
           )}
           {!user && (
-            <Link to="/login" className={styles.drawerLink} onClick={closeMenu}>
+            <button type="button" className={styles.drawerLink} onClick={startPassLogin}>
               {t('nav.login')}
-            </Link>
+            </button>
           )}
 
           {mobileLinks && (

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { get, post, patch } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import { ERRORS } from '@/api/errors'
@@ -49,7 +49,8 @@ const EDITABLE_STATUSES = ['draft', 'rejected', 'withdrawn']
 export const MyContributionDetail = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { loading: authLoading } = useAuth()
+  const location = useLocation()
+  const { user, loading: authLoading } = useAuth()
   const { t } = useTranslation()
   const formatTs = useFormatTs()
 
@@ -83,7 +84,7 @@ export const MyContributionDetail = () => {
   const busy = useRef(false)
 
   useEffect(() => {
-    if (!id || authLoading) return
+    if (!id || authLoading || !user) return
     let cancelled = false
     const load = async () => {
       const result = await get<ContributionDetail>(`/me/contributions/${id}`)
@@ -104,7 +105,7 @@ export const MyContributionDetail = () => {
     return () => {
       cancelled = true
     }
-  }, [id, authLoading])
+  }, [id, authLoading, user])
 
   const handleSave = async () => {
     if (busy.current || !contrib) return
@@ -160,6 +161,18 @@ export const MyContributionDetail = () => {
     } else {
       setActionError(result.error.message)
     }
+  }
+
+  if (authLoading) {
+    return (
+      <div className={`${shell.page} ${shell.pageNarrow}`}>
+        <Spinner size="lg" label={t('admin.verifying')} />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <Navigate to={`/auth/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />
   }
 
   if (loading) {
