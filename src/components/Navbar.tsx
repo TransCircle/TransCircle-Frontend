@@ -237,7 +237,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
               </a>
             </li>
             <li>
-              <a href="https://transcircle.org/#community" target="_blank" rel="noopener noreferrer">
+              <a href="https://community.transcircle.org/" target="_blank" rel="noopener noreferrer">
                 {t('nav.community')}
               </a>
             </li>
@@ -389,7 +389,7 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
           <a href="https://transcircle.org/#archive" className={styles.drawerLink} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
             {t('nav.archive')}
           </a>
-          <a href="https://transcircle.org/#community" className={styles.drawerLink} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
+          <a href="https://community.transcircle.org/" className={styles.drawerLink} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
             {t('nav.community')}
           </a>
 
