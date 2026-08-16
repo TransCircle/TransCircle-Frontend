@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ThemeToggle } from './ThemeToggle'
-import { LanguageToggle } from '@/components/ui'
 import { useAuth } from '@/context/useAuth'
 import { LOGOUT_REDIRECT } from '@/config'
 import styles from './Navbar.module.css'
@@ -215,16 +214,16 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
             </button>
 
             <div className={styles.logo}>
-              <a href="https://transcircle.org">{t('nav.logo')}</a>
+              <Link to="/" onClick={closeMenu}>{t('nav.logo')}</Link>
             </div>
           </div>
 
           {/* Desktop navigation — hidden on mobile via CSS */}
           <ul className={styles.navLinks}>
             <li>
-              <a href="https://transcircle.org/">
+              <Link to="/">
                 {t('nav.home')}
-              </a>
+              </Link>
             </li>
             <li>
               <Link to={location.pathname === '/submit' ? '/' : '/submit'}>
@@ -276,6 +275,17 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
                 <li role="none">
                   <a
                     role="menuitem"
+                    href="https://transcircle.org/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {t('nav.mainSite')}
+                    <ExternalLinkIcon />
+                  </a>
+                </li>
+                <li role="none">
+                  <a
+                    role="menuitem"
                     href="https://blog.transcircle.org/"
                     target="_blank"
                     rel="noopener noreferrer"
@@ -300,10 +310,8 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
           </ul>
 
           <div className={styles.rightSection}>
-            <div className={styles.toggles}>
-              <LanguageToggle variant="plain" />
-              <ThemeToggle />
-            </div>
+            <ThemeToggle />
+
             {user ? (
               <div className={styles.acctDropdown} onBlur={handleAcctBlur}>
                 <button
@@ -380,9 +388,9 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
         inert={!isOpen ? true : undefined}
       >
         <div className={styles.drawerInner}>
-          <a href="https://transcircle.org/" className={styles.drawerLink} onClick={closeMenu}>
+          <Link to="/" className={styles.drawerLink} onClick={closeMenu}>
             {t('nav.home')}
-          </a>
+          </Link>
           <Link to={location.pathname === '/submit' ? '/' : '/submit'} className={styles.drawerLink} onClick={closeMenu}>
             {location.pathname === '/submit' ? t('nav.submitView') : t('nav.submit')}
           </Link>
@@ -393,6 +401,10 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
             {t('nav.community')}
           </a>
 
+          <a href="https://transcircle.org/" className={styles.drawerLink} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
+            {t('nav.mainSite')}
+            <ExternalLinkIcon />
+          </a>
           <a href="https://blog.transcircle.org/" className={styles.drawerLink} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
             {t('nav.blog')}
             <ExternalLinkIcon />

@@ -34,7 +34,7 @@
   flex: 1;
 }
 
-/* Wrap LanguageToggle + ThemeToggle with slightly tighter spacing, matching transcircle.org. */
+/* ThemeToggle 容器（预留：未来可扩展其他顶栏开关）。 */
 .toggles {
   display: flex;
   align-items: center;
