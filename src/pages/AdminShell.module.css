@@ -67,10 +67,25 @@
 }
 
 .brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--text-main);
   letter-spacing: -0.01em;
+}
+
+/* 固定尺寸，避免 SVG 加载前的布局抖动；折叠为 mini 侧栏时仍保留可见 */
+.brandMark {
+  display: block;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.brandText {
   white-space: nowrap;
   overflow: hidden;
 }
@@ -163,7 +178,7 @@
 
 /* ── Collapsed rail (desktop only) ───────────────────────── */
 
-.shellCollapsed .brand {
+.shellCollapsed .brandText {
   opacity: 0;
   width: 0;
 }
@@ -326,7 +341,7 @@
   }
 
   /* In the drawer, always show full labels even if "collapsed" was set */
-  .shellCollapsed .brand {
+  .shellCollapsed .brandText {
     opacity: 1;
     width: auto;
   }

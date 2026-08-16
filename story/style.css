@@ -100,11 +100,23 @@ body {
 }
 
 .header h1 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
   font-size: 2.2rem;
   font-weight: 700;
   margin: 0;
   color: var(--accent-pink);
   letter-spacing: -0.02em;
+}
+
+/* 固定尺寸，避免 SVG 加载前的布局抖动 */
+.logoMark {
+  display: block;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
 }
 
 .tagline {

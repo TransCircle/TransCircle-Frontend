@@ -132,12 +132,23 @@
 }
 
 .logo a {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   text-decoration: none;
   color: inherit;
   cursor: pointer;
 }
 .logo a:hover {
   color: var(--accent-pink);
+}
+
+/* 固定尺寸，避免 SVG 加载前的布局抖动 */
+.logoMark {
+  display: block;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
 }
 
 .navLinks {

@@ -214,7 +214,10 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
             </button>
 
             <div className={styles.logo}>
-              <Link to="/" onClick={closeMenu}>{t('nav.logo')}</Link>
+              <Link to="/" onClick={closeMenu}>
+                <img className={styles.logoMark} src="/logo-mark.svg" width={28} height={28} alt="" aria-hidden="true" />
+                {t('nav.logo')}
+              </Link>
             </div>
           </div>
 

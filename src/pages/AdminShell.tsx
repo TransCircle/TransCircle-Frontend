@@ -225,7 +225,10 @@ export const AdminShell = () => {
 
       <aside ref={sidebarRef} id="admin-sidebar" className={styles.sidebar} aria-label={t('adminShell.navAriaLabel')}>
         <div className={styles.sidebarHead}>
-          <span className={styles.brand}>{t('adminShell.brand')}</span>
+          <span className={styles.brand}>
+            <img className={styles.brandMark} src="/logo-mark.svg" width={24} height={24} alt="" aria-hidden="true" />
+            <span className={styles.brandText}>{t('adminShell.brand')}</span>
+          </span>
           <button
             type="button"
             className={styles.collapseBtn}
