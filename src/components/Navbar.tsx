@@ -226,11 +226,6 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
               </Link>
             </li>
             <li>
-              <Link to={location.pathname === '/submit' ? '/' : '/submit'}>
-                {location.pathname === '/submit' ? t('nav.submitView') : t('nav.submit')}
-              </Link>
-            </li>
-            <li>
               <a href="https://transcircle.org/#archive" target="_blank" rel="noopener noreferrer">
                 {t('nav.archive')}
               </a>
@@ -390,9 +385,6 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
         <div className={styles.drawerInner}>
           <Link to="/" className={styles.drawerLink} onClick={closeMenu}>
             {t('nav.home')}
-          </Link>
-          <Link to={location.pathname === '/submit' ? '/' : '/submit'} className={styles.drawerLink} onClick={closeMenu}>
-            {location.pathname === '/submit' ? t('nav.submitView') : t('nav.submit')}
           </Link>
           <a href="https://transcircle.org/#archive" className={styles.drawerLink} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
             {t('nav.archive')}
