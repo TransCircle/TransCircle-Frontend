@@ -10,6 +10,22 @@
   color: var(--text-muted);
   cursor: pointer;
   padding: 0;
+  /* ::after 命中区扩大的定位祖先（DESIGN §6.1.10） */
+  position: relative;
+}
+
+/* DESIGN §6.1.10：顶栏图标控件触屏命中区扩到 44px（视觉仍 34px，用居中 ::after），
+   不撑高顶栏。 */
+@media (any-pointer: coarse) {
+  .toggleBtn::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: var(--tap-min);
+    height: var(--tap-min);
+    transform: translate(-50%, -50%);
+  }
 }
 
 .toggleBtn:hover {

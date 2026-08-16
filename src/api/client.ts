@@ -58,6 +58,13 @@ async function doRefresh(): Promise<string | null> {
         // REFRESH_TOKEN_REVOKED or INVALID_REFRESH_TOKEN
         console.warn('[auth] refresh failed: 401 — session expired or revoked')
         _memoryToken = null
+        // 通知 AuthContext 清空 user / token / provider，使守卫立即重定向登录。
+        // 否则内存 token 已清但 AuthContext.user 残留，SPA 会继续以登录态渲染到整页刷新。
+        try {
+          window.dispatchEvent(new CustomEvent('auth:session-expired'))
+        } catch {
+          /* 非浏览器环境忽略 */
+        }
         return null
       }
 

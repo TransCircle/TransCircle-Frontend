@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { get, post } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
-import { StepUpDialog } from '@/components/StepUpDialog'
+import { useCursorList } from '@/hooks/useCursorList'
+import { useStepUpAction } from '@/hooks/useStepUpAction'
 import {
   AdminButton,
   Alert,
@@ -13,7 +14,7 @@ import {
   ReasonPromptDialog,
   SearchField,
   SectionLabel,
-  Spinner,
+  Skeleton,
   StatusBadge,
   USER_STATUS_TONE,
   USER_STATUS_LABEL_KEYS,
@@ -52,67 +53,70 @@ import { useFormatTs } from '@/utils/datetime'
 
 export const AdminUsers = () => {
   const { t } = useTranslation()
-  const { accessToken, loading: authLoading, user, permissions } = useAuth()
+  const { accessToken, loading: authLoading, permissions } = useAuth()
   const formatTs = useFormatTs()
-  const loadedRef = useRef(false)
-  const fetchSeq = useRef(0)
 
-  const [users, setUsers] = useState<ManagedUser[]>([])
-  const [cursor, setCursor] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
   const [keyword, setKeyword] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detail, setDetail] = useState<DetailedUser | null>(null)
+  // 行点击→详情拉取中的 pending 反馈（loading-04）
+  const [detailLoading, setDetailLoading] = useState(false)
 
   // 危险操作（封禁/解封）可能返回 STEP_UP_REQUIRED → 弹 step-up（IAM 账号走代理 2FA 跳转）。
-  const [showStepUp, setShowStepUp] = useState(false)
-  const pendingActionRef = useRef<(() => Promise<void>) | null>(null)
+  const { runWithStepUp, stepUpElement } = useStepUpAction(accessToken)
 
   // 封禁原因对话框（替代内联输入行）
   const [banDialogUserId, setBanDialogUserId] = useState<string | null>(null)
   const [banReason, setBanReason] = useState('')
   const [banError, setBanError] = useState('')
 
-  const fetchUsers = async (cursorVal?: string | null) => {
-    const seq = ++fetchSeq.current
-    setLoading(true)
-    setError('')
-    try {
+  // 游标分页列表（统一模板）：搜索由 onSearch 显式触发 reload，避免逐键触发请求
+  const { items: users, cursor, loading, error, setError, reload, loadMore } = useCursorList<ManagedUser>({
+    fetchPage: async (cursorVal) => {
       const params = new URLSearchParams({ limit: '20' })
       if (keyword.trim()) params.set('keyword', keyword.trim())
       if (cursorVal) params.set('cursor', cursorVal)
       const result = await get<ManagedUser[]>(`/admin/users?${params}`, {
         /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
       })
-      if (seq !== fetchSeq.current) return
       if (!result.ok) throw new Error(result.error.message)
-      if (cursorVal) setUsers((prev) => [...prev, ...result.data])
-      else setUsers(result.data)
-      setCursor(result.pagination?.nextCursor || null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('adminUsers.loadError'))
-    } finally {
-      if (seq === fetchSeq.current) setLoading(false)
-    }
-  }
+      return {
+        data: result.data,
+        nextCursor: result.pagination?.nextCursor ?? null,
+        hasMore: result.pagination?.hasMore ?? false,
+      }
+    },
+    deps: [authLoading, accessToken],
+    // 首载由下方 effect 守卫（权限门控 + 只载一次）显式触发，autoLoad 关闭避免重复请求
+    autoLoad: false,
+  })
 
+  // 首载：auth 就绪且持有 user:read 时加载一次；无权限不发起（页面下方显示拒绝态）
+  const loadedRef = useRef(false)
   useEffect(() => {
     if (authLoading || !accessToken) return
-    if (!hasPermission(permissions, PERMISSIONS.USER_READ)) return // 无 user:read 直接拒绝页，免发无谓 403
+    if (!hasPermission(permissions, PERMISSIONS.USER_READ)) return
     if (loadedRef.current) return
     loadedRef.current = true
-    fetchUsers()
+    void reload()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, accessToken])
 
+  const searchUsers = () => void reload()
+
   const fetchDetail = async (userId: string) => {
+    setError('')
     setSelectedId(userId)
-    const result = await get<DetailedUser>(`/admin/users/${userId}`, {
-      /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
-    })
-    if (result.ok) setDetail(result.data)
-    else setError(result.error.message)
+    setDetailLoading(true)
+    try {
+      const result = await get<DetailedUser>(`/admin/users/${userId}`, {
+        /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
+      })
+      if (result.ok) setDetail(result.data)
+      else setError(result.error.message)
+    } finally {
+      setDetailLoading(false)
+    }
   }
 
   const openBan = (userId: string) => {
@@ -143,10 +147,9 @@ export const AdminUsers = () => {
       )
       if (result.ok) {
         fetchDetail(userId)
-        fetchUsers()
+        void reload()
       } else if (result.error.code === 'STEP_UP_REQUIRED') {
-        pendingActionRef.current = doBan
-        setShowStepUp(true)
+        runWithStepUp(doBan)
       } else setError(result.error.message)
     }
     await doBan()
@@ -163,27 +166,19 @@ export const AdminUsers = () => {
       )
       if (result.ok) {
         fetchDetail(userId)
-        fetchUsers()
+        void reload()
       } else if (result.error.code === 'STEP_UP_REQUIRED') {
-        pendingActionRef.current = doUnban
-        setShowStepUp(true)
+        runWithStepUp(doUnban)
       } else setError(result.error.message)
     }
     await doUnban()
   }
 
-  if (!authLoading && (!user || !hasPermission(permissions, PERMISSIONS.USER_READ))) {
+  // 行点击后的详情拉取中：显示详情骨架，避免慢网下「点击像无效」或无占位跳变（loading-04）
+  if (selectedId && detailLoading) {
     return (
       <div className={shell.page}>
-        <EmptyState title={t('adminUsers.accessDenied')} description={t('adminUsers.accessDeniedDetail')} />
-      </div>
-    )
-  }
-
-  if (authLoading) {
-    return (
-      <div className={shell.page}>
-        <Spinner size="md" label={t('adminUsers.loading')} />
+        <Skeleton variant="card" />
       </div>
     )
   }
@@ -319,21 +314,7 @@ export const AdminUsers = () => {
           variant="danger"
         />
 
-        {showStepUp && accessToken && (
-          <StepUpDialog
-            accessToken={accessToken}
-            onSuccess={() => {
-              setShowStepUp(false)
-              const a = pendingActionRef.current
-              pendingActionRef.current = null
-              void a?.()
-            }}
-            onCancel={() => {
-              setShowStepUp(false)
-              pendingActionRef.current = null
-            }}
-          />
-        )}
+        {stepUpElement}
       </div>
     )
   }
@@ -345,13 +326,13 @@ export const AdminUsers = () => {
           <SearchField
             value={keyword}
             onValueChange={setKeyword}
-            onSearch={() => fetchUsers()}
+            onSearch={searchUsers}
             placeholder={t('adminUsers.searchPlaceholder')}
             searchAriaLabel={t('adminUsers.searchPlaceholder')}
             clearAriaLabel={t('admin.ui.clear')}
             fieldClassName={shell.grow}
           />
-          <AdminButton variant="secondary" onClick={() => fetchUsers()}>
+          <AdminButton variant="secondary" onClick={searchUsers}>
             {t('adminUsers.search')}
           </AdminButton>
         </div>
@@ -360,11 +341,18 @@ export const AdminUsers = () => {
       {error && <Alert tone="error">{error}</Alert>}
 
       {loading && users.length === 0 ? (
-        <Spinner size="md" label={t('adminUsers.loading')} />
+        <Skeleton rows={7} />
       ) : users.length === 0 ? (
         <EmptyState title={t('adminUsers.empty')} />
       ) : (
-        <ul className={shell.list}>
+        <>
+          {/* 搜索/刷新时保留旧列表，顶部显示轻量加载条 */}
+          {loading && (
+            <div className={shell.loadingBar} role="status" aria-live="polite">
+              {t('adminUsers.loading')}
+            </div>
+          )}
+          <ul className={shell.list}>
           {users.map((u) => (
             <li key={u.id}>
               <button type="button" className={shell.rowBtn} onClick={() => fetchDetail(u.id)}>
@@ -387,11 +375,12 @@ export const AdminUsers = () => {
             </li>
           ))}
         </ul>
+        </>
       )}
 
       {cursor && (
         <div className={shell.loadMoreWrap}>
-          <AdminButton variant="secondary" onClick={() => fetchUsers(cursor)} loading={loading}>
+          <AdminButton variant="secondary" onClick={() => void loadMore()} loading={loading}>
             {t('adminUsers.loadMore')}
           </AdminButton>
         </div>

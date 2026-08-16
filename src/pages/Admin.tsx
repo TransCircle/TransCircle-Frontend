@@ -1,12 +1,13 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
 import { get, post } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
+import { useCursorList } from '@/hooks/useCursorList'
+import { useStepUpAction } from '@/hooks/useStepUpAction'
 import { limitByUnicode } from '@/utils/string'
 import { useFormatTs } from '@/utils/datetime'
-import { StepUpDialog } from '@/components/StepUpDialog'
 import {
   AdminButton,
   Alert,
@@ -15,6 +16,7 @@ import {
   Pill,
   ReasonPromptDialog,
   SectionLabel,
+  Skeleton,
   Spinner,
   StatusBadge,
   Tabs,
@@ -83,6 +85,15 @@ const STATUS_LABEL_KEYS: Record<Status, string> = {
   hidden: 'admin.statusHidden',
 }
 
+// 审核历史可展示任意状态迁移（含 draft/withdrawn/deleted），补全全部状态机 i18n 键，
+// 避免审核历史把后端英文枚举原样直出（AGENTS.md：所有用户可见文本进 i18n）。
+const REVIEW_STATUS_LABEL_KEYS: Record<string, string> = {
+  ...STATUS_LABEL_KEYS,
+  draft: 'admin.statusDraft',
+  withdrawn: 'admin.statusWithdrawn',
+  deleted: 'admin.statusDeleted',
+}
+
 const ChevronRight = () => (
   <svg
     width="18"
@@ -103,104 +114,81 @@ const ChevronRight = () => (
 export const Admin = () => {
   const { t } = useTranslation()
   const formatTs = useFormatTs()
-  const { user, loading: authLoading, accessToken, isAdmin, permissions } = useAuth()
+  const { loading: authLoading, accessToken, isAdmin, permissions } = useAuth()
   // 危险操作（隐藏/删除，及配置开启时的发布）可能返回 STEP_UP_REQUIRED → 弹 step-up；
   // 本地因子账号 onSuccess 后重放原操作；IAM 账号在对话框内跳转 IAM 完成后回本页重做。
-  const [showStepUp, setShowStepUp] = useState(false)
-  const pendingActionRef = useRef<(() => Promise<void>) | null>(null)
+  const { runWithStepUp, stepUpElement } = useStepUpAction(accessToken)
   const [activeTab, setActiveTab] = useState<Status>('pending')
-  const [submissions, setSubmissions] = useState<Submission[]>([])
-  const [nextCursor, setNextCursor] = useState<string | null>(null)
-  const [hasMore, setHasMore] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  // 游标分页列表（统一模板）：切 tab 自动重载，保留旧列表 + 加载条。
+  // 403/401（权限变更后快照过期）在 fetchPage 内捕获并置 accessDenied 文案。
+  const { items: submissions, hasMore, loading, error, setError, reload, loadMore } =
+    useCursorList<Submission>({
+      fetchPage: async (cursorVal) => {
+        const params = new URLSearchParams({ status: activeTab, limit: '20' })
+        if (cursorVal) params.set('cursor', cursorVal)
+        // 不传 authHeaders / skipRefresh：apiRequest 自动注入 Authorization 并处理 401 刷新
+        const result = await get<Submission[]>(`/admin/contributions?${params}`)
+        if (result.status === 403 || result.status === 401) {
+          throw new Error(t('admin.accessDenied'))
+        }
+        if (!result.ok) throw new Error(result.error.message || t('admin.errorLoad'))
+        return {
+          data: result.data,
+          nextCursor: result.pagination?.nextCursor ?? null,
+          hasMore: result.pagination?.hasMore ?? false,
+        }
+      },
+      deps: [activeTab, isAdmin],
+      // 首载/切 tab 由下方 effect 显式触发（gate isAdmin，避免无权限时发无谓请求）
+      autoLoad: false,
+    })
+
+  // 切 tab / 权限就绪时加载列表；非 admin 不发起（页面显示拒绝态）
+  useEffect(() => {
+    if (!isAdmin) return
+    void reload()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, isAdmin])
+
   const [selected, setSelected] = useState<Submission | null>(null)
+  // 行点击→详情拉取中的 pending 反馈：避免慢网下点击像无效（loading-04）
+  const [detailLoading, setDetailLoading] = useState(false)
   const [reviewNotes, setReviewNotes] = useState('')
   const [internalNote, setInternalNote] = useState('')
   const [reviewEvents, setReviewEvents] = useState<ReviewEvent[]>([])
   const [reviewEventsLoading, setReviewEventsLoading] = useState(false)
-  const fetchSeq = useRef(0)
 
   // 隐藏/删除原因对话框（替代原生 window.confirm 与内联原因输入框）
   const [reasonDialog, setReasonDialog] = useState<{ kind: 'hide' | 'delete' } | null>(null)
   const [actionReason, setActionReason] = useState('')
   const [reasonError, setReasonError] = useState('')
 
-  const fetchSubmissions = useCallback(
-    async (cursor?: string | null) => {
-      const seq = ++fetchSeq.current
-      setLoading(true)
-      setError('')
-      try {
-        const params = new URLSearchParams({ status: activeTab, limit: '20' })
-        if (cursor) params.set('cursor', cursor)
-
-        // 不传 authHeaders / skipRefresh：apiRequest 自动从 _memoryToken 注入 Authorization 并处理 401 刷新
-        const result = await get<Submission[]>(`/admin/contributions?${params}`)
-        if (seq !== fetchSeq.current) return
-        if (result.status === 403 || result.status === 401) {
-          setLoading(false)
-          setSubmissions([])
-          setError(t('admin.accessDenied'))
-          return
-        }
-        if (!result.ok) {
-          if (seq !== fetchSeq.current) return
-          throw new Error(result.error.message || t('admin.errorLoad'))
-        }
-
-        if (seq !== fetchSeq.current) return
-
-        const items = result.data
-        const isLoadMore = !!cursor
-
-        if (isLoadMore) {
-          setSubmissions((prev) => [...prev, ...items])
-        } else {
-          setSubmissions(items)
-        }
-        const pagination = result.pagination
-        setNextCursor(pagination?.nextCursor || null)
-        setHasMore(pagination?.hasMore ?? false)
-      } catch (err) {
-        if (seq !== fetchSeq.current) return
-        setError(err instanceof Error ? err.message : t('admin.errorLoad'))
-      } finally {
-        if (seq === fetchSeq.current) setLoading(false)
-      }
-    },
-    [activeTab, t],
-  )
-
-  useEffect(() => {
-    if (!isAdmin) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchSubmissions()
-    // fetchSubmissions 不含在 deps 中是有意为之：effect 仅用于"切换 tab/首次加载"，
-    // 异步操作的 seq 机关已确保竞态安全；加 fetchSubmissions 会导致无限重渲染环。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, isAdmin])
-
   const fetchDetail = async (id: string) => {
     setError('')
+    setDetailLoading(true)
     try {
       const result = await get<Submission>(`/admin/contributions/${id}`)
       if (!result.ok) throw new Error(t('admin.errorDetail'))
       setSelected(result.data)
       setReviewNotes('')
       setInternalNote('')
-      // Also fetch review history (api.md §6.3)
-      setReviewEventsLoading(true)
-      const eventsResult = await get<ReviewEvent[]>(`/admin/contributions/${id}/review-events`)
-      if (eventsResult.ok) {
-        setReviewEvents(eventsResult.data)
-      } else {
-        setReviewEvents([])
+      // 审核历史需 contribution:audit:read（api.md §6.7）：reviewer 无该权限时
+      // 不发起必 403 的无谓请求，历史区保持为空（前端无权限时后端本会拒绝）。
+      if (hasPermission(permissions, PERMISSIONS.CONTRIBUTION_AUDIT_READ)) {
+        setReviewEventsLoading(true)
+        const eventsResult = await get<ReviewEvent[]>(`/admin/contributions/${id}/review-events`)
+        if (eventsResult.ok) {
+          setReviewEvents(eventsResult.data)
+        } else {
+          setReviewEvents([])
+        }
+        setReviewEventsLoading(false)
       }
-      setReviewEventsLoading(false)
     } catch {
       setReviewEventsLoading(false)
       setError(t('admin.errorDetail'))
+    } finally {
+      setDetailLoading(false)
     }
   }
 
@@ -231,7 +219,7 @@ export const Admin = () => {
         return
       }
       setSelected(null)
-      fetchSubmissions(null)
+      void reload()
     } catch (err) {
       setError(err instanceof Error ? err.message : t('admin.errorReview'))
     }
@@ -254,8 +242,7 @@ export const Admin = () => {
       )
       if (!result.ok) {
         if (result.error.code === ERRORS.STEP_UP_REQUIRED) {
-          pendingActionRef.current = doPublish
-          setShowStepUp(true)
+          runWithStepUp(doPublish)
         } else if (result.error.code === ERRORS.VERSION_CONFLICT) {
           setError(t('admin.versionConflictRefreshed'))
           fetchDetail(id)
@@ -265,7 +252,7 @@ export const Admin = () => {
         return
       }
       setSelected(null)
-      fetchSubmissions()
+      void reload()
     }
     await doPublish()
   }
@@ -289,8 +276,7 @@ export const Admin = () => {
       )
       if (!result.ok) {
         if (result.error.code === ERRORS.STEP_UP_REQUIRED) {
-          pendingActionRef.current = doHide
-          setShowStepUp(true)
+          runWithStepUp(doHide)
         } else if (result.error.code === ERRORS.VERSION_CONFLICT) {
           setError(t('admin.versionConflictRefreshed'))
           fetchDetail(id)
@@ -300,7 +286,7 @@ export const Admin = () => {
         return
       }
       setSelected(null)
-      fetchSubmissions()
+      void reload()
     }
     await doHide()
   }
@@ -330,7 +316,7 @@ export const Admin = () => {
       return
     }
     setSelected(null)
-    fetchSubmissions()
+    void reload()
   }
 
   const runDelete = async (reason: string) => {
@@ -350,8 +336,7 @@ export const Admin = () => {
       )
       if (!result.ok) {
         if (result.error.code === ERRORS.STEP_UP_REQUIRED) {
-          pendingActionRef.current = doDelete
-          setShowStepUp(true)
+          runWithStepUp(doDelete)
         } else if (result.error.code === ERRORS.VERSION_CONFLICT) {
           setError(t('admin.versionConflictRefreshed'))
           fetchDetail(id)
@@ -361,7 +346,7 @@ export const Admin = () => {
         return
       }
       setSelected(null)
-      fetchSubmissions()
+      void reload()
     }
     await doDelete()
   }
@@ -397,19 +382,6 @@ export const Admin = () => {
     )
   }
 
-  // ── Not admin (OAuth user but no management permission) ──
-
-  if (user && !isAdmin) {
-    return (
-      <div className={shell.page}>
-        <EmptyState
-          title={t('admin.accessDenied')}
-          description={t('admin.accessDeniedDetail', { username: user.username })}
-        />
-      </div>
-    )
-  }
-
   // ── Submission List ──
 
   if (!selected) {
@@ -421,6 +393,15 @@ export const Admin = () => {
       { key: 'published', label: t('admin.statusPublished') },
       { key: 'hidden', label: t('admin.statusHidden') },
     ]
+
+    // 行点击后的详情拉取中：显示详情骨架，避免慢网下「点击像无效」或无占位跳变（loading-04）
+    if (detailLoading) {
+      return (
+        <div className={shell.page}>
+          <Skeleton variant="card" />
+        </div>
+      )
+    }
 
     const countLabel = hasMore
       ? t('admin.countMore', { count: submissions.length })
@@ -446,11 +427,17 @@ export const Admin = () => {
           {error && <Alert tone="error">{error}</Alert>}
 
           {loading && submissions.length === 0 ? (
-            <Spinner size="md" label={t('admin.loading')} />
+            <Skeleton rows={7} />
           ) : submissions.length === 0 ? (
             <EmptyState title={t('admin.empty')} />
           ) : (
             <>
+              {/* 切 tab：保留旧列表，顶部轻量加载条，避免旧数据无提示被误读（loading-03） */}
+              {loading && (
+                <div className={shell.loadingBar} role="status" aria-live="polite">
+                  {t('admin.loading')}
+                </div>
+              )}
               <ul className={shell.list}>
                 {submissions.map((s) => (
                   <li key={s.id}>
@@ -480,7 +467,7 @@ export const Admin = () => {
               </ul>
               {hasMore && (
                 <div className={shell.loadMoreWrap}>
-                  <AdminButton variant="secondary" onClick={() => fetchSubmissions(nextCursor)} loading={loading}>
+                  <AdminButton variant="secondary" onClick={() => void loadMore()} loading={loading}>
                     {t('admin.loadMore')}
                   </AdminButton>
                 </div>
@@ -497,6 +484,11 @@ export const Admin = () => {
   const authorDisplay = selected.author?.displayName || t('admin.authorAnonymous')
   const canInternalNote = hasPermission(permissions, PERMISSIONS.CONTRIBUTION_INTERNAL_NOTE_READ)
   const isReviewable = selected.status === 'pending' || selected.status === 'in_review'
+  // 最近一次审核员显示名：优先从已加载的审核历史（reviewer.displayName）解析，
+  // 避免把内部 reviewerUserId 直出给用户（AGENTS.md：不暴露内部标识）。
+  const reviewerDisplayName = selected.review?.reviewerUserId
+    ? (reviewEvents.find((ev) => ev.reviewer?.id === selected.review?.reviewerUserId)?.reviewer?.displayName ?? null)
+    : null
 
   return (
     <div className={shell.page}>
@@ -547,7 +539,8 @@ export const Admin = () => {
                     <li key={ev.id} className={shell.historyItem}>
                       <span className={shell.historyHead}>
                         <span>
-                          {ev.fromStatus} → {ev.toStatus}
+                          {t(REVIEW_STATUS_LABEL_KEYS[ev.fromStatus] ?? ev.fromStatus)} →{' '}
+                          {t(REVIEW_STATUS_LABEL_KEYS[ev.toStatus] ?? ev.toStatus)}
                         </span>
                         {ev.reviewer?.displayName && (
                           <span>
@@ -574,7 +567,7 @@ export const Admin = () => {
             <Card tone="subtle" padding="sm">
               <p className={shell.noteText}>
                 {t('admin.reviewNotes', { notes: selected.review.publicNote })}
-                {selected.review.reviewerUserId && t('admin.reviewer', { reviewer: selected.review.reviewerUserId })}
+                {reviewerDisplayName && t('admin.reviewer', { reviewer: reviewerDisplayName })}
                 {selected.review.reviewedAt ? ` · ${formatTs(selected.review.reviewedAt)}` : ''}
               </p>
             </Card>
@@ -701,21 +694,7 @@ export const Admin = () => {
         variant="danger"
       />
 
-      {showStepUp && accessToken && (
-        <StepUpDialog
-          accessToken={accessToken}
-          onSuccess={() => {
-            setShowStepUp(false)
-            const a = pendingActionRef.current
-            pendingActionRef.current = null
-            void a?.()
-          }}
-          onCancel={() => {
-            setShowStepUp(false)
-            pendingActionRef.current = null
-          }}
-        />
-      )}
+      {stepUpElement}
     </div>
   )
 }

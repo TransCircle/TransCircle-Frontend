@@ -1,13 +1,14 @@
-import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useLocation, Navigate } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { get } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
+import { useCursorList } from '@/hooks/useCursorList'
 import {
   AdminButton,
   Alert,
   EmptyState,
-  Spinner,
+  Skeleton,
   StatusBadge,
   Tabs,
   CONTRIB_STATUS_TONE,
@@ -70,65 +71,29 @@ const ChevronIcon = () => (
 
 export const MyContributions = () => {
   const navigate = useNavigate()
-  const location = useLocation()
-  const { user, loading: authLoading } = useAuth()
+  const { user } = useAuth()
   const { t } = useTranslation()
   const formatTs = useFormatTs()
 
-  const [items, setItems] = useState<MyContribution[]>([])
-  const [cursor, setCursor] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
-  const fetchSeq = useRef(0)
 
-  const fetchList = async (cursorVal?: string | null) => {
-    const seq = ++fetchSeq.current
-    setLoading(true)
-    setError('')
-    try {
+  // 游标分页列表（统一模板）：切 tab（filterStatus 变化）自动重载，保留旧列表 + 加载条
+  const { items, cursor, loading, error, loadMore } = useCursorList<MyContribution>({
+    fetchPage: async (cursorVal) => {
       const params = new URLSearchParams({ limit: '20' })
       // api.md §4.1: status param is optional, defaults to all statuses when omitted
       if (filterStatus && filterStatus !== 'all') params.set('status', filterStatus)
       if (cursorVal) params.set('cursor', cursorVal)
-
       const result = await get<MyContribution[]>(`/me/contributions?${params}`)
-      if (seq !== fetchSeq.current) return // Stale response, discard
       if (!result.ok) throw new Error(result.error.message)
-
-      if (cursorVal) {
-        setItems((prev) => [...prev, ...result.data])
-      } else {
-        setItems(result.data)
+      return {
+        data: result.data,
+        nextCursor: result.pagination?.nextCursor ?? null,
+        hasMore: result.pagination?.hasMore ?? false,
       }
-      setCursor(result.pagination?.nextCursor || null)
-    } catch (err) {
-      if (seq !== fetchSeq.current) return // Stale response, discard
-      setError(err instanceof Error ? err.message : t('myContributions.error'))
-    } finally {
-      if (seq === fetchSeq.current) setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    if (!user) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setItems([])
-    setCursor(null)
-    fetchList()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, filterStatus])
-
-  if (!user) {
-    if (!authLoading) {
-      return <Navigate to={`/auth/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />
-    }
-    return (
-      <div className={shell.page}>
-        <Spinner size="lg" label={t('admin.verifying')} />
-      </div>
-    )
-  }
+    },
+    deps: [user, filterStatus],
+  })
 
   const tabs: TabItem[] = FILTERS.map((s) => ({
     key: s,
@@ -156,11 +121,17 @@ export const MyContributions = () => {
         {error && <Alert tone="error">{error}</Alert>}
 
         {loading && items.length === 0 ? (
-          <Spinner size="lg" label={t('myContributions.loading')} />
+          <Skeleton rows={6} />
         ) : items.length === 0 ? (
           <EmptyState title={t('myContributions.empty')} />
         ) : (
           <>
+            {/* 已有内容时切 tab/刷新：保留旧列表，顶部显示轻量加载条，避免清空闪烁 */}
+            {loading && (
+              <div className={shell.loadingBar} role="status" aria-live="polite">
+                {t('myContributions.loading')}
+              </div>
+            )}
             <ul className={shell.list}>
               {items.map((item) => (
                 <li key={item.id}>
@@ -197,7 +168,7 @@ export const MyContributions = () => {
             </ul>
             {cursor && (
               <div className={shell.loadMoreWrap}>
-                <AdminButton variant="secondary" loading={loading} onClick={() => fetchList(cursor)}>
+                <AdminButton variant="secondary" loading={loading} onClick={() => void loadMore()}>
                   {t('myContributions.loadMore')}
                 </AdminButton>
               </div>

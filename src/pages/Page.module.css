@@ -296,6 +296,18 @@
   margin-top: 0.25rem;
 }
 
+/* 列表刷新/切 tab 时保留旧内容的轻量加载指示条（避免整列表清空闪烁，
+   也避免「残留旧数据却无任何提示」被误读为新结果）。 */
+.loadingBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  color: var(--text-muted);
+  font-size: 0.83rem;
+}
+
 /* ── History / timeline ──────────────────────────────────── */
 
 .history {

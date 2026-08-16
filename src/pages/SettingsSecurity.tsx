@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { post, patch } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
-import { AdminButton, Alert, Card, DescriptionList, PageHeader, Pill, Spinner, TextField } from '@/components/ui'
+import { AdminButton, Alert, Card, DescriptionList, PageHeader, Pill, TextField } from '@/components/ui'
 import { PERMISSION_LABEL_KEYS, ROLE_LABEL_KEYS } from '@/api/permissions'
 import shell from './Page.module.css'
 import s from './SettingsSecurity.module.css'
@@ -35,9 +34,7 @@ interface UserProfile {
 
 export const SettingsSecurity = () => {
   const { t } = useTranslation()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { user: authUser, loading: authLoading } = useAuth()
+  const { user: authUser } = useAuth()
 
   // 全部账户（普通用户走 Pass、管理员走 IAM）的凭据/账户均由统一身份托管：
   // 本页只保留资料展示 + 数据导出 + 深链到 Pass 账户中心。
@@ -120,24 +117,6 @@ export const SettingsSecurity = () => {
       setExportStatus('error')
       setExportError(t('settings.requestFailed'))
     }
-  }
-
-  // Not loading and not logged in — redirect to login
-  useEffect(() => {
-    if (!authUser && !authLoading) {
-      navigate(`/auth/login?redirect=${encodeURIComponent(location.pathname + location.search)}`, { replace: true })
-    }
-  }, [authUser, authLoading, location.pathname, location.search, navigate])
-
-  if (!authUser) {
-    if (authLoading) {
-      return (
-        <div className={`${shell.page} ${shell.pageNarrow}`}>
-          <Spinner size="lg" label={t('admin.verifying')} />
-        </div>
-      )
-    }
-    return null
   }
 
   return (

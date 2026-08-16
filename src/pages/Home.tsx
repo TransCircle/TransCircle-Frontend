@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { get, type ApiResult } from '@/api/client'
+import { get } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
-import { AdminButton, Alert, EmptyState, PageHeader, Pill, SearchField, Spinner } from '@/components/ui'
+import { useCursorList } from '@/hooks/useCursorList'
+import { AdminButton, Alert, EmptyState, PageHeader, Pill, SearchField, Skeleton } from '@/components/ui'
 import { useFormatTs } from '@/utils/datetime'
 import shell from './Page.module.css'
 
@@ -18,17 +19,6 @@ interface PublicContribution {
     avatarUrl: string | null
   }
   publishedAt: number
-}
-
-async function fetchPage(cursorVal?: string | null, keywordVal?: string): Promise<ApiResult<PublicContribution[]>> {
-  try {
-    const params = new URLSearchParams({ limit: '20' })
-    if (cursorVal) params.set('cursor', cursorVal)
-    if (keywordVal) params.set('keyword', keywordVal)
-    return get<PublicContribution[]>(`/public/contributions?${params}`)
-  } catch {
-    return { ok: false as const, error: { code: 'NETWORK_ERROR', message: '' }, requestId: '', status: 0 }
-  }
 }
 
 const ChevronIcon = () => (
@@ -55,42 +45,32 @@ export const Home = () => {
   const formatTs = useFormatTs()
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const [items, setItems] = useState<PublicContribution[]>([])
-  const [cursor, setCursor] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-
   const searchTerm = searchParams.get('search') || ''
   const [searchInput, setSearchInput] = useState(searchTerm)
-  const initialLoaded = useRef(false)
 
-  const doLoad = useCallback(
-    async (keyword?: string) => {
-      setLoading(true)
-      const result = await fetchPage(undefined, keyword || undefined)
-      if (result.ok) {
-        setItems(result.data)
-        setCursor(result.pagination?.nextCursor || null)
-        setError('')
-      } else {
-        setError(result.error.message || t('home.errorLoad'))
+  // 游标分页列表（统一模板）：搜索词（URL search 参数）变化自动重载；
+  // hook 内置 fetchSeq 竞态守卫，丢弃过期响应（loading-08）。
+  const { items, cursor, loading, error, loadMore } = useCursorList<PublicContribution>({
+    fetchPage: async (cursorVal) => {
+      const params = new URLSearchParams({ limit: '20' })
+      if (cursorVal) params.set('cursor', cursorVal)
+      if (searchTerm) params.set('keyword', searchTerm)
+      const result = await get<PublicContribution[]>(`/public/contributions?${params}`)
+      if (!result.ok) throw new Error(result.error.message || t('home.errorLoad'))
+      return {
+        data: result.data,
+        nextCursor: result.pagination?.nextCursor ?? null,
+        hasMore: result.pagination?.hasMore ?? false,
       }
-      setLoading(false)
     },
-    [t],
-  )
+    deps: [searchTerm],
+  })
 
-  // 初始加载（无搜索词）或搜索词变化时重新加载
+  // 同步搜索输入框到 URL 搜索词（外部导航带 ?search=x 时回填输入框）
   useEffect(() => {
-    initialLoaded.current = false
-  }, [searchTerm])
-
-  useEffect(() => {
-    if (initialLoaded.current) return
-    initialLoaded.current = true
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSearchInput(searchTerm)
-    doLoad(searchTerm || undefined)
-  }, [doLoad, searchTerm])
+  }, [searchTerm])
 
   const runSearch = () => {
     const q = searchInput.trim()
@@ -102,20 +82,6 @@ export const Home = () => {
     setSearchInput('')
     setSearchParams({})
     window.scrollTo({ top: 0 })
-  }
-
-  const loadMore = async () => {
-    setLoading(true)
-    try {
-      // 保持搜索词，否则「加载更多」会拉到未过滤的下一页
-      const result = await fetchPage(cursor, searchTerm || undefined)
-      if (result.ok) {
-        setItems((prev) => [...prev, ...result.data])
-        setCursor(result.pagination?.nextCursor || null)
-      }
-    } finally {
-      setLoading(false)
-    }
   }
 
   return (
@@ -158,14 +124,20 @@ export const Home = () => {
         </div>
       </div>
 
-      {error ? (
-        <Alert tone="error">{error}</Alert>
-      ) : loading && items.length === 0 ? (
-        <Spinner size="lg" label={t('home.loading')} />
+      {error && <Alert tone="error">{error}</Alert>}
+
+      {loading && items.length === 0 ? (
+        <Skeleton rows={6} />
       ) : items.length === 0 ? (
         <EmptyState title={searchTerm ? t('home.noMatches') : t('home.empty')} />
       ) : (
         <>
+          {/* 已有内容时刷新/搜索：保留旧列表，顶部显示轻量加载条，避免清空闪烁或旧数据被误读 */}
+          {loading && (
+            <div className={shell.loadingBar} role="status" aria-live="polite">
+              {t('home.loading')}
+            </div>
+          )}
           <ul className={shell.list}>
             {items.map((item) => (
               <li key={item.id}>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useParams, useNavigate, useLocation, Navigate } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { get, post, patch } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import { ERRORS } from '@/api/errors'
@@ -11,7 +11,7 @@ import {
   Card,
   ConfirmDialog,
   Select,
-  Spinner,
+  Skeleton,
   StatusBadge,
   TagInput,
   TextArea,
@@ -49,7 +49,6 @@ const EDITABLE_STATUSES = ['draft', 'rejected', 'withdrawn']
 export const MyContributionDetail = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const location = useLocation()
   const { user, loading: authLoading } = useAuth()
   const { t } = useTranslation()
   const formatTs = useFormatTs()
@@ -163,22 +162,16 @@ export const MyContributionDetail = () => {
     }
   }
 
-  if (authLoading) {
-    return (
-      <div className={`${shell.page} ${shell.pageNarrow}`}>
-        <Spinner size="lg" label={t('admin.verifying')} />
-      </div>
-    )
-  }
-
-  if (!user) {
-    return <Navigate to={`/auth/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />
-  }
-
   if (loading) {
+    // 保留页面框架（返回按钮 + 卡片容器），仅内容区骨架占位，避免整页替换为 Spinner 的布局跳变
     return (
       <div className={`${shell.page} ${shell.pageNarrow}`}>
-        <Spinner size="lg" label={t('myContributionDetail.loading')} />
+        <div>
+          <AdminButton variant="ghost" size="sm" disabled>
+            {t('myContributionDetail.backToList')}
+          </AdminButton>
+        </div>
+        <Skeleton variant="card" />
       </div>
     )
   }

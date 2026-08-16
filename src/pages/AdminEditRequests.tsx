@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { get, post } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { useAuth } from '@/context/useAuth'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
+import { useCursorList } from '@/hooks/useCursorList'
 import { limitByUnicode } from '@/utils/string'
 import {
   AdminButton,
@@ -12,7 +13,7 @@ import {
   DescriptionList,
   EmptyState,
   SectionLabel,
-  Spinner,
+  Skeleton,
   StatusBadge,
   Tabs,
   TextArea,
@@ -106,59 +107,57 @@ function getProposedFieldArray(
 
 export const AdminEditRequests = () => {
   const { t } = useTranslation()
-  const { accessToken, loading: authLoading, user, isAdmin, permissions } = useAuth()
+  const { accessToken, loading: authLoading, permissions } = useAuth()
   const formatTs = useFormatTs()
-  const fetchSeq = useRef(0)
 
   // 编辑申请状态筛选：pending / approved / rejected / applied / superseded
   const [statusFilter, setStatusFilter] = useState('pending')
 
-  const [items, setItems] = useState<EditRequestItem[]>([])
-  const [cursor, setCursor] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [detail, setDetail] = useState<EditRequestItem | null>(null)
-  const [voteSubmitting, setVoteSubmitting] = useState(false)
-  const [voteNote, setVoteNote] = useState('')
-
-  const fetchList = async (cursorVal?: string | null) => {
-    const seq = ++fetchSeq.current
-    setLoading(true)
-    setError('')
-    try {
+  // 游标分页列表（统一模板）：切 tab（statusFilter 变化）自动重载，保留旧列表 + 加载条
+  const { items, cursor, loading, error, setError, reload, loadMore } = useCursorList<EditRequestItem>({
+    fetchPage: async (cursorVal) => {
       const params = new URLSearchParams({ limit: '20', status: statusFilter })
       if (cursorVal) params.set('cursor', cursorVal)
       const result = await get<EditRequestItem[]>(`/admin/edit-requests?${params}`, {
         /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
       })
-      if (seq !== fetchSeq.current) return
       if (!result.ok) throw new Error(result.error.message)
-      if (cursorVal) setItems((prev) => [...prev, ...result.data])
-      else setItems(result.data)
-      setCursor(result.pagination?.nextCursor || null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('adminEditRequests.loadError'))
-    } finally {
-      if (seq === fetchSeq.current) setLoading(false)
-    }
-  }
+      return {
+        data: result.data,
+        nextCursor: result.pagination?.nextCursor ?? null,
+        hasMore: result.pagination?.hasMore ?? false,
+      }
+    },
+    deps: [authLoading, accessToken, statusFilter],
+    autoLoad: false,
+  })
 
+  // 首载/切 tab：auth 就绪后由 effect 触发（gate authLoading/accessToken）
   useEffect(() => {
     if (authLoading || !accessToken) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setItems([])
-    setCursor(null)
-    fetchList()
+    void reload()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, accessToken, statusFilter])
 
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [detail, setDetail] = useState<EditRequestItem | null>(null)
+  // 行点击→详情拉取中的 pending 反馈（loading-04）
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [voteSubmitting, setVoteSubmitting] = useState(false)
+  const [voteNote, setVoteNote] = useState('')
+
   const fetchDetail = async (id: string) => {
+    setError('')
     setSelectedId(id)
     setVoteNote('')
-    const result = await get<EditRequestItem>(`/admin/edit-requests/${id}`)
-    if (result.ok) setDetail(result.data)
-    else setError(result.error.message)
+    setDetailLoading(true)
+    try {
+      const result = await get<EditRequestItem>(`/admin/edit-requests/${id}`)
+      if (result.ok) setDetail(result.data)
+      else setError(result.error.message)
+    } finally {
+      setDetailLoading(false)
+    }
   }
 
   const handleVote = async (vote: 'approve' | 'reject') => {
@@ -189,21 +188,11 @@ export const AdminEditRequests = () => {
     }
   }
 
-  if (!authLoading && (!user || !isAdmin)) {
+  // 行点击后的详情拉取中：显示详情骨架，避免慢网下「点击像无效」或无占位跳变（loading-04）
+  if (selectedId && detailLoading) {
     return (
       <div className={shell.page}>
-        <EmptyState
-          title={t('adminEditRequests.accessDenied')}
-          description={t('adminEditRequests.accessDeniedDetail')}
-        />
-      </div>
-    )
-  }
-
-  if (authLoading) {
-    return (
-      <div className={shell.page}>
-        <Spinner size="md" label={t('adminEditRequests.loading')} />
+        <Skeleton variant="card" />
       </div>
     )
   }
@@ -380,7 +369,7 @@ export const AdminEditRequests = () => {
         panelId="edit-request-panel"
       />
       {loading && items.length === 0 ? (
-        <Spinner size="md" label={t('adminEditRequests.loading')} />
+        <Skeleton rows={6} />
       ) : items.length === 0 ? (
         <EmptyState
           title={
@@ -392,7 +381,13 @@ export const AdminEditRequests = () => {
           }
         />
       ) : (
-        <ul className={shell.list}>
+        <>
+          {loading && (
+            <div className={shell.loadingBar} role="status" aria-live="polite">
+              {t('adminEditRequests.loading')}
+            </div>
+          )}
+          <ul className={shell.list}>
           {items.map((item) => (
             <li key={item.id}>
               <button type="button" className={shell.rowBtn} onClick={() => fetchDetail(item.id)}>
@@ -414,10 +409,11 @@ export const AdminEditRequests = () => {
             </li>
           ))}
         </ul>
+        </>
       )}
       {cursor && (
         <div className={shell.loadMoreWrap}>
-          <AdminButton variant="secondary" onClick={() => fetchList(cursor)} loading={loading}>
+          <AdminButton variant="secondary" onClick={() => void loadMore()} loading={loading}>
             {t('adminEditRequests.loadMore')}
           </AdminButton>
         </div>

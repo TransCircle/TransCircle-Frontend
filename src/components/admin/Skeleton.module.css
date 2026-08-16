@@ -1,0 +1,74 @@
+/* 加载骨架屏：列表行 / 详情卡片占位。颜色用设计令牌，动画尊重 reduced-motion。 */
+
+.root {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── List variant ── */
+.list {
+  gap: 0.6rem;
+}
+
+.row {
+  height: 4.5rem;
+  border-radius: var(--radius-md);
+  background: var(--hover-bg);
+  animation: skeletonPulse 1.6s ease-in-out infinite;
+}
+
+/* ── Card variant ── */
+.card {
+  min-height: 16rem;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid var(--divider-color);
+  border-radius: var(--radius-lg);
+  background: var(--surface-card);
+  gap: 1rem;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.lineWide {
+  width: 92%;
+}
+
+.lineMid {
+  width: 70%;
+}
+
+.lineNarrow {
+  width: 45%;
+}
+
+.lineWide,
+.lineMid,
+.lineNarrow {
+  height: 0.9rem;
+  border-radius: var(--radius-xs);
+  background: var(--hover-bg);
+  animation: skeletonPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes skeletonPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row,
+  .lineWide,
+  .lineMid,
+  .lineNarrow {
+    animation: none;
+  }
+}

@@ -77,11 +77,12 @@
     color 0.15s ease;
 }
 
-/* Expand the tap target to >=40px without bloating the chip visually. */
+/* Expand the tap target to >=44px (--tap-min) without bloating the chip visually.
+   视觉叉 20px，用 ::before 把命中区扩到 44×44 —— 达 DESIGN §6.1.10 触控下限。 */
 .remove::before {
   content: '';
   position: absolute;
-  inset: -10px;
+  inset: -12px;
 }
 
 .remove:hover {

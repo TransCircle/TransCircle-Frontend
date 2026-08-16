@@ -5,9 +5,10 @@ import i18n from '@/i18n/config'
 import { RootLayout } from '../layouts/RootLayout'
 import { ErrorBoundaryPage } from '../pages/ErrorBoundaryPage'
 import { AdminShell } from '../pages/AdminShell'
-import { RequireAdminLayout } from '../pages/RequireAdminLayout'
+import { RequireAuthLayout } from '../pages/RequireAuthLayout'
+import { RequirePermissionLayout } from '../pages/RequirePermissionLayout'
 import { RequireReviewerOrAdminLayout } from '../pages/RequireReviewerOrAdminLayout'
-import { AdminOnlyGuard } from '../pages/AdminOnlyGuard'
+import { PERMISSIONS } from '@/api/permissions'
 import { LegacyLoginRedirect } from '../pages/LegacyLoginRedirect'
 
 import { Home } from '../pages/Home'
@@ -116,16 +117,22 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            element: <RequireAdminLayout />,
-            children: [
-              {
-                element: <AdminOnlyGuard />,
-                children: [
-                  { path: 'audit-logs', element: lazyNamed(() => import('../pages/AdminAuditLogs'), 'AdminAuditLogs') },
-                  { path: 'users', element: lazyNamed(() => import('../pages/AdminUsers'), 'AdminUsers') },
-                ],
-              },
-            ],
+            // 用户管理 / 审计子路由：按具体权限精确守卫（IAM 权限快照驱动），
+            // 不再用 OR 守卫 + 页面内二次判断（admin-page-guard-inconsistent）
+            path: 'audit-logs',
+            element: (
+              <RequirePermissionLayout permission={PERMISSIONS.AUDIT_READ}>
+                {lazyNamed(() => import('../pages/AdminAuditLogs'), 'AdminAuditLogs')}
+              </RequirePermissionLayout>
+            ),
+          },
+          {
+            path: 'users',
+            element: (
+              <RequirePermissionLayout permission={PERMISSIONS.USER_READ}>
+                {lazyNamed(() => import('../pages/AdminUsers'), 'AdminUsers')}
+              </RequirePermissionLayout>
+            ),
           },
         ],
       },
@@ -150,58 +157,64 @@ export const router = createBrowserRouter([
         element: lazyNamed(() => import('../pages/StepUpDone'), 'StepUpDone'),
       },
       {
-        path: 'settings',
-        element: <Navigate to="/settings/security" replace />,
-      },
-      {
-        path: 'settings/security',
-        element: lazyNamed(() => import('../pages/SettingsSecurity'), 'SettingsSecurity'),
-      },
-      {
-        // 以下本地账户流程（OAuth 绑定/直接注册/邮箱验证/密码找回/撤销注销）均迁移到
-        // TransCircle Pass，故事站不再承载 → 统一重定向到登录页。
-        path: 'settings/security/oauth-bind/confirm',
-        element: <Navigate to="/auth/login" replace />,
-      },
-      {
-        path: 'register-direct',
-        element: <Navigate to="/auth/login" replace />,
-      },
-      {
-        path: 'auth/email/verify',
-        element: <Navigate to="/auth/login" replace />,
-      },
-      {
-        path: 'auth/email/resend',
-        element: <Navigate to="/auth/login" replace />,
-      },
-      {
-        path: 'auth/password/forgot',
-        element: <Navigate to="/auth/login" replace />,
-      },
-      {
-        path: 'auth/password/reset',
-        element: <Navigate to="/auth/login" replace />,
-      },
-      {
-        path: 'auth/cancel-deletion',
-        element: <Navigate to="/auth/login" replace />,
-      },
-      {
-        path: 'me/contributions',
-        element: lazyNamed(() => import('../pages/MyContributions'), 'MyContributions'),
-      },
-      {
-        path: 'me/contributions/:id',
-        element: lazyNamed(() => import('../pages/MyContributionDetail'), 'MyContributionDetail'),
+        // 需要认证的普通用户页面：统一由 RequireAuthLayout 守卫（身份统一 Pass，无需特定权限）。
+        element: <RequireAuthLayout />,
+        children: [
+          {
+            path: 'settings',
+            element: <Navigate to="/settings/security" replace />,
+          },
+          {
+            path: 'settings/security',
+            element: lazyNamed(() => import('../pages/SettingsSecurity'), 'SettingsSecurity'),
+          },
+          {
+            // 以下本地账户流程（OAuth 绑定/直接注册/邮箱验证/密码找回/撤销注销）均迁移到
+            // TransCircle Pass，故事站不再承载 → 统一重定向到登录页。
+            path: 'settings/security/oauth-bind/confirm',
+            element: <Navigate to="/auth/login" replace />,
+          },
+          {
+            path: 'register-direct',
+            element: <Navigate to="/auth/login" replace />,
+          },
+          {
+            path: 'auth/email/verify',
+            element: <Navigate to="/auth/login" replace />,
+          },
+          {
+            path: 'auth/email/resend',
+            element: <Navigate to="/auth/login" replace />,
+          },
+          {
+            path: 'auth/password/forgot',
+            element: <Navigate to="/auth/login" replace />,
+          },
+          {
+            path: 'auth/password/reset',
+            element: <Navigate to="/auth/login" replace />,
+          },
+          {
+            path: 'auth/cancel-deletion',
+            element: <Navigate to="/auth/login" replace />,
+          },
+          {
+            path: 'me/contributions',
+            element: lazyNamed(() => import('../pages/MyContributions'), 'MyContributions'),
+          },
+          {
+            path: 'me/contributions/:id',
+            element: lazyNamed(() => import('../pages/MyContributionDetail'), 'MyContributionDetail'),
+          },
+          {
+            path: 'contributions/:id/edit-request',
+            element: lazyNamed(() => import('../pages/EditRequestForm'), 'EditRequestForm'),
+          },
+        ],
       },
       {
         path: 'contributions/:id',
         element: lazyNamed(() => import('../pages/PublicContributionDetail'), 'PublicContributionDetail'),
-      },
-      {
-        path: 'contributions/:id/edit-request',
-        element: lazyNamed(() => import('../pages/EditRequestForm'), 'EditRequestForm'),
       },
       {
         path: '*',

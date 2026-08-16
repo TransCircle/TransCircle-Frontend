@@ -27,3 +27,5 @@ export type {
 } from './Surface'
 export { Modal, ConfirmDialog, ReasonPromptDialog } from './Modal'
 export type { ModalProps, ConfirmDialogProps, ReasonPromptDialogProps } from './Modal'
+export { Skeleton } from './Skeleton'
+export type { SkeletonProps } from './Skeleton'

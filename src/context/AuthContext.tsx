@@ -2,6 +2,7 @@ import { createContext, useEffect, useState, useCallback, useMemo, type ReactNod
 import { get, post, setAccessToken as setClientToken, clearAuth, tryRefreshToken } from '@/api/client'
 import { computePermissions } from '@/api/permissions'
 import { isValidRedirect } from '@/utils/redirect'
+import { isPublicPath } from '@/utils/public-route'
 
 interface User {
   id: string
@@ -105,11 +106,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false)
         return
       }
-      // 静默 SSO 跳过条件：已在登录/回调页，或本轮已尝试过（防循环）
       const isLoginPage = /^\/(?:login|auth\/login)\b/.test(window.location.pathname)
       const isCallbackPage = window.location.pathname.startsWith('/auth/callback')
+      // 回调页完全交由 OAuthCallback 组件完成 loginCode 兑换（api.md §1.6.3）。
+      // 此处跳过 refresh 与静默 SSO，避免与 exchange 并发双登录：init 若先用刚
+      // Set-Cookie 的 refresh_token 旋转一次并 fetch /me，OAuthCallback 随后又用
+      // loginCode 兑换一次，会重复签发 access token 并额外产生一条 refresh rotation 记录。
+      if (isCallbackPage) {
+        setLoading(false)
+        return
+      }
+
       const ssoAttempted = sessionStorage.getItem('sso_attempted') === 'true'
-      const skipSSO = isLoginPage || isCallbackPage || ssoAttempted
+      // 仅「需要认证的路由」才在无本地会话时触发 Pass OIDC prompt=none 静默 SSO；
+      // 公开路由（首页 /、公开投稿详情 /contributions/:id、登录/认证流程页）匿名可浏览，
+      // 不得把匿名访客强制重定向到登录（identity-boundaries.md 产品目标）。
+      const requiresAuth = !isPublicPath(window.location.pathname)
+      const skipSSO = isLoginPage || ssoAttempted || !requiresAuth
 
       let redirecting = false
       try {
@@ -132,13 +145,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             console.warn('[auth] /me failed after successful refresh, user profile not loaded')
           }
         } else if (!skipSSO) {
-          // 无本地 session → 通过 Pass OIDC prompt=none 尝试静默 SSO
-          sessionStorage.setItem('sso_attempted', 'true')
+          // 无本地 session 且当前为需认证路由 → 通过 Pass OIDC prompt=none 尝试静默 SSO
           const redirectAfter = encodeURIComponent(window.location.pathname + window.location.search)
           const result = await get<{ authorizationUrl: string }>(
             `/auth/oauth/pass/start?prompt=none&redirectAfter=${redirectAfter}`,
           )
           if (result.ok && result.data.authorizationUrl) {
+            // 仅在确认拿到 authorizationUrl 后才置位 sso_attempted：
+            // 若 /pass/start 瞬时失败（502/网络），不置位，本标签页下次加载仍可重试静默 SSO。
+            sessionStorage.setItem('sso_attempted', 'true')
             redirecting = true
             window.location.href = result.data.authorizationUrl
           }
@@ -148,6 +163,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     }
     init()
+  }, [])
+
+  // 全局会话失效同步：refresh 返回 401（REFRESH_TOKEN_REVOKED / INVALID_REFRESH_TOKEN）时，
+  // api/client 清空了内存 token 并派发 auth:session-expired。此处同步清空 user / token / provider，
+  // 使路由守卫立即把用户重定向到登录，避免 SPA 内继续以登录态渲染（api.md Access Token 失效策略）。
+  useEffect(() => {
+    const onSessionExpired = () => {
+      setUser(null)
+      setAccessToken(null)
+      setLoginProvider(null)
+    }
+    window.addEventListener('auth:session-expired', onSessionExpired)
+    return () => window.removeEventListener('auth:session-expired', onSessionExpired)
   }, [])
 
   // Start OAuth flow: fetch authorization URL from backend, then redirect.

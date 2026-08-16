@@ -1,8 +1,7 @@
 import { useState } from 'react'
-import { useParams, useNavigate, useLocation, Navigate } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { post, setIntentKey, newIdempotencyKey } from '@/api/client'
-import { useAuth } from '@/context/useAuth'
 import { ERRORS } from '@/api/errors'
 import { limitByUnicode } from '@/utils/string'
 import { AdminButton, Alert, Card, PageHeader, StatusScreen, TagInput, TextArea, TextField } from '@/components/ui'
@@ -12,8 +11,6 @@ import shell from './Page.module.css'
 export const EditRequestForm = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const location = useLocation()
-  const { user, loading: authLoading } = useAuth()
   const { t } = useTranslation()
 
   const [reason, setReason] = useState('')
@@ -111,14 +108,6 @@ export const EditRequestForm = () => {
       setIntentKey(null)
       setSubmitting(false)
     }
-  }
-
-  if (authLoading) {
-    return <StatusScreen kind="loading" title={t('admin.verifying')} />
-  }
-
-  if (!user) {
-    return <Navigate to={`/auth/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />
   }
 
   if (success) {

@@ -72,6 +72,13 @@
     background-color: var(--cta-hover-mix);
   }
 }
+
+/* DESIGN §6.1.10：登录 CTA 属「大面积行/链接」类，触屏下 min-height 抬到 44px */
+@media (any-pointer: coarse) {
+  .loginBtn {
+    min-height: var(--tap-min);
+  }
+}
 .leftSection {
   display: flex;
   align-items: center;
@@ -92,10 +99,26 @@
   background: transparent;
   border: none;
   cursor: pointer;
+  /* ::after 命中区扩大的定位祖先（DESIGN §6.1.10） */
+  position: relative;
   z-index: 75;
 }
 .hamburger:hover {
   background-color: var(--hover-bg);
+}
+
+/* DESIGN §6.1.10：顶栏图标控件触屏命中区扩到 44px（视觉仍 34px，用居中 ::after），
+   不撑高顶栏。 */
+@media (any-pointer: coarse) {
+  .hamburger::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: var(--tap-min);
+    height: var(--tap-min);
+    transform: translate(-50%, -50%);
+  }
 }
 
 .externalIcon {
@@ -354,8 +377,24 @@
   cursor: pointer;
   padding: 0;
   overflow: hidden;
+  /* ::after 命中区扩大的定位祖先（DESIGN §6.1.10） */
+  position: relative;
   transition: box-shadow var(--dur-fast) var(--ease-standard),
     transform var(--dur-fast) var(--ease-standard);
+}
+
+/* DESIGN §6.1.10：顶栏图标控件触屏命中区扩到 44px（视觉仍 34px，用居中 ::after），
+   不撑高顶栏。 */
+@media (any-pointer: coarse) {
+  .acctBtn::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: var(--tap-min);
+    height: var(--tap-min);
+    transform: translate(-50%, -50%);
+  }
 }
 .acctBtn:hover {
   box-shadow: 0 0 0 2px var(--soft-pink);
@@ -554,6 +593,13 @@
 
 .drawerLink.disabled {
   cursor: default;
+}
+
+/* DESIGN §6.1.10：抽屉链接属「大面积行/链接」类，触屏下 min-height 抬到 44px */
+@media (any-pointer: coarse) {
+  .drawerLink {
+    min-height: var(--tap-min);
+  }
 }
 
 .drawerDivider {

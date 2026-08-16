@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { get } from '@/api/client'
 import { sanitizeHtml } from '@/utils/sanitize'
-import { AdminButton, Alert, Card, Pill, Spinner } from '@/components/ui'
+import { AdminButton, Alert, Card, Pill, Skeleton } from '@/components/ui'
 import { useFormatTs } from '@/utils/datetime'
 import shell from './Page.module.css'
 
@@ -54,9 +54,15 @@ export const PublicContributionDetail = () => {
   }, [id, t])
 
   if (loading) {
+    // 保留页面框架（返回按钮 + 卡片容器），仅内容区骨架占位，避免整页替换为 Spinner 的布局跳变
     return (
       <div className={`${shell.page} ${shell.pageNarrow}`}>
-        <Spinner size="lg" label={t('publicContributionDetail.loading')} />
+        <div>
+          <AdminButton variant="ghost" size="sm" disabled>
+            {t('publicContributionDetail.backToHome')}
+          </AdminButton>
+        </div>
+        <Skeleton variant="card" />
       </div>
     )
   }

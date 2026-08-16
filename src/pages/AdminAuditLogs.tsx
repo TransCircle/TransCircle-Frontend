@@ -3,9 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { get } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
+import { useCursorList } from '@/hooks/useCursorList'
 import { limitByUnicode } from '@/utils/string'
 import { useFormatTs } from '@/utils/datetime'
-import { AdminButton, Alert, EmptyState, Pill, SearchField, Spinner } from '@/components/admin'
+import { AdminButton, Alert, EmptyState, Pill, SearchField, Skeleton } from '@/components/admin'
 import shell from './Page.module.css'
 
 interface AuditLogEntry {
@@ -24,14 +25,9 @@ interface AuditLogEntry {
 export const AdminAuditLogs = () => {
   const { t } = useTranslation()
   const formatTs = useFormatTs()
-  const { accessToken, loading: authLoading, user, permissions } = useAuth()
+  const { accessToken, loading: authLoading, permissions } = useAuth()
   const loadedRef = useRef(false)
-  const fetchSeq = useRef(0)
 
-  const [logs, setLogs] = useState<AuditLogEntry[]>([])
-  const [cursor, setCursor] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
   const [actionFilter, setActionFilter] = useState('')
   const [resourceFilter, setResourceFilter] = useState('')
   const [actorNames, setActorNames] = useState<Record<string, string>>({})
@@ -39,11 +35,9 @@ export const AdminAuditLogs = () => {
 
   const actionLabel = (action: string): string => t(`adminAuditLogs.actions.${action.replace(/\./g, '_')}`, action)
 
-  const fetchLogs = async (cursorVal?: string | null) => {
-    const seq = ++fetchSeq.current
-    setLoading(true)
-    setError('')
-    try {
+  // 游标分页列表（统一模板）：筛选由 onSearch 显式触发 reload
+  const { items: logs, cursor, loading, error, reload, loadMore } = useCursorList<AuditLogEntry>({
+    fetchPage: async (cursorVal) => {
       const params = new URLSearchParams({ limit: '50' })
       if (actionFilter.trim()) params.set('action', actionFilter.trim())
       if (resourceFilter.trim()) params.set('resourceType', resourceFilter.trim())
@@ -51,26 +45,28 @@ export const AdminAuditLogs = () => {
       const result = await get<AuditLogEntry[]>(`/admin/audit-logs?${params}`, {
         /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
       })
-      if (seq !== fetchSeq.current) return
       if (!result.ok) throw new Error(result.error.message)
-      if (cursorVal) setLogs((prev) => [...prev, ...result.data])
-      else setLogs(result.data)
-      setCursor(result.pagination?.nextCursor || null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('adminAuditLogs.loadError'))
-    } finally {
-      if (seq === fetchSeq.current) setLoading(false)
-    }
-  }
+      return {
+        data: result.data,
+        nextCursor: result.pagination?.nextCursor ?? null,
+        hasMore: result.pagination?.hasMore ?? false,
+      }
+    },
+    deps: [authLoading, accessToken],
+    autoLoad: false,
+  })
 
+  // 首载：auth 就绪且持有 audit:read 时加载一次；无权限不发起
   useEffect(() => {
     if (authLoading || !accessToken) return
     if (!hasPermission(permissions, PERMISSIONS.AUDIT_READ)) return // 无 audit:read 直接拒绝页，免发无谓 403
     if (loadedRef.current) return
     loadedRef.current = true
-    fetchLogs()
+    void reload()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, accessToken])
+
+  const searchLogs = () => void reload()
 
   // 操作者 ID → 显示名查表（需 user:read 权限；按 ID 缓存，避免重复请求）
   useEffect(() => {
@@ -111,22 +107,6 @@ export const AdminAuditLogs = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [logs])
 
-  if (!authLoading && (!user || !hasPermission(permissions, PERMISSIONS.AUDIT_READ))) {
-    return (
-      <div className={shell.page}>
-        <EmptyState title={t('adminAuditLogs.accessDenied')} description={t('adminAuditLogs.accessDeniedDetail')} />
-      </div>
-    )
-  }
-
-  if (authLoading) {
-    return (
-      <div className={shell.page}>
-        <Spinner size="md" label={t('adminAuditLogs.loading')} />
-      </div>
-    )
-  }
-
   return (
     <div className={shell.page}>
       <div className={shell.stickyHead}>
@@ -134,7 +114,7 @@ export const AdminAuditLogs = () => {
           <SearchField
             value={actionFilter}
             onValueChange={setActionFilter}
-            onSearch={() => fetchLogs()}
+            onSearch={searchLogs}
             placeholder={t('adminAuditLogs.filterAction')}
             searchAriaLabel={t('adminAuditLogs.filterAction')}
             clearAriaLabel={t('admin.ui.clear')}
@@ -143,13 +123,13 @@ export const AdminAuditLogs = () => {
           <SearchField
             value={resourceFilter}
             onValueChange={setResourceFilter}
-            onSearch={() => fetchLogs()}
+            onSearch={searchLogs}
             placeholder={t('adminAuditLogs.filterResource')}
             searchAriaLabel={t('adminAuditLogs.filterResource')}
             clearAriaLabel={t('admin.ui.clear')}
             fieldClassName={shell.grow}
           />
-          <AdminButton variant="secondary" onClick={() => fetchLogs()}>
+          <AdminButton variant="secondary" onClick={searchLogs}>
             {t('adminAuditLogs.search')}
           </AdminButton>
         </div>
@@ -158,11 +138,16 @@ export const AdminAuditLogs = () => {
       {error && <Alert tone="error">{error}</Alert>}
 
       {loading && logs.length === 0 ? (
-        <Spinner size="md" label={t('adminAuditLogs.loading')} />
+        <Skeleton rows={8} />
       ) : logs.length === 0 ? (
         <EmptyState title={t('adminAuditLogs.empty')} />
       ) : (
         <>
+          {loading && (
+            <div className={shell.loadingBar} role="status" aria-live="polite">
+              {t('adminAuditLogs.loading')}
+            </div>
+          )}
           <ul className={shell.list}>
             {logs.map((log) => (
               <li key={log.id} className={shell.rowStatic}>
@@ -194,7 +179,7 @@ export const AdminAuditLogs = () => {
           </ul>
           {cursor && (
             <div className={shell.loadMoreWrap}>
-              <AdminButton variant="secondary" onClick={() => fetchLogs(cursor)} loading={loading}>
+              <AdminButton variant="secondary" onClick={() => void loadMore()} loading={loading}>
                 {t('adminAuditLogs.loadMore')}
               </AdminButton>
             </div>
