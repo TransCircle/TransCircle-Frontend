@@ -18,16 +18,12 @@
     "submitView": "投稿展示",
     "externalLinks": "外部链接",
     "blog": "博客",
-    "explore": "探索"
+    "explore": "探索",
+    "mainSite": "导航站"
   },
   "theme": {
     "light": "亮色模式",
     "dark": "深色模式"
-  },
-  "language": {
-    "selectLabel": "语言选择",
-    "zhCN": "简体中文",
-    "zhTW": "繁体中文"
   },
   "home": {
     "title": "TransCircle",
