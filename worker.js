@@ -43,9 +43,13 @@ export default {
         }
       }
 
+      // 剥离客户端可伪造的 X-Forwarded-For（Cloudflare 在边缘设置 CF-Connecting-IP 作为真实来源）。
+      const forwardHeaders = new Headers(request.headers);
+      forwardHeaders.delete('x-forwarded-for');
+
       return fetch(`${backend}${url.pathname}${url.search}`, {
         method: request.method,
-        headers: request.headers,
+        headers: forwardHeaders,
         body: request.body,
       });
     }

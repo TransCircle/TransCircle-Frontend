@@ -230,6 +230,11 @@ function sanitizeHtml(html) {
         const href = el.getAttribute('href') || ''
         const clean = href.replace(/[\x00-\x1f\x7f]/g, '').trim()
         if (dangerousSchemes.test(clean)) el.removeAttribute('href')
+        // 外链安全：与 SPA 侧 sanitize.ts 一致（story 静态站是单独实现）。
+        if (el.hasAttribute('href')) {
+          el.setAttribute('rel', 'nofollow noopener noreferrer')
+          el.setAttribute('target', '_blank')
+        }
       }
     }
   }
