@@ -214,8 +214,8 @@ export const AdminUsers = () => {
         term: t('adminUsers.passwordLabel'),
         value: detail.security.hasPassword ? t('adminUsers.hasPassword') : t('adminUsers.noPassword'),
       },
-      { term: 'TOTP', value: detail.security.totpEnabled ? t('adminUsers.totpEnabled') : t('adminUsers.totpDisabled') },
-      { term: 'Passkey', value: `${detail.security.passkeyCount}${t('adminUsers.passkeyUnit')}` },
+      { term: t('adminUsers.totpLabel'), value: detail.security.totpEnabled ? t('adminUsers.totpEnabled') : t('adminUsers.totpDisabled') },
+      { term: t('adminUsers.passkeyLabel'), value: `${detail.security.passkeyCount}${t('adminUsers.passkeyUnit')}` },
     ]
 
     return (
@@ -243,7 +243,7 @@ export const AdminUsers = () => {
 
             {detail.oauthAccounts.length > 0 && (
               <div>
-                <SectionLabel>OAuth</SectionLabel>
+                <SectionLabel>{t('adminUsers.oauthLabel')}</SectionLabel>
                 <ul className={shell.history}>
                   {detail.oauthAccounts.map((oa) => (
                     <li key={oa.provider} className={shell.historyItem}>

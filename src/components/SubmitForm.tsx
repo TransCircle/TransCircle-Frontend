@@ -65,7 +65,7 @@ const validate = (data: FormData, t: (key: string, options?: Record<string, unkn
 
 export const SubmitForm = () => {
   const { t } = useTranslation()
-  const { user, loading, loginProvider, loginWithPass } = useAuth()
+  const { user, loading, loginWithPass } = useAuth()
   const loginStarting = useRef(false)
   const [form, setForm] = useState<FormData>(INITIAL_FORM)
   const [errors, setErrors] = useState<FormErrors>({})
@@ -192,7 +192,6 @@ export const SubmitForm = () => {
         <div className={styles.loginHint}>
           {user ? (
             <span className={styles.userBadge}>
-              {loginProvider === 'pass' && <span className={styles.userProvider}>TransCircle Pass</span>}
               <span className={styles.userName}>{user.username}</span>
               <span className={styles.userTag}>{t('submit.loggedInAs')}</span>
             </span>

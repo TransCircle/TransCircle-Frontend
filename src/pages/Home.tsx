@@ -150,7 +150,7 @@ export const Home = () => {
                       <span className={shell.rowMetaSep}>·</span>
                       <span>{formatTs(item.publishedAt)}</span>
                       <span className={shell.rowMetaSep}>·</span>
-                      <span>{item.language}</span>
+                      <span>{t('submit.languages.' + item.language, { defaultValue: item.language })}</span>
                       {item.tags?.map((tag) => (
                         <Pill key={tag}>{tag}</Pill>
                       ))}

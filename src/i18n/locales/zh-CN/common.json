@@ -340,15 +340,13 @@
     "text2": "对于其他人提供的材料，依照她们的版权要求。届时我们会提供单独的版权页面。",
     "copyright": "© {{year}} TransCircle"
   },
-  "toc": {
-    "label": "目录"
-  },
   "common": {
     "and": " · ",
     "anonymous": "匿名",
     "backToHome": "返回首页",
     "backToLogin": "返回登录",
     "rateLimitHint": "请求过于频繁，请在 {{seconds}} 秒后重试",
+    "rateLimitRetryIn": "（请在 {{seconds}} 秒后重试）",
     "errorBoundaryTitle": "出错了",
     "errorBoundaryDescription": "页面发生了意外错误，请稍后重试。",
     "loading": "加载中...",
@@ -780,6 +778,9 @@
     "totpEnabled": "已启用",
     "totpDisabled": "未启用",
     "passkeyUnit": " 个",
+    "totpLabel": "TOTP",
+    "passkeyLabel": "Passkey",
+    "oauthLabel": "OAuth",
     "expiresAt": "过期 {{time}}",
     "permanent": "永久",
     "noRoles": "（无角色）",

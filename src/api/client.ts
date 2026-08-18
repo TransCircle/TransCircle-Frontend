@@ -4,12 +4,13 @@
  * 设计目标：
  * - 内存中管理 access token（不写 localStorage / sessionStorage，遵守 api.md JWT 存储建议）
  * - 401 时自动 refresh → retry（refresh token rotation 由后端保障）
- * - 统一的请求拦截（自动注入 Authorization / Content-Type / Idempotency-Key / X-CSRF-Token）
+ * - 统一的请求拦截（自动注入 Authorization / Content-Type / Idempotency-Key）
  * - 统一的错误解析
  * - 类型安全的辅助方法
  */
 
 import { API_BASE as _API_BASE } from '@/config'
+import i18n from '@/i18n/config'
 
 /** Re-export for use by pages that need direct fetch (e.g. DELETE with body) */
 export const API_BASE = _API_BASE
@@ -17,7 +18,6 @@ export const API_BASE = _API_BASE
 // ─── Token Management ──────────────────────────────────────────
 
 let _memoryToken: string | null = null
-let _loginProvider: string | null = null // 'github' | 'x' | null
 
 export function setAccessToken(token: string | null): void {
   _memoryToken = token
@@ -27,17 +27,12 @@ export function getAccessToken(): string | null {
   return _memoryToken
 }
 
-export function setLoginProvider(provider: string | null): void {
-  _loginProvider = provider
-}
-
-export function getLoginProvider(): string | null {
-  return _loginProvider
-}
-
 // ─── Refresh Token Rotation ────────────────────────────────────
 
 let _refreshPromise: Promise<string | null> | null = null
+// 认证代号：clearAuth() 自增后，在途 doRefresh 的结果（含内存 token 写回）一律作废，
+// 防止「登出瞬间在途 refresh 完成 → token 回填内存」的竞态。
+let _authGeneration = 0
 
 /**
  * Attempt to refresh the access token via POST /v1/auth/refresh.
@@ -47,6 +42,7 @@ async function doRefresh(): Promise<string | null> {
   if (_refreshPromise) return _refreshPromise
 
   _refreshPromise = (async () => {
+    const gen = _authGeneration
     try {
       const res = await fetch(`${API_BASE}/auth/refresh`, {
         method: 'POST',
@@ -84,7 +80,10 @@ async function doRefresh(): Promise<string | null> {
         requestId?: string
       }
       if (body.data?.accessToken) {
-        _memoryToken = body.data.accessToken
+        // 登出/过期后（_authGeneration 已自增）在途 refresh 的结果不再回填内存。
+        if (gen === _authGeneration) {
+          _memoryToken = body.data.accessToken
+        }
         return _memoryToken
       }
       console.warn('[auth] refresh response missing accessToken, body:', body)
@@ -98,34 +97,6 @@ async function doRefresh(): Promise<string | null> {
   })()
 
   return _refreshPromise
-}
-
-// ─── CSRF Token Helper ─────────────────────────────────────────
-
-/**
- * Read oauth_pending_csrf cookie for OAuth flows (api.md §1.6.2).
- * Falls back to sessionStorage for cross-page navigation resilience.
- */
-export function getCsrfToken(): string {
-  const match = document.cookie.match(/oauth_pending_csrf=([^;]+)/)
-  if (match?.[1]) return match[1]
-  return sessionStorage.getItem('oauth_pending_csrf') || ''
-}
-
-/** Persist CSRF token to sessionStorage so it survives page navigation */
-export function saveCsrfToken(token: string): void {
-  try {
-    sessionStorage.setItem('oauth_pending_csrf', token)
-  } catch {
-    // 隐私模式/存储满时忽略写入失败，CSRF 校验将继续依赖 cookie
-  }
-}
-
-/** Clean up CSRF token after use */
-export function clearCsrfToken(): void {
-  sessionStorage.removeItem('oauth_pending_csrf')
-  // 同时清除同名 cookie，避免下次 getCsrfToken() 从 cookie 读到过期值
-  document.cookie = 'oauth_pending_csrf=; Max-Age=0; path=/; SameSite=Lax'
 }
 
 /**
@@ -236,8 +207,6 @@ export interface ApiRequestOptions {
   headers?: Record<string, string>
   /** Include Idempotency-Key header (UUID v4) */
   idempotent?: boolean
-  /** Include X-CSRF-Token header */
-  csrf?: boolean
   /** Don't attempt refresh on 401 */
   skipRefresh?: boolean
   /** AbortSignal for cancellation */
@@ -267,7 +236,7 @@ function newRequestId(): string {
 /**
  * Core `fetch` wrapper.
  *
- * 1. Builds headers (Content-Type, Authorization, X-CSRF-Token, Idempotency-Key, X-Request-Id)
+ * 1. Builds headers (Content-Type, Authorization, Idempotency-Key, X-Request-Id)
  * 2. Sends request
  * 3. On 401 + valid token → attempts refresh → retries once
  * 4. Parses JSON body into `ApiResult`
@@ -290,12 +259,6 @@ export async function apiRequest<T = unknown>(
   if (!options.noAuth) {
     const tk = _memoryToken
     if (tk) headers.set('Authorization', `Bearer ${tk}`)
-  }
-
-  // CSRF — only set when token is non-empty to avoid sending a blank header
-  if (options.csrf) {
-    const csrfToken = getCsrfToken()
-    if (csrfToken) headers.set('X-CSRF-Token', csrfToken)
   }
 
   // Idempotency-Key — 提升到业务意图层，超时重试复用同一 key（M9）
@@ -418,9 +381,6 @@ export async function apiRequest<T = unknown>(
     if (status >= 200 && status < 300) {
       // path 可能含敏感 query（如 /admin/users?keyword=email），仅记录路径部分（api.md 安全基线）
       logRequestId(`${method} ${path.split('?')[0] ?? ''}`, json)
-      // Persist CSRF token from response body if present (H1 — supports cross-origin OAuth flows)
-      const responseCsrf = json.csrfToken as string | undefined
-      if (responseCsrf) saveCsrfToken(responseCsrf)
       const base = { requestId, status, rateLimit }
       const pagination = json.pagination as { limit: number; nextCursor: string | null; hasMore: boolean } | undefined
       const result: ApiResult<T> = pagination
@@ -430,9 +390,6 @@ export async function apiRequest<T = unknown>(
     }
 
     // Error response — api.md §12 format: { error: { code, message, details?, data? }, requestId }
-    // Also extract CSRF token from error responses (H1)
-    const errorCsrf = json.csrfToken as string | undefined
-    if (errorCsrf) saveCsrfToken(errorCsrf)
     const errorData = json.error as
       | {
           code: string
@@ -444,7 +401,7 @@ export async function apiRequest<T = unknown>(
 
     // Append retry-after info to rate-limited error messages so pages display it automatically (L1)
     if (status === 429 && rateLimit?.retryAfter && errorData?.message) {
-      errorData.message += ` (请在 ${rateLimit.retryAfter} 秒后重试)`
+      errorData.message += ' ' + i18n.t('common.rateLimitRetryIn', { seconds: rateLimit.retryAfter })
     }
 
     return {
@@ -580,8 +537,9 @@ export async function tryRefreshToken(): Promise<string | null> {
  * Clear all auth state (on logout or session expiry).
  */
 export function clearAuth(): void {
+  // 先自增代号作废所有在途 refresh，再清空状态。
+  _authGeneration += 1
   _memoryToken = null
-  _loginProvider = null
   _refreshPromise = null
   _intentKey = null
 }

@@ -92,7 +92,7 @@ export const PublicContributionDetail = () => {
                 {t('publicContributionDetail.author')}: {detail.author.displayName}
               </span>
               <span className={shell.metaItem}>{formatTs(detail.publishedAt)}</span>
-              <span className={shell.metaItem}>{detail.language}</span>
+              <span className={shell.metaItem}>{t('submit.languages.' + detail.language, { defaultValue: detail.language })}</span>
               {detail.tags?.map((tag) => (
                 <Pill key={tag}>{tag}</Pill>
               ))}

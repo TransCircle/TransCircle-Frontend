@@ -1,4 +1,5 @@
 import { useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useTheme, type Theme } from '../context/useTheme'
 import styles from './ThemeToggle.module.css'
 
@@ -51,6 +52,7 @@ interface ThemeToggleProps {
 }
 
 export const ThemeToggle = ({ className = '' }: ThemeToggleProps) => {
+  const { t } = useTranslation()
   const { theme, setTheme } = useTheme()
   const btnRef = useRef<HTMLButtonElement>(null)
 
@@ -68,7 +70,7 @@ export const ThemeToggle = ({ className = '' }: ThemeToggleProps) => {
         type="button"
         className={`${styles.toggleBtn} ${className}`.trim()}
         onClick={handleToggle}
-        aria-label={isDark ? '切换至亮色模式' : '切换至深色模式'}
+        aria-label={isDark ? t('theme.light') : t('theme.dark')}
       >
         {isDark ? <SunIcon /> : <MoonIcon />}
       </button>
