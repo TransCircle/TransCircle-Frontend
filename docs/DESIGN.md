@@ -74,8 +74,8 @@ shared controls). Admin pages may keep importing from `@/components/admin`.
 - **Checkbox** — drawn box over a hidden native input (keeps native keyboard).
 - **RadioGroup** — labeled radio rows (`radiogroup` + roving tabindex).
 - **TagInput** — controlled chip editor (Pill-style chips, accessible remove).
-- **LanguageToggle** — segmented zh-CN/zh-TW control (mirrors ThemeToggle); `variant='card'|'plain'`.
-- **ThemeToggle** — three-way theme segmented control; `variant='card'|'plain'`.
+- **ThemeToggle** — two-way light/dark segmented control; `variant='card'|'plain'`.
+  (No LanguageToggle: the app ships zh-CN only.)
 - **PageHeader** — unified title/description/actions/eyebrow header.
 - **CenteredCard** — vertically-centered Card shell (auth/status pages).
 - **StatusScreen** — shared loading/success/error/info result screen.
@@ -130,6 +130,6 @@ behind an **AdminButton**; hand-rolled overlays → **Modal**; hand-rolled toast
 - Every animation/transition guarded by `@media (prefers-reduced-motion: reduce)`.
 - ARIA comes from the primitives (roles, `aria-*`, live regions). Status is never
   conveyed by color alone (StatusBadge pairs a dot with text).
-- Every interactive primitive carries `[data-theme=contrast]` overrides
-  (intentional `#000`/`#fff`/`#ffaa00` for guaranteed AAA contrast).
-- All user-facing text via `t()`; new keys added to **both** `zh-CN` and `zh-TW`.
+- All user-facing text via `t()`; new keys are added to `zh-CN` only (the web
+  frontend ships zh-CN exclusively; contrast is guaranteed by the two light/dark
+  token sets, there is no `[data-theme=contrast]` variant).

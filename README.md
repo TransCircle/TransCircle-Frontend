@@ -2,7 +2,7 @@
 
 TransCircle Web 是 TransCircle 项目的前端应用仓库。
 
-该仓库代码目前尚未部署，请在本地进行测试。
+该仓库已部署为 Cloudflare Worker（`story.transcircle.org`），本地开发仍可直接 `pnpm dev`。
 
 该仓库用于承载：
 
