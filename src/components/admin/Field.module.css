@@ -59,7 +59,7 @@
 
 .invalid:focus {
   border-color: var(--error-color);
-  box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.16);
+  box-shadow: 0 0 0 3px var(--focus-ring-error);
 }
 
 .textarea {

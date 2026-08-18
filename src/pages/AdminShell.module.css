@@ -32,8 +32,9 @@
   z-index: 1300;
   padding: 0.6rem 1rem;
   background: var(--accent-pink);
+  /* 强调底色上的白色前景为设计常量，无对应令牌。 */
   color: #fff;
-  border-radius: 0 0 8px 0;
+  border-radius: 0 0 var(--radius-sm) 0;
   font-size: 0.85rem;
   text-decoration: none;
 }
@@ -98,7 +99,7 @@
   width: 30px;
   height: 30px;
   border: 1px solid var(--divider-color);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--bg-color);
   color: var(--text-secondary);
   cursor: pointer;
@@ -236,7 +237,7 @@
   width: 38px;
   height: 38px;
   border: 1px solid var(--divider-color);
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   background: var(--surface-card);
   color: var(--text-main);
   cursor: pointer;
@@ -285,6 +286,7 @@
   height: 34px;
   border-radius: 50%;
   background-color: var(--accent-pink);
+  /* 强调底色上的白色前景为设计常量，无对应令牌。 */
   color: #fff;
   font-size: 0.85rem;
   font-weight: 600;
@@ -355,7 +357,7 @@
     width: min(270px, 84vw);
     transform: translateX(-100%);
     transition: transform 0.28s ease;
-    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--shadow-drawer);
     z-index: 1200;
   }
 

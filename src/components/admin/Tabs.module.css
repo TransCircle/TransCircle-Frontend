@@ -36,7 +36,7 @@
 /* 横向滚动容器会裁剪向外偏移的焦点环；改用内描边（负偏移）避免被裁剪 */
 .tab:focus-visible {
   outline-offset: -2px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 .tabLabel {
@@ -66,7 +66,7 @@
 .underline .tab {
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
-  border-radius: 8px 8px 0 0;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
 }
 
 .underline .tab.active {
@@ -93,7 +93,7 @@
 
 .segmented .tab {
   padding: 0.4rem 0.9rem;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 .segmented .tab.active {

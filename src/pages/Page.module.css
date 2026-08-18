@@ -177,7 +177,7 @@
   color: var(--text-secondary);
   background-color: var(--hover-bg);
   padding: 0.05rem 0.4rem;
-  border-radius: 5px;
+  border-radius: var(--radius-xs);
   white-space: nowrap;
 }
 

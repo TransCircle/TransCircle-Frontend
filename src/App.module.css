@@ -59,6 +59,7 @@
 .toastError {
   top: 1rem;
   background: var(--error-color);
+  /* 错误底色上的白色前景为设计常量，无对应令牌。 */
   color: #fff;
   cursor: pointer;
 }

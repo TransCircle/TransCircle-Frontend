@@ -67,6 +67,9 @@
   --shadow-card: 0 1px 2px var(--shadow-color);
   --shadow-card-hover: 0 4px 14px var(--shadow-color-hover);
   --shadow-pop: 0 8px 24px var(--shadow-color);
+  /* 对话框/抽屉专用投影：方向性较强，独立成令牌（数值与旧硬编码一致）。 */
+  --shadow-dialog: 0 12px 40px rgba(0, 0, 0, 0.22);
+  --shadow-drawer: 4px 0 24px rgba(0, 0, 0, 0.12);
 
   /* Layout rails — fluid: pages fill the viewport up to these caps.
      content = wide browse/list pages; reading = comfortable measure for

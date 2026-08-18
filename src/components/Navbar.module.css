@@ -349,17 +349,6 @@
   }
 }
 
-.mobileLinkLabel {
-  display: block;
-  padding: 0.55rem 2rem 0.1rem;
-  font-size: 0.68rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-muted);
-  user-select: none;
-}
-
 /* ── Account avatar / dropdown ─────────────────── */
 .acctDropdown {
   position: relative;
@@ -504,43 +493,6 @@
     display: none;
   }
 
-  .mobileTOCGroup {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-    padding: 0.2rem 0 0.6rem;
-  }
-
-  .drawerInner .mobileTOCItem a,
-  .drawerInner .mobileTOCItem button {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.3rem 0.8rem;
-    border-radius: var(--radius-sm);
-    font-size: 0.9rem;
-    width: 100%;
-    color: var(--text-body);
-    text-decoration: none;
-    text-align: left;
-    cursor: pointer;
-    background: none;
-    border: none;
-    font: inherit;
-    transition: background-color 0.15s ease;
-  }
-
-  .drawerInner .mobileTOCItem a:hover,
-  .drawerInner .mobileTOCItem button:hover {
-    background-color: var(--hover-bg);
-  }
-
-  @supports (background-color: color-mix(in srgb, red 15%, white)) {
-    .drawerInner .mobileTOCItem a:hover,
-    .drawerInner .mobileTOCItem button:hover {
-      background-color: var(--hover-bg-mix);
-    }
-  }
 }
 
 .drawer {
@@ -553,7 +505,7 @@
   z-index: 70;
   background-color: var(--surface-card);
   border-right: 1px solid var(--divider-color);
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-drawer);
   transform: translateX(-100%);
   transition: transform 0.3s ease-in-out;
   overflow-y: auto;

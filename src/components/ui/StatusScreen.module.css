@@ -16,7 +16,7 @@
 }
 
 .error .icon {
-  color: #c62828;
+  color: var(--soft-error-text);
 }
 
 .info .icon {
@@ -24,7 +24,7 @@
 }
 
 [data-theme='dark'] .error .icon {
-  color: #ef5350;
+  color: var(--soft-error-text);
 }
 
 /* Cancel PageHeader's bottom margin inside the stacked screen. */
@@ -74,6 +74,7 @@
 
 .linkPrimary {
   background-color: var(--accent-pink);
+  /* 强调底色上的白色前景为设计常量，无对应令牌（与 DESIGN 保持一致）。 */
   color: #ffffff;
   box-shadow: 0 2px 8px var(--shadow-color);
 }

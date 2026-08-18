@@ -19,7 +19,7 @@
   background-color: var(--surface-card);
   border: 1px solid var(--divider-color);
   border-radius: var(--radius-lg);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+  box-shadow: var(--shadow-dialog);
   padding: 1.5rem;
   animation: suPanel 0.2s ease;
 }
@@ -187,9 +187,9 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background-color: #e7f6ec;
-  color: #2e9e4b;
-  border: 1px solid #a9d8b6;
+  background-color: var(--soft-success-bg);
+  color: var(--soft-success-text);
+  border: 1px solid var(--soft-success-border);
   animation: suPop 0.3s ease;
 }
 
@@ -200,9 +200,9 @@
 }
 
 [data-theme='dark'] .successCheck {
-  background-color: rgba(46, 160, 75, 0.14);
-  color: #66bb6a;
-  border-color: rgba(46, 160, 75, 0.3);
+  background-color: var(--soft-success-bg);
+  color: var(--soft-success-text);
+  border-color: var(--soft-success-border);
 }
 
 /* ── Animations ──────────────────────────────────────────── */
