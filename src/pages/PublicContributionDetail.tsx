@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { get } from '@/api/client'
 import { sanitizeHtml } from '@/utils/sanitize'
 import { AdminButton, Alert, Card, Pill, Skeleton } from '@/components/ui'
+import { CommentSection } from '@/components/CommentSection'
 import { useFormatTs } from '@/utils/datetime'
 import shell from './Page.module.css'
 
@@ -110,6 +111,8 @@ export const PublicContributionDetail = () => {
           </div>
         </article>
       </Card>
+
+      {id && <CommentSection contributionId={id} />}
     </div>
   )
 }

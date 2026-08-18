@@ -65,6 +65,14 @@ const AuditIcon = () =>
       <path d="M9 17h4" />
     </>,
   )
+const CommentsIcon = () =>
+  icon(
+    <>
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z" />
+      <path d="M8 9h8" />
+      <path d="M8 13h5" />
+    </>,
+  )
 
 const MenuIcon = () =>
   icon(
@@ -95,6 +103,7 @@ const TITLE_KEYS: Record<string, string> = {
   '/admin/edit-requests': 'adminEditRequests.title',
   '/admin/users': 'adminUsers.title',
   '/admin/audit-logs': 'adminAuditLogs.title',
+  '/admin/comments': 'adminComments.title',
 }
 
 export const AdminShell = () => {
@@ -198,6 +207,12 @@ export const AdminShell = () => {
       labelKey: 'adminShell.navAudit',
       icon: <AuditIcon />,
       show: hasPermission(permissions, PERMISSIONS.AUDIT_READ),
+    },
+    {
+      to: '/admin/comments',
+      labelKey: 'adminShell.navComments',
+      icon: <CommentsIcon />,
+      show: hasPermission(permissions, PERMISSIONS.COMMENT_MODERATE),
     },
   ].filter((i) => i.show)
 

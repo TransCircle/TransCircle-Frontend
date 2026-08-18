@@ -1,4 +1,4 @@
-﻿import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { lazy, Suspense, Component, type ReactNode, type ErrorInfo } from 'react'
 
 import i18n from '@/i18n/config'
@@ -131,6 +131,14 @@ export const router = createBrowserRouter([
             element: (
               <RequirePermissionLayout permission={PERMISSIONS.USER_READ}>
                 {lazyNamed(() => import('../pages/AdminUsers'), 'AdminUsers')}
+              </RequirePermissionLayout>
+            ),
+          },
+          {
+            path: 'comments',
+            element: (
+              <RequirePermissionLayout permission={PERMISSIONS.COMMENT_MODERATE}>
+                {lazyNamed(() => import('../pages/AdminComments'), 'AdminComments')}
               </RequirePermissionLayout>
             ),
           },
