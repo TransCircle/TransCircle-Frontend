@@ -6,8 +6,6 @@
  * 前后端权限映射必须保持同步，否则前端可能错误地隐藏了实际有权限的 UI 元素。
  */
 
-import { useMemo } from 'react'
-
 /**
  * 细粒度权限常量（与后端 src/utils/permissions.ts / iam-admin-api.md §4.1 对齐）。
  *
@@ -95,10 +93,6 @@ export function computePermissions(roles: string[]): string[] {
     if (perms) result.push(...perms)
   }
   return [...new Set(result)]
-}
-
-export function usePermissions(roles: string[]): string[] {
-  return useMemo(() => computePermissions(roles), [roles])
 }
 
 /** 是否拥有某权限；'*' 通配视为拥有全部。 */

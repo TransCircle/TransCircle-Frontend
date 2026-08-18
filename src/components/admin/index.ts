@@ -16,11 +16,10 @@ export { TextField, TextArea, SearchField } from './Field'
 export type { TextFieldProps, TextAreaProps, SearchFieldProps } from './Field'
 export { Tabs } from './Tabs'
 export type { TabItem, TabsProps } from './Tabs'
-export { Card, SectionLabel, Toolbar, DescriptionList, VoteProgress } from './Surface'
+export { Card, SectionLabel, DescriptionList, VoteProgress } from './Surface'
 export type {
   CardProps,
   SectionLabelProps,
-  ToolbarProps,
   DescriptionItem,
   DescriptionListProps,
   VoteProgressProps,

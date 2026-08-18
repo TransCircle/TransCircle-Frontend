@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type ReactNode } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ThemeToggle } from './ThemeToggle'
@@ -24,19 +24,9 @@ const ExternalLinkIcon = () => (
   </svg>
 )
 
-interface MobileLink {
-  key: string
-  node: ReactNode
-}
-
-interface NavbarProps {
-  customMobileLinks?: (closeMenu: () => void) => MobileLink[]
-  customMobileLinkLabel?: string
-}
-
 const MOBILE_BREAKPOINT = 1100
 
-export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps) => {
+export const Navbar = () => {
   const { t } = useTranslation()
   const { user, isAdmin, logout, loginWithPass } = useAuth()
   const location = useLocation()
@@ -112,8 +102,6 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
       document.removeEventListener('resize', handleResize)
     }
   }, [isOpen])
-
-  const mobileLinks = customMobileLinks?.(closeMenu)
 
   const handleLinksToggle = () => {
     setLinksDropdownOpen((prev) => !prev)
@@ -448,21 +436,6 @@ export const Navbar = ({ customMobileLinks, customMobileLinkLabel }: NavbarProps
             </button>
           )}
 
-          {mobileLinks && (
-            <>
-              <div className={styles.drawerDivider}></div>
-              {customMobileLinkLabel && (
-                <span className={styles.mobileLinkLabel}>{customMobileLinkLabel}</span>
-              )}
-              <div className={styles.mobileTOCGroup}>
-                {mobileLinks.map(({ key, node }) => (
-                  <div key={key} className={styles.mobileTOCItem}>
-                    {node}
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
         </div>
       </div>
 

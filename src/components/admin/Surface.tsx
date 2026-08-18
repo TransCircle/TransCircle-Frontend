@@ -40,29 +40,6 @@ export function SectionLabel({ children, className }: SectionLabelProps) {
   return <h3 className={cx(styles.sectionLabel, className)}>{children}</h3>
 }
 
-/* ── Toolbar ─────────────────────────────────────────────── */
-
-export interface ToolbarProps {
-  children: ReactNode
-  justify?: 'start' | 'between' | 'end'
-  className?: string
-}
-
-export function Toolbar({ children, justify = 'start', className }: ToolbarProps) {
-  return (
-    <div
-      className={cx(
-        styles.toolbar,
-        justify === 'between' && styles.justifyBetween,
-        justify === 'end' && styles.justifyEnd,
-        className,
-      )}
-    >
-      {children}
-    </div>
-  )
-}
-
 /* ── DescriptionList ─────────────────────────────────────── */
 
 export interface DescriptionItem {
