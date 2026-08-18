@@ -62,13 +62,13 @@ export const FormField = ({ label, required, error, children, htmlFor }: FormFie
         {label && canAutoAssociate && (
           <label htmlFor={fieldId} className={styles.label}>
             {label}
-            {required && <span className={styles.required}>*</span>}
+            {required && <span className={styles.required} aria-hidden="true">*</span>}
           </label>
         )}
         {label && !canAutoAssociate && (
           <label className={styles.label}>
             {label}
-            {required && <span className={styles.required}>*</span>}
+            {required && <span className={styles.required} aria-hidden="true">*</span>}
           </label>
         )}
         {enhanced}

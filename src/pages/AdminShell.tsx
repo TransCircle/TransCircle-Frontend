@@ -260,12 +260,10 @@ export const AdminShell = () => {
         </nav>
       </aside>
 
-      <button
-        type="button"
+      <div
         className={styles.overlay}
         onClick={() => setDrawerOpen(false)}
         aria-hidden="true"
-        tabIndex={-1}
       />
 
       <div className={styles.contentCol}>
