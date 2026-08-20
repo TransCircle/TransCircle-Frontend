@@ -1,13 +1,13 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: var(--sp-1);
   width: 100%;
 }
 
 .label {
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: var(--fs-meta);
+  font-weight: var(--fw-label);
   color: var(--text-secondary);
 }
 
@@ -16,20 +16,21 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--sp-2);
   width: 100%;
-  min-height: 40px;
-  padding: 0.35rem 0.5rem;
-  border: 1.5px solid var(--divider-color);
-  border-radius: var(--radius-sm);
-  background-color: var(--surface-card);
+  min-height: 38px;
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background-color: var(--surface-input);
   transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+    border-color var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard);
 }
 
 .box:focus-within {
-  border-color: var(--primary-pink);
+  border-color: var(--accent-ink);
+  background-color: var(--surface-card);
   outline: none;
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
@@ -47,8 +48,8 @@
   border-radius: var(--radius-pill);
   background-color: var(--hover-bg);
   color: var(--text-secondary);
-  font-size: 0.78rem;
-  font-weight: 500;
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-title);
   max-width: 100%;
 }
 
@@ -73,8 +74,8 @@
   color: var(--text-muted);
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
 }
 
 /* Expand the tap target to >=44px (--tap-min) without bloating the chip visually.
@@ -90,8 +91,13 @@
   color: var(--text-main);
 }
 
+.remove:active {
+  background-color: var(--hover-bg);
+  color: var(--accent-ink);
+}
+
 .remove:focus-visible {
-  outline: 2px solid var(--primary-pink);
+  outline: 2px solid var(--accent-ink);
   outline-offset: 1px;
 }
 
@@ -103,8 +109,10 @@
   background: transparent;
   color: var(--text-main);
   font-family: inherit;
-  font-size: 0.9rem;
-  padding: 0.2rem 0.3rem;
+  font-size: var(--fs-sm);
+  padding: var(--sp-1) var(--sp-1);
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .input::placeholder {
@@ -112,11 +120,12 @@
 }
 
 .input:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
 .hint {
-  font-size: 0.78rem;
+  font-size: var(--fs-micro);
   color: var(--text-muted);
 }
 

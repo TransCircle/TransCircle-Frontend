@@ -4,7 +4,7 @@ import { get, post } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { useAuth } from '@/context/useAuth'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
-import { useCursorList } from '@/hooks/useCursorList'
+import { usePagedList } from '@/hooks/usePagedList'
 import { limitByUnicode } from '@/utils/string'
 import {
   AdminButton,
@@ -23,6 +23,7 @@ import {
   type DescriptionItem,
   type TabItem,
 } from '@/components/admin'
+import { Pagination } from '@/components/ui'
 import shell from './Page.module.css'
 
 interface EditRequestItem {
@@ -114,7 +115,7 @@ export const AdminEditRequests = () => {
   const [statusFilter, setStatusFilter] = useState('pending')
 
   // 游标分页列表（统一模板）：切 tab（statusFilter 变化）自动重载，保留旧列表 + 加载条
-  const { items, cursor, loading, error, setError, reload, loadMore } = useCursorList<EditRequestItem>({
+  const { items, pageIndex, knownPages, hasMore, loading, error, setError, reload, goToPage } = usePagedList<EditRequestItem>({
     fetchPage: async (cursorVal) => {
       const params = new URLSearchParams({ limit: '20', status: statusFilter })
       if (cursorVal) params.set('cursor', cursorVal)
@@ -368,56 +369,63 @@ export const AdminEditRequests = () => {
         variant="underline"
         panelId="edit-request-panel"
       />
-      {loading && items.length === 0 ? (
-        <Skeleton rows={6} />
-      ) : items.length === 0 ? (
-        <EmptyState
-          title={
-            statusFilter === 'pending'
-              ? t('adminEditRequests.empty')
-              : t('adminEditRequests.emptyWithFilter', {
-                  status: t(EDIT_REQUEST_STATUS_LABEL_KEYS[statusFilter] ?? statusFilter),
-                })
-          }
+      <div
+        id="edit-request-panel"
+        role="tabpanel"
+        aria-labelledby={`tab-${statusFilter}`}
+        className={shell.tabpanel}
+      >
+        {loading && items.length === 0 ? (
+          <Skeleton rows={6} />
+        ) : items.length === 0 ? (
+          <EmptyState
+            title={
+              statusFilter === 'pending'
+                ? t('adminEditRequests.empty')
+                : t('adminEditRequests.emptyWithFilter', {
+                    status: t(EDIT_REQUEST_STATUS_LABEL_KEYS[statusFilter] ?? statusFilter),
+                  })
+            }
+          />
+        ) : (
+          <>
+            {loading && (
+              <div className={shell.loadingBar} role="status" aria-live="polite">
+                {t('adminEditRequests.loading')}
+              </div>
+            )}
+            <ul className={shell.list}>
+              {items.map((item) => (
+                <li key={item.id}>
+                  <button type="button" className={shell.rowBtn} onClick={() => fetchDetail(item.id)}>
+                    <span className={shell.rowMain}>
+                      <span className={shell.rowTitle}>
+                        {item.contribution?.title ??
+                          `${t('adminEditRequests.contribPrefix')} ${limitByUnicode(item.contribution?.id ?? item.contributionId ?? '', 20)}…`}
+                      </span>
+                      <span className={shell.rowMeta}>{limitByUnicode(item.reason, 60)}</span>
+                    </span>
+                    <span className={shell.rowRight}>
+                      <StatusBadge
+                        tone={EDIT_REQUEST_STATUS_TONE[item.status] ?? 'neutral'}
+                        label={t(EDIT_REQUEST_STATUS_LABEL_KEYS[item.status] ?? item.status)}
+                        size="sm"
+                      />
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        <Pagination
+          pageIndex={pageIndex}
+          knownPages={knownPages}
+          hasMore={hasMore}
+          disabled={loading}
+          onChange={goToPage}
         />
-      ) : (
-        <>
-          {loading && (
-            <div className={shell.loadingBar} role="status" aria-live="polite">
-              {t('adminEditRequests.loading')}
-            </div>
-          )}
-          <ul className={shell.list}>
-          {items.map((item) => (
-            <li key={item.id}>
-              <button type="button" className={shell.rowBtn} onClick={() => fetchDetail(item.id)}>
-                <span className={shell.rowMain}>
-                  <span className={shell.rowTitle}>
-                    {item.contribution?.title ??
-                      `${t('adminEditRequests.contribPrefix')} ${limitByUnicode(item.contribution?.id ?? item.contributionId ?? '', 20)}…`}
-                  </span>
-                  <span className={shell.rowMeta}>{limitByUnicode(item.reason, 60)}</span>
-                </span>
-                <span className={shell.rowRight}>
-                  <StatusBadge
-                    tone={EDIT_REQUEST_STATUS_TONE[item.status] ?? 'neutral'}
-                    label={t(EDIT_REQUEST_STATUS_LABEL_KEYS[item.status] ?? item.status)}
-                    size="sm"
-                  />
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-        </>
-      )}
-      {cursor && (
-        <div className={shell.loadMoreWrap}>
-          <AdminButton variant="secondary" onClick={() => void loadMore()} loading={loading}>
-            {t('adminEditRequests.loadMore')}
-          </AdminButton>
-        </div>
-      )}
+      </div>
     </div>
   )
 }

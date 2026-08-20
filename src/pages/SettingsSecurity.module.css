@@ -8,15 +8,15 @@
 }
 
 .subHeading {
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0 0 0.5rem;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-label);
+  margin: 0 0 var(--sp-2);
   color: var(--text-main);
 }
 
 .note {
-  margin: 0 0 0.75rem;
-  font-size: 0.85rem;
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-sm);
   line-height: 1.6;
   color: var(--text-secondary);
 }
@@ -31,23 +31,23 @@
 }
 
 .permGroupLabel {
-  margin: 0 0 0.5rem;
-  font-size: 0.8rem;
-  font-weight: 600;
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-meta);
+  font-weight: var(--fw-label);
   color: var(--text-secondary);
 }
 
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: var(--sp-2);
 }
 
 /* Inline register row (passkey name + button) */
 .inlineRow {
   display: flex;
   align-items: flex-end;
-  gap: 0.6rem;
+  gap: var(--sp-2);
   flex-wrap: wrap;
 }
 
@@ -66,15 +66,15 @@
 }
 
 .secretLine {
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   text-align: center;
-  margin: 0 0 1rem;
+  margin: 0 0 var(--sp-4);
 }
 
 .secret {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   letter-spacing: 0.1em;
   margin-left: 0.25rem;
   word-break: break-all;
@@ -87,7 +87,7 @@
 
 .codeInput {
   text-align: center;
-  font-size: 1.2rem;
+  font-size: var(--fs-subtitle);
   letter-spacing: 0.3em;
 }
 
@@ -99,10 +99,11 @@
 /* Recovery codes (inside the Modal) */
 .recoveryCodes {
   background-color: var(--hover-bg);
-  padding: 1rem;
+  border: 1px solid var(--divider-color);
+  padding: var(--sp-4);
   border-radius: var(--radius-sm);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   line-height: 2;
   word-break: break-all;
 }

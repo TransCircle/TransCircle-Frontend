@@ -1,0 +1,553 @@
+/* ═══════════════════════════════════════════════════════════════
+   公共阅读侧词表 —— 故事流与阅读页。
+
+   刻意与 Page.module.css（后台工具侧）分开：此前两侧共用一套样式，
+   导致一个讲人的故事的地方长得跟工单队列一模一样。两侧的密度与字号
+   不同，不应再共用。
+
+   风格遵循 docs/DESIGN.md §0：现代简约、圆角。
+   · 圆角卡片 + 发丝描边 + 极轻投影，不用彩色光晕
+   · 层级靠字号级差拉开（元信息 0.81 → 列表标题 1.25 → 文章标题 1.5~1.9rem）
+   · 蓝 = 系统（标签、链接、动作）；粉 = 人（头像、署名）
+   · 只用系统字体栈
+   ═══════════════════════════════════════════════════════════════ */
+
+/* 不再自设上限：外层 .mainContent 已经把内容栏收在 --width-content，
+   这里吃满即可，避免出现「桌面两侧大片留白」。 */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  padding-top: var(--sp-5);
+  width: 100%;
+}
+
+/* 页面标题只对辅助技术可见——视觉上顶栏 + 搜索框 + 列表已经说清这是什么，
+   再画一行标题是重复；但 h1 不能少，屏幕阅读器与「按标题跳转」都依赖它。 */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ── 工具行：搜索在左，动作在右 ───────────────────────────── */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.toolbar .grow {
+  flex: 1;
+  min-width: 220px;
+}
+
+.toolbarActions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.searchNote {
+  font-size: var(--fs-meta);
+  color: var(--text-muted);
+}
+
+/* ── 故事流 ───────────────────────────────────────────────── */
+
+/* 始终单列：内容稀疏时多列会留下空格位，看起来像渲染坏了。 */
+.feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.entry {
+  display: flex;
+  min-width: 0;
+}
+
+/* 三行结构：元信息行（署名 + 时间 + 标签）/ 标题 / 摘要。
+   标签并入元信息行右端而不是单独占一行——短条目因此少一整行高度。 */
+.entryLink {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  background-color: var(--surface-card);
+  border: 1px solid var(--divider-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  text-decoration: none;
+  color: inherit;
+  transition:
+    border-color var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-emphasized);
+}
+
+.entryLink:hover {
+  border-color: var(--accent-ink);
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-1px);
+}
+
+.entryLink:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-card);
+}
+
+.entryLink:hover .entryTitle {
+  color: var(--accent-ink);
+}
+
+/* 元信息行：左侧署名，右侧标签（系统 → 蓝）。
+   身份由头像承担，署名本身用墨色——文字颜色在界面里读作「状态」，
+   而人名没有状态，染色只会让它像错误或链接。 */
+.byline {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1) var(--sp-2);
+  min-width: 0;
+  flex-wrap: wrap;
+  font-size: var(--fs-meta);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.avatar,
+.avatarFallback {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background-color: var(--soft-pink);
+}
+
+.avatar {
+  object-fit: cover;
+}
+
+.avatarFallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-pink);
+  font-size: var(--fs-meta);
+  font-weight: var(--fw-label);
+  user-select: none;
+}
+
+.author {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-label);
+  color: var(--text-main);
+}
+
+.bylineSep {
+  opacity: 0.4;
+  margin-inline: 2px;
+}
+
+.metaText {
+  font-variant-numeric: tabular-nums;
+}
+
+.bylineLang {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* 标题是列表页第一扫描目标。1.25rem 是按中文调过的档位——同字号的方块字
+   比拉丁字母视觉重量大，1.5rem 在卡片里会撑破比例。 */
+.entryTitle {
+  font-size: var(--fs-title);
+  font-weight: var(--fw-title);
+  line-height: 1.4;
+  color: var(--text-main);
+  max-width: var(--width-reading);
+  transition: color var(--dur-fast) var(--ease-standard);
+  overflow-wrap: break-word;
+  /* 超过两行的长标题截断，避免单条卡片纵向失控 */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 卡片吃满宽度，但正文不跟着拉满：1100px 一行的中文没法读，眼睛回行时
+   会跳行。收在阅读行宽内，右侧的空当正好留给元信息行的标签。 */
+.entrySummary {
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  color: var(--text-secondary);
+  max-width: var(--width-reading);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 标签是元信息，不是动作：描边 + 次要色，安静地待在署名行右端。
+   不用「淡色底 + 同色系深字」——那是 Material 的 tonal container 模式；
+   也不用墨色描边——那个重量该留给真正可点的东西。 */
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-2);
+  margin-left: auto;
+  min-width: 0;
+}
+
+.tag {
+  font-size: var(--fs-micro);
+  line-height: 1.5;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--divider-color);
+  border-radius: var(--radius-xs);
+  background-color: transparent;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* ── 阅读页 ───────────────────────────────────────────────── */
+
+.reading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  width: 100%;
+  max-width: var(--width-reading);
+  margin-inline: auto;
+  padding-top: var(--sp-5);
+}
+
+/* 顶部动作条：左返回 / 右动作。两端对齐读作「导航 ↔ 操作」，
+   比把动作堆在文末更符合浏览顺序。 */
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+/* 右侧动作在换行后仍贴右边缘，不会滑到左边变成第二个「返回」。 */
+.topAction {
+  margin-left: auto;
+}
+
+.article {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+.articleTitle {
+  margin: 0;
+  font-size: var(--fs-display);
+  font-weight: var(--fw-display);
+  line-height: var(--lh-tight);
+  letter-spacing: -0.01em;
+  color: var(--text-main);
+  text-wrap: balance;
+}
+
+/* 作者身份区：上下两条发丝线夹出，是全站最重的一次「人」的在场。 */
+.authorBlock {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  border-top: 1px solid var(--divider-color);
+  border-bottom: 1px solid var(--divider-color);
+  flex-wrap: wrap;
+}
+
+.authorAvatar,
+.authorAvatarFallback {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background-color: var(--soft-pink);
+}
+
+.authorAvatar {
+  object-fit: cover;
+}
+
+.authorAvatarFallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-pink);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-label);
+  user-select: none;
+}
+
+.authorText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.authorName {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-label);
+  color: var(--text-main);
+  line-height: 1.3;
+}
+
+.articleMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  font-size: var(--fs-micro);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.articleTags {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+/* 导语：作者写给读者的引路句。紧跟标题、排在作者区之前，比正文大一档、
+   颜色更淡——加上作者区上下的发丝线，读者不会把它当成正文第一段。 */
+.dek {
+  margin: 0;
+  font-size: var(--fs-subtitle);
+  line-height: 1.75;
+  color: var(--text-secondary);
+}
+
+/* ── 正文 ─────────────────────────────────────────────────── */
+
+.prose {
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-body);
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.prose :first-child {
+  margin-top: 0;
+}
+
+.prose :last-child {
+  margin-bottom: 0;
+}
+
+.prose h1,
+.prose h2,
+.prose h3 {
+  font-weight: var(--fw-label);
+  line-height: 1.4;
+  color: var(--text-main);
+  margin: var(--sp-7) 0 var(--sp-3);
+}
+
+.prose h1 {
+  font-size: var(--fs-title);
+}
+
+.prose h2 {
+  font-size: var(--fs-subtitle);
+}
+
+.prose h3 {
+  font-size: var(--fs-body);
+}
+
+.prose p {
+  margin: 0 0 var(--sp-5);
+}
+
+/* 链接是系统语义 → 蓝。 */
+.prose a {
+  color: var(--accent-ink);
+  text-underline-offset: 3px;
+}
+
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+}
+
+.prose blockquote {
+  margin: var(--sp-5) 0;
+  padding: var(--sp-3) var(--sp-4);
+  background-color: var(--hover-bg);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+}
+
+.prose blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+.prose pre {
+  overflow-x: auto;
+  padding: var(--sp-4);
+  background-color: var(--hover-bg);
+  border: 1px solid var(--divider-color);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  line-height: 1.7;
+}
+
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
+.prose :not(pre) > code {
+  padding: 0.1em 0.35em;
+  background-color: var(--hover-bg);
+  border-radius: var(--radius-xs);
+}
+
+.prose ul,
+.prose ol {
+  margin: 0 0 var(--sp-5);
+  padding-left: var(--sp-6);
+}
+
+.prose li {
+  margin-bottom: var(--sp-2);
+}
+
+.prose hr {
+  border: 0;
+  border-top: 1px solid var(--divider-color);
+  margin: var(--sp-7) 0;
+}
+
+/* ── 列表状态 ─────────────────────────────────────────────── */
+
+.loadingBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) 0;
+  color: var(--text-muted);
+  font-size: var(--fs-meta);
+}
+
+.loadMoreWrap {
+  display: flex;
+  justify-content: center;
+}
+
+/* ── 响应式 ───────────────────────────────────────────────────
+   三个断点：≤900 报头堆叠、≤640 卡片收内边距、≤420 元信息降级。
+   悬停抬升只在真正有指针的设备上启用（触屏上 hover 会「粘住」）。 */
+
+@media (hover: none) {
+  .entryLink:hover {
+    transform: none;
+    box-shadow: var(--shadow-card);
+    border-color: var(--divider-color);
+  }
+
+  .entryLink:hover .entryTitle {
+    color: var(--text-main);
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    gap: var(--sp-4);
+  }
+
+  /* 窄屏：搜索独占一行，动作按钮并排撑满，比挤在搜索框旁边好按 */
+  .toolbarActions {
+    width: 100%;
+  }
+
+  .toolbarActions > * {
+    flex: 1;
+  }
+
+  .feed {
+    gap: var(--sp-2);
+  }
+
+  .entryLink {
+    padding: var(--sp-3) var(--sp-4);
+    border-radius: var(--radius-md);
+    gap: var(--sp-1);
+  }
+
+  /* 手机上标题降一档：1.25rem 中文在 375px 宽度下会占掉两行 */
+  .entryTitle {
+    font-size: var(--fs-subtitle);
+  }
+
+  /* 窄屏标签回到左侧跟随署名，不再右推——右推会在换行后孤悬 */
+  .tags {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+
+  /* 窄屏下作者区改为纵向：标签不再被 margin-left:auto 推到边上换行 */
+  .authorBlock {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--sp-2);
+  }
+
+  .articleTags {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 420px) {
+  /* 极窄屏：语言标记让位，署名与日期优先 */
+  .bylineLang {
+    display: none;
+  }
+
+  .entryLink {
+    padding: var(--sp-3) var(--sp-4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entryLink,
+  .entryTitle {
+    transition: none;
+  }
+
+  .entryLink:hover,
+  .entryLink:active {
+    transform: none;
+  }
+}

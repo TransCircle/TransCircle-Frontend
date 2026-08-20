@@ -60,17 +60,27 @@ export const RootLayout = () => {
 
   return (
     <div className={`${styles.appContainer} ${isAdminRoute ? styles.appContainerAdmin : ''}`}>
+      {!isAdminRoute && (
+        <a href="#main-content" className={styles.skipLink}>
+          {t('common.skipToContent')}
+        </a>
+      )}
       <Navbar />
 
-      <MainWrapper className={`${styles.mainContent} ${isAdminRoute ? styles.mainContentAdmin : ''}`}>
+      <MainWrapper
+        id={isAdminRoute ? undefined : 'main-content'}
+        className={`${styles.mainContent} ${isAdminRoute ? styles.mainContentAdmin : ''}`}
+      >
         <Outlet />
       </MainWrapper>
 
       <LicenseFooter />
 
       {rateLimitToast && (
-        <div className={styles.toastError} role="alert" onClick={() => setRateLimitToast(null)}>
-          {rateLimitToast}
+        <div className={styles.toastError} role="alert">
+          <button type="button" className={styles.toastErrorBtn} onClick={() => setRateLimitToast(null)}>
+            {rateLimitToast}
+          </button>
         </div>
       )}
       {toastMessage && (

@@ -1,0 +1,110 @@
+/* 分页控件：系统语义 → 蓝。当前页用实心，其余描边/幽灵。 */
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
+  flex-wrap: wrap;
+  padding-top: var(--sp-2);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--divider-color);
+  border-radius: var(--radius-control);
+  background-color: var(--surface-card);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    border-color var(--dur-fast) var(--ease-standard),
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
+}
+
+.btn:hover:not(:disabled):not(.current) {
+  border-color: var(--accent-ink);
+  color: var(--accent-ink);
+  background-color: var(--hover-bg);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.current {
+  background-color: var(--cta-bg);
+  border-color: var(--cta-bg);
+  color: var(--cta-color);
+  font-weight: var(--fw-label);
+  cursor: default;
+}
+
+/* 上一页 / 下一页：文字 + 箭头，比纯数字宽 */
+.step {
+  gap: var(--sp-1);
+  padding: 0 var(--sp-3);
+}
+
+/* 省略号：表示「后面还有，但页数未知」——游标分页拿不到总数 */
+.more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 34px;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  user-select: none;
+}
+
+@media (any-pointer: coarse) {
+  .btn {
+    min-width: var(--tap-min);
+    height: var(--tap-min);
+  }
+  .more {
+    height: var(--tap-min);
+  }
+}
+
+/* 窄屏：隐藏中间页码，只留上一页/当前/下一页，避免换行成两三排 */
+@media (max-width: 560px) {
+  .numbers {
+    display: none;
+  }
+
+  .compact {
+    display: inline-flex;
+  }
+}
+
+.compact {
+  display: none;
+  align-items: center;
+  padding: 0 var(--sp-3);
+  height: 34px;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.numbers {
+  display: contents;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn {
+    transition: none;
+  }
+}

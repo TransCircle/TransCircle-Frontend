@@ -105,6 +105,10 @@ export const SubmitForm = () => {
     const validationErrors = validate(form, t)
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors)
+      // 客户端校验失败时也要有一条 role="alert" 摘要，否则屏幕阅读器用户点击提交后
+      // 得不到任何播报（各字段旁的错误文案是静态渲染，不会主动朗读）。
+      setServerError(t('submit.errors.validationFailed'))
+      setStatus('error')
       return
     }
 

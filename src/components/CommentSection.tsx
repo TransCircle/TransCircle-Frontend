@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { get, post, del, newIdempotencyKey, setIntentKey } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
-import { useCursorList } from '@/hooks/useCursorList'
-import { Button, Alert, ConfirmDialog, EmptyState, ReasonPromptDialog, Skeleton, TextArea } from '@/components/ui'
+import { usePagedList } from '@/hooks/usePagedList'
+import { Button, Alert, ConfirmDialog, EmptyState, Pagination, ReasonPromptDialog, Skeleton, TextArea } from '@/components/ui'
 import { useFormatTs } from '@/utils/datetime'
 import styles from './CommentSection.module.css'
 
@@ -11,6 +11,9 @@ interface CommentAuthor {
   displayName: string
   avatarUrl: string | null
 }
+
+/** 头像回退：取显示名首字，无名时用间隔号占位（不留空圆）。 */
+const initialOf = (name: string) => (name ?? '').trim().charAt(0) || '·'
 
 interface CommentItem {
   id: string
@@ -44,7 +47,7 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
   const [reportError, setReportError] = useState('')
   const [notice, setNotice] = useState('')
 
-  const { items, cursor, hasMore, loading, error, reload, loadMore } = useCursorList<CommentItem>({
+  const { items, pageIndex, knownPages, hasMore, loading, error, reload, goToPage } = usePagedList<CommentItem>({
     fetchPage: async (cursorVal) => {
       const params = new URLSearchParams({ limit: '20' })
       if (cursorVal) params.set('cursor', cursorVal)
@@ -137,6 +140,13 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
     return (
       <div className={isReply ? styles.reply : styles.comment}>
         <div className={styles.meta}>
+          {item.author.avatarUrl ? (
+            <img className={styles.avatar} src={item.author.avatarUrl} alt="" loading="lazy" />
+          ) : (
+            <span className={styles.avatarFallback} aria-hidden="true">
+              {initialOf(item.author.displayName)}
+            </span>
+          )}
           <span className={styles.author}>{item.author.displayName}</span>
           <span className={styles.time}>{formatTs(item.createdAt)}</span>
         </div>
@@ -195,8 +205,10 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
   }
 
   return (
-    <section className={styles.section} aria-label={t('comment.title')}>
-      <h2 className={styles.title}>{t('comment.title')}</h2>
+    <section className={styles.section} aria-labelledby="comment-section-title">
+      <h2 id="comment-section-title" className={styles.title}>
+        {t('comment.title')}
+      </h2>
 
       {user ? (
         <div className={styles.composer}>
@@ -227,7 +239,7 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
       {notice && <Alert tone="success">{notice}</Alert>}
 
       {loading && items.length === 0 ? (
-        <Skeleton rows={4} />
+        <Skeleton rows={3} />
       ) : !error && items.length === 0 ? (
         <EmptyState title={t('comment.empty')} />
       ) : (
@@ -240,11 +252,15 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
         </ul>
       )}
 
-      {hasMore && cursor && (
-        <div className={styles.loadMore}>
-          <Button variant="secondary" onClick={() => void loadMore()} loading={loading}>
-            {t('comment.loadMore')}
-          </Button>
+      {(knownPages > 1 || hasMore) && (
+        <div className={styles.pager}>
+          <Pagination
+            pageIndex={pageIndex}
+            knownPages={knownPages}
+            hasMore={hasMore}
+            disabled={loading}
+            onChange={goToPage}
+          />
         </div>
       )}
 

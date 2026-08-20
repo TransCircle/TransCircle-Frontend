@@ -1,7 +1,7 @@
 .tabs {
   display: flex;
   align-items: center;
-  gap: 0.15rem;
+  gap: var(--sp-1);
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -13,24 +13,28 @@
 .tab {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.55rem 1rem;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
   font-family: inherit;
-  font-size: 0.88rem;
-  font-weight: 500;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-title);
   color: var(--text-muted);
   background: none;
   border: none;
   cursor: pointer;
   white-space: nowrap;
   transition:
-    color 0.15s ease,
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    color var(--dur-fast) var(--ease-standard),
+    background-color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard);
 }
 
 .tab:hover {
   color: var(--text-main);
+}
+
+.tab:active {
+  background-color: var(--hover-bg);
 }
 
 /* 横向滚动容器会裁剪向外偏移的焦点环；改用内描边（负偏移）避免被裁剪 */
@@ -49,12 +53,12 @@
   justify-content: center;
   min-width: 1.2rem;
   height: 1.2rem;
-  padding: 0 0.35rem;
+  padding: 0 var(--sp-1);
   border-radius: var(--radius-pill);
   background-color: var(--hover-bg);
   color: var(--text-secondary);
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-label);
 }
 
 /* ── Underline variant ───────────────────────────────────── */
@@ -70,36 +74,42 @@
 }
 
 .underline .tab.active {
-  color: var(--accent-pink);
-  border-bottom-color: var(--accent-pink);
+  color: var(--accent-ink);
+  border-bottom-color: var(--accent-ink);
 }
 
 .underline .tab.active .badge {
-  background-color: var(--accent-pink);
+  background-color: var(--accent-ink);
   color: var(--on-accent);
 }
 
 /* ── Segmented variant ───────────────────────────────────── */
 
 .segmented {
-  gap: 0.25rem;
-  padding: 0.25rem;
+  gap: var(--sp-1);
+  padding: var(--sp-1);
   background-color: var(--hover-bg);
   border: 1px solid var(--divider-color);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   width: fit-content;
   max-width: 100%;
 }
 
 .segmented .tab {
-  padding: 0.4rem 0.9rem;
+  padding: var(--sp-2) var(--sp-3);
   border-radius: var(--radius-sm);
 }
 
 .segmented .tab.active {
-  color: var(--accent-pink);
+  color: var(--accent-ink);
   background-color: var(--surface-card);
   box-shadow: var(--shadow-card);
+}
+
+@media (any-pointer: coarse) {
+  .tab {
+    min-height: var(--tap-min);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -297,6 +297,7 @@ export function ReasonPromptDialog({
         value={value}
         maxLength={maxLength}
         placeholder={placeholder}
+        aria-label={prompt}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {

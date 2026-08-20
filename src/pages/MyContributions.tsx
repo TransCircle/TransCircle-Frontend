@@ -3,15 +3,16 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { get } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
-import { useCursorList } from '@/hooks/useCursorList'
+import { usePagedList } from '@/hooks/usePagedList'
 import {
-  AdminButton,
   Alert,
+  CONTRIB_STATUS_TONE,
   EmptyState,
+  PageHeader,
+  Pagination,
   Skeleton,
   StatusBadge,
   Tabs,
-  CONTRIB_STATUS_TONE,
   type TabItem,
 } from '@/components/ui'
 import { useFormatTs } from '@/utils/datetime'
@@ -78,7 +79,7 @@ export const MyContributions = () => {
   const [filterStatus, setFilterStatus] = useState('all')
 
   // 游标分页列表（统一模板）：切 tab（filterStatus 变化）自动重载，保留旧列表 + 加载条
-  const { items, cursor, loading, error, loadMore } = useCursorList<MyContribution>({
+  const { items, pageIndex, knownPages, hasMore, loading, error, goToPage } = usePagedList<MyContribution>({
     fetchPage: async (cursorVal) => {
       const params = new URLSearchParams({ limit: '20' })
       // api.md §4.1: status param is optional, defaults to all statuses when omitted
@@ -103,6 +104,7 @@ export const MyContributions = () => {
   return (
     <div className={shell.page}>
       <div className={shell.head}>
+        <PageHeader title={t('myContributions.title')} size="section" as="h1" />
         <Tabs
           items={tabs}
           value={filterStatus}
@@ -166,13 +168,13 @@ export const MyContributions = () => {
                 </li>
               ))}
             </ul>
-            {cursor && (
-              <div className={shell.loadMoreWrap}>
-                <AdminButton variant="secondary" loading={loading} onClick={() => void loadMore()}>
-                  {t('myContributions.loadMore')}
-                </AdminButton>
-              </div>
-            )}
+            <Pagination
+              pageIndex={pageIndex}
+              knownPages={knownPages}
+              hasMore={hasMore}
+              disabled={loading}
+              onChange={goToPage}
+            />
           </>
         )}
       </div>

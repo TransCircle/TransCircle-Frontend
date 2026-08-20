@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { get, post } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
-import { useCursorList } from '@/hooks/useCursorList'
+import { usePagedList } from '@/hooks/usePagedList'
 import { useStepUpAction } from '@/hooks/useStepUpAction'
 import { limitByUnicode } from '@/utils/string'
 import { useFormatTs } from '@/utils/datetime'
@@ -12,6 +12,7 @@ import {
   Alert,
   ConfirmDialog,
   EmptyState,
+  Pagination,
   ReasonPromptDialog,
   Select,
   Skeleton,
@@ -57,7 +58,7 @@ export const AdminComments = () => {
   const [restoreSubmitting, setRestoreSubmitting] = useState(false)
   const [restoreError, setRestoreError] = useState('')
 
-  const { items, cursor, hasMore, loading, error, reload, loadMore } = useCursorList<AdminComment>({
+  const { items, pageIndex, knownPages, hasMore, loading, error, reload, goToPage } = usePagedList<AdminComment>({
     fetchPage: async (cursorVal) => {
       const params = new URLSearchParams({ limit: '50' })
       if (statusFilter !== 'all') params.set('status', statusFilter)
@@ -198,13 +199,13 @@ export const AdminComments = () => {
               </li>
             ))}
           </ul>
-          {hasMore && cursor && (
-            <div className={shell.loadMoreWrap}>
-              <AdminButton variant="secondary" onClick={() => void loadMore()} loading={loading}>
-                {t('adminComments.loadMore')}
-              </AdminButton>
-            </div>
-          )}
+          <Pagination
+            pageIndex={pageIndex}
+            knownPages={knownPages}
+            hasMore={hasMore}
+            disabled={loading}
+            onChange={goToPage}
+          />
         </>
       )}
 

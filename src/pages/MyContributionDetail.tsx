@@ -260,7 +260,7 @@ export const MyContributionDetail = () => {
                 </span>
               )}
             </div>
-            {contrib.summary && <p className={shell.subtleNote}>{contrib.summary}</p>}
+            {contrib.summary && <p className={shell.summary}>{contrib.summary}</p>}
             <div className={shell.contentBlock}>{contrib.contentRaw}</div>
             {contrib.review.publicNote && (
               <div className={shell.contentBlock}>

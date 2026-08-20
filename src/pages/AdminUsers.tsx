@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { get, post } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
-import { useCursorList } from '@/hooks/useCursorList'
+import { usePagedList } from '@/hooks/usePagedList'
 import { useStepUpAction } from '@/hooks/useStepUpAction'
 import {
   AdminButton,
@@ -20,6 +20,7 @@ import {
   USER_STATUS_LABEL_KEYS,
   type DescriptionItem,
 } from '@/components/admin'
+import { Pagination } from '@/components/ui'
 import shell from './Page.module.css'
 
 interface ManagedUser {
@@ -71,7 +72,7 @@ export const AdminUsers = () => {
   const [banError, setBanError] = useState('')
 
   // 游标分页列表（统一模板）：搜索由 onSearch 显式触发 reload，避免逐键触发请求
-  const { items: users, cursor, loading, error, setError, reload, loadMore } = useCursorList<ManagedUser>({
+  const { items: users, pageIndex, knownPages, hasMore, loading, error, setError, reload, goToPage } = usePagedList<ManagedUser>({
     fetchPage: async (cursorVal) => {
       const params = new URLSearchParams({ limit: '20' })
       if (keyword.trim()) params.set('keyword', keyword.trim())
@@ -378,13 +379,13 @@ export const AdminUsers = () => {
         </>
       )}
 
-      {cursor && (
-        <div className={shell.loadMoreWrap}>
-          <AdminButton variant="secondary" onClick={() => void loadMore()} loading={loading}>
-            {t('adminUsers.loadMore')}
-          </AdminButton>
-        </div>
-      )}
+      <Pagination
+        pageIndex={pageIndex}
+        knownPages={knownPages}
+        hasMore={hasMore}
+        disabled={loading}
+        onChange={goToPage}
+      />
     </div>
   )
 }

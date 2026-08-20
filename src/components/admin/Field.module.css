@@ -1,50 +1,102 @@
+/* ═══════════════════════════════════════════════════════════════
+   文本类输入控件 —— 全自绘，不留任何浏览器原生外观。
+
+   为什么仍然是 <input> / <textarea> 而不是 contenteditable：中文依赖
+   输入法组字（composition），原生表单元素才有完整的 IME 支持；换成自绘
+   的可编辑区会破坏拼音候选、光标定位与移动端键盘。因此做法是保留原生
+   元素、把原生「外观」全部关掉——appearance、自动填充黄底、搜索框装饰、
+   数字步进器、iOS 圆角与内阴影。
+
+   视觉：填充面（--surface-input）+ 1px 描边。填充让字段不必靠粗描边就能
+   被认出；描边取 --border-strong，刚好越过 WCAG 1.4.11 的 3:1 下限。
+   ═══════════════════════════════════════════════════════════════ */
+
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: var(--sp-2);
   width: 100%;
 }
 
 .label {
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: var(--fs-meta);
+  font-weight: var(--fw-label);
   color: var(--text-secondary);
 }
 
+/* 必填星号：见 FormField.module.css 同名说明——墨色会与 label 同色而失效。 */
 .required {
-  margin-left: 0.2rem;
-  color: var(--accent-pink);
+  margin-left: var(--sp-1);
+  color: var(--error-color);
 }
 
 .input {
   width: 100%;
-  min-height: 40px;
-  padding: 0.55rem 0.8rem;
-  border: 1.5px solid var(--divider-color);
-  border-radius: 10px;
-  font-size: 0.9rem;
+  min-height: 38px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  font-size: var(--fs-sm);
   font-family: inherit;
+  line-height: 1.5;
   color: var(--text-main);
-  background-color: var(--surface-card);
+  background-color: var(--surface-input);
+  /* 关闭原生外观：iOS 的圆角与内阴影、Windows 的凹陷边框都源于此 */
+  appearance: none;
+  -webkit-appearance: none;
   outline: none;
   transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+    border-color var(--dur-fast) var(--ease-standard),
+    background-color var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard);
 }
 
 .input::placeholder {
   color: var(--text-muted);
+  opacity: 1; /* Firefox 默认给 placeholder 加透明度 */
 }
 
+.input:hover:not(:disabled):not(:focus) {
+  border-color: var(--text-muted);
+}
+
+/* 聚焦时填充退回卡片色：字段「亮起来」，比单纯加边框更易察觉 */
 .input:focus {
-  border-color: var(--primary-pink);
+  border-color: var(--accent-ink);
+  background-color: var(--surface-card);
   outline: none;
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .input:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
+}
+
+/* Chrome/Edge 自动填充会用原生黄底覆盖 background-color，只能用超大内阴影盖掉；
+   过渡设为极长以拖住浏览器在填充瞬间的回退色。 */
+.input:-webkit-autofill,
+.input:-webkit-autofill:hover,
+.input:-webkit-autofill:focus,
+.input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--text-main);
+  -webkit-box-shadow: 0 0 0 100px var(--surface-input) inset;
+  caret-color: var(--text-main);
+  transition: background-color 100000s ease-in-out 0s;
+}
+
+.input:focus:-webkit-autofill {
+  -webkit-box-shadow:
+    0 0 0 100px var(--surface-card) inset,
+    0 0 0 3px var(--focus-ring);
+}
+
+/* 数字输入的原生步进器 */
+.input::-webkit-outer-spin-button,
+.input::-webkit-inner-spin-button {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .invalid {
@@ -52,24 +104,20 @@
 }
 
 .invalid:focus {
-  border-color: var(--error-border);
-  outline: none;
-  box-shadow: 0 0 0 3px var(--focus-ring-error);
-}
-
-.invalid:focus {
   border-color: var(--error-color);
+  outline: none;
   box-shadow: 0 0 0 3px var(--focus-ring-error);
 }
 
 .textarea {
   resize: vertical;
-  min-height: 80px;
-  line-height: 1.55;
+  min-height: 96px;
+  line-height: var(--lh-body);
 }
 
 .hint {
-  font-size: 0.78rem;
+  font-size: var(--fs-micro);
+  line-height: 1.6;
   color: var(--text-muted);
 }
 
@@ -95,8 +143,8 @@
 }
 
 .searchInput {
-  padding-left: 2.2rem;
-  padding-right: 2.2rem;
+  padding-left: 2.25rem;
+  padding-right: 2.25rem;
 }
 
 /* 移除浏览器原生搜索框装饰，统一自绘清除按钮 */
@@ -111,12 +159,12 @@
 
 .clearBtn {
   position: absolute;
-  right: 0.5rem;
+  right: 0.4rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   padding: 0;
   border: none;
   border-radius: 50%;
@@ -124,8 +172,8 @@
   color: var(--text-muted);
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
 }
 
 .clearBtn:hover {
@@ -133,14 +181,27 @@
   color: var(--text-main);
 }
 
-/* Comfortable touch targets on touch devices. */
+.clearBtn:active {
+  background-color: var(--divider-color);
+  color: var(--text-main);
+}
+
+/* 触屏：命中区扩到 44px（用居中 ::after，不撑破输入框高度）；
+   字号提到 16px —— iOS Safari 对小于 16px 的输入框会在聚焦时缩放整页。 */
 @media (any-pointer: coarse) {
   .input {
-    min-height: 44px;
+    min-height: var(--tap-min);
+    font-size: var(--fs-body);
   }
-  .clearBtn {
-    width: 40px;
-    height: 40px;
+
+  .clearBtn::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: var(--tap-min);
+    height: var(--tap-min);
+    transform: translate(-50%, -50%);
   }
 }
 

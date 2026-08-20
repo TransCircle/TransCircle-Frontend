@@ -20,8 +20,10 @@
 .container {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.6rem 1.5rem;
+  gap: var(--sp-4);
+  /* Matches .mainContent's fluid padding (App.module.css) so the logo and
+     page title share the same left edge across viewport widths. */
+  padding: 0.6rem clamp(0.75rem, 0.3rem + 2.4vw, 3rem);
   max-width: var(--width-content);
   margin-inline: auto;
 }
@@ -30,7 +32,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.6rem;
+  gap: var(--sp-2);
   flex: 1;
 }
 
@@ -38,7 +40,7 @@
 .toggles {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--sp-2);
 }
 
 /* ── Login pill button ─────────────────────────── */
@@ -49,23 +51,26 @@
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  height: 34px;
-  padding: 0 1.1rem;
+  height: var(--control-h);
+  padding: 0 var(--sp-4);
   border-radius: var(--radius-pill);
   background-color: var(--cta-bg);
   color: var(--cta-color);
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-title);
   text-decoration: none;
   white-space: nowrap;
   box-shadow: var(--shadow-card);
   transition:
-    background-color 0.15s ease,
-    transform 0.1s ease;
+    background-color var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-emphasized);
 }
 .loginBtn:hover {
   background-color: var(--cta-hover);
   transform: translateY(-1px);
+}
+.loginBtn:active {
+  transform: translateY(0);
 }
 @supports (background-color: color-mix(in srgb, red 85%, black)) {
   .loginBtn:hover {
@@ -82,7 +87,7 @@
 .leftSection {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--sp-2);
   flex: 1;
 }
 
@@ -102,8 +107,12 @@
   /* ::after 命中区扩大的定位祖先（DESIGN §6.1.10） */
   position: relative;
   z-index: 75;
+  transition: background-color var(--dur-fast) var(--ease-standard);
 }
 .hamburger:hover {
+  background-color: var(--hover-bg);
+}
+.hamburger:active {
   background-color: var(--hover-bg);
 }
 
@@ -132,7 +141,9 @@
   width: 100%;
   background-color: var(--text-main);
   border-radius: 2px;
-  transition: transform 0.25s ease, opacity 0.2s ease;
+  transition:
+    transform var(--dur-base) var(--ease-emphasized),
+    opacity var(--dur-fast) var(--ease-standard);
   transform-origin: center center;
   will-change: transform, opacity;
 }
@@ -148,20 +159,24 @@
 }
 
 .logo {
-  font-size: 1.1rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-size: var(--fs-subtitle);
+  font-weight: var(--fw-display);
+  letter-spacing: -0.02em;
   color: var(--text-main);
 }
 
 .logo a {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--sp-2);
   text-decoration: none;
   color: inherit;
   cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-standard);
 }
+
+/* 品牌标识属于「身份」范畴（与头像同类），所以这里用粉是成立的。
+   注意不能用 --accent-ink：它与 --text-main 几乎同值，悬停会看不出变化。 */
 .logo a:hover {
   color: var(--accent-pink);
 }
@@ -172,12 +187,18 @@
   width: 28px;
   height: 28px;
   flex-shrink: 0;
+  transition: transform var(--dur-slow) var(--ease-emphasized);
+}
+
+/* 标识本身是一个环，旋转是它最自然的动作——四分之一圈，够察觉又不喧哗。 */
+.logo a:hover .logoMark {
+  transform: rotate(90deg);
 }
 
 .navLinks {
   list-style: none;
   display: flex;
-  gap: 0.25rem;
+  gap: var(--sp-1);
   margin: 0;
   padding: 0;
   flex-wrap: nowrap;
@@ -187,18 +208,18 @@
 .dropdownTrigger {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--sp-1);
   border: none;
   background: none;
   font: inherit;
   cursor: pointer;
   text-decoration: none;
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
-  padding: 0.4rem 0.75rem;
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
+  padding: var(--sp-2) var(--sp-3);
   border-radius: var(--radius-sm);
   box-sizing: border-box;
   white-space: nowrap;
@@ -222,8 +243,8 @@
 .navLinks li .disabled {
   display: inline-flex;
   align-items: center;
-  font-size: 0.9rem;
-  padding: 0.4rem 0.75rem;
+  font-size: var(--fs-sm);
+  padding: var(--sp-2) var(--sp-3);
   border-radius: var(--radius-sm);
   box-sizing: border-box;
   white-space: nowrap;
@@ -239,7 +260,7 @@
   appearance: none;
   -webkit-appearance: none;
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   background: none;
   border: none;
   margin: 0;
@@ -248,7 +269,7 @@
 }
 
 .chevron {
-  transition: transform 0.15s ease;
+  transition: transform var(--dur-fast) var(--ease-emphasized);
 }
 
 .dropdownOpen .chevron,
@@ -257,7 +278,7 @@
 }
 
 .dropdownTrigger:focus-visible {
-  outline: 2px solid var(--primary-pink);
+  outline: 2px solid var(--accent-ink);
   outline-offset: 2px;
 }
 
@@ -267,7 +288,7 @@
   left: 0;
   list-style: none;
   margin: 0;
-  padding: 0.35rem;
+  padding: var(--sp-1);
   background-color: var(--surface-card);
   border: 1px solid var(--divider-color);
   border-radius: var(--radius-md);
@@ -277,7 +298,10 @@
   transform: translateY(-4px);
   box-shadow: var(--shadow-pop);
   z-index: 60;
-  animation: menuIn 0.15s ease;
+  transition:
+    opacity var(--dur-fast) var(--ease-emphasized),
+    transform var(--dur-fast) var(--ease-emphasized),
+    visibility var(--dur-fast);
 }
 
 .dropdownOpen .dropdownMenu {
@@ -297,8 +321,6 @@
   .navLinks li a,
   .dropdownTrigger,
   .dropdownMenu,
-  .link,
-  .menuItem,
   .acctBtn,
   .loginBtn,
   .drawer,
@@ -311,15 +333,19 @@
 
   .chevron,
   .dropdownOpen .chevron,
-  .dropdownTrigger[aria-expanded='true'] .chevron {
+  .dropdownTrigger[aria-expanded='true'] .chevron,
+  .logo a,
+  .logoMark,
+  .logo a:hover .logoMark {
     transition: none;
     transform: none;
   }
 
-  .menu {
+  .acctMenu {
     animation: none;
   }
-  .loginBtn:hover {
+  .loginBtn:hover,
+  .acctBtn:active {
     transform: none;
   }
 }
@@ -328,16 +354,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.55rem 0.7rem;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
   border-radius: var(--radius-sm);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   color: var(--text-body);
   white-space: nowrap;
   text-decoration: none;
   transition:
-    background-color 0.15s ease,
-    color 0.15s ease;
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
 }
 .dropdownMenu li a:hover {
   background-color: var(--hover-bg);
@@ -389,20 +415,20 @@
   box-shadow: 0 0 0 2px var(--soft-pink);
 }
 .acctBtn[aria-expanded='true'] {
-  box-shadow: 0 0 0 2px var(--primary-pink);
+  box-shadow: 0 0 0 2px var(--accent-pink);
 }
 .acctBtn:active {
   transform: scale(0.96);
 }
 .acctBtn:focus-visible {
-  outline: 2px solid var(--primary-pink);
+  outline: 2px solid var(--accent-ink);
   outline-offset: 2px;
 }
 
 .acctAvatar {
   display: block;
-  width: 34px;
-  height: 34px;
+  width: var(--control-h);
+  height: var(--control-h);
   border-radius: 50%;
   object-fit: cover;
 }
@@ -411,13 +437,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: var(--control-h);
+  height: var(--control-h);
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent-pink), var(--primary-pink));
-  color: var(--on-accent);
-  font-size: 0.9rem;
-  font-weight: 600;
+  /* 身份面：纯色，不使用渐变（见 DESIGN.md 去 AI 化纪律）。 */
+  background-color: var(--soft-pink);
+  color: var(--accent-pink);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-label);
   user-select: none;
 }
 
@@ -427,25 +454,25 @@
   right: 0;
   list-style: none;
   margin: 0;
-  padding: 0.35rem;
+  padding: var(--sp-1);
   background-color: var(--surface-card);
   border: 1px solid var(--divider-color);
   border-radius: var(--radius-md);
   min-width: 11rem;
   box-shadow: var(--shadow-pop);
   z-index: 60;
-  animation: menuIn 0.15s ease;
+  animation: menuIn var(--dur-fast) var(--ease-emphasized);
 }
 
 .acctMenu li a,
 .acctMenu li button {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--sp-2);
   width: 100%;
-  padding: 0.55rem 0.7rem;
+  padding: var(--sp-2) var(--sp-3);
   border-radius: var(--radius-sm);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   color: var(--text-body);
   text-decoration: none;
   text-align: left;
@@ -453,7 +480,9 @@
   background: none;
   border: none;
   font: inherit;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
   box-sizing: border-box;
 }
 
@@ -472,17 +501,17 @@
 
 @media (max-width: 1100px) {
   .container {
-    padding: 0.4rem 0.85rem;
+    padding: var(--sp-2) var(--sp-3);
   }
 
   .logo {
-    font-size: 1.05rem;
+    font-size: var(--fs-subtitle);
   }
 
   /* docs 6.1.7: 移动端保留可见登录入口（压扁药丸）+ 头像身份入口，不整体隐藏。 */
   .loginBtn {
-    padding: 0 0.9rem;
-    font-size: 0.82rem;
+    padding: 0 var(--sp-3);
+    font-size: var(--fs-meta);
   }
 
   .hamburger {
@@ -507,7 +536,7 @@
   border-right: 1px solid var(--divider-color);
   box-shadow: var(--shadow-drawer);
   transform: translateX(-100%);
-  transition: transform 0.3s ease-in-out;
+  transition: transform var(--dur-slow) var(--ease-emphasized);
   overflow-y: auto;
 }
 
@@ -518,25 +547,25 @@
 .drawerInner {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: var(--sp-1);
   padding: 4.5rem 1rem 1.25rem;
 }
 
 .drawerLink {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.7rem 0.8rem;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-3);
   border: none;
   background: none;
   border-radius: var(--radius-sm);
   font: inherit;
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
   color: var(--text-body);
   text-decoration: none;
   text-align: left;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--dur-fast) var(--ease-standard);
 }
 
 .drawerLink:hover {
@@ -557,7 +586,7 @@
 .drawerDivider {
   height: 1px;
   background-color: var(--divider-color);
-  margin: 0.5rem 0;
+  margin: var(--sp-2) 0;
 }
 
 .overlay {
@@ -568,7 +597,7 @@
   background-color: var(--overlay-bg);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease;
+  transition: opacity var(--dur-slow) var(--ease-standard);
 }
 
 .overlayOn {

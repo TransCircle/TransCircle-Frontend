@@ -1,20 +1,20 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: var(--sp-2);
   width: 100%;
 }
 
 .label {
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: var(--fs-meta);
+  font-weight: var(--fw-label);
   color: var(--text-secondary);
 }
 
 .group {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--sp-2);
 }
 
 .horizontal {
@@ -27,28 +27,33 @@
   min-width: 0;
   display: flex;
   align-items: flex-start;
-  gap: 0.6rem;
+  gap: var(--sp-2);
   min-height: 40px;
   padding: 0.65rem 0.8rem;
-  border: 1.5px solid var(--divider-color);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   background-color: var(--surface-card);
   color: var(--text-body);
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   text-align: left;
   cursor: pointer;
   transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease;
+    border-color var(--dur-fast) var(--ease-standard),
+    background-color var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-emphasized);
 }
 
 .option:hover:not(:disabled) {
-  border-color: var(--primary-pink);
+  border-color: var(--accent-ink);
+}
+
+.option:active:not(:disabled) {
+  transform: scale(0.99);
 }
 
 .option:focus-visible {
-  outline: 2px solid var(--primary-pink);
+  outline: 2px solid var(--accent-ink);
   outline-offset: 2px;
 }
 
@@ -58,14 +63,8 @@
 }
 
 .option.checked {
-  border-color: var(--primary-pink);
+  border-color: var(--accent-ink);
   background-color: var(--hover-bg);
-}
-
-@supports (background-color: color-mix(in srgb, red 15%, white)) {
-  .option.checked {
-    background-color: var(--hover-bg-mix);
-  }
 }
 
 .option.invalid {
@@ -78,14 +77,14 @@
   width: 18px;
   height: 18px;
   margin-top: 0.1rem;
-  border: 1.5px solid var(--divider-color);
+  border: 1px solid var(--border-strong);
   border-radius: 50%;
   background-color: var(--surface-card);
-  transition: border-color 0.15s ease;
+  transition: border-color var(--dur-fast) var(--ease-standard);
 }
 
 .option.checked .dot {
-  border-color: var(--accent-pink);
+  border-color: var(--accent-ink);
 }
 
 .option.checked .dot::after {
@@ -93,7 +92,7 @@
   position: absolute;
   inset: 3px;
   border-radius: 50%;
-  background-color: var(--accent-pink);
+  background-color: var(--accent-ink);
 }
 
 .optionText {
@@ -104,18 +103,27 @@
 }
 
 .optionLabel {
-  font-weight: 500;
+  font-weight: var(--fw-title);
   color: var(--text-main);
 }
 
 .optionHint {
-  font-size: 0.78rem;
+  font-size: var(--fs-micro);
   color: var(--text-muted);
+}
+
+@media (any-pointer: coarse) {
+  .option {
+    min-height: var(--tap-min);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .option,
   .dot {
     transition: none;
+  }
+  .option:active:not(:disabled) {
+    transform: none;
   }
 }

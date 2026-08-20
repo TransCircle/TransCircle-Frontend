@@ -1,21 +1,21 @@
 .editorWrapper {
-  border: 1.5px solid var(--divider-color);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   overflow: hidden;
   transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+    border-color var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard);
 }
 
 .editorWrapper:focus-within {
-  border-color: var(--primary-pink);
+  border-color: var(--accent-ink);
   outline: none;
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 @supports (box-shadow: 0 0 0 3px color-mix(in srgb, red 18%, transparent)) {
   .editorWrapper:focus-within {
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-pink) 22%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-ink) 22%, transparent);
   }
 }
 
@@ -31,28 +31,47 @@
   border: 1px solid var(--divider-color);
   color: var(--text-secondary);
   background: var(--surface-card);
-  padding: 0.3rem 0.45rem;
-  border-radius: 6px;
-  font-size: 0.8rem;
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--radius-xs);
+  font-size: var(--fs-meta);
   font-family: inherit;
   cursor: pointer;
   transition:
-    border-color 0.15s ease,
-    color 0.15s ease,
-    background-color 0.15s ease;
+    border-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard),
+    background-color var(--dur-fast) var(--ease-standard);
   white-space: nowrap;
 }
 
 .editorWrapper :global(.md-editor .md-editor-stn .md-editor-toolbar-item):hover {
-  border-color: var(--primary-pink);
+  border-color: var(--accent-ink);
   color: var(--text-main);
+  background-color: var(--hover-bg);
+}
+
+.editorWrapper :global(.md-editor .md-editor-stn .md-editor-toolbar-item):active {
   background-color: var(--hover-bg);
 }
 
 .editorWrapper :global(.md-editor .md-editor-stn .md-editor-toolbar-active) {
   background-color: var(--hover-bg);
-  color: var(--primary-pink);
-  border-color: var(--primary-pink);
+  color: var(--accent-ink);
+  border-color: var(--accent-ink);
+}
+
+/* Comfortable touch targets on touch devices. */
+@media (any-pointer: coarse) {
+  .editorWrapper :global(.md-editor .md-editor-stn .md-editor-toolbar-item) {
+    min-width: var(--tap-min);
+    min-height: var(--tap-min);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editorWrapper,
+  .editorWrapper :global(.md-editor .md-editor-stn .md-editor-toolbar-item) {
+    transition: none;
+  }
 }
 
 @media (max-width: 768px) {
@@ -71,11 +90,11 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.5rem 0.75rem;
+  gap: var(--sp-2) var(--sp-3);
   margin-top: 0.6rem;
 }
 
 .imageHint {
-  font-size: 0.8rem;
+  font-size: var(--fs-meta);
   color: var(--text-muted);
 }

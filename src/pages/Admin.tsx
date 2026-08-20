@@ -4,7 +4,7 @@ import { useAuth } from '@/context/useAuth'
 import { get, post } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
-import { useCursorList } from '@/hooks/useCursorList'
+import { usePagedList } from '@/hooks/usePagedList'
 import { useStepUpAction } from '@/hooks/useStepUpAction'
 import { limitByUnicode } from '@/utils/string'
 import { useFormatTs } from '@/utils/datetime'
@@ -24,6 +24,7 @@ import {
   CONTRIB_STATUS_TONE,
   type TabItem,
 } from '@/components/admin'
+import { Pagination } from '@/components/ui'
 import shell from './Page.module.css'
 
 // Temp token is kept in memory only (per api.md §JWT Payload Structure:
@@ -121,8 +122,17 @@ export const Admin = () => {
   const [activeTab, setActiveTab] = useState<Status>('pending')
   // 游标分页列表（统一模板）：切 tab 自动重载，保留旧列表 + 加载条。
   // 403/401（权限变更后快照过期）在 fetchPage 内捕获并置 accessDenied 文案。
-  const { items: submissions, hasMore, loading, error, setError, reload, loadMore } =
-    useCursorList<Submission>({
+  const {
+    items: submissions,
+    pageIndex,
+    knownPages,
+    hasMore,
+    loading,
+    error,
+    setError,
+    reload,
+    goToPage,
+  } = usePagedList<Submission>({
       fetchPage: async (cursorVal) => {
         const params = new URLSearchParams({ status: activeTab, limit: '20' })
         if (cursorVal) params.set('cursor', cursorVal)
@@ -465,13 +475,13 @@ export const Admin = () => {
                   </li>
                 ))}
               </ul>
-              {hasMore && (
-                <div className={shell.loadMoreWrap}>
-                  <AdminButton variant="secondary" onClick={() => void loadMore()} loading={loading}>
-                    {t('admin.loadMore')}
-                  </AdminButton>
-                </div>
-              )}
+              <Pagination
+                pageIndex={pageIndex}
+                knownPages={knownPages}
+                hasMore={hasMore}
+                disabled={loading}
+                onChange={goToPage}
+              />
             </>
           )}
         </div>
