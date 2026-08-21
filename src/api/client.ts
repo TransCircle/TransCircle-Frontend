@@ -20,6 +20,17 @@ export const API_BASE = _API_BASE
 let _memoryToken: string | null = null
 
 export function setAccessToken(token: string | null): void {
+  /* 任何一次 token 变化都是一次身份切换，必须让在途请求的认证代号失效。
+     覆盖「旧 token → null → 新 token」的完整链路：只判「两端都非空」的话，
+     会话过期清空后再登录另一个账号，代号自始至终没变，慢请求收到 401 时
+     会被当成当前会话，用新账号的 token 重试。
+     doRefresh 内部的续期不走这里（它直接写 _memoryToken），续的是同一段会话。 */
+  if (token !== _memoryToken) {
+    _authGeneration += 1
+    // 在途的 refresh 属于上一段会话：它拿到结果也会因代号不符而作废，
+    // 留着只会让新会话的 401 复用它、拿到 null，从而放弃自己的刷新机会。
+    _refreshPromise = null
+  }
   _memoryToken = token
 }
 
@@ -30,6 +41,11 @@ export function getAccessToken(): string | null {
 // ─── Refresh Token Rotation ────────────────────────────────────
 
 let _refreshPromise: Promise<string | null> | null = null
+/* 刷新请求的超时。它是全局共享的排队 promise，拿不到某个调用方的 signal，
+   自己不设上限的话，一次悬住的 /auth/refresh 会把所有等它的请求一起挂死——
+   包括那些自己明明设了超时的（超时只能中断它们自己那一发，中断不了排在
+   前面的刷新）。超时按瞬时错误处理：返回 null、保留 token，不误登出。 */
+const REFRESH_TIMEOUT_MS = 10000
 // 认证代号：clearAuth() 自增后，在途 doRefresh 的结果（含内存 token 写回）一律作废，
 // 防止「登出瞬间在途 refresh 完成 → token 回填内存」的竞态。
 let _authGeneration = 0
@@ -41,18 +57,37 @@ let _authGeneration = 0
 async function doRefresh(): Promise<string | null> {
   if (_refreshPromise) return _refreshPromise
 
-  _refreshPromise = (async () => {
+  /* 用 promise 自身作身份标记：clearAuth() 会直接把 _refreshPromise 置空，
+     于是新一轮 refresh 可以在旧的仍在途时启动；旧 promise 的 finally 若无条件
+     清空，就会把新一轮的 promise 一并抹掉，后续调用者各自再发一次刷新请求。 */
+  let self: Promise<string | null> | null = null
+  self = (async () => {
     const gen = _authGeneration
     try {
-      const res = await fetch(`${API_BASE}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-      })
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), REFRESH_TIMEOUT_MS)
+      let res: Response
+      try {
+        res = await fetch(`${API_BASE}/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          signal: controller.signal,
+        })
+      } finally {
+        clearTimeout(timeout)
+      }
 
       if (res.status === 401) {
         // REFRESH_TOKEN_REVOKED or INVALID_REFRESH_TOKEN
         console.warn('[auth] refresh failed: 401 — session expired or revoked')
+        // 代号已变（期间登出并重新登录）：这是上一段会话的 401，与当前会话无关。
+        // 不加这道判断，旧会话的失败会清掉新用户的 token 并把他踢去登录页。
+        if (gen !== _authGeneration) return null
+        /* 会话到此作废，代号必须自增：否则此刻仍在途的慢请求随后收到 401 时，
+           代号看起来没变，会被当作「当前会话」而走刷新重试——若用户已重新登录，
+           那就是拿新账号的 token 重发旧账号的请求。 */
+        _authGeneration += 1
         _memoryToken = null
         // 通知 AuthContext 清空 user / token / provider，使守卫立即重定向登录。
         // 否则内存 token 已清但 AuthContext.user 残留，SPA 会继续以登录态渲染到整页刷新。
@@ -80,10 +115,11 @@ async function doRefresh(): Promise<string | null> {
         requestId?: string
       }
       if (body.data?.accessToken) {
-        // 登出/过期后（_authGeneration 已自增）在途 refresh 的结果不再回填内存。
-        if (gen === _authGeneration) {
-          _memoryToken = body.data.accessToken
-        }
+        // 登出/过期后（_authGeneration 已自增）在途 refresh 的结果不再回填内存，
+        // 也不能把「当前」token 交回给旧会话的调用者——那会让上一段会话的请求
+        // 带着新用户的 token 重试。
+        if (gen !== _authGeneration) return null
+        _memoryToken = body.data.accessToken
         return _memoryToken
       }
       console.warn('[auth] refresh response missing accessToken, body:', body)
@@ -92,20 +128,33 @@ async function doRefresh(): Promise<string | null> {
       console.warn('[auth] refresh network error:', err)
       return null
     } finally {
-      _refreshPromise = null
+      if (_refreshPromise === self) _refreshPromise = null
     }
   })()
 
-  return _refreshPromise
+  _refreshPromise = self
+  return self
 }
 
 /**
  * 401 自动刷新并重试：如果响应是 401 且内存中有 token，尝试 refresh 后重试。
  * 返回重试后的 Response，或原始 Response（若 refresh 失败或无需刷新）。
  */
-async function autoRefreshOn401(res: Response, url: string, init: RequestInit, headers: Headers): Promise<Response> {
+async function autoRefreshOn401(
+  res: Response,
+  url: string,
+  init: RequestInit,
+  headers: Headers,
+  authGen: number,
+): Promise<Response> {
+  /* 认证上下文在请求往返期间换过（登出、或登出后换账号登录）：这个 401 属于
+     上一段会话。此时刷新并重试，等于把 A 的请求体带着 B 的 token 再发一次——
+     一次跨账号的请求重放。原样把 401 交回调用方即可。 */
+  if (authGen !== _authGeneration) return res
   if (res.status === 401 && _memoryToken) {
     const newToken = await doRefresh()
+    // 刷新本身是异步的：等待期间同样可能登出/换账号，所以拿到新 token 后要再查一次
+    if (authGen !== _authGeneration) return res
     if (newToken) {
       headers.set('Authorization', `Bearer ${newToken}`)
       return fetch(url, { ...init, headers })
@@ -122,13 +171,28 @@ async function autoRefreshOn401(res: Response, url: string, init: RequestInit, h
  * Generate a UUID v4 Idempotency-Key per api.md §12.
  * UUID v4 matches the required format (16-64 chars, UUID v4 or ULID).
  */
-export function newIdempotencyKey(): string {
+/** UUID v4，带 Safari 15.3- 的降级实现（那些环境没有 crypto.randomUUID）。 */
+function uuidV4(): string {
   if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
-  // Safari 15.3- fallback: UUID v4
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0
     return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
   })
+}
+
+export function newIdempotencyKey(): string {
+  return uuidV4()
+}
+
+/**
+ * 这次失败是否「请求可能已经到达服务端、只是结果未知」。
+ *
+ * 只有这一类失败重试时才必须复用同一个 Idempotency-Key：网络中断（status 0）、
+ * 服务端错误（5xx）、限流（429）。明确的拒绝（400/403/404…）说明服务端已经表态，
+ * 重试属于一件新的事，应当换新键。
+ */
+export function isRetryableFailure(status: number): boolean {
+  return status === 0 || status === 429 || status >= 500
 }
 
 // ─── Per-Intent Idempotency-Key ──────────────────────────────
@@ -230,7 +294,10 @@ const EMPTY_HEADERS = {}
  * ULID-like format: short random hex string, ≤ 64 chars.
  */
 function newRequestId(): string {
-  return `req_fe_${crypto.randomUUID().replace(/-/g, '').slice(0, 20)}`
+  /* 必须走 uuidV4 的降级路径：这里裸调 crypto.randomUUID 的话，在没有该 API 的
+     Safari/WebView 里会在 apiRequest 的 try 之前就抛异常——不是某个请求失败，
+     而是所有请求都发不出去。 */
+  return `req_fe_${uuidV4().replace(/-/g, '').slice(0, 20)}`
 }
 
 /**
@@ -303,20 +370,25 @@ export async function apiRequest<T = unknown>(
   // will process it normally. If the request did reach the server but the response
   // was lost, reusing the key lets the server deduplicate. The error propagates
   // to the caller unchanged.
+  // 记下发出请求时的认证代号，供 401 重试判断会话是否已经换人
+  const authGenAtRequest = _authGeneration
   let res: Response
   try {
     res = await fetch(url, init)
 
     // ── Auto-refresh on 401 ──
     if (!options.skipRefresh) {
-      res = await autoRefreshOn401(res, url, init, headers)
+      res = await autoRefreshOn401(res, url, init, headers, authGenAtRequest)
     }
   } catch (err) {
     // Keep the intent key: a caller retry represents the same business intent and must reuse it.
     if (err instanceof DOMException && err.name === 'AbortError') throw err
     return {
       ok: false,
-      error: { code: 'NETWORK_ERROR', message: '' },
+      // message 必须有内容：调用方普遍用 `result.error.message || t(...)` 或直接
+      // `throw new Error(message)`，空串会一路静默到 `error && <Alert>` 不渲染，
+      // 断网时页面只剩一个空列表，看不出是失败还是真没数据。
+      error: { code: 'NETWORK_ERROR', message: i18n.t('common.networkError') },
       requestId: '',
       status: 0,
     }
@@ -360,7 +432,8 @@ export async function apiRequest<T = unknown>(
     } catch {
       return {
         ok: false,
-        error: { code: 'INVALID_RESPONSE', message: '' },
+        // 同 NETWORK_ERROR：空 message 会一路静默成空列表，至少带上 HTTP 状态
+        error: { code: 'INVALID_RESPONSE', message: i18n.t('common.invalidResponse', { status }) },
         requestId: res.headers.get('X-Request-Id') || '',
         status,
         rateLimit,
@@ -463,6 +536,8 @@ export async function uploadFile<
   if (tk) headers.set('Authorization', `Bearer ${tk}`)
   headers.set('X-Request-Id', newRequestId())
 
+  // 同 apiRequest：记下认证代号，会话换人后不做 401 重试
+  const authGenAtRequest = _authGeneration
   let res: Response
   try {
     res = await fetch(`${API_BASE}/images`, {
@@ -485,10 +560,11 @@ export async function uploadFile<
         signal,
       },
       headers,
+      authGenAtRequest,
     )
   } catch {
     // 网络错误（断开/DNS/超时等），与 apiRequest 一致的错误格式
-    return { ok: false, error: { code: 'NETWORK_ERROR', message: '' }, requestId: '', status: 0 }
+    return { ok: false, error: { code: 'NETWORK_ERROR', message: i18n.t('common.networkError') }, requestId: '', status: 0 }
   }
 
   const status = res.status

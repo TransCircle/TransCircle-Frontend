@@ -46,16 +46,24 @@ export const RootLayout = () => {
   }, [searchParams, navigate, toastKey])
   // L1: Listen for API rate-limit events
   useEffect(() => {
+    /* 定时器 id 要留着：连着来两次限流时，第一条的定时器若不取消，它到点会把
+       第二条（还没到期的）提示一起清掉。卸载时同样要清，否则会在已卸载的
+       组件上 setState。 */
+    let hideTimer: number | null = null
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail
       const retryAfter = detail?.retryAfter
       if (retryAfter) {
+        if (hideTimer !== null) window.clearTimeout(hideTimer)
         setRateLimitToast(t('common.rateLimitHint', { seconds: retryAfter }))
-        setTimeout(() => setRateLimitToast(null), Math.min(retryAfter * 1000, 15000))
+        hideTimer = window.setTimeout(() => setRateLimitToast(null), Math.min(retryAfter * 1000, 15000))
       }
     }
     window.addEventListener('api:rate-limit', handler)
-    return () => window.removeEventListener('api:rate-limit', handler)
+    return () => {
+      window.removeEventListener('api:rate-limit', handler)
+      if (hideTimer !== null) window.clearTimeout(hideTimer)
+    }
   }, [t])
 
   return (

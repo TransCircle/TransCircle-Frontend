@@ -551,3 +551,11 @@
     transform: none;
   }
 }
+
+/* 错误提示里的重试入口：文案与按钮同行，窄屏换行后按钮靠左对齐 */
+.errorRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}

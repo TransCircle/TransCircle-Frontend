@@ -2,7 +2,8 @@ import type { FormEvent } from 'react'
 import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
-import { post, setIntentKey, newIdempotencyKey } from '@/api/client'
+import { post, isRetryableFailure } from '@/api/client'
+import { useIntentKey } from '@/hooks/useIntentKey'
 import { ERRORS } from '@/api/errors'
 import { limitByUnicode } from '@/utils/string'
 import { AdminButton, Alert, Checkbox, Select, TagInput, TextArea, TextField } from '@/components/ui'
@@ -70,6 +71,7 @@ export const SubmitForm = () => {
   const [form, setForm] = useState<FormData>(INITIAL_FORM)
   const [errors, setErrors] = useState<FormErrors>({})
   const [status, setStatus] = useState<FormStatus>('idle')
+  const intent = useIntentKey()
   const [submitId, setSubmitId] = useState<string>('')
   const [serverError, setServerError] = useState<string>('')
 
@@ -114,8 +116,8 @@ export const SubmitForm = () => {
 
     setStatus('submitting')
 
+    let retryable = false
     try {
-      setIntentKey(newIdempotencyKey())
       const body: Record<string, unknown> = {
         title: form.title,
         content: form.content,
@@ -125,9 +127,12 @@ export const SubmitForm = () => {
         language: form.language,
         submitMode: form.submitMode,
       }
+      // 表单内容原样重试时复用同一个幂等键，避免网络抖动后再点一次多出一篇投稿
+      intent.begin(JSON.stringify(body))
       const result = await post<{ id: string; status: string }>('/contributions', body, { idempotent: true })
 
       if (!result.ok) {
+        retryable = isRetryableFailure(result.status)
         const code = result.error.code
         if (code === ERRORS.UNAUTHORIZED) {
           setServerError(t('submit.errors.loginRequired'))
@@ -159,10 +164,12 @@ export const SubmitForm = () => {
       setSubmitId(result.data.id)
       setStatus('success')
     } catch {
+      // 抛到这里的只有 AbortError 等异常路径，一律按可重试处理
+      retryable = true
       setServerError(t('submit.networkError'))
       setStatus('error')
     } finally {
-      setIntentKey(null)
+      intent.settle(retryable)
     }
   }
 

@@ -56,6 +56,14 @@ export const PublicContributionDetail = () => {
   useEffect(() => {
     if (!id) return
     let cancelled = false
+    /* 换文章（前进/后退在同一路由的两个 :id 之间跳）时必须先把上一篇的
+       结果清干净：留着 detail 会让新文章加载期间显示旧正文；留着 error
+       更糟——上一篇若是 404，新文章即使加载成功，错误分支仍然优先，
+       页面会一直停在「未找到」。 */
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDetail(null)
+    setError('')
+    setLoading(true)
     const load = async () => {
       const result = await get<PublicDetail>(`/public/contributions/${id}`)
       if (cancelled) return
@@ -154,7 +162,9 @@ export const PublicContributionDetail = () => {
         <div className={styles.prose} dangerouslySetInnerHTML={{ __html: sanitizeHtml(detail.contentHtml) }} />
       </article>
 
-      {id && <CommentSection contributionId={id} />}
+      {/* key：切换投稿时整体重挂载评论区，避免上一篇的在途提交/删除回调
+          改写这一篇的评论列表（两者共用同一个分页 hook 实例时会互相干扰）。 */}
+      {id && <CommentSection key={id} contributionId={id} />}
     </div>
   )
 }

@@ -78,6 +78,19 @@
   }
 }
 
+/* 基础态：宽屏用 .numbers 显示完整页码，.compact 藏起来。
+   这条必须写在下面那个媒体查询**之前**——两者优先级相同，后写的胜出，
+   放在后面会把窄屏的 inline-flex 覆盖回 none，当前页码对视觉和读屏一起消失。 */
+.compact {
+  display: none;
+  align-items: center;
+  padding: 0 var(--sp-3);
+  height: 34px;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+
 /* 窄屏：隐藏中间页码，只留上一页/当前/下一页，避免换行成两三排 */
 @media (max-width: 560px) {
   .numbers {
@@ -89,15 +102,6 @@
   }
 }
 
-.compact {
-  display: none;
-  align-items: center;
-  padding: 0 var(--sp-3);
-  height: 34px;
-  color: var(--text-secondary);
-  font-size: var(--fs-sm);
-  font-variant-numeric: tabular-nums;
-}
 
 .numbers {
   display: contents;

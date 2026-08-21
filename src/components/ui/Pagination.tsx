@@ -109,8 +109,10 @@ export function Pagination({
             </button>
           )
         })}
-        {/* 省略号：还有后续页，但游标分页给不出总页数 */}
-        {hasMore && end >= knownPages && <span className={styles.more}>…</span>}
+        {/* 右侧省略号有两种成因：窗口没铺到最后一个已知页（end < knownPages），
+            或已知页之后还有未走到的页（hasMore）。只判后者会让「翻到第 9 页再
+            回到第 1 页」的情况丢掉提示——第 8、9 页被窗口挡住却毫无迹象。 */}
+        {(end < knownPages || hasMore) && <span className={styles.more}>…</span>}
       </span>
 
       {/* 窄屏下页码列表隐藏，用「第 N 页」代替 */}

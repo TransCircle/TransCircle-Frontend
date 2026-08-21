@@ -1,7 +1,8 @@
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 1100;
+  /* 高于 Modal 的 1100：step-up 永远是最上面一层，常常开在理由/确认弹窗之上 */
+  z-index: 1200;
   display: flex;
   align-items: center;
   justify-content: center;
