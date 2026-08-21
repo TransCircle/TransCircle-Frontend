@@ -102,7 +102,7 @@
 }
 
 .entryLink:hover {
-  border-color: var(--accent-ink);
+  border-color: var(--accent-pink);
   box-shadow: var(--shadow-card-hover);
   transform: translateY(-1px);
 }
@@ -110,10 +110,6 @@
 .entryLink:active {
   transform: translateY(0);
   box-shadow: var(--shadow-card);
-}
-
-.entryLink:hover .entryTitle {
-  color: var(--accent-ink);
 }
 
 /* 元信息行：左侧署名，右侧标签（系统 → 蓝）。
@@ -147,7 +143,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent-pink);
+  color: var(--text-main);
   font-size: var(--fs-meta);
   font-weight: var(--fw-label);
   user-select: none;
@@ -181,7 +177,10 @@
   line-height: 1.4;
   color: var(--text-main);
   max-width: var(--width-reading);
-  transition: color var(--dur-fast) var(--ease-standard);
+  /* 这条过渡不是给 hover 的（标题不再变色），是给**主题切换**的：
+     --text-main 在亮暗之间是 #14161c ↔ #eceef2，body 的 color 过渡只管
+     继承色，自己声明了 color 的元素不带过渡就会在整页渐变时啪地跳一下。 */
+  transition: color var(--dur-base) var(--ease-standard);
   overflow-wrap: break-word;
   /* 超过两行的长标题截断，避免单条卡片纵向失控 */
   display: -webkit-box;
@@ -298,7 +297,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent-pink);
+  color: var(--text-main);
   font-size: var(--fs-body);
   font-weight: var(--fw-label);
   user-select: none;
@@ -389,7 +388,7 @@
 
 /* 链接是系统语义 → 蓝。 */
 .prose a {
-  color: var(--accent-ink);
+  color: var(--accent-blue);
   text-underline-offset: 3px;
 }
 
@@ -475,10 +474,6 @@
     transform: none;
     box-shadow: var(--shadow-card);
     border-color: var(--divider-color);
-  }
-
-  .entryLink:hover .entryTitle {
-    color: var(--text-main);
   }
 }
 

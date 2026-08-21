@@ -20,7 +20,7 @@
 }
 
 .info .icon {
-  color: var(--accent-ink);
+  color: var(--accent-blue);
 }
 
 [data-theme='dark'] .error .icon {
@@ -98,11 +98,13 @@
 .linkSecondary {
   background-color: var(--surface-card);
   color: var(--text-main);
-  border-color: var(--divider-color);
+  /* 发丝线（--divider-color）在白底上约 1.15:1，做按钮边界达不到 1.4.11 的 3:1；
+     --border-strong 正是为「需要 3:1 的控件描边」准备的。 */
+  border-color: var(--border-strong);
 }
 
 .linkSecondary:hover {
-  border-color: var(--accent-ink);
+  border-color: var(--accent-pink);
   background-color: var(--hover-bg);
 }
 

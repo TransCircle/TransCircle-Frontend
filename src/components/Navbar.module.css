@@ -172,14 +172,10 @@
   text-decoration: none;
   color: inherit;
   cursor: pointer;
-  transition: color var(--dur-fast) var(--ease-standard);
 }
 
-/* 品牌标识属于「身份」范畴（与头像同类），所以这里用粉是成立的。
-   注意不能用 --accent-ink：它与 --text-main 几乎同值，悬停会看不出变化。 */
-.logo a:hover {
-  color: var(--accent-pink);
-}
+/* 悬停信号交给下面标识环的四分之一圈旋转，文字不变色：
+   淡粉在 18px 粗体上达不到 4.5:1，而把粉压到能当文字就又变重了。 */
 
 /* 固定尺寸，避免 SVG 加载前的布局抖动 */
 .logoMark {
@@ -278,7 +274,7 @@
 }
 
 .dropdownTrigger:focus-visible {
-  outline: 2px solid var(--accent-ink);
+  outline: 2px solid var(--accent-pink);
   outline-offset: 2px;
 }
 
@@ -334,7 +330,6 @@
   .chevron,
   .dropdownOpen .chevron,
   .dropdownTrigger[aria-expanded='true'] .chevron,
-  .logo a,
   .logoMark,
   .logo a:hover .logoMark {
     transition: none;
@@ -412,7 +407,8 @@
   }
 }
 .acctBtn:hover {
-  box-shadow: 0 0 0 2px var(--soft-pink);
+  /* 用 --accent-pink 而非 --soft-pink：后者在导航底上只有约 1.15:1，等于没有反馈 */
+  box-shadow: 0 0 0 2px var(--accent-pink);
 }
 .acctBtn[aria-expanded='true'] {
   box-shadow: 0 0 0 2px var(--accent-pink);
@@ -421,7 +417,7 @@
   transform: scale(0.96);
 }
 .acctBtn:focus-visible {
-  outline: 2px solid var(--accent-ink);
+  outline: 2px solid var(--accent-pink);
   outline-offset: 2px;
 }
 
@@ -442,7 +438,7 @@
   border-radius: 50%;
   /* 身份面：纯色，不使用渐变（见 DESIGN.md 去 AI 化纪律）。 */
   background-color: var(--soft-pink);
-  color: var(--accent-pink);
+  color: var(--text-main);
   font-size: var(--fs-sm);
   font-weight: var(--fw-label);
   user-select: none;

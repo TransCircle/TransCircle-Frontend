@@ -74,12 +74,12 @@
 }
 
 .underline .tab.active {
-  color: var(--accent-ink);
-  border-bottom-color: var(--accent-ink);
+  color: var(--text-main);
+  border-bottom-color: var(--accent-pink);
 }
 
 .underline .tab.active .badge {
-  background-color: var(--accent-ink);
+  background-color: var(--accent-pink);
   color: var(--on-accent);
 }
 
@@ -100,10 +100,14 @@
   border-radius: var(--radius-sm);
 }
 
+/* 选中标记交给粉色内描边：underline 变体靠下划线，这里靠一圈内线，
+   两者都不用染文字。 */
 .segmented .tab.active {
-  color: var(--accent-ink);
+  color: var(--text-main);
   background-color: var(--surface-card);
-  box-shadow: var(--shadow-card);
+  box-shadow:
+    var(--shadow-card),
+    inset 0 0 0 1px var(--accent-pink);
 }
 
 @media (any-pointer: coarse) {

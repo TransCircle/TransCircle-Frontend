@@ -8,27 +8,39 @@ ships a high-contrast theme).
 
 ## 0. Direction (2026-08 redesign)
 
-### Ink carries action; the flag colours stay pastel
+### Pink is a surface colour, never a text colour
 
-The trans flag is a **pastel** flag. `#5BCEFA` and `#F5A9B8` both live at the light end
-of the lightness range. An interface accent has to sit on white and carry text and
-buttons, so it has to be _dark_ — and darkening the flag's sky blue produces navy, while
-darkening its pink produces magenta. Neither is a flag colour any more. Two attempts at
-"a blue for this site" both failed for the same reason: what shipped was an arbitrary
-blue with no rationale behind it, and an arbitrary hue in an interface reads as _odd_
-rather than as branding.
+The trans flag is a **pastel** flag: `#5BCEFA` and `#F5A9B8` both live at the light end
+of the lightness range. The trap is to reason "an accent must carry text, therefore it
+must be dark, therefore darken the flag" — that lands on `#9e3557`, a deep rose that
+makes the whole interface feel heavy, and on a navy that no longer reads as the flag's
+blue at all. Two earlier attempts failed exactly there.
 
-So the roles are split by what each colour can actually do:
+The way out is to stop asking pink to be text. Pink takes **surfaces and lines**:
 
-| Role        | Token           | Value                            | Notes                                                                                                               |
-| ----------- | --------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Action      | `--accent-ink`  | `#1b1e26` light / `#eceef2` dark | Every link, button, focus ring, checked state, active tab. It is not a hue, so it cannot be the _wrong_ hue.        |
-| Identity    | `--accent-pink` | `#9e3557` light / `#efa3b7` dark | The avatar chip on `--soft-pink`, and the "this is you" badge — a bounded surface where a pastel reads as a pastel. |
-| Information | `--soft-info-*` | blue family                      | Info alerts and the blue status badge only. A soft blue alert is a universal convention, not the theme's colour.    |
+| Token           | Light     | Role                                                                                                                                                                                                                                                                                                                                            |
+| --------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--bg-color`    | `#fff9fb` | The page itself. The tint belongs on the largest surface, so the site reads as coloured without any control shouting.                                                                                                                                                                                                                           |
+| `--soft-pink`   | `#ffd2da` | The pale pink fill: avatar chips, accent badges, and selected fills (current page, active toolbar item). One step stronger than `--hover-bg` so "selected" outranks "hovered".                                                                                                                                                                  |
+| `--cta-bg`      | `#fec9d2` | Primary buttons — pale fill, ink label at 12.49:1.                                                                                                                                                                                                                                                                                              |
+| `--accent-pink` | `#c47687` | Lines: borders, focus rings, tab underlines, checked states. Clears the 3:1 non-text floor on every surface it actually sits on — 3.34 on a card, 3.21 on the page, 3.08 on an input fill, 3.02 on a hover fill. Hover swaps the background out from under the line, so picking the value against the page background alone lands a step short. |
 
-Filled buttons are ink on white in light, and near-white on ink in dark. Links are ink
-with an underline, which is more accessible than a coloured link anyway — the underline
-means colour is never the only signal.
+Because nothing pink carries text, nothing has to reach 4.5:1, so every pink can stay in
+the pastel range. Labels on pink surfaces are `--text-main` and clear 12:1 — better
+legibility than the deep-rose version it replaced.
+
+Blue stays the **information** colour: prose links, info alerts, the info icon. Its hue
+is taken straight from the flag (`226.5` in OKLCH, the hue of `#5BCEFA`) and only its
+lightness is lowered to `#026a89` so it can carry text at 6.13:1. That is why this blue
+has an answer to "why this blue" where the earlier `#1c5f86` — drifted 13° toward violet
+— did not.
+
+Ink (`--accent-ink`) is left with what it is good at: body copy, headings, secondary and
+ghost buttons, and neutral hover affordances in the admin tool.
+
+Dark mode already sits in the pastel range (`--cta-bg: #efa3b7` with an ink label at
+9.12:1), so it needed no rework. Its greys stay neutral on purpose: tinting a near-black
+toward pink reads as brown long before it reads as pink.
 
 **Pink marks a person through their avatar, never by tinting their name.** Coloured text
 in a UI reads as _state_ — a link, an error, a warning — and a person's name has no
@@ -40,33 +52,38 @@ state; at the depth the light theme needs for contrast it simply read as red. Na
 The palette was rebuilt once already because it had drifted onto Google's system
 language. The tells, and what replaced each:
 
-| Material 3 pattern           | What it looked like here                                                                                    | Now                                                                   |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Tonal containers             | tags as `--soft-info-bg` fill + same-hue deep text — literally `primary-container` / `on-primary-container` | outlined chips: transparent fill, hairline border, blue text          |
-| Fully-round buttons          | `--radius-pill: 999px` on every button and badge                                                            | `6px`, matching the control radius                                    |
-| 12 / 16 / 28 radius ramp     | cards at 14px                                                                                               | cards `10px`, controls `6px`                                          |
-| Mid-tone high-chroma primary | `#17658f` — hue 201, saturation 72%, lightness 32%, squarely in the range a Material seed generates         | `#1a4e7a` — a printing-ink blue: hue 207.5, deeper and less chromatic |
+| Material 3 pattern                                   | What it looked like here                                                                                    | Now                                                                                        |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Tonal containers                                     | tags as `--soft-info-bg` fill + same-hue deep text — literally `primary-container` / `on-primary-container` | outlined chips: transparent fill, hairline border, blue text                               |
+| Fully-round buttons                                  | `--radius-pill: 999px` on every button and badge                                                            | `6px`, matching the control radius                                                         |
+| 12 / 16 / 28 radius ramp                             | cards at 14px                                                                                               | cards `10px`, controls `6px`                                                               |
+| A mid-tone, high-chroma primary filling every button | The range a Material seed generates: one saturated hue doing all the work                                   | Pale pink fills (`#fec9d2`) with ink labels; the saturated pink only ever draws a 1px line |
 
 Material 3 is a language for consumer product UI. This is a story archive; it should
 read as something you read, not something you operate. Filled tonal chips and pill
 buttons are the two patterns that most strongly say "app", so both are gone.
 
-**Light and dark are the same colour, not two colours.** The accent is hue 207.5 in
-light and 205.2 in dark — 2.3° apart, so only lightness flips between themes. Contrast
-ratios were tuned to land in the same band on both sides too (blue on a card reads
-8.70:1 in light and 9.03:1 in dark), which is what keeps an element's visual weight
-constant when a reader switches themes.
+**Light and dark are the same colour, not two colours.** Pink is hue 6.3 in light and
+2.2 in dark — 4° apart, so essentially only lightness flips between themes. The button
+label lands at 12.49:1 in light and 9.12:1 in dark, which is what keeps an element's
+visual weight roughly constant when a reader switches themes. Anything that sets its
+own `color` needs its own colour transition, because the theme switch is animated on
+`body` and an element with no transition snaps while the page around it fades.
 
 ### Neutrals
 
-- **Light ground is a white nudged toward the brand** (`#fffcfd`) — not a grey, and
-  not a warm cream. Both of those are inherited template defaults.
-- **Dark ground is an indigo-based deep ink** (`#0a0c14`) — it reads as _deliberately
-  coloured deep_, not as neutral charcoal.
-- Ink carries the same indigo undertone (`--text-main: #0d0e14`), so the palette's
-  character sits in the type colour rather than in a tinted background.
-- **No warm hues anywhere in the neutral ramp.** Amber survives only as a semantic
-  warning colour.
+- **Light ground is a white carrying the brand** (`#fff9fb`) — not a grey, and not a
+  warm cream. Both of those are inherited template defaults. The tint runs through the
+  whole light ramp: hover `#fff0f3`, input fill `#fef3f5`, hairline `#f1e3e5`. Putting
+  it on the largest surface is what makes the site read as coloured without any single
+  control having to shout.
+- **Dark ground stays neutral** (`#0d0e12`). Tinting a near-black toward pink reads as
+  brown long before it reads as pink, so dark gets its colour from the accents alone —
+  the pale-pink button, the avatar chips, the focus ring.
+- Ink carries an indigo undertone (`--text-main: #14161c`), so even the neutral side of
+  the palette is a chosen colour rather than a default.
+- **No warm hues in the neutral ramp.** The light tint is pink (blue channel above
+  green), not beige. Amber survives only as a semantic warning colour.
 
 ### Shape, type, motion
 
@@ -127,10 +144,10 @@ Never hardcode hex/rgba in component CSS — use a token so all three themes sta
 
 - Surfaces: `--bg-color`, `--surface-card`, `--nav-bg`, `--divider-color`, `--overlay-bg`
 - Text: `--text-main`, `--text-secondary`, `--text-muted`, `--text-body`
-- Brand: `--accent-blue` (**the system speaks** — links, buttons, focus, tags, tabs,
-  admin controls), `--accent-pink` (**a person speaks** — author bylines/avatars,
-  comment attribution), `--soft-pink` (identity surfaces: avatar backgrounds),
-  `--primary-pink` (decorative tint only, never carries text)
+- Brand: `--accent-pink` (**lines** — borders, focus rings, tab underlines, checked
+  states; never text), `--soft-pink` (**identity surfaces** — avatar chips, accent
+  badges), `--accent-blue` (**information** — prose links, info alerts and icon),
+  `--accent-ink` (body copy, headings, secondary/ghost buttons, neutral hovers)
 - Interaction: `--hover-bg`, `--hover-bg-mix`, `--cta-bg`, `--cta-color`,
   `--cta-hover`, `--cta-hover-mix`
 - Status: `--error-color`, `--error-border`, `--success-color`,

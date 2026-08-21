@@ -2,16 +2,17 @@
    TransCircle 设计令牌 —— 唯一真源
    方向见 docs/DESIGN.md §0。风格：现代简约、圆角。三条支柱：
 
-   1. 墨为动作，旗色为身份：一切可点、可跳、可聚焦的都用 --accent-ink
-      （亮色近黑 / 暗色近白）；跨性别旗的粉以粉彩身份留在头像片上。
-      理由见下方 --accent-ink 处的注释。两色不混合、不做渐变。
+   1. 粉做面与线，蓝做信息，墨做文字：粉永远不承载文字——面上的字是墨色，
+      线只需满足非文本的 3:1，粉因此可以一直停在淡彩区。蓝取自旗蓝色相，
+      只用于正文链接与 info 语义。理由见下方 --accent-pink 处的注释。
+      两色不混合、不做渐变。
    2. 圆角克制：卡片 10px、控件/徽章 6px。刻意避开 Material 的全圆胶囊
       与 12/16/28 圆角梯度——那是消费级产品 UI 的语言，这里是故事档案。
       发丝描边 + 极轻投影，不用彩色光晕、不用多层大扩散阴影。
    3. 字号按中文调校（正文 1rem → 列表标题 1.25rem → 文章标题 1.5–1.9rem）：
       方块字视觉重量大于拉丁字母，标题档位相应压低一档。
       仅用系统字体栈，不引入特殊字体。
-   4. 表单控件全部自绘：填充 + 1px 描边 + 蓝色焦点环，关闭一切浏览器原生
+   4. 表单控件全部自绘：填充 + 1px 描边 + 粉色焦点环，关闭一切浏览器原生
       外观（含自动填充黄底、搜索框装饰、数字步进器）。
 
    底色纪律：亮色为向品牌微调过的白（非灰、非暖米），暗色为带靛底的深墨
@@ -20,8 +21,9 @@
 
 :root {
   /* ── 亮色主题（默认）───────────────────────────────────── */
-  /* 白底：向粉微调（R255 G252 B253），肉眼读作干净的白，不读作灰。 */
-  --bg-color: #fbfbfc;
+  /* 页面底是带粉的白（R255 G249 B251）：粉调铺在最大的那块面上，
+     整体才会「淡淡地有颜色」，而不是靠某几个控件去点缀。 */
+  --bg-color: #fff9fb;
   --surface-card: #ffffff;
 
   /* 墨色带靛底，不是中性黑——性格从底色转移到墨色。 */
@@ -35,39 +37,57 @@
   --error-border: #b3261e;
   --success-color: #1f6b45;
 
-  /* ── 动作色：墨 ──────────────────────────────────────────
-     跨性别旗是一面粉彩旗：#5BCEFA 与 #F5A9B8 都活在明度的高端。而界面的
-     强调色要压在白底上承载文字与按钮，必须够深——把天蓝压深会变成藏青，
-     把粉压深会变成玫红，两者都不再是旗色本身。硬塞进去的结果是一个「没有
-     来由的蓝」，放在界面里必然显得突兀。
-     所以动作交给墨色：它不是色相，就不会「不对」；旗色则以粉彩的身份留在
-     它们本来成立的地方（头像片、柔色面），而不是被拖进深色区。 */
-  --accent-ink: #1b1e26;
-  /* 信息语义专用（Alert info / StatusBadge blue），不再承担交互职责。 */
-  --accent-blue: #1c5f86;
-  /* 粉 = 人在说话：作者头像、署名、评论归属、「我的」内容。 */
-  --accent-pink: #9e3557;
-  /* 更淡的粉，仅用于装饰性描边与悬停微染，不承载文字。 */
-  --primary-pink: #d98aa8;
-  /* 身份面：头像底、作者标识底。 */
-  --soft-pink: #fbeaf0;
+  /* ── 三色分工：粉=行动，蓝=信息，墨=文字 ────────────────
+     旗帜是被**引用**，不是被复刻。跨性别旗的两个色都活在明度高端
+     （#F5A9B8 / #5BCEFA），直接拿去压白底承载文字与按钮当然不够；但把
+     色相留住、只把明度压到可用区间，得到的仍然是「那面旗的粉」和
+     「那面旗的蓝」，而不是另一个凭空挑出来的颜色。
 
-  --nav-bg: rgba(251, 251, 252, 0.85);
+     关键约束：**粉永远不做文字**。想让粉承载文字就得压到 4.5:1，那要一路
+     压成深玫红，整个界面立刻变重——这正是上一版走错的地方。改成让粉只做
+     「面」和「线」：面上的字是墨色（12:1 以上），线只需满足非文本的 3:1
+     下限。这样粉可以一直停在淡彩区，可读性反而更好。
+
+     粉的四个功能停点（色相全部锁在旗粉 6.3）：
+       --soft-pink  #ffd2da  身份面：头像片、柔粉底
+       --cta-bg     #fec9d2  主按钮底（墨字 12.49:1）
+       --cta-hover  #f8b8c4  （墨字 10.89:1）
+       --accent-pink #c47687 面与线：描边、焦点环、下划线、勾选态
+                             在它实际压着的每一种面上都过 3:1：白卡 3.34、
+                             页面底 3.21、输入面 3.08、悬停面 3.02。
+                             注意 hover 时背景会换成 --hover-bg，粉线是压在
+                             那个面上的，只按页面底取值会差一档。
+     蓝是信息色，取旗蓝色相 226.5、与旧版同明度，所以「为什么是这个蓝」
+     有答案；墨色只管正文、标题、次要按钮。 */
+  --accent-ink: #1b1e26;
+  /* 信息语义：正文链接、Alert info、info 徽章。 */
+  --accent-blue: #026a89;
+  /* 面与线。不做文字——见上方约束。 */
+  --accent-pink: #c47687;
+  /* 淡粉填充面：头像片、accent 徽章、以及各处选中态的底（分页当前页、
+     编辑器工具栏激活项）。与 --hover-bg 拉开一档，让「选中」比「划过」更重。 */
+  --soft-pink: #ffd2da;
+
+  --nav-bg: rgba(255, 249, 251, 0.85);
   /* 发丝线：纯装饰性分隔。 */
-  --divider-color: #e6e7ea;
+  --divider-color: #f1e3e5;
   /* 表单控件描边：WCAG 1.4.11 要求非文本边界 ≥3:1，发丝线达不到。 */
   --border-strong: #8a8f99;
 
-  /* 悬停 / 只读内容面：偏蓝（系统语义），不是中性灰。 */
-  --hover-bg: #f4f4f6;
-  --hover-bg-mix: color-mix(in srgb, var(--accent-ink) 5%, white);
+  /* 悬停 / 只读内容面：同样带粉，让每一次划过都能看到主题色。 */
+  --hover-bg: #fff0f3;
+  --hover-bg-mix: color-mix(in srgb, var(--accent-pink) 12%, white);
   /* 输入控件填充：与卡片面拉开，让字段不必靠粗描边才能被认出。 */
-  --surface-input: #f6f6f8;
+  --surface-input: #fef3f5;
 
-  --cta-bg: #1b1e26;
-  --cta-color: #ffffff;
-  --cta-hover: #333841;
-  --cta-hover-mix: color-mix(in srgb, var(--accent-ink) 86%, white);
+  /* 主按钮 = 淡粉底 + 墨字（12.49:1）。深色实心按钮在这个题材上太重了。 */
+  --cta-bg: #fec9d2;
+  --cta-color: #14161c;
+  --cta-hover: #f8b8c4;
+  /* 往按钮底色里加粉，而不是往白里加粉：混白会同时抬高明度，算出来的
+     #e9cad1 相对基础态只掉了 R 通道，看着是「发灰」而不是「更深一点的粉」。
+     这条在所有支持 color-mix 的浏览器上都会覆盖 --cta-hover，必须对得上。 */
+  --cta-hover-mix: color-mix(in srgb, var(--accent-pink) 20%, var(--cta-bg));
 
   --shadow-color: rgba(20, 22, 28, 0.07);
   --shadow-color-hover: rgba(20, 22, 28, 0.1);
@@ -80,9 +100,9 @@
   --soft-error-bg: #fceceb;
   --soft-error-border: #f0c4c1;
   --soft-error-text: #a3231c;
-  --soft-info-bg: #eaf1f6;
-  --soft-info-border: #c6d9e5;
-  --soft-info-text: #1c5f86;
+  --soft-info-bg: #e9f1f5;
+  --soft-info-border: #c5dae3;
+  --soft-info-text: #026a89;
   --soft-amber-bg: #fbf1de;
   --soft-amber-border: #ecd8ac;
   --soft-amber-text: #8a5a08;
@@ -91,14 +111,16 @@
   --vote-approve: #1d7a4a;
   --vote-reject: #c33027;
 
-  /* 焦点环是系统语义 → 蓝。 */
-  --focus-ring: rgba(27, 30, 38, 0.2);
+  /* 焦点环跟行动色走：它标记的是「你现在能操作这个」。 */
+  /* 与 --accent-pink #c47687 同色。改粉时这条必须跟着改——不支持 color-mix 的
+     浏览器走的就是它。 */
+  --focus-ring: rgba(196, 118, 135, 0.38);
   --focus-ring-error: rgba(179, 38, 30, 0.2);
-  /* 实心 accent-pink 面上的前景色。 */
-  --on-accent: #ffffff;
+  /* 粉色面上的前景色。粉是淡的，所以这里是墨色——亮暗两套主题同值。 */
+  --on-accent: #14161c;
   /* 实心 --error-color 面上的前景色（错误 toast）。 */
   --on-error: #ffffff;
-  --select: #e2e4e9;
+  --select: #f7dce1;
 
   /* ═══ 以下为主题无关的共享刻度 ═══════════════════════════ */
 
@@ -197,9 +219,8 @@
 
     --accent-ink: #eceef2;
 
-    --accent-blue: #8ec2de;
+    --accent-blue: #77c9ea;
     --accent-pink: #efa3b7;
-    --primary-pink: #b9738b;
     --soft-pink: #33202a;
 
     --nav-bg: rgba(13, 14, 18, 0.85);
@@ -208,12 +229,12 @@
 
     --hover-bg: #1c1f26;
     --surface-input: #1a1d23;
-    --hover-bg-mix: color-mix(in srgb, var(--accent-ink) 8%, #0d0e12);
+    --hover-bg-mix: color-mix(in srgb, var(--text-main) 8%, var(--bg-color));
 
-    --cta-bg: #eceef2;
+    --cta-bg: #efa3b7;
     --cta-color: #14161c;
-    --cta-hover: #ffffff;
-    --cta-hover-mix: color-mix(in srgb, var(--accent-ink) 92%, white);
+    --cta-hover: #d78da1;
+    --cta-hover-mix: color-mix(in srgb, var(--accent-pink) 92%, black);
 
     --shadow-color: rgba(0, 0, 0, 0.5);
     --shadow-color-hover: rgba(0, 0, 0, 0.6);
@@ -225,9 +246,9 @@
     --soft-error-bg: #331817;
     --soft-error-border: #6b2f2a;
     --soft-error-text: #f2938a;
-    --soft-info-bg: #152833;
-    --soft-info-border: #2b4d61;
-    --soft-info-text: #8ec2de;
+    --soft-info-bg: #132932;
+    --soft-info-border: #274e5e;
+    --soft-info-text: #77c9ea;
     --soft-amber-bg: #33280f;
     --soft-amber-border: #6b5423;
     --soft-amber-text: #e0ad5c;
@@ -235,7 +256,7 @@
     --vote-approve: #6cc292;
     --vote-reject: #f2938a;
 
-    --focus-ring: rgba(236, 238, 242, 0.28);
+    --focus-ring: rgba(239, 163, 183, 0.30);
     --focus-ring-error: rgba(242, 147, 138, 0.26);
     --on-accent: #14161c;
     --on-error: #2a0f1a;
@@ -263,9 +284,8 @@
 
   --accent-ink: #eceef2;
 
-  --accent-blue: #8ec2de;
+  --accent-blue: #77c9ea;
   --accent-pink: #efa3b7;
-  --primary-pink: #b9738b;
   --soft-pink: #33202a;
 
   --nav-bg: rgba(13, 14, 18, 0.85);
@@ -274,12 +294,12 @@
 
   --hover-bg: #1c1f26;
   --surface-input: #1a1d23;
-  --hover-bg-mix: color-mix(in srgb, var(--accent-ink) 8%, #0d0e12);
+  --hover-bg-mix: color-mix(in srgb, var(--text-main) 8%, var(--bg-color));
 
-  --cta-bg: #eceef2;
+  --cta-bg: #efa3b7;
   --cta-color: #14161c;
-  --cta-hover: #ffffff;
-  --cta-hover-mix: color-mix(in srgb, var(--accent-ink) 92%, white);
+  --cta-hover: #d78da1;
+  --cta-hover-mix: color-mix(in srgb, var(--accent-pink) 92%, black);
 
   --shadow-color: rgba(0, 0, 0, 0.5);
   --shadow-color-hover: rgba(0, 0, 0, 0.6);
@@ -291,9 +311,9 @@
   --soft-error-bg: #331817;
   --soft-error-border: #6b2f2a;
   --soft-error-text: #f2938a;
-  --soft-info-bg: #152833;
-  --soft-info-border: #2b4d61;
-  --soft-info-text: #8ec2de;
+  --soft-info-bg: #132932;
+  --soft-info-border: #274e5e;
+  --soft-info-text: #77c9ea;
   --soft-amber-bg: #33280f;
   --soft-amber-border: #6b5423;
   --soft-amber-text: #e0ad5c;
@@ -301,7 +321,7 @@
   --vote-approve: #6cc292;
   --vote-reject: #f2938a;
 
-  --focus-ring: rgba(236, 238, 242, 0.28);
+  --focus-ring: rgba(239, 163, 183, 0.30);
   --focus-ring-error: rgba(242, 147, 138, 0.26);
   --on-accent: #14161c;
   --on-error: #2a0f1a;
@@ -380,8 +400,9 @@ body {
   }
 }
 
-/* 焦点是系统语义 → 蓝。 */
+/* 焦点环跟行动色走。这是全局默认值——各组件里的 outline 只是就近覆盖它，
+   漏改这一条的话，没有单独声明 outline 的控件全都还是蓝的。 */
 :focus-visible {
-  outline: 2px solid var(--accent-blue);
+  outline: 2px solid var(--accent-pink);
   outline-offset: 2px;
 }

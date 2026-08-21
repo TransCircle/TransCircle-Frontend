@@ -27,7 +27,7 @@
 
 /* 语义强调变体——这是 border-left 被允许的唯一用途（见 DESIGN.md 反通用第 2 条）。 */
 .accent {
-  border-left: 3px solid var(--accent-ink);
+  border-left: 3px solid var(--accent-pink);
 }
 
 /* ── SectionLabel ────────────────────────────────────────── */

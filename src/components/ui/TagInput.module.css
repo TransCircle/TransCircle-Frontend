@@ -29,7 +29,7 @@
 }
 
 .box:focus-within {
-  border-color: var(--accent-ink);
+  border-color: var(--accent-pink);
   background-color: var(--surface-card);
   outline: none;
   box-shadow: 0 0 0 3px var(--focus-ring);
@@ -93,11 +93,11 @@
 
 .remove:active {
   background-color: var(--hover-bg);
-  color: var(--accent-ink);
+  color: var(--accent-pink);
 }
 
 .remove:focus-visible {
-  outline: 2px solid var(--accent-ink);
+  outline: 2px solid var(--accent-pink);
   outline-offset: 1px;
 }
 

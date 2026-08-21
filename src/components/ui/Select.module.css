@@ -44,12 +44,12 @@
 }
 
 .trigger:hover:not(:disabled):not(.open) {
-  border-color: var(--text-muted);
+  border-color: var(--accent-pink);
 }
 
 .trigger:focus-visible,
 .trigger.open {
-  border-color: var(--accent-ink);
+  border-color: var(--accent-pink);
   background-color: var(--surface-card);
   outline: none;
   box-shadow: 0 0 0 3px var(--focus-ring);
@@ -141,7 +141,7 @@
 }
 
 .option.selected {
-  color: var(--accent-ink);
+  color: var(--text-main);
   font-weight: var(--fw-label);
 }
 
@@ -152,7 +152,7 @@
 
 .check {
   flex-shrink: 0;
-  color: var(--accent-ink);
+  color: var(--accent-pink);
 }
 
 .hint {

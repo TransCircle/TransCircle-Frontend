@@ -57,12 +57,12 @@
 }
 
 .input:hover:not(:disabled):not(:focus) {
-  border-color: var(--text-muted);
+  border-color: var(--accent-pink);
 }
 
 /* 聚焦时填充退回卡片色：字段「亮起来」，比单纯加边框更易察觉 */
 .input:focus {
-  border-color: var(--accent-ink);
+  border-color: var(--accent-pink);
   background-color: var(--surface-card);
   outline: none;
   box-shadow: 0 0 0 3px var(--focus-ring);

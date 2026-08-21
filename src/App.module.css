@@ -23,7 +23,8 @@
   z-index: 1300;
   padding: var(--sp-2) var(--sp-4);
   background: var(--accent-ink);
-  color: var(--on-accent);
+  /* --on-accent 是给淡粉面用的墨色；这里底是墨，前景必须反过来。 */
+  color: var(--surface-card);
   border-radius: 0 0 var(--radius-sm) 0;
   font-size: var(--fs-sm);
   text-decoration: none;

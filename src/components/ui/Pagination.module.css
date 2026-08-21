@@ -32,8 +32,8 @@
 }
 
 .btn:hover:not(:disabled):not(.current) {
-  border-color: var(--accent-ink);
-  color: var(--accent-ink);
+  border-color: var(--accent-pink);
+  color: var(--text-main);
   background-color: var(--hover-bg);
 }
 
@@ -42,10 +42,12 @@
   cursor: not-allowed;
 }
 
+/* 当前页是选中态，不是主按钮：用与其它选中态一致的「淡粉填充 + 粉描边 + 墨字」，
+   不借用 --cta-* —— 那组 token 属于主按钮，耦合上会让改按钮色时分页跟着变。 */
 .current {
-  background-color: var(--cta-bg);
-  border-color: var(--cta-bg);
-  color: var(--cta-color);
+  background-color: var(--soft-pink);
+  border-color: var(--accent-pink);
+  color: var(--text-main);
   font-weight: var(--fw-label);
   cursor: default;
 }

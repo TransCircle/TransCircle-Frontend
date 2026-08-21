@@ -45,7 +45,7 @@
 }
 
 .option:hover:not(:disabled) {
-  border-color: var(--accent-ink);
+  border-color: var(--accent-pink);
 }
 
 .option:active:not(:disabled) {
@@ -53,7 +53,7 @@
 }
 
 .option:focus-visible {
-  outline: 2px solid var(--accent-ink);
+  outline: 2px solid var(--accent-pink);
   outline-offset: 2px;
 }
 
@@ -63,7 +63,7 @@
 }
 
 .option.checked {
-  border-color: var(--accent-ink);
+  border-color: var(--accent-pink);
   background-color: var(--hover-bg);
 }
 
@@ -84,7 +84,7 @@
 }
 
 .option.checked .dot {
-  border-color: var(--accent-ink);
+  border-color: var(--accent-pink);
 }
 
 .option.checked .dot::after {
@@ -92,7 +92,7 @@
   position: absolute;
   inset: 3px;
   border-radius: 50%;
-  background-color: var(--accent-ink);
+  background-color: var(--accent-pink);
 }
 
 .optionText {

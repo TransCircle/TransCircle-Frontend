@@ -99,7 +99,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent-pink);
+  color: var(--text-main);
   font-size: var(--fs-micro);
   font-weight: var(--fw-label);
   user-select: none;

@@ -8,14 +8,14 @@
 }
 
 .editorWrapper:focus-within {
-  border-color: var(--accent-ink);
+  border-color: var(--accent-pink);
   outline: none;
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 @supports (box-shadow: 0 0 0 3px color-mix(in srgb, red 18%, transparent)) {
   .editorWrapper:focus-within {
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-ink) 22%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-pink) 22%, transparent);
   }
 }
 
@@ -44,7 +44,7 @@
 }
 
 .editorWrapper :global(.md-editor .md-editor-stn .md-editor-toolbar-item):hover {
-  border-color: var(--accent-ink);
+  border-color: var(--accent-pink);
   color: var(--text-main);
   background-color: var(--hover-bg);
 }
@@ -54,9 +54,9 @@
 }
 
 .editorWrapper :global(.md-editor .md-editor-stn .md-editor-toolbar-active) {
-  background-color: var(--hover-bg);
-  color: var(--accent-ink);
-  border-color: var(--accent-ink);
+  background-color: var(--soft-pink);
+  color: var(--text-main);
+  border-color: var(--accent-pink);
 }
 
 /* Comfortable touch targets on touch devices. */

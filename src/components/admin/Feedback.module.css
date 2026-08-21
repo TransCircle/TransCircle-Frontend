@@ -12,7 +12,7 @@
   display: inline-block;
   border-radius: 50%;
   border: 2px solid var(--divider-color);
-  border-top-color: var(--accent-ink);
+  border-top-color: var(--accent-pink);
   animation: adminSpin 0.7s linear infinite;
   flex-shrink: 0;
 }

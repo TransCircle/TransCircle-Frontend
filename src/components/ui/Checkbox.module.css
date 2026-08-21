@@ -50,7 +50,7 @@
 }
 
 .row:hover:not(.disabled) .box {
-  border-color: var(--accent-ink);
+  border-color: var(--accent-pink);
 }
 
 .check {
@@ -72,8 +72,8 @@
 }
 
 .input:checked + .box {
-  background-color: var(--accent-ink);
-  border-color: var(--accent-ink);
+  background-color: var(--accent-pink);
+  border-color: var(--accent-pink);
 }
 
 .input:checked + .box .check {
@@ -82,8 +82,8 @@
 }
 
 .input:indeterminate + .box {
-  background-color: var(--accent-ink);
-  border-color: var(--accent-ink);
+  background-color: var(--accent-pink);
+  border-color: var(--accent-pink);
 }
 
 .input:indeterminate + .box .check {
@@ -95,7 +95,7 @@
 }
 
 .input:focus-visible + .box {
-  border-color: var(--accent-ink);
+  border-color: var(--accent-pink);
   outline: none;
   box-shadow: 0 0 0 3px var(--focus-ring);
 }

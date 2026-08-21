@@ -32,7 +32,8 @@
   z-index: 1300;
   padding: var(--sp-2) var(--sp-4);
   background: var(--accent-ink);
-  color: var(--on-accent);
+  /* --on-accent 是给淡粉面用的墨色；这里底是墨，前景必须反过来。 */
+  color: var(--surface-card);
   border-radius: 0 0 var(--radius-sm) 0;
   font-size: var(--fs-sm);
   text-decoration: none;
@@ -167,11 +168,14 @@
   color: var(--text-main);
 }
 
+/* 当前项除了底色与字重，还要有一条粉色左侧标记——只靠字重区分太弱，
+   而且颜色不能是唯一信号。 */
 .navItemActive,
 .navItemActive:hover {
   background-color: var(--hover-bg);
-  color: var(--accent-ink);
+  color: var(--text-main);
   font-weight: var(--fw-label);
+  box-shadow: inset 3px 0 0 var(--accent-pink);
 }
 
 @supports (background-color: color-mix(in srgb, red 15%, white)) {
@@ -266,7 +270,7 @@
 
 .hamburger:hover {
   background-color: var(--hover-bg);
-  border-color: var(--accent-ink);
+  border-color: var(--accent-pink);
 }
 
 .hamburger:active {

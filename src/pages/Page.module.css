@@ -111,7 +111,7 @@
 }
 
 .rowBtn:hover {
-  border-color: var(--accent-ink);
+  border-color: var(--accent-pink);
   background-color: var(--hover-bg);
 }
 

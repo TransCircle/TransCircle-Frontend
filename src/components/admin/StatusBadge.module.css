@@ -44,8 +44,8 @@
   background-color: var(--soft-error-bg);
 }
 .tone_accent {
-  color: var(--accent-ink);
-  background-color: var(--hover-bg);
+  color: var(--text-main);
+  background-color: var(--soft-pink);
 }
 .tone_muted {
   color: var(--text-muted);
@@ -73,6 +73,8 @@
   text-overflow: ellipsis;
 }
 
+/* accent 是身份面，不只是换个字色——底色也要跟上，否则和普通 pill 只差字重。 */
 .pillAccent {
-  color: var(--accent-ink);
+  background-color: var(--soft-pink);
+  color: var(--text-main);
 }

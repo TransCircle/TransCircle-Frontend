@@ -44,7 +44,7 @@
   padding: 1px var(--sp-2);
   border-radius: var(--radius-pill);
   background-color: var(--soft-pink);
-  color: var(--accent-pink);
+  color: var(--text-secondary);
 }
 
 .userName {
