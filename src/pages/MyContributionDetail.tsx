@@ -14,10 +14,10 @@ import {
   Skeleton,
   StatusBadge,
   TagInput,
-  TextArea,
   TextField,
   CONTRIB_STATUS_TONE,
 } from '@/components/ui'
+import { MarkdownField } from '@/components/MarkdownField'
 import { useFormatTs } from '@/utils/datetime'
 import shell from './Page.module.css'
 
@@ -319,12 +319,11 @@ export const MyContributionDetail = () => {
               value={title}
               onChange={(e) => setDraftTitle(limitByUnicode(e.target.value, 120))}
             />
-            <TextArea
+            <MarkdownField
               label={t('myContributionDetail.fieldContent')}
               required
               value={content}
-              onChange={(e) => setDraftContent(e.target.value)}
-              rows={12}
+              onChange={setDraftContent}
             />
             <TextField
               label={t('myContributionDetail.fieldSummary')}
