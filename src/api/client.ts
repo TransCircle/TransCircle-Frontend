@@ -479,7 +479,7 @@ export async function apiRequest<T = unknown>(
 
     return {
       ok: false,
-      error: errorData || { code: 'UNKNOWN', message: 'Unknown error' },
+      error: errorData || { code: 'UNKNOWN', message: i18n.t('common.unknownError') },
       requestId: (json.requestId as string) || requestId,
       status,
       rateLimit,
@@ -492,7 +492,13 @@ export async function apiRequest<T = unknown>(
     return { ok: true, data: undefined as T, raw: res, requestId: '', status, rateLimit }
   }
 
-  return { ok: false, error: { code: 'HTTP_ERROR', message: `HTTP ${status}` }, requestId: '', status, rateLimit }
+  return {
+    ok: false,
+    error: { code: 'HTTP_ERROR', message: i18n.t('common.httpError', { status }) },
+    requestId: '',
+    status,
+    rateLimit,
+  }
 }
 
 // ─── HTTP Verb Helpers ─────────────────────────────────────────
@@ -585,7 +591,7 @@ export async function uploadFile<
       ok: false,
       error: (json as { error?: { code: string; message: string } }).error || {
         code: 'UNKNOWN',
-        message: 'Upload failed',
+        message: i18n.t('imageUploader.errorFallback'),
       },
       requestId: (json.requestId as string) || requestId,
       status,
@@ -594,7 +600,7 @@ export async function uploadFile<
 
   return {
     ok: false,
-    error: { code: 'UPLOAD_ERROR', message: `HTTP ${status}` },
+    error: { code: 'UPLOAD_ERROR', message: i18n.t('common.httpError', { status }) },
     requestId,
     status,
   }

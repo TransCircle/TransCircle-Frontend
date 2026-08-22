@@ -354,6 +354,8 @@
     "chunkLoadError": "页面加载失败，请检查网络连接",
     "networkError": "网络连接失败，请检查网络后重试",
     "invalidResponse": "服务器返回了无法解析的内容（HTTP {{status}}）",
+    "httpError": "请求失败（HTTP {{status}}）",
+    "unknownError": "发生未知错误，请稍后重试",
     "retry": "重试",
     "refresh": "刷新",
     "save": "保存",
