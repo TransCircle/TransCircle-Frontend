@@ -229,7 +229,8 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
               {t('comment.delete')}
             </Button>
           )}
-          {user && user.id !== item.authorUserId && (
+          {/* 已删除的占位评论没有可举报的内容，后端也只会回 404（api.md §5A.3） */}
+          {user && user.id !== item.authorUserId && item.deletedAt === null && (
             <Button variant="ghost" size="sm" disabled={itemActionsLocked} onClick={() => { setReportTarget(item); setReportReason(''); setReportError('') }}>
               {t('comment.report')}
             </Button>
