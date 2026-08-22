@@ -120,8 +120,11 @@ export const AdminComments = () => {
     })
     setHideSubmitting(false)
     if (!result.ok) {
-      if (result.status === 403 && result.error.code === 'STEP_UP_REQUIRED') {
-        runWithStepUp(performHide)
+      if (result.error.code === ERRORS.STEP_UP_REQUIRED) {
+        /* onSettled 必须传：用户在 step-up 里点取消时，useStepUpAction 只会调用它来
+           还锁。漏传的话 hideSubmitting 永远为 true，理由弹窗的取消按钮/Esc/遮罩
+           全被 busy 锁死，只能整页离开（同 Admin.tsx / AdminUsers.tsx 的处理）。 */
+        runWithStepUp(performHide, () => setHideSubmitting(false))
         return
       }
       if (result.error.code === ERRORS.VERSION_CONFLICT) {
@@ -156,6 +159,12 @@ export const AdminComments = () => {
     })
     setRestoreSubmitting(false)
     if (!result.ok) {
+      if (result.error.code === ERRORS.STEP_UP_REQUIRED) {
+        /* api.md §5A.4：hide 与 restore 同属 requireStepUp 的敏感处置组。
+           onSettled 传参理由同 performHide——取消 step-up 时必须把锁还回去。 */
+        runWithStepUp(performRestore, () => setRestoreSubmitting(false))
+        return
+      }
       if (result.error.code === ERRORS.VERSION_CONFLICT) {
       /* 版本冲突：弹窗里握着的 updatedAt 已经过期，原样再点一次必然又是同一个
          冲突。关掉弹窗并刷新列表，让管理员看到别人改成什么样了再决定。 */
