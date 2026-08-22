@@ -1,13 +1,14 @@
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 1100;
+  /* 高于 Modal 的 1100：step-up 永远是最上面一层，常常开在理由/确认弹窗之上 */
+  z-index: 1200;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem;
+  padding: var(--sp-6);
   background-color: var(--overlay-bg);
-  animation: suOverlay 0.2s ease;
+  animation: suOverlay var(--dur-base) var(--ease-standard);
 }
 
 .panel {
@@ -20,20 +21,20 @@
   border: 1px solid var(--divider-color);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-dialog);
-  padding: 1.5rem;
-  animation: suPanel 0.2s ease;
+  padding: var(--sp-6);
+  animation: suPanel var(--dur-base) var(--ease-emphasized);
 }
 
 .title {
   margin: 0;
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: var(--fs-subtitle);
+  font-weight: var(--fw-display);
   color: var(--text-main);
 }
 
 .desc {
-  margin: 0.5rem 0 1.1rem;
-  font-size: 0.88rem;
+  margin: var(--sp-2) 0 var(--sp-4);
+  font-size: var(--fs-sm);
   line-height: 1.6;
   color: var(--text-secondary);
 }
@@ -42,34 +43,49 @@
 
 .input {
   width: 100%;
-  min-height: 40px;
-  padding: 0.55rem 0.8rem;
-  border: 1.5px solid var(--divider-color);
-  border-radius: var(--radius-sm);
-  font-size: 0.9rem;
+  min-height: 38px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  font-size: var(--fs-sm);
   font-family: inherit;
   color: var(--text-main);
-  background-color: var(--surface-card);
+  background-color: var(--surface-input);
+  appearance: none;
+  -webkit-appearance: none;
   outline: none;
   margin-bottom: 0.9rem;
   transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+    border-color var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard);
 }
 
 .input::placeholder {
   color: var(--text-muted);
 }
 
-.input:focus {
-  border-color: var(--primary-pink);
+.input:focus-visible {
+  border-color: var(--accent-pink);
+  background-color: var(--surface-card);
   outline: none;
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
+.input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Comfortable touch targets on touch devices. */
+@media (any-pointer: coarse) {
+  .input {
+    min-height: var(--tap-min);
+  }
+}
+
 @supports (box-shadow: 0 0 0 3px color-mix(in srgb, red 18%, transparent)) {
-  .input:focus {
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-pink) 22%, transparent);
+  .input:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-pink) 22%, transparent);
   }
 }
 
@@ -78,7 +94,7 @@
 .actions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.6rem;
+  gap: var(--sp-2);
   margin-top: 1.2rem;
   flex-wrap: wrap;
 }
@@ -87,16 +103,16 @@
 .btnGhost,
 .btnPrimaryFull {
   font-family: inherit;
-  font-weight: 500;
-  font-size: 0.88rem;
+  font-weight: var(--fw-title);
+  font-size: var(--fs-sm);
   border-radius: var(--radius-pill);
-  padding: 0.55rem 1.25rem;
+  padding: var(--sp-2) var(--sp-5);
   cursor: pointer;
-  border: 1.5px solid transparent;
+  border: 1px solid transparent;
   transition:
-    background-color 0.18s ease,
-    border-color 0.18s ease,
-    color 0.18s ease;
+    background-color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
 }
 
 .btnPrimary,
@@ -124,12 +140,30 @@
 .btnGhost {
   background-color: var(--surface-card);
   color: var(--text-main);
-  border-color: var(--divider-color);
+  border-color: var(--text-muted);
 }
 
 .btnGhost:hover:not(:disabled) {
-  border-color: var(--primary-pink);
+  border-color: var(--accent-pink);
   background-color: var(--hover-bg);
+}
+
+.btnGhost:active:not(:disabled) {
+  background-color: var(--hover-bg);
+}
+
+.btnPrimary:active:not(:disabled),
+.btnPrimaryFull:active:not(:disabled) {
+  background-color: var(--cta-hover);
+}
+
+/* Comfortable touch targets on touch devices. */
+@media (any-pointer: coarse) {
+  .btnPrimary,
+  .btnGhost,
+  .btnPrimaryFull {
+    min-height: var(--tap-min);
+  }
 }
 
 .btnPrimary:disabled,
@@ -141,15 +175,15 @@
 
 .error {
   color: var(--error-color);
-  font-size: 0.85rem;
-  margin: 0.5rem 0 0;
+  font-size: var(--fs-sm);
+  margin: var(--sp-2) 0 0;
 }
 
 /* ── IAM popup states ────────────────────────────────────── */
 
 .iamPrompt {
-  margin: 0 0 0.5rem;
-  font-size: 0.9rem;
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-sm);
   line-height: 1.6;
   color: var(--text-secondary);
 }
@@ -160,14 +194,14 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 0.8rem;
-  padding: 0.75rem 0 0.25rem;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0 var(--sp-1);
 }
 
 .waitText,
 .successText {
   margin: 0;
-  font-size: 0.92rem;
+  font-size: var(--fs-sm);
   color: var(--text-main);
 }
 
@@ -175,7 +209,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border: 3px solid var(--soft-pink);
+  border: 3px solid var(--divider-color);
   border-top-color: var(--accent-pink);
   animation: suSpin 0.7s linear infinite;
 }
@@ -246,7 +280,7 @@
     animation: none;
   }
   .spinner {
-    animation-duration: 1.2s;
+    animation: none;
   }
   .successCheck svg path {
     animation: none;

@@ -2,31 +2,31 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
+  gap: var(--sp-2);
   font-family: inherit;
-  font-weight: 500;
+  font-weight: var(--fw-title);
   cursor: pointer;
   border-radius: var(--radius-pill);
-  border: 1.5px solid transparent;
+  border: 1px solid transparent;
   white-space: nowrap;
   line-height: 1.2;
   transition:
-    background-color 0.18s ease,
-    color 0.18s ease,
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    transform 0.18s ease;
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-emphasized);
 }
 
 .md {
   min-height: 40px;
-  padding: 0.55rem 1.25rem;
-  font-size: 0.88rem;
+  padding: var(--sp-2) var(--sp-5);
+  font-size: var(--fs-sm);
 }
 
 .sm {
-  padding: 0.4rem 0.9rem;
-  font-size: 0.82rem;
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-meta);
 }
 
 .fullWidth {
@@ -58,6 +58,11 @@
   box-shadow: var(--shadow-card-hover);
 }
 
+.primary:not(:disabled):active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-card);
+}
+
 @supports (background-color: color-mix(in srgb, red 85%, black)) {
   .primary:not(:disabled):hover {
     background-color: var(--cta-hover-mix);
@@ -68,12 +73,17 @@
 
 .secondary {
   background-color: transparent;
-  color: var(--accent-pink);
-  border-color: var(--primary-pink);
+  color: var(--accent-ink);
+  border-color: var(--accent-ink);
 }
 
+/* 描边转粉：原本这里和基础态同值，等于没有描边上的悬停反馈。 */
 .secondary:not(:disabled):hover {
   border-color: var(--accent-pink);
+  background-color: var(--hover-bg);
+}
+
+.secondary:not(:disabled):active {
   background-color: var(--hover-bg);
 }
 
@@ -87,10 +97,14 @@
 
 .ghost {
   background: transparent;
-  color: var(--accent-pink);
+  color: var(--accent-ink);
 }
 
 .ghost:not(:disabled):hover {
+  background-color: var(--hover-bg);
+}
+
+.ghost:not(:disabled):active {
   background-color: var(--hover-bg);
 }
 
@@ -107,6 +121,10 @@
   background-color: var(--soft-error-bg);
 }
 
+.danger:not(:disabled):active {
+  background-color: var(--soft-error-border);
+}
+
 /* Comfortable touch targets on touch devices. */
 @media (any-pointer: coarse) {
   .btn {
@@ -118,7 +136,8 @@
   .btn {
     transition: none;
   }
-  .primary:not(:disabled):hover {
+  .primary:not(:disabled):hover,
+  .primary:not(:disabled):active {
     transform: none;
   }
 }

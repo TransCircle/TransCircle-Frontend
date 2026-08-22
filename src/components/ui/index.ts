@@ -26,6 +26,8 @@ export type { TagInputProps } from './TagInput'
 
 export { PageHeader } from './PageHeader'
 export type { PageHeaderProps } from './PageHeader'
+export { Pagination } from './Pagination'
+export type { PaginationProps } from './Pagination'
 
 export { CenteredCard } from './CenteredCard'
 export type { CenteredCardProps } from './CenteredCard'

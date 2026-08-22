@@ -20,12 +20,12 @@
 .body {
   display: flex;
   flex-direction: column;
-  gap: 1.1rem;
+  gap: var(--sp-4);
 }
 
 @media (max-width: 640px) {
   .shell {
     min-height: 0;
-    padding: 0.5rem 0 1.5rem;
+    padding: var(--sp-2) 0 var(--sp-6);
   }
 }

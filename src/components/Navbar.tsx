@@ -5,6 +5,7 @@ import { ThemeToggle } from './ThemeToggle'
 import { useAuth } from '@/context/useAuth'
 import { LOGOUT_REDIRECT } from '@/config'
 import styles from './Navbar.module.css'
+import { hasModalLayer } from '@/components/admin/modalStack'
 
 const ExternalLinkIcon = () => (
   <svg
@@ -25,6 +26,9 @@ const ExternalLinkIcon = () => (
 )
 
 const MOBILE_BREAKPOINT = 1100
+
+/** 抽屉内的可聚焦元素选择器（打开时的初始聚焦与 Tab 循环共用）。 */
+const DRAWER_FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 export const Navbar = () => {
   const { t } = useTranslation()
@@ -53,9 +57,7 @@ export const Navbar = () => {
   const openMenu = () => {
     setIsOpen(true)
     requestAnimationFrame(() => {
-      drawerRef.current
-        ?.querySelector<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])')
-        ?.focus()
+      drawerRef.current?.querySelector<HTMLElement>(DRAWER_FOCUSABLE)?.focus()
     })
   }
 
@@ -86,9 +88,41 @@ export const Navbar = () => {
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     const handleKeyDown = (e: KeyboardEvent) => {
+      /* 有浮层开着（确认弹窗、理由弹窗、step-up…）：键盘归它管，抽屉必须让开。
+         不让的话 Tab 会在浮层处理完后继续冒泡到这里，把焦点拽回抽屉，
+         顶层 aria-modal 对话框的焦点陷阱就形同虚设了。 */
+      if (hasModalLayer()) return
       if (e.key === 'Escape') {
         closeMenu()
         hamburgerRef.current?.focus()
+        return
+      }
+      /* Tab 循环。把 <main> 设成 inert 只挡住了正文，抽屉外仍有可聚焦元素
+         （汉堡按钮、页脚等），Tab 到最后一项后焦点会走出抽屉。抽屉是模态的，
+         焦点必须留在里面，出口只有 Esc 和抽屉自己的链接。 */
+      if (e.key !== 'Tab') return
+      const el = drawerRef.current
+      if (!el) return
+      const nodes = Array.from(el.querySelectorAll<HTMLElement>(DRAWER_FOCUSABLE)).filter(
+        (n) => n.offsetParent !== null || n === document.activeElement,
+      )
+      if (nodes.length === 0) return
+      const first = nodes[0]!
+      const last = nodes[nodes.length - 1]!
+      const active = document.activeElement
+      if (!el.contains(active)) {
+        e.preventDefault()
+        ;(e.shiftKey ? last : first).focus()
+        return
+      }
+      if (e.shiftKey) {
+        if (active === first) {
+          e.preventDefault()
+          last.focus()
+        }
+      } else if (active === last) {
+        e.preventDefault()
+        first.focus()
       }
     }
     const handleResize = () => {

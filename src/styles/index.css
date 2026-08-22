@@ -1,196 +1,334 @@
+/* ═══════════════════════════════════════════════════════════════
+   TransCircle 设计令牌 —— 唯一真源
+   方向见 docs/DESIGN.md §0。风格：现代简约、圆角。三条支柱：
+
+   1. 粉做面与线，蓝做信息，墨做文字：粉永远不承载文字——面上的字是墨色，
+      线只需满足非文本的 3:1，粉因此可以一直停在淡彩区。蓝取自旗蓝色相，
+      只用于正文链接与 info 语义。理由见下方 --accent-pink 处的注释。
+      两色不混合、不做渐变。
+   2. 圆角克制：卡片 10px、控件/徽章 6px。刻意避开 Material 的全圆胶囊
+      与 12/16/28 圆角梯度——那是消费级产品 UI 的语言，这里是故事档案。
+      发丝描边 + 极轻投影，不用彩色光晕、不用多层大扩散阴影。
+   3. 字号按中文调校（正文 1rem → 列表标题 1.25rem → 文章标题 1.5–1.9rem）：
+      方块字视觉重量大于拉丁字母，标题档位相应压低一档。
+      仅用系统字体栈，不引入特殊字体。
+   4. 表单控件全部自绘：填充 + 1px 描边 + 粉色焦点环，关闭一切浏览器原生
+      外观（含自动填充黄底、搜索框装饰、数字步进器）。
+
+   底色纪律：亮色为向品牌微调过的白（非灰、非暖米），暗色为带靛底的深墨
+   （非中性炭灰）。中性色阶一律不含暖色相。
+   ═══════════════════════════════════════════════════════════════ */
+
 :root {
-  /* ── Light Theme (Default) ───────────────────── */
+  /* ── 亮色主题（默认）───────────────────────────────────── */
+  /* 页面底是带粉的白（R255 G249 B251）：粉调铺在最大的那块面上，
+     整体才会「淡淡地有颜色」，而不是靠某几个控件去点缀。 */
   --bg-color: #fff9fb;
-  --text-main: #000000;
-  --text-secondary: #666666;
-  --text-muted: #888888;
-  --text-body: #333333;
-
-  --error-color: #d32f2f;
-  --error-border: #ef9a9a;
-  --success-color: #2e7d32;
-
-  --primary-pink: #ec9eb0;
-  --soft-pink: #ffccd5;
-  --accent-pink: #e67690;
-  --nav-bg: rgba(255, 251, 252, 0.85);
-  --divider-color: #ffccd5;
   --surface-card: #ffffff;
 
-  --hover-bg: #ffedf1;
-  --hover-bg-mix: color-mix(in srgb, var(--primary-pink) 15%, white);
-  --cta-bg: #ffd8d8;
-  --cta-color: #412a2a;
-  --cta-hover: #f7bcbc;
-  --cta-hover-mix: color-mix(in srgb, var(--accent-pink) 85%, black);
-  --shadow-color: rgba(255, 255, 255, 0.06);
-  --shadow-color-hover: rgba(240, 98, 146, 0.15);
-  --overlay-bg: rgba(0, 0, 0, 0.3);
+  /* 墨色带靛底，不是中性黑——性格从底色转移到墨色。 */
+  --text-main: #14161c;
+  --text-body: #2b2e36;
+  --text-secondary: #4a4f5a;
+  --text-muted: #6a6f79;
 
-  /* Soft success surface (light) — used by Alert/StatusScreen success states */
-  --soft-success-bg: #e7f6ec;
-  --soft-success-border: #a9d8b6;
-  --soft-success-text: #1e7d34;
+  --error-color: #b3261e;
+  /* 与 --error-color 同值：浅淡描边在白底上达不到 3:1 的非文本对比下限。 */
+  --error-border: #b3261e;
+  --success-color: #1f6b45;
 
-  /* Soft semantic surfaces (light): error / info / amber. */
-  --soft-error-bg: #fff0ee;
-  --soft-error-border: #f0c2c2;
-  --soft-error-text: #c62828;
-  --soft-info-bg: #e9f1ff;
-  --soft-info-border: #b6cdff;
-  --soft-info-text: #1a56c4;
-  --soft-amber-bg: #fff3e0;
-  --soft-amber-border: #f0d9b0;
-  --soft-amber-text: #b26a00;
+  /* ── 三色分工：粉=行动，蓝=信息，墨=文字 ────────────────
+     旗帜是被**引用**，不是被复刻。跨性别旗的两个色都活在明度高端
+     （#F5A9B8 / #5BCEFA），直接拿去压白底承载文字与按钮当然不够；但把
+     色相留住、只把明度压到可用区间，得到的仍然是「那面旗的粉」和
+     「那面旗的蓝」，而不是另一个凭空挑出来的颜色。
 
-  --vote-approve: #2e9e4b;
-  --vote-reject: #e5534b;
+     关键约束：**粉永远不做文字**。想让粉承载文字就得压到 4.5:1，那要一路
+     压成深玫红，整个界面立刻变重——这正是上一版走错的地方。改成让粉只做
+     「面」和「线」：面上的字是墨色（12:1 以上），线只需满足非文本的 3:1
+     下限。这样粉可以一直停在淡彩区，可读性反而更好。
 
-  /* Input focus ring (box-shadow), accent-surface foreground, text selection. */
-  --focus-ring: rgba(255, 133, 162, 0.28);
-  --focus-ring-error: rgba(211, 47, 47, 0.16);
-  --on-accent: #412a2a;
-  --select: #ffe2e8;
+     粉的四个功能停点（色相全部锁在旗粉 6.3）：
+       --soft-pink  #ffd2da  身份面：头像片、柔粉底
+       --cta-bg     #fec9d2  主按钮底（墨字 12.49:1）
+       --cta-hover  #f8b8c4  （墨字 10.89:1）
+       --accent-pink #c47687 面与线：描边、焦点环、下划线、勾选态
+                             在它实际压着的每一种面上都过 3:1：白卡 3.34、
+                             页面底 3.21、输入面 3.08、悬停面 3.02。
+                             注意 hover 时背景会换成 --hover-bg，粉线是压在
+                             那个面上的，只按页面底取值会差一档。
+     蓝是信息色，取旗蓝色相 226.5、与旧版同明度，所以「为什么是这个蓝」
+     有答案；墨色只管正文、标题、次要按钮。 */
+  --accent-ink: #1b1e26;
+  /* 信息语义：正文链接、Alert info、info 徽章。 */
+  --accent-blue: #026a89;
+  /* 面与线。不做文字——见上方约束。 */
+  --accent-pink: #c47687;
+  /* 淡粉填充面：头像片、accent 徽章、以及各处选中态的底（分页当前页、
+     编辑器工具栏激活项）。与 --hover-bg 拉开一档，让「选中」比「划过」更重。 */
+  --soft-pink: #ffd2da;
 
-  /* ── Shared scales (theme-invariant) ─────────────────────── */
-  /* Radius scale: inline chips, controls, popovers, cards, full pill. */
-  --radius-xs: 6px;
-  --radius-sm: 10px;
-  --radius-md: 12px;
-  --radius-lg: 14px;
-  --radius-pill: 999px;
-  /* Semantic radius aliases — reference by role, not by pixel. */
-  --radius-control: var(--radius-sm);
-  --radius-pop: var(--radius-md);
+  --nav-bg: rgba(255, 249, 251, 0.85);
+  /* 发丝线：纯装饰性分隔。 */
+  --divider-color: #f1e3e5;
+  /* 表单控件描边：WCAG 1.4.11 要求非文本边界 ≥3:1，发丝线达不到。 */
+  --border-strong: #8a8f99;
 
-  /* Elevation — resolved lazily against the active theme's --shadow-color. */
+  /* 悬停 / 只读内容面：同样带粉，让每一次划过都能看到主题色。 */
+  --hover-bg: #fff0f3;
+  --hover-bg-mix: color-mix(in srgb, var(--accent-pink) 12%, white);
+  /* 输入控件填充：与卡片面拉开，让字段不必靠粗描边才能被认出。 */
+  --surface-input: #fef3f5;
+
+  /* 主按钮 = 淡粉底 + 墨字（12.49:1）。深色实心按钮在这个题材上太重了。 */
+  --cta-bg: #fec9d2;
+  --cta-color: #14161c;
+  --cta-hover: #f8b8c4;
+  /* 往按钮底色里加粉，而不是往白里加粉：混白会同时抬高明度，算出来的
+     #e9cad1 相对基础态只掉了 R 通道，看着是「发灰」而不是「更深一点的粉」。
+     这条在所有支持 color-mix 的浏览器上都会覆盖 --cta-hover，必须对得上。 */
+  --cta-hover-mix: color-mix(in srgb, var(--accent-pink) 20%, var(--cta-bg));
+
+  --shadow-color: rgba(20, 22, 28, 0.07);
+  --shadow-color-hover: rgba(20, 22, 28, 0.1);
+  --overlay-bg: rgba(20, 22, 28, 0.42);
+
+  /* 语义软面：底 / 描边 / 文字三件套。 */
+  --soft-success-bg: #e6f3ec;
+  --soft-success-border: #b6dcc6;
+  --soft-success-text: #1f6b45;
+  --soft-error-bg: #fceceb;
+  --soft-error-border: #f0c4c1;
+  --soft-error-text: #a3231c;
+  --soft-info-bg: #e9f1f5;
+  --soft-info-border: #c5dae3;
+  --soft-info-text: #026a89;
+  --soft-amber-bg: #fbf1de;
+  --soft-amber-border: #ecd8ac;
+  --soft-amber-text: #8a5a08;
+
+  /* 投票条：数据可视化，比语义文字色更饱和一档，故独立成令牌。 */
+  --vote-approve: #1d7a4a;
+  --vote-reject: #c33027;
+
+  /* 焦点环跟行动色走：它标记的是「你现在能操作这个」。 */
+  /* 与 --accent-pink #c47687 同色。改粉时这条必须跟着改——不支持 color-mix 的
+     浏览器走的就是它。 */
+  --focus-ring: rgba(196, 118, 135, 0.38);
+  --focus-ring-error: rgba(179, 38, 30, 0.2);
+  /* 粉色面上的前景色。粉是淡的，所以这里是墨色——亮暗两套主题同值。 */
+  --on-accent: #14161c;
+  /* 实心 --error-color 面上的前景色（错误 toast）。 */
+  --on-error: #ffffff;
+  --select: #f7dce1;
+
+  /* ═══ 以下为主题无关的共享刻度 ═══════════════════════════ */
+
+  /* ── 字体：只用系统栈，不引入特殊字体 ───────────────────
+     项目禁止外部字体；层级完全靠字号级差与字重实现。 */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+
+  /* ── 字号刻度 ────────────────────────────────────────────
+     按中文调校：方块字填满字身框，同字号下视觉重量明显大于拉丁字母，
+     因此标题档位比英文站点低一档。级差保持清晰但不夸张。 */
+  --fs-micro: 0.75rem;
+  --fs-meta: 0.8125rem;
+  --fs-sm: 0.875rem;
+  --fs-body: 1rem;
+  --fs-subtitle: 1.125rem;
+  --fs-title: 1.25rem;
+  --fs-display: clamp(1.5rem, 1.25rem + 1.1vw, 1.9rem);
+
+  /* ── 字重 ──────────────────────────────────────────────── */
+  --fw-display: 700;
+  --fw-title: 600;
+  --fw-body: 400;
+  --fw-label: 600;
+
+  --lh-body: 1.85;
+  --lh-tight: 1.2;
+
+  /* ── 间距：严格 4px 刻度 ───────────────────────────────── */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 32px;
+  --sp-8: 40px;
+  --sp-9: 48px;
+  --sp-10: 64px;
+
+  /* ── 圆角：现代简约的圆角主题 ──────────────────────────── */
+  --radius-xs: 3px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-pill: 6px;
+  --radius-control: 6px;
+  --radius-pop: 10px;
+
+  /* ── 投影：克制。单层、无色、小扩散；不用彩色光晕 ──────── */
   --shadow-card: 0 1px 2px var(--shadow-color);
-  --shadow-card-hover: 0 4px 14px var(--shadow-color-hover);
-  --shadow-pop: 0 8px 24px var(--shadow-color);
-  /* 对话框/抽屉专用投影：方向性较强，独立成令牌（数值与旧硬编码一致）。 */
-  --shadow-dialog: 0 12px 40px rgba(0, 0, 0, 0.22);
-  --shadow-drawer: 4px 0 24px rgba(0, 0, 0, 0.12);
+  --shadow-card-hover: 0 4px 12px var(--shadow-color-hover);
+  --shadow-pop: 0 6px 20px var(--shadow-color);
+  --shadow-dialog: 0 8px 40px rgba(20, 22, 28, 0.24);
+  --shadow-drawer: 2px 0 20px rgba(20, 22, 28, 0.16);
 
-  /* Layout rails — fluid: pages fill the viewport up to these caps.
-     content = wide browse/list pages; reading = comfortable measure for
-     long-form text + forms; form = focused auth/status card. */
-  --width-content: 1280px;
-  --width-reading: 60rem;
+  /* ── 版心 ─────────────────────────────────────────────── */
+  --width-content: 1200px;
+  /* 故事流吃满 --width-content，始终单列（内容稀疏时多列会留空格位）；
+     卡片内的标题与摘要各自收在 --width-reading 内，保证行宽可读。 */
+  --width-reading: 48rem;
   --width-form: 26rem;
-  --app-nav-height: 57px;
+  /* 边栏构图：日期/作者所在的左栏宽度（打破均匀垂直堆叠）。 */
+  --rail-w: 6.5rem;
 
-  /* Typography scale (fluid clamp; floors keep body ≥ ~14px on mobile). */
-  --fs-title: clamp(1.5rem, 1.15rem + 1.55vw, 2rem);
-  --fs-subtitle: clamp(0.9rem, 0.85rem + 0.25vw, 1rem);
-  --fs-body: clamp(0.9rem, 0.88rem + 0.1vw, 0.95rem);
-  --fs-sm: clamp(0.82rem, 0.8rem + 0.1vw, 0.875rem);
-  --lh-body: 1.65;
-
-  /* Motion — two easings, two durations. */
+  /* ── 动效：安静。只在状态变化时发生 ────────────────────── */
   --ease-emphasized: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
-  --dur-fast: 130ms;
+  --dur-fast: 150ms;
   --dur-base: 200ms;
+  --dur-slow: 320ms;
 
-  /* Control rhythm + coarse-pointer touch target. */
+  /* ── 控件节奏与触控下限 ────────────────────────────────── */
   --control-h: 34px;
   --control-h-cell: 48px;
   --tap-min: 44px;
 }
 
-/* ── Dark Theme (via system preference, JS-less fallback) ── */
+/* ═══ 暗色主题（系统偏好，无 JS 回退）═══════════════════════
+   注意：必须与下方 [data-theme='dark'] 逐项保持一致。 */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
-    --bg-color: #12121a;
-    --text-main: #f0f0f5;
-    --text-secondary: #a0a0b0;
-    --text-muted: #808090;
-    --text-body: #c0c0d0;
+    /* 靛底深墨：压到近黑，但底子是蓝紫，不是中性炭灰。 */
+    --bg-color: #0d0e12;
+    --surface-card: #16181e;
 
-    --primary-pink: #ff85a2;
-    --soft-pink: #3a2a35;
-    --accent-pink: #ff6b9d;
-    --nav-bg: rgba(24, 24, 35, 0.85);
-    --divider-color: #2a2a3a;
-    --surface-card: #1e1e2e;
+    --text-main: #eceef2;
+    --text-body: #c8cbd2;
+    --text-secondary: #a5a9b2;
+    --text-muted: #868a93;
 
-    --hover-bg: #2a1f25;
-    --hover-bg-mix: color-mix(in srgb, var(--primary-pink) 15%, #12121a);
-    --cta-bg: #ff85a2;
-    --cta-color: #412a2a;
-    --cta-hover: #cc537c;
-    --cta-hover-mix: color-mix(in srgb, var(--accent-pink) 85%, black);
-    --shadow-color: rgba(255, 107, 156, 0.04);
-    --shadow-color-hover: rgba(255, 107, 157, 0.15);
-    --overlay-bg: rgba(0, 0, 0, 0.5);
+    --error-color: #f2938a;
+    --error-border: #f2938a;
+    --success-color: #6cc292;
 
-    --soft-success-bg: rgba(46, 160, 75, 0.12);
-    --soft-success-border: rgba(46, 160, 75, 0.3);
-    --soft-success-text: #66bb6a;
+    --accent-ink: #eceef2;
 
-    --soft-error-bg: rgba(229, 83, 75, 0.12);
-    --soft-error-border: rgba(229, 83, 75, 0.32);
-    --soft-error-text: #f28b82;
-    --soft-info-bg: rgba(102, 140, 224, 0.14);
-    --soft-info-border: rgba(102, 140, 224, 0.35);
-    --soft-info-text: #8ab4f8;
-    --soft-amber-bg: rgba(240, 160, 50, 0.14);
-    --soft-amber-border: rgba(240, 160, 50, 0.32);
-    --soft-amber-text: #ffb74d;
+    --accent-blue: #77c9ea;
+    --accent-pink: #efa3b7;
+    --soft-pink: #33202a;
 
-    --focus-ring: rgba(255, 133, 162, 0.28);
-    --focus-ring-error: rgba(239, 83, 80, 0.28);
-    --on-accent: #412a2a;
-    --select: #664e5e;
+    --nav-bg: rgba(13, 14, 18, 0.85);
+    --divider-color: #24262d;
+    --border-strong: #6a6f7a;
+
+    --hover-bg: #1c1f26;
+    --surface-input: #1a1d23;
+    --hover-bg-mix: color-mix(in srgb, var(--text-main) 8%, var(--bg-color));
+
+    --cta-bg: #efa3b7;
+    --cta-color: #14161c;
+    --cta-hover: #d78da1;
+    --cta-hover-mix: color-mix(in srgb, var(--accent-pink) 92%, black);
+
+    --shadow-color: rgba(0, 0, 0, 0.5);
+    --shadow-color-hover: rgba(0, 0, 0, 0.6);
+    --overlay-bg: rgba(0, 0, 0, 0.62);
+
+    --soft-success-bg: #14301f;
+    --soft-success-border: #285c3c;
+    --soft-success-text: #6cc292;
+    --soft-error-bg: #331817;
+    --soft-error-border: #6b2f2a;
+    --soft-error-text: #f2938a;
+    --soft-info-bg: #132932;
+    --soft-info-border: #274e5e;
+    --soft-info-text: #77c9ea;
+    --soft-amber-bg: #33280f;
+    --soft-amber-border: #6b5423;
+    --soft-amber-text: #e0ad5c;
+
+    --vote-approve: #6cc292;
+    --vote-reject: #f2938a;
+
+    --focus-ring: rgba(239, 163, 183, 0.30);
+    --focus-ring-error: rgba(242, 147, 138, 0.26);
+    --on-accent: #14161c;
+    --on-error: #2a0f1a;
+    --select: #2a2e37;
+
+    --shadow-dialog: 0 8px 40px rgba(0, 0, 0, 0.6);
+    --shadow-drawer: 2px 0 20px rgba(0, 0, 0, 0.5);
   }
 }
 
-/* ── Dark Theme (JS-controlled) ────────────────── */
+/* ═══ 暗色主题（JS 控制）═══════════════════════════════════
+   注意：必须与上方 prefers-color-scheme 块逐项保持一致。 */
 [data-theme='dark'] {
-  --bg-color: #12121a;
-  --text-main: #f0f0f5;
-  --text-secondary: #a0a0b0;
-  --text-muted: #808090;
-  --text-body: #c0c0d0;
+  --bg-color: #0d0e12;
+  --surface-card: #16181e;
 
-  --primary-pink: #ff85a2;
-  --soft-pink: #3a2a35;
-  --accent-pink: #ff6b9d;
-  --nav-bg: rgba(24, 24, 35, 0.85);
-  --divider-color: #2a2a3a;
-  --surface-card: #1e1e2e;
+  --text-main: #eceef2;
+  --text-body: #c8cbd2;
+  --text-secondary: #a5a9b2;
+  --text-muted: #868a93;
 
-  --hover-bg: #2a1f25;
-  --hover-bg-mix: color-mix(in srgb, var(--primary-pink) 15%, #12121a);
-  --cta-bg: #ff85a2;
-  --cta-color: #412a2a;
-  --cta-hover: #cc537c;
-  --cta-hover-mix: color-mix(in srgb, var(--accent-pink) 85%, black);
-  --shadow-color: rgba(255, 107, 156, 0.04);
-  --shadow-color-hover: rgba(255, 107, 157, 0.15);
-  --overlay-bg: rgba(0, 0, 0, 0.5);
+  --error-color: #f2938a;
+  --error-border: #f2938a;
+  --success-color: #6cc292;
 
-  --soft-success-bg: rgba(46, 160, 75, 0.12);
-  --soft-success-border: rgba(46, 160, 75, 0.3);
-  --soft-success-text: #66bb6a;
+  --accent-ink: #eceef2;
 
-  --soft-error-bg: rgba(229, 83, 75, 0.12);
-  --soft-error-border: rgba(229, 83, 75, 0.32);
-  --soft-error-text: #f28b82;
-  --soft-info-bg: rgba(102, 140, 224, 0.14);
-  --soft-info-border: rgba(102, 140, 224, 0.35);
-  --soft-info-text: #8ab4f8;
-  --soft-amber-bg: rgba(240, 160, 50, 0.14);
-  --soft-amber-border: rgba(240, 160, 50, 0.32);
-  --soft-amber-text: #ffb74d;
+  --accent-blue: #77c9ea;
+  --accent-pink: #efa3b7;
+  --soft-pink: #33202a;
 
-  --vote-approve: #43a047;
-  --vote-reject: #ef5350;
+  --nav-bg: rgba(13, 14, 18, 0.85);
+  --divider-color: #24262d;
+  --border-strong: #6a6f7a;
 
-  --focus-ring: rgba(255, 133, 162, 0.28);
-  --focus-ring-error: rgba(239, 83, 80, 0.28);
-  --on-accent: #412a2a;
-  --select: #664e5e;
+  --hover-bg: #1c1f26;
+  --surface-input: #1a1d23;
+  --hover-bg-mix: color-mix(in srgb, var(--text-main) 8%, var(--bg-color));
+
+  --cta-bg: #efa3b7;
+  --cta-color: #14161c;
+  --cta-hover: #d78da1;
+  --cta-hover-mix: color-mix(in srgb, var(--accent-pink) 92%, black);
+
+  --shadow-color: rgba(0, 0, 0, 0.5);
+  --shadow-color-hover: rgba(0, 0, 0, 0.6);
+  --overlay-bg: rgba(0, 0, 0, 0.62);
+
+  --soft-success-bg: #14301f;
+  --soft-success-border: #285c3c;
+  --soft-success-text: #6cc292;
+  --soft-error-bg: #331817;
+  --soft-error-border: #6b2f2a;
+  --soft-error-text: #f2938a;
+  --soft-info-bg: #132932;
+  --soft-info-border: #274e5e;
+  --soft-info-text: #77c9ea;
+  --soft-amber-bg: #33280f;
+  --soft-amber-border: #6b5423;
+  --soft-amber-text: #e0ad5c;
+
+  --vote-approve: #6cc292;
+  --vote-reject: #f2938a;
+
+  --focus-ring: rgba(239, 163, 183, 0.30);
+  --focus-ring-error: rgba(242, 147, 138, 0.26);
+  --on-accent: #14161c;
+  --on-error: #2a0f1a;
+  --select: #2a2e37;
+
+  --shadow-dialog: 0 8px 40px rgba(0, 0, 0, 0.6);
+  --shadow-drawer: 2px 0 20px rgba(0, 0, 0, 0.5);
 }
 
 *,
@@ -201,12 +339,17 @@
 
 body {
   background-color: var(--bg-color);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
+  font-weight: var(--fw-body);
   margin: 0;
   padding: 0;
   color: var(--text-main);
-  scrollbar-color: var(--soft-pink) var(--bg-color);
+  scrollbar-color: var(--divider-color) var(--bg-color);
   scrollbar-width: auto;
+}
+
+::selection {
+  background-color: var(--select);
 }
 
 ::-webkit-scrollbar-track {
@@ -214,13 +357,13 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: var(--soft-pink);
-  border-radius: 999px;
+  background-color: var(--divider-color);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--bg-color);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: var(--primary-pink);
+  background-color: var(--text-muted);
 }
 
 @media (pointer: fine) {
@@ -242,8 +385,8 @@ body {
 
   body {
     transition:
-      background-color 0.2s ease,
-      color 0.2s ease;
+      background-color var(--dur-base) var(--ease-standard),
+      color var(--dur-base) var(--ease-standard);
   }
 }
 
@@ -257,7 +400,9 @@ body {
   }
 }
 
+/* 焦点环跟行动色走。这是全局默认值——各组件里的 outline 只是就近覆盖它，
+   漏改这一条的话，没有单独声明 outline 的控件全都还是蓝的。 */
 :focus-visible {
-  outline: 2px solid var(--primary-pink);
+  outline: 2px solid var(--accent-pink);
   outline-offset: 2px;
 }

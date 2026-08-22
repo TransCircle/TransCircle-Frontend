@@ -14,34 +14,65 @@
  *   // JSX 末尾：
  *   {stepUpElement}
  */
-import { useState, useRef, type ReactNode } from 'react'
+import { useState, useRef, useCallback, type ReactNode } from 'react'
 import { StepUpDialog } from '@/components/StepUpDialog'
 
 export function useStepUpAction(accessToken: string | null) {
   const [showStepUp, setShowStepUp] = useState(false)
   const pendingActionRef = useRef<(() => Promise<void>) | null>(null)
+  const onSettledRef = useRef<(() => void) | null>(null)
 
-  /** 记录待重放操作并打开对话框（收到 STEP_UP_REQUIRED 时调用）。 */
-  const runWithStepUp = (action: () => Promise<void>): void => {
+  /**
+   * 记录待重放操作并打开对话框（收到 STEP_UP_REQUIRED 时调用）。
+   *
+   * `onSettled` 在整个流程真正结束时调用一次——重放执行完毕，或用户取消。
+   * 调用方若持有「操作进行中」的锁，必须在这里释放：`runWithStepUp` 本身
+   * 只是登记后立即返回，此时操作远未结束，在它之后释放锁等于没有锁。
+   */
+  const runWithStepUp = (action: () => Promise<void>, onSettled?: () => void): void => {
+    /* 没有 access token 时对话框根本不会渲染（见下方 stepUpElement 的条件），
+       onSuccess/onCancel 就永远不会被调用——调用方那把「操作进行中」的锁会
+       就此永久卡住。这种情况下直接判定本轮结束，把锁还回去。 */
+    if (!accessToken) {
+      onSettled?.()
+      return
+    }
     pendingActionRef.current = action
+    onSettledRef.current = onSettled ?? null
     setShowStepUp(true)
   }
 
+  /* 两个回调必须是稳定引用：StepUpDialog 的焦点陷阱 effect 依赖 onCancel，
+     内联箭头会让父组件的任意一次重渲染都重跑 effect——先把焦点还给背景元素，
+     再抓回对话框的第一个可聚焦元素，用户在验证码输入框里打到一半就被踢回开头。
+     两者只用到 setState 与 ref，因此空依赖即可。 */
+  const handleSuccess = useCallback(() => {
+    setShowStepUp(false)
+    const a = pendingActionRef.current
+    const settled = onSettledRef.current
+    pendingActionRef.current = null
+    onSettledRef.current = null
+    void (async () => {
+      try {
+        await a?.()
+      } finally {
+        // 重放过程中若又触发一次 step-up，锁应交给新的那一轮释放
+        if (!pendingActionRef.current) settled?.()
+      }
+    })()
+  }, [])
+
+  const handleCancel = useCallback(() => {
+    setShowStepUp(false)
+    pendingActionRef.current = null
+    const settled = onSettledRef.current
+    onSettledRef.current = null
+    settled?.()
+  }, [])
+
   const stepUpElement: ReactNode =
     showStepUp && accessToken ? (
-      <StepUpDialog
-        accessToken={accessToken}
-        onSuccess={() => {
-          setShowStepUp(false)
-          const a = pendingActionRef.current
-          pendingActionRef.current = null
-          void a?.()
-        }}
-        onCancel={() => {
-          setShowStepUp(false)
-          pendingActionRef.current = null
-        }}
-      />
+      <StepUpDialog accessToken={accessToken} onSuccess={handleSuccess} onCancel={handleCancel} />
     ) : null
 
   return { showStepUp, runWithStepUp, stepUpElement }

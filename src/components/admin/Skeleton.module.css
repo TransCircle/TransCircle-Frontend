@@ -1,57 +1,148 @@
-/* 加载骨架屏：列表行 / 详情卡片占位。颜色用设计令牌，动画尊重 reduced-motion。 */
+/* 加载骨架屏。每个变体的尺寸都对着真实版面取值——形状对不上时，
+   数据到达反而会造成更大的跳变。颜色走令牌，动画尊重 reduced-motion。 */
 
 .root {
   display: flex;
   flex-direction: column;
 }
 
-/* ── List variant ── */
-.list {
-  gap: 0.6rem;
-}
-
-.row {
-  height: 4.5rem;
-  border-radius: var(--radius-md);
+/* 所有占位条共用的底色与呼吸动画 */
+.row,
+.avatar,
+.avatarLg,
+.lineDisplay,
+.lineTitle,
+.lineWide,
+.lineMid,
+.lineNarrow,
+.lineShort {
   background: var(--hover-bg);
   animation: skeletonPulse 1.6s ease-in-out infinite;
 }
 
-/* ── Card variant ── */
+.lineDisplay,
+.lineTitle,
+.lineWide,
+.lineMid,
+.lineNarrow,
+.lineShort {
+  display: block;
+  border-radius: var(--radius-xs);
+}
+
+.avatar,
+.avatarLg {
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── list：后台数据行（.rowBtn 约 60px 高） ── */
+.list {
+  gap: var(--sp-2);
+}
+
+.row {
+  height: 60px;
+  border-radius: var(--radius-md);
+}
+
+/* ── card：通用详情卡片 ── */
 .card {
   min-height: 16rem;
-  padding: 1.1rem 1.25rem;
+  padding: var(--sp-4) var(--sp-5);
   border: 1px solid var(--divider-color);
   border-radius: var(--radius-lg);
   background: var(--surface-card);
-  gap: 1rem;
+  gap: var(--sp-4);
 }
 
 .cardBody {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: var(--sp-3);
+}
+
+/* ── feed：公共故事流卡片（对应 Story.module.css .entryLink） ── */
+.feed {
+  gap: var(--sp-3);
+}
+
+.feedCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  background-color: var(--surface-card);
+  border: 1px solid var(--divider-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.avatar {
+  width: 24px;
+  height: 24px;
+}
+
+/* ── article：公共阅读页 ── */
+.article {
+  gap: var(--sp-5);
+}
+
+.articleBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.authorRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  border-top: 1px solid var(--divider-color);
+  border-bottom: 1px solid var(--divider-color);
+}
+
+.avatarLg {
+  width: 40px;
+  height: 40px;
+}
+
+/* ── 占位条尺寸 ── */
+.lineDisplay {
+  height: 1.9rem;
+  width: 78%;
+}
+
+.lineTitle {
+  height: 1.25rem;
+  width: 62%;
 }
 
 .lineWide {
+  height: 0.9rem;
   width: 92%;
 }
 
 .lineMid {
+  height: 0.9rem;
   width: 70%;
 }
 
 .lineNarrow {
+  height: 0.9rem;
   width: 45%;
 }
 
-.lineWide,
-.lineMid,
-.lineNarrow {
-  height: 0.9rem;
-  border-radius: var(--radius-xs);
-  background: var(--hover-bg);
-  animation: skeletonPulse 1.6s ease-in-out infinite;
+.lineShort {
+  height: 0.8rem;
+  width: 8rem;
 }
 
 @keyframes skeletonPulse {
@@ -64,11 +155,23 @@
   }
 }
 
+@media (max-width: 640px) {
+  .feedCard {
+    padding: var(--sp-3) var(--sp-4);
+    border-radius: var(--radius-md);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .row,
+  .avatar,
+  .avatarLg,
+  .lineDisplay,
+  .lineTitle,
   .lineWide,
   .lineMid,
-  .lineNarrow {
+  .lineNarrow,
+  .lineShort {
     animation: none;
   }
 }

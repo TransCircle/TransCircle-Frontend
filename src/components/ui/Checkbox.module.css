@@ -1,16 +1,16 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: var(--sp-1);
   width: 100%;
 }
 
 .row {
   display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: var(--sp-2);
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   color: var(--text-body);
   line-height: 1.5;
 }
@@ -41,12 +41,16 @@
   justify-content: center;
   width: 18px;
   height: 18px;
-  border: 1.5px solid var(--divider-color);
-  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xs);
   background-color: var(--surface-card);
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard);
+}
+
+.row:hover:not(.disabled) .box {
+  border-color: var(--accent-pink);
 }
 
 .check {
@@ -54,8 +58,8 @@
   opacity: 0;
   transform: scale(0.6);
   transition:
-    opacity 0.15s ease,
-    transform 0.15s ease;
+    opacity var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-emphasized);
 }
 
 .dash {
@@ -91,7 +95,7 @@
 }
 
 .input:focus-visible + .box {
-  border-color: var(--primary-pink);
+  border-color: var(--accent-pink);
   outline: none;
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
@@ -105,7 +109,7 @@
 }
 
 .hint {
-  font-size: 0.78rem;
+  font-size: var(--fs-micro);
   color: var(--text-muted);
 }
 

@@ -3,15 +3,15 @@
 .spinner {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--sp-2);
   color: var(--text-muted);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
 }
 
 .ring {
   display: inline-block;
   border-radius: 50%;
-  border: 2px solid var(--soft-pink);
+  border: 2px solid var(--divider-color);
   border-top-color: var(--accent-pink);
   animation: adminSpin 0.7s linear infinite;
   flex-shrink: 0;
@@ -55,12 +55,12 @@
 
 .alert {
   border: 1px solid var(--divider-color);
-  border-radius: 12px;
-  padding: 0.8rem 1rem;
-  font-size: 0.88rem;
+  border-radius: var(--radius-md);
+  padding: var(--sp-3) var(--sp-4);
+  font-size: var(--fs-sm);
   line-height: 1.55;
   display: flex;
-  gap: 0.5rem;
+  gap: var(--sp-2);
 }
 
 .alert_error {
@@ -89,8 +89,8 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 0.35rem;
-  padding: 3rem 1.5rem;
+  gap: var(--sp-1);
+  padding: var(--sp-9) var(--sp-5);
   color: var(--text-muted);
 }
 
@@ -103,14 +103,14 @@
 
 .emptyTitle {
   margin: 0;
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-label);
   color: var(--text-secondary);
 }
 
 .emptyDesc {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   max-width: 36ch;
 }

@@ -1,38 +1,45 @@
+/* 评论区：全是「人在说话」，因此署名与头像用粉色身份语义；
+   操作按钮、登录引导等系统元素维持蓝色。见 docs/DESIGN.md §0。 */
+
 .section {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--sp-4);
+  padding-top: var(--sp-6);
+  border-top: 1px solid var(--divider-color);
 }
 
 .title {
   margin: 0;
-  font-size: 1.05rem;
-  font-weight: 700;
+  font-size: var(--fs-subtitle);
+  font-weight: var(--fw-label);
   color: var(--text-main);
 }
 
 .composer {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: var(--sp-2);
 }
 
 .composerActions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.6rem;
+  gap: var(--sp-2);
 }
 
 .loginCta {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: var(--sp-3);
   align-items: flex-start;
-  padding: 0.9rem 1rem;
+  padding: var(--sp-4);
   background-color: var(--hover-bg);
   border: 1px solid var(--divider-color);
   border-radius: var(--radius-md);
   color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  line-height: 1.6;
 }
 
 .list {
@@ -41,86 +48,126 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
+  gap: var(--sp-2);
 }
 
 .listItem {
   background-color: var(--surface-card);
   border: 1px solid var(--divider-color);
   border-radius: var(--radius-md);
-  padding: 0.85rem 1rem;
+  padding: var(--sp-4);
 }
 
 .comment,
 .reply {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: var(--sp-2);
 }
 
+/* 回复：靠一条左轨和缩进表示从属，不再嵌套第二层卡片 */
 .reply {
-  margin-left: 1rem;
-  padding-left: 0.75rem;
+  margin-left: var(--sp-3);
+  padding-left: var(--sp-4);
   border-left: 2px solid var(--divider-color);
 }
 
 .meta {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  font-size: 0.8rem;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  font-size: var(--fs-meta);
   color: var(--text-muted);
 }
 
+/* 身份由头像承担；署名用墨色，与故事流一致。 */
+.avatar,
+.avatarFallback {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background-color: var(--soft-pink);
+}
+
+.avatar {
+  object-fit: cover;
+}
+
+.avatarFallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-main);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-label);
+  user-select: none;
+}
+
 .author {
-  font-weight: 600;
+  font-weight: var(--fw-label);
+  font-size: var(--fs-sm);
   color: var(--text-main);
 }
 
 .time {
   color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .content {
   margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.6;
+  font-size: var(--fs-sm);
+  line-height: 1.75;
   color: var(--text-body);
   white-space: pre-wrap;
   overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .deleted {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   font-style: italic;
 }
 
 .actions {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--sp-1);
   align-items: center;
   flex-wrap: wrap;
 }
 
 .replies {
   list-style: none;
-  margin: 0.25rem 0 0;
+  margin: var(--sp-1) 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: var(--sp-3);
 }
 
 .replyComposer {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  margin-top: 0.4rem;
+  gap: var(--sp-2);
+  margin-top: var(--sp-1);
 }
 
-.loadMore {
+.pager {
   display: flex;
   justify-content: center;
+}
+
+@media (max-width: 640px) {
+  .listItem {
+    padding: var(--sp-3);
+  }
+
+  .reply {
+    margin-left: 0;
+    padding-left: var(--sp-3);
+  }
 }
