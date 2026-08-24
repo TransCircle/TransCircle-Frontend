@@ -31,6 +31,15 @@
     <p class="license">内容以 CC BY-NC-SA 4.0 授权发布</p>
   </footer>
 
+  <!-- 旧浏览器（不支持 ES modules，如 Android 4.4 WebView / Chrome 30）会跳过 type="module" 的 main.js，
+       故事列表不会加载，此 non-module 脚本把 "加载中" 替换为明确提示。 -->
+  <script nomodule>
+    (function () {
+      var grid = document.getElementById('storyGrid');
+      if (!grid) { return; }
+      grid.innerHTML = '<p style="color:#666;">浏览器版本过旧，无法加载故事列表。请升级系统或改用较新浏览器后再访问。</p>';
+    })();
+  </script>
   <script type="module" src="/main.js"></script>
 </body>
 </html>
