@@ -9,19 +9,23 @@ import DOMPurify from 'dompurify'
  */
 export function sanitizeHtml(html: string): string {
   DOMPurify.addHook('afterSanitizeAttributes', (node) => {
-    if (node.tagName === 'A' && node.getAttribute('target') !== '_self') {
-      node.setAttribute('rel', 'nofollow noopener noreferrer')
-      if (!node.getAttribute('target')) {
-        node.setAttribute('target', '_blank')
-      }
+    if (node.tagName !== 'A') return
+    // 页内锚点（#footnote、#heading）与显式 _self 的链接保持原样：
+    // 加 target=_blank 会让锚点跳转错误地打开新标签页
+    const href = node.getAttribute('href') ?? ''
+    if (href.startsWith('#') || node.getAttribute('target') === '_self') return
+    node.setAttribute('rel', 'nofollow noopener noreferrer')
+    if (!node.getAttribute('target')) {
+      node.setAttribute('target', '_blank')
     }
   })
 
-  const result = DOMPurify.sanitize(html, {
-    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|ftp):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
-  })
-
-  DOMPurify.removeHook('afterSanitizeAttributes')
-
-  return result
+  try {
+    return DOMPurify.sanitize(html, {
+      ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|ftp):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
+    })
+  } finally {
+    // 异常路径也要摘除全局 hook，避免重复注册累积
+    DOMPurify.removeHook('afterSanitizeAttributes')
+  }
 }
