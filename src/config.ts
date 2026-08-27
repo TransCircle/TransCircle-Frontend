@@ -18,3 +18,10 @@ export const PASS_ACCOUNT_BASE: string = import.meta.env.VITE_PASS_ACCOUNT_BASE 
  * 前端拼接此前缀。可通过 VITE_IMAGE_BASE 覆盖。
  */
 export const IMAGE_BASE: string = import.meta.env.VITE_IMAGE_BASE || 'https://api.transcircle.org/pass'
+
+/**
+ * Cloudflare Turnstile 人机验证 Site Key（评论/举报写操作）。
+ * 未配置（本地 dev）时不渲染验证组件，后端同步跳过校验（见 Backend middleware/turnstile.ts）。
+ * 可通过 VITE_TURNSTILE_SITE_KEY 覆盖。
+ */
+export const TURNSTILE_SITE_KEY: string = import.meta.env.VITE_TURNSTILE_SITE_KEY || ''

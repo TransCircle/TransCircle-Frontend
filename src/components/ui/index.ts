@@ -34,3 +34,6 @@ export type { CenteredCardProps } from './CenteredCard'
 
 export { StatusScreen } from './StatusScreen'
 export type { StatusScreenProps, StatusKind, StatusAction } from './StatusScreen'
+
+export { TurnstileWidget } from './TurnstileWidget'
+export type { TurnstileWidgetProps } from './TurnstileWidget'

@@ -903,6 +903,7 @@
     "deletedPlaceholder": "该评论已被删除",
     "contentRequired": "评论内容不能为空",
     "contentTooLong": "评论不能超过 2000 字",
+    "captchaRequired": "请完成人机验证",
     "networkError": "发表失败，请稍后重试",
     "deleteError": "删除失败，请稍后重试",
     "report": "举报",

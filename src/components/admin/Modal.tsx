@@ -10,7 +10,7 @@ import { restoreFocus } from './restoreFocus'
 import styles from './Modal.module.css'
 
 const FOCUSABLE =
-  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), iframe, [tabindex]:not([tabindex="-1"])'
 
 function trapFocus(e: KeyboardEvent, container: HTMLElement | null) {
   if (!container) return
@@ -263,6 +263,8 @@ export interface ReasonPromptDialogProps {
   error?: string
   variant?: 'default' | 'danger'
   submitting?: boolean
+  /** 弹窗正文的附加内容（如评论举报的人机验证组件），渲染在输入框之后、错误提示之前。 */
+  children?: ReactNode
 }
 
 export function ReasonPromptDialog({
@@ -281,6 +283,7 @@ export function ReasonPromptDialog({
   error,
   variant = 'default',
   submitting,
+  children,
 }: ReasonPromptDialogProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   return (
@@ -323,6 +326,7 @@ export function ReasonPromptDialog({
         }}
       />
       {counterText && <div className={styles.counter}>{counterText}</div>}
+      {children}
       {error && <Alert tone="error">{error}</Alert>}
     </Modal>
   )

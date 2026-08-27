@@ -28,6 +28,14 @@
   gap: var(--sp-2);
 }
 
+/* 人机验证：验证组件 + 就近的失败提示排成一列，左对齐跟随表单流 */
+.captcha {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  align-items: flex-start;
+}
+
 .loginCta {
   display: flex;
   flex-direction: column;

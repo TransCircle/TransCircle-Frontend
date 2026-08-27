@@ -4,7 +4,8 @@ import { get, post, del, isRetryableFailure } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import { usePagedList } from '@/hooks/usePagedList'
 import { useIntentKey } from '@/hooks/useIntentKey'
-import { Button, Alert, ConfirmDialog, EmptyState, Pagination, ReasonPromptDialog, Skeleton, TextArea } from '@/components/ui'
+import { Button, Alert, ConfirmDialog, EmptyState, Pagination, ReasonPromptDialog, Skeleton, TextArea, TurnstileWidget } from '@/components/ui'
+import { TURNSTILE_SITE_KEY } from '@/config'
 import { useFormatTs } from '@/utils/datetime'
 import styles from './CommentSection.module.css'
 
@@ -15,6 +16,35 @@ interface CommentAuthor {
 
 /** 头像回退：取显示名首字，无名时用间隔号占位（不留空圆）。 */
 const initialOf = (name: string) => (name ?? '').trim().charAt(0) || '·'
+
+interface TurnstileState {
+  /** 当前未使用的 Turnstile 令牌（单次有效，用后必须 reset）。存 ref：UI 不依赖它重渲染。 */
+  tokenRef: { current: string | null }
+  captchaError: boolean
+  setCaptchaError: (value: boolean) => void
+  /** 重挂载键：每次 reset 自增，强制组件换新挑战（令牌单次使用，无法复用）。 */
+  nonce: number
+  setToken: (token: string) => void
+  reset: () => void
+}
+
+/** 人机验证状态封装：令牌 + 错误态 + 重挂载重置。评论/回复/举报各持一份互不干扰。 */
+function useTurnstile(): TurnstileState {
+  const tokenRef = useRef<string | null>(null)
+  const [captchaError, setCaptchaError] = useState(false)
+  const [nonce, setNonce] = useState(0)
+
+  const setToken = (token: string) => {
+    tokenRef.current = token
+    setCaptchaError(false)
+  }
+  const reset = () => {
+    tokenRef.current = null
+    setCaptchaError(false)
+    setNonce((n) => n + 1)
+  }
+  return { tokenRef, captchaError, setCaptchaError, nonce, setToken, reset }
+}
 
 interface CommentItem {
   id: string
@@ -36,6 +66,10 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
   const { t } = useTranslation()
   const { user, accessToken, loginWithPass } = useAuth()
   const formatTs = useFormatTs()
+  // 人机验证：顶层评论 / 回复 / 举报各持一份状态（令牌单次使用，互不串用）。
+  const topTurnstile = useTurnstile()
+  const replyTurnstile = useTurnstile()
+  const reportTurnstile = useTurnstile()
 
   const [content, setContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -93,6 +127,8 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
     setReplyTo(next)
     setReplyContent('')
     setReplyError('')
+    // 回复框重开时清掉上一轮可能残留的令牌（组件重挂载前它是闭包里的旧值）。
+    replyTurnstile.reset()
   }
 
   const closeReply = () => {
@@ -105,6 +141,7 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
   const submitComment = async (
     parentId: string | null,
     text: string,
+    turnstile: TurnstileState,
     onDone: (() => void) | undefined,
     setError: (msg: string) => void,
     setBusy: (busy: boolean) => void,
@@ -119,13 +156,20 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
       setError(t('comment.contentTooLong'))
       return
     }
+    // 人机验证：配置了 site key 就必须先拿到令牌；否则本地直接提示，不发请求。
+    if (TURNSTILE_SITE_KEY && !turnstile.tokenRef.current) {
+      turnstile.setCaptchaError(true)
+      return
+    }
     setBusy(true)
     setError('')
     const intent = parentId ? replyIntent : topIntent
     intent.begin(JSON.stringify([parentId, text]))
+    const body: Record<string, unknown> = { content: text, parentId }
+    if (turnstile.tokenRef.current) body.turnstileToken = turnstile.tokenRef.current
     const result = await post<CommentItem>(
       `/contributions/${contributionId}/comments`,
-      { content: text, parentId },
+      body,
       { idempotent: true },
     )
     setBusy(false)
@@ -135,9 +179,15 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
        显示在 B 的回复框里——两条都指着一件他没做过的事。 */
     const stillOnTarget = parentId === null || replyToRef.current === parentId
     if (!result.ok) {
+      // 令牌缺失/失效：重置组件让用户重新完成验证（令牌单次使用，失败不能复用）。
+      if (result.error?.code === 'CAPTCHA_REQUIRED' || result.error?.code === 'CAPTCHA_FAILED') {
+        turnstile.reset()
+      }
       if (stillOnTarget) setError(result.error?.message || t('comment.networkError'))
       return
     }
+    // 成功后令牌已被服务端消耗，换新挑战供下一条评论使用。
+    turnstile.reset()
     if (stillOnTarget) onDone?.()
     // 回复的父评论就在当前页，回到第一页会让刚发的回复完全看不见；
     // 新的顶层评论则是「从头开始看」的动作，回第一页是对的。
@@ -154,18 +204,29 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
       setReportError(t('comment.reportReasonTooLong'))
       return
     }
+    // 人机验证：配置了 site key 就必须先拿到令牌；否则本地直接提示，不发请求。
+    if (TURNSTILE_SITE_KEY && !reportTurnstile.tokenRef.current) {
+      reportTurnstile.setCaptchaError(true)
+      return
+    }
     setReportSubmitting(true)
     setReportError('')
     reportIntent.begin(JSON.stringify([reportTarget.id, reportReason]))
-    const result = await post(`/public/contributions/${contributionId}/comments/${reportTarget.id}/report`, {
-      reason: reportReason,
-    }, { idempotent: true })
+    const body: Record<string, unknown> = { reason: reportReason }
+    if (reportTurnstile.tokenRef.current) body.turnstileToken = reportTurnstile.tokenRef.current
+    const result = await post(`/public/contributions/${contributionId}/comments/${reportTarget.id}/report`, body, { idempotent: true })
     setReportSubmitting(false)
     reportIntent.settle(!result.ok && isRetryableFailure(result.status))
     if (!result.ok) {
+      // 令牌缺失/失效：重置组件让用户重新完成验证。
+      if (result.error?.code === 'CAPTCHA_REQUIRED' || result.error?.code === 'CAPTCHA_FAILED') {
+        reportTurnstile.reset()
+      }
       setReportError(result.error?.message || t('comment.reportError'))
       return
     }
+    // 成功后令牌已被服务端消耗，换新挑战供下次举报使用。
+    reportTurnstile.reset()
     setReportTarget(null)
     setReportReason('')
     setNotice(t('comment.reportDone'))
@@ -231,7 +292,7 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
           )}
           {/* 已删除的占位评论没有可举报的内容，后端也只会回 404（api.md §5A.3） */}
           {user && user.id !== item.authorUserId && item.deletedAt === null && (
-            <Button variant="ghost" size="sm" disabled={itemActionsLocked} onClick={() => { setReportTarget(item); setReportReason(''); setReportError('') }}>
+            <Button variant="ghost" size="sm" disabled={itemActionsLocked} onClick={() => { setReportTarget(item); setReportReason(''); setReportError(''); reportTurnstile.reset() }}>
               {t('comment.report')}
             </Button>
           )}
@@ -247,6 +308,16 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
               maxLength={2000}
             />
             {replyError && <Alert tone="error">{replyError}</Alert>}
+            {TURNSTILE_SITE_KEY && (
+              <div className={styles.captcha}>
+                {replyTurnstile.captchaError && <Alert tone="error">{t('comment.captchaRequired')}</Alert>}
+                <TurnstileWidget
+                  key={replyTurnstile.nonce}
+                  onToken={replyTurnstile.setToken}
+                  onError={() => replyTurnstile.setCaptchaError(true)}
+                />
+              </div>
+            )}
             <div className={styles.composerActions}>
               <Button
                 variant="ghost"
@@ -264,6 +335,7 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
                   void submitComment(
                     item.id,
                     sent,
+                    replyTurnstile,
                     () => setReplyContent((cur) => (cur === sent ? '' : cur)),
                     setReplyError,
                     setReplySubmitting,
@@ -302,6 +374,16 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
             maxLength={2000}
           />
           {submitError && <Alert tone="error">{submitError}</Alert>}
+          {TURNSTILE_SITE_KEY && (
+            <div className={styles.captcha}>
+              {topTurnstile.captchaError && <Alert tone="error">{t('comment.captchaRequired')}</Alert>}
+              <TurnstileWidget
+                key={topTurnstile.nonce}
+                onToken={topTurnstile.setToken}
+                onError={() => topTurnstile.setCaptchaError(true)}
+              />
+            </div>
+          )}
           <div className={styles.composerActions}>
             <Button
               variant="primary"
@@ -311,6 +393,7 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
                 void submitComment(
                   null,
                   sent,
+                  topTurnstile,
                   () => setContent((cur) => (cur === sent ? '' : cur)),
                   setSubmitError,
                   setSubmitting,
@@ -389,7 +472,18 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
         maxLength={500}
         error={reportError}
         submitting={reportSubmitting}
-      />
+      >
+        {TURNSTILE_SITE_KEY && (
+          <div className={styles.captcha}>
+            {reportTurnstile.captchaError && <Alert tone="error">{t('comment.captchaRequired')}</Alert>}
+            <TurnstileWidget
+              key={reportTurnstile.nonce}
+              onToken={reportTurnstile.setToken}
+              onError={() => reportTurnstile.setCaptchaError(true)}
+            />
+          </div>
+        )}
+      </ReasonPromptDialog>
     </section>
   )
 }
