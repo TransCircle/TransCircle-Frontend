@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { TURNSTILE_SITE_KEY } from '@/config'
+import { useTheme } from '@/context/useTheme'
 
 export interface TurnstileWidgetProps {
   onToken: (token: string) => void
@@ -21,6 +22,7 @@ declare global {
         },
       ) => string
       reset: (widgetId: string) => void
+      remove: (widgetId: string) => void
     }
   }
 }
@@ -31,12 +33,14 @@ declare global {
  * - 惰性加载 Turnstile 脚本（跨实例共享）。
  * - VITE_TURNSTILE_SITE_KEY 未配置时返回 null（本地 dev 兜底，后端同步跳过校验）。
  * - 暴露 data-turnstile-widget 属性，调用方可外部 window.turnstile.reset(...)；
- *   本组件自身用 theme: 'auto' 跟随系统配色。
+ * - 主题跟随页面主题（ThemeContext），切换主题时移除旧 widget 并重渲染，
+ *   不用 theme: 'auto'——auto 跟随的是系统配色，页面手动切暗色时不会变。
  * - 令牌是单次使用的：每次成功提交后调用方应重挂载（换 key）以获取新挑战。
  */
 export const TurnstileWidget = ({ onToken, onError, onExpire }: TurnstileWidgetProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const [scriptReady, setScriptReady] = useState(false)
+  const { theme } = useTheme()
 
   // 回调存 ref，渲染 effect 不因父组件每次 render 传新内联函数而重跑。
   const onTokenRef = useRef(onToken)
@@ -106,7 +110,7 @@ export const TurnstileWidget = ({ onToken, onError, onExpire }: TurnstileWidgetP
       'expired-callback': () => {
         onExpireRef.current?.()
       },
-      theme: 'auto',
+      theme,
     })
 
     // 暴露 widget ID，方便调用方外部 reset。
@@ -115,13 +119,15 @@ export const TurnstileWidget = ({ onToken, onError, onExpire }: TurnstileWidgetP
     return () => {
       if (window.turnstile) {
         try {
-          window.turnstile.reset(widgetId)
+          /* 卸载/换主题时用 remove 销毁旧 widget：仅 reset 的话旧 iframe 还留在
+             容器里，重渲染会在同一容器里叠出第二个 widget。 */
+          window.turnstile.remove(widgetId)
         } catch {
-          // Widget 已从 DOM 移除，无需 reset。
+          // Widget 已从 DOM 移除，无需销毁。
         }
       }
     }
-  }, [scriptReady])
+  }, [scriptReady, theme])
 
   if (!TURNSTILE_SITE_KEY) return null
 
