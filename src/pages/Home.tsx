@@ -22,6 +22,7 @@ interface PublicContribution {
     avatarUrl: string | null
   }
   publishedAt: number
+  pinnedAt?: number | null
 }
 
 /** 头像回退：取显示名首字，无名时用间隔号占位（不留空圆）。 */
@@ -54,6 +55,22 @@ export const Home = () => {
       },
       deps: [searchTerm],
     })
+
+  /* 置顶公告：独立端点一次性拉取，不参与游标分页（置顶稿也从默认信息流
+     排除了，两边各管各的，不会重复）。拉取失败静默降级——置顶区是增强，
+     不该挡住主信息流。 */
+  const [pinned, setPinned] = useState<PublicContribution[]>([])
+  useEffect(() => {
+    let cancelled = false
+    get<PublicContribution[]>('/public/contributions/pinned')
+      .then((result) => {
+        if (!cancelled && result.ok) setPinned(result.data)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   /* 记录「最后一次由本页写进 URL 的搜索词」。
      回填 effect 必须能区分两种 searchTerm 变化：
@@ -124,6 +141,52 @@ export const Home = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  /* 置顶区与主信息流共用同一张卡片：结构只一份，置顶款在署名行前多一枚
+     「置顶」徽标。 */
+  const renderEntry = (item: PublicContribution, isPinned = false) => (
+    <li key={item.id} className={styles.entry}>
+      <Link to={`/contributions/${item.id}`} className={styles.entryLink}>
+        <span className={styles.byline}>
+          {isPinned && <span className={styles.pinBadge}>{t('home.pinnedBadge')}</span>}
+          {item.author.avatarUrl ? (
+            <img className={styles.avatar} src={item.author.avatarUrl} alt="" loading="lazy" />
+          ) : (
+            <span className={styles.avatarFallback} aria-hidden="true">
+              {initialOf(item.author.displayName)}
+            </span>
+          )}
+          <span className={styles.author}>{item.author.displayName}</span>
+          <span className={styles.bylineSep} aria-hidden="true">
+            ·
+          </span>
+          <span className={styles.metaText}>{formatTs(item.publishedAt)}</span>
+          {/* 极窄屏下整体隐藏（含前导分隔点），见 Story.module.css 420px 断点 */}
+          <span className={styles.bylineLang}>
+            <span className={styles.bylineSep} aria-hidden="true">
+              ·
+            </span>
+            {t('submit.languages.' + item.language, { defaultValue: item.language })}
+          </span>
+
+          {/* 标签贴元信息行右端，短条目因此少占一整行 */}
+          {item.tags?.length > 0 && (
+            <span className={styles.tags}>
+              {item.tags.map((tag) => (
+                <span key={tag} className={styles.tag}>
+                  {tag}
+                </span>
+              ))}
+            </span>
+          )}
+        </span>
+
+        <span className={styles.entryTitle}>{item.title}</span>
+
+        {item.summary && <span className={styles.entrySummary}>{item.summary}</span>}
+      </Link>
+    </li>
+  )
+
   return (
     <div className={styles.page}>
       {/* 视觉上不画页面标题：顶栏已表明站点，紧跟着的搜索框和列表已表明
@@ -183,6 +246,15 @@ export const Home = () => {
         </Alert>
       )}
 
+      {/* 置顶公告区：仅默认信息流的第一页展示——搜索时让位给结果，
+          翻页后不重复占位。置顶稿已从主信息流排除，这里不会出现重复条目。 */}
+      {!searchTerm && pageIndex === 0 && pinned.length > 0 && (
+        <section className={styles.pinnedSection} aria-label={t('home.pinnedSection')}>
+          <h2 className={styles.srOnly}>{t('home.pinnedSection')}</h2>
+          <ul className={styles.feed}>{pinned.map((item) => renderEntry(item, true))}</ul>
+        </section>
+      )}
+
       {loading && items.length === 0 ? (
         <Skeleton variant="feed" rows={5} />
       ) : staleResults ? null : items.length === 0 ? (
@@ -196,48 +268,7 @@ export const Home = () => {
             </div>
           )}
           <ul className={styles.feed}>
-            {items.map((item) => (
-              <li key={item.id} className={styles.entry}>
-                <Link to={`/contributions/${item.id}`} className={styles.entryLink}>
-                  <span className={styles.byline}>
-                    {item.author.avatarUrl ? (
-                      <img className={styles.avatar} src={item.author.avatarUrl} alt="" loading="lazy" />
-                    ) : (
-                      <span className={styles.avatarFallback} aria-hidden="true">
-                        {initialOf(item.author.displayName)}
-                      </span>
-                    )}
-                    <span className={styles.author}>{item.author.displayName}</span>
-                    <span className={styles.bylineSep} aria-hidden="true">
-                      ·
-                    </span>
-                    <span className={styles.metaText}>{formatTs(item.publishedAt)}</span>
-                    {/* 极窄屏下整体隐藏（含前导分隔点），见 Story.module.css 420px 断点 */}
-                    <span className={styles.bylineLang}>
-                      <span className={styles.bylineSep} aria-hidden="true">
-                        ·
-                      </span>
-                      {t('submit.languages.' + item.language, { defaultValue: item.language })}
-                    </span>
-
-                    {/* 标签贴元信息行右端，短条目因此少占一整行 */}
-                    {item.tags?.length > 0 && (
-                      <span className={styles.tags}>
-                        {item.tags.map((tag) => (
-                          <span key={tag} className={styles.tag}>
-                            {tag}
-                          </span>
-                        ))}
-                      </span>
-                    )}
-                  </span>
-
-                  <span className={styles.entryTitle}>{item.title}</span>
-
-                  {item.summary && <span className={styles.entrySummary}>{item.summary}</span>}
-                </Link>
-              </li>
-            ))}
+            {items.map((item) => renderEntry(item))}
           </ul>
         </>
       )}

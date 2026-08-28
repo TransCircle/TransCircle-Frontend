@@ -226,6 +226,23 @@
   white-space: nowrap;
 }
 
+/* 置顶公告区：与主信息流共用同一卡片语言，只靠徽标与区间距区分。 */
+.pinnedSection {
+  margin-bottom: var(--sp-4);
+}
+
+/* 「置顶」徽标：状态不是动作——软粉底 + 强调粉字，不带描边、不可点。 */
+.pinBadge {
+  font-size: var(--fs-micro);
+  line-height: 1.5;
+  padding: 0 var(--sp-2);
+  border-radius: var(--radius-xs);
+  background-color: var(--soft-pink);
+  color: var(--accent-pink);
+  font-weight: var(--fw-label);
+  white-space: nowrap;
+}
+
 /* ── 阅读页 ───────────────────────────────────────────────── */
 
 .reading {

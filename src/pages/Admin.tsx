@@ -55,6 +55,7 @@ interface Submission {
   updatedAt?: number
   submittedAt?: number | null
   publishedAt?: number | null
+  pinnedAt?: number | null
   review?: {
     reviewerUserId: string | null
     reviewedAt: number | null
@@ -613,6 +614,54 @@ export const Admin = () => {
     }
   }
 
+  /* 置顶/取消置顶：可逆的展示位次调整，后端不要求 step-up、不需要原因。
+     成功后原地刷新详情（而不是 closeDetail）——公告稿仍留在已发布列表里，
+     管理员需要立刻看到按钮翻转为相反操作。 */
+  const handlePinToggle = async () => {
+    if (!selected || submitting) return
+    const actingId = selected.id
+    const v = selected.version || 1
+    const pinning = !selected.pinnedAt
+    const session = sessionSeq.current
+    const mySeq = ++submitSeq.current
+    setSubmitting(true)
+    setDetailError('')
+    try {
+      const result = await post(
+        `/admin/contributions/${actingId}/${pinning ? 'pin' : 'unpin'}`,
+        { expectedVersion: v },
+        {
+          /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
+        },
+      )
+      if (!result.ok) {
+        /* 已经离开这条详情：error 是页面级状态，落到列表或另一条详情上会
+           指向一个当前看不见的对象。改为静默刷新列表，让真实状态自己说话。 */
+        if (!sameSession(session)) {
+          if (mountedRef.current) void refresh()
+          return
+        }
+        if (result.error.code === ERRORS.VERSION_CONFLICT) {
+          /* 提示写在 fetchDetail **之后**：等新版本号拉回来再解锁，否则用户能在
+             旧版本号仍挂在界面上时再点一次，必然又是一次冲突。 */
+          const refreshedSeq = await fetchDetail(actingId, { keepDraft: true, keepOnError: true })
+          if (detailSeq.current === refreshedSeq) {
+            setDetailError((cur) => cur || t('admin.versionConflictRefreshed'))
+          }
+        } else {
+          setDetailError(result.error.message || t('admin.errorReview'))
+        }
+        return
+      }
+      if (sameSession(session) || viewingSame(actingId)) {
+        await fetchDetail(actingId, { keepDraft: true })
+      }
+      if (mountedRef.current) void refresh()
+    } finally {
+      if (submitSeq.current === mySeq) setSubmitting(false)
+    }
+  }
+
   const runDelete = async (reason: string) => {
     if (!selected || submitting) return
     const session = sessionSeq.current
@@ -1005,6 +1054,12 @@ export const Admin = () => {
           )}
           {selected.status === 'published' && (
             <div className={shell.actions}>
+              {/* 置顶与发布同级权限（contribution:publish）：公告位次属于编辑权 */}
+              {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_PUBLISH) && (
+                <AdminButton variant="secondary" loading={submitting} disabled={detailLoading} onClick={handlePinToggle}>
+                  {selected.pinnedAt ? t('admin.unpinButton') : t('admin.pinButton')}
+                </AdminButton>
+              )}
               {hasPermission(permissions, PERMISSIONS.CONTRIBUTION_HIDE) && (
                 <AdminButton variant="danger" disabled={actionsLocked} onClick={() => openReasonDialog('hide')}>
                   {t('admin.hideButton')}

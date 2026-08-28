@@ -39,7 +39,9 @@
     "noMatches": "无匹配的投稿，试试其他关键词",
     "empty": "暂无已发布的投稿",
     "loading": "加载中...",
-    "errorLoad": "加载投稿列表失败"
+    "errorLoad": "加载投稿列表失败",
+    "pinnedSection": "置顶公告",
+    "pinnedBadge": "置顶"
   },
   "imageUploader": {
     "uploading": "上传中...",
@@ -181,6 +183,8 @@
     "reviewerPrefix": "审核员: ",
     "notePrefix": "备注: ",
     "publishButton": "发布",
+    "pinButton": "置顶",
+    "unpinButton": "取消置顶",
     "hideButton": "隐藏",
     "restoreButton": "恢复",
     "deleteButton": "删除",
