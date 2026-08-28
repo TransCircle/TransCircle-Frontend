@@ -54,21 +54,65 @@ function pageList(current: number, total: number): Array<number | 'gap-l' | 'gap
 }
 
 /**
- * 换页后把列表滚回顶部：后台页在 `#admin-main` 内部滚动、前台页走文档滚动，
- * 因此从控件自身向上找最近的可滚动祖先，找不到就滚窗口——调用方无需关心自己
- * 处在哪种滚动容器里。
+ * 目标区域上方那些「吸顶」元素在滚动口顶部的遮挡下沿。
+ *
+ * 前台是 RootLayout 的 sticky 导航栏，后台列表页是 `.stickyHead`（标签+工具栏）——
+ * 两者都是区域在**上方的兄弟节点**，滚动时若不给它们让位，区域开头就会被盖住。
+ * 向上走到滚动容器为止：后台内容区自己是滚动容器，容器之外的导航栏盖不到它里面。
+ *
+ * 取各元素「吸附位置 + 自身高度」的**最大值**而不是累加：吸顶元素吸住后是互相重叠的
+ * 图层，两个 `top: 0` 的叠在一起只遮挡较高的那个；而 `top: 40px` 的元素遮挡下沿是
+ * 40 + 自身高度，只算高度会少让一截。
  */
-function scrollListToTop(from: HTMLElement | null): void {
-  let node: HTMLElement | null = from?.parentElement ?? null
-  while (node) {
-    const overflowY = getComputedStyle(node).overflowY
-    if ((overflowY === 'auto' || overflowY === 'scroll') && node.scrollHeight > node.clientHeight) {
-      node.scrollTo({ top: 0 })
-      return
+function stickyOffsetAbove(region: HTMLElement, scroller: HTMLElement | null): number {
+  let offset = 0
+  let node: HTMLElement | null = region
+  while (node && node !== scroller) {
+    for (let sib = node.previousElementSibling; sib; sib = sib.previousElementSibling) {
+      const style = getComputedStyle(sib)
+      // top: auto 的 sticky 不会吸在顶部，不占位
+      if (style.position !== 'sticky' || style.top === 'auto') continue
+      const pinnedTop = parseFloat(style.top)
+      if (Number.isNaN(pinnedTop)) continue
+      offset = Math.max(offset, pinnedTop + sib.getBoundingClientRect().height)
     }
     node = node.parentElement
   }
-  window.scrollTo({ top: 0 })
+  return offset
+}
+
+/**
+ * 换页后把「被分页的那块区域」滚到可视区顶部——不是把整页滚到 0。
+ *
+ * 区域取控件的父元素：列表页是整页容器（等于滚到页顶），文章详情页的评论区则只
+ * 滚到评论区开头，不会把读者甩回文章标题；后台页在 `#admin-main` 内部滚动，因此
+ * 先向上找最近的可滚动祖先，找不到才滚窗口。两种情况都要减去吸顶元素的高度。
+ *
+ * 必须显式 `behavior: 'instant'`：全站 `html` 上有 `scroll-behavior: smooth`，
+ * 默认的平滑滚动是一段动画，而换页的响应几毫秒后就会重渲列表，重排会把动画掐掉，
+ * 结果是一动不动地停在原处（实测如此）。换页本就该是瞬时跳转，不是滑一大段。
+ */
+function scrollListToTop(nav: HTMLElement | null): void {
+  const region = nav?.parentElement
+  if (!region) return
+
+  let scroller: HTMLElement | null = region.parentElement
+  while (scroller) {
+    const overflowY = getComputedStyle(scroller).overflowY
+    if ((overflowY === 'auto' || overflowY === 'scroll') && scroller.scrollHeight > scroller.clientHeight) break
+    scroller = scroller.parentElement
+  }
+
+  const regionTop = region.getBoundingClientRect().top
+  const stickyOffset = stickyOffsetAbove(region, scroller)
+  if (scroller) {
+    // clientTop：滚动口从上边框内侧开始，rect.top 是边框盒顶
+    const scrollPortTop = scroller.getBoundingClientRect().top + scroller.clientTop
+    const top = scroller.scrollTop + regionTop - scrollPortTop - stickyOffset
+    scroller.scrollTo({ top: Math.max(0, top), behavior: 'instant' })
+    return
+  }
+  window.scrollTo({ top: Math.max(0, window.scrollY + regionTop - stickyOffset), behavior: 'instant' })
 }
 
 export interface PaginationProps {
