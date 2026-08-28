@@ -2,8 +2,17 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { get, post, del, newIdempotencyKey, setIntentKey } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
-import { useCursorList } from '@/hooks/useCursorList'
-import { Button, Alert, ConfirmDialog, EmptyState, ReasonPromptDialog, Skeleton, TextArea } from '@/components/ui'
+import { usePagedList, toPagedResult } from '@/hooks/usePagedList'
+import {
+  Button,
+  Alert,
+  ConfirmDialog,
+  EmptyState,
+  Pagination,
+  ReasonPromptDialog,
+  Skeleton,
+  TextArea,
+} from '@/components/ui'
 import { useFormatTs } from '@/utils/datetime'
 import styles from './CommentSection.module.css'
 
@@ -22,6 +31,8 @@ interface CommentItem {
   deletedAt: number | null
   replies: CommentItem[]
 }
+
+const PAGE_SIZE = 20
 
 export function CommentSection({ contributionId }: { contributionId: string }) {
   const { t } = useTranslation()
@@ -44,17 +55,12 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
   const [reportError, setReportError] = useState('')
   const [notice, setNotice] = useState('')
 
-  const { items, cursor, hasMore, loading, error, reload, loadMore } = useCursorList<CommentItem>({
-    fetchPage: async (cursorVal) => {
-      const params = new URLSearchParams({ limit: '20' })
-      if (cursorVal) params.set('cursor', cursorVal)
+  const { items, page, total, totalPages, loading, error, goToPage, reload, refresh } = usePagedList<CommentItem>({
+    fetchPage: async (targetPage) => {
+      const params = new URLSearchParams({ limit: String(PAGE_SIZE), page: String(targetPage) })
       const result = await get<CommentItem[]>(`/public/contributions/${contributionId}/comments?${params}`)
       if (!result.ok) throw new Error(result.error.message)
-      return {
-        data: result.data,
-        nextCursor: result.pagination?.nextCursor ?? null,
-        hasMore: result.pagination?.hasMore ?? false,
-      }
+      return toPagedResult(result.data, result.pagination)
     },
     deps: [contributionId],
   })
@@ -130,7 +136,8 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
       return
     }
     setDeleteTarget(null)
-    await reload()
+    // 删除后停在当前页；发表评论才回第 1 页（新评论按倒序排在第 1 页）
+    await refresh()
   }
 
   const renderComment = (item: CommentItem, isReply: boolean) => {
@@ -240,13 +247,14 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
         </ul>
       )}
 
-      {hasMore && cursor && (
-        <div className={styles.loadMore}>
-          <Button variant="secondary" onClick={() => void loadMore()} loading={loading}>
-            {t('comment.loadMore')}
-          </Button>
-        </div>
-      )}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        pageSize={PAGE_SIZE}
+        disabled={loading}
+        onChange={goToPage}
+      />
 
       <ConfirmDialog
         open={deleteTarget !== null}

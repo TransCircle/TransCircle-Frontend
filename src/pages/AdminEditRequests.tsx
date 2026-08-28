@@ -4,7 +4,7 @@ import { get, post } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { useAuth } from '@/context/useAuth'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
-import { useCursorList } from '@/hooks/useCursorList'
+import { usePagedList, toPagedResult } from '@/hooks/usePagedList'
 import { limitByUnicode } from '@/utils/string'
 import {
   AdminButton,
@@ -23,7 +23,10 @@ import {
   type DescriptionItem,
   type TabItem,
 } from '@/components/admin'
+import { Pagination } from '@/components/ui'
 import shell from './Page.module.css'
+
+const PAGE_SIZE = 20
 
 interface EditRequestItem {
   id: string
@@ -113,24 +116,24 @@ export const AdminEditRequests = () => {
   // 编辑申请状态筛选：pending / approved / rejected / applied / superseded
   const [statusFilter, setStatusFilter] = useState('pending')
 
-  // 游标分页列表（统一模板）：切 tab（statusFilter 变化）自动重载，保留旧列表 + 加载条
-  const { items, cursor, loading, error, setError, reload, loadMore } = useCursorList<EditRequestItem>({
-    fetchPage: async (cursorVal) => {
-      const params = new URLSearchParams({ limit: '20', status: statusFilter })
-      if (cursorVal) params.set('cursor', cursorVal)
-      const result = await get<EditRequestItem[]>(`/admin/edit-requests?${params}`, {
-        /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
-      })
-      if (!result.ok) throw new Error(result.error.message)
-      return {
-        data: result.data,
-        nextCursor: result.pagination?.nextCursor ?? null,
-        hasMore: result.pagination?.hasMore ?? false,
-      }
-    },
-    deps: [authLoading, accessToken, statusFilter],
-    autoLoad: false,
-  })
+  // 页码分页列表（统一模板）：切 tab（statusFilter 变化）自动回到第 1 页，保留旧列表 + 加载条
+  const { items, page, total, totalPages, loading, error, setError, reload, refresh, goToPage } =
+    usePagedList<EditRequestItem>({
+      fetchPage: async (targetPage) => {
+        const params = new URLSearchParams({
+          limit: String(PAGE_SIZE),
+          page: String(targetPage),
+          status: statusFilter,
+        })
+        const result = await get<EditRequestItem[]>(`/admin/edit-requests?${params}`, {
+          /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
+        })
+        if (!result.ok) throw new Error(result.error.message)
+        return toPagedResult(result.data, result.pagination)
+      },
+      deps: [authLoading, accessToken, statusFilter],
+      autoLoad: false,
+    })
 
   // 首载/切 tab：auth 就绪后由 effect 触发（gate authLoading/accessToken）
   useEffect(() => {
@@ -179,6 +182,8 @@ export const AdminEditRequests = () => {
     if (result.ok) {
       setVoteNote('')
       fetchDetail(selectedId)
+      // 投票可能让申请离开当前筛选状态；就地刷新列表当前页，避免返回列表时看到旧票数/旧状态
+      void refresh()
     } else if (result.error.code === ERRORS.VERSION_CONFLICT) {
       // 与 Admin.tsx 一致：版本冲突时提示并刷新详情，使重新投票携带最新版本号
       setError(t('admin.versionConflictRefreshed'))
@@ -388,36 +393,37 @@ export const AdminEditRequests = () => {
             </div>
           )}
           <ul className={shell.list}>
-          {items.map((item) => (
-            <li key={item.id}>
-              <button type="button" className={shell.rowBtn} onClick={() => fetchDetail(item.id)}>
-                <span className={shell.rowMain}>
-                  <span className={shell.rowTitle}>
-                    {item.contribution?.title ??
-                      `${t('adminEditRequests.contribPrefix')} ${limitByUnicode(item.contribution?.id ?? item.contributionId ?? '', 20)}…`}
+            {items.map((item) => (
+              <li key={item.id}>
+                <button type="button" className={shell.rowBtn} onClick={() => fetchDetail(item.id)}>
+                  <span className={shell.rowMain}>
+                    <span className={shell.rowTitle}>
+                      {item.contribution?.title ??
+                        `${t('adminEditRequests.contribPrefix')} ${limitByUnicode(item.contribution?.id ?? item.contributionId ?? '', 20)}…`}
+                    </span>
+                    <span className={shell.rowMeta}>{limitByUnicode(item.reason, 60)}</span>
                   </span>
-                  <span className={shell.rowMeta}>{limitByUnicode(item.reason, 60)}</span>
-                </span>
-                <span className={shell.rowRight}>
-                  <StatusBadge
-                    tone={EDIT_REQUEST_STATUS_TONE[item.status] ?? 'neutral'}
-                    label={t(EDIT_REQUEST_STATUS_LABEL_KEYS[item.status] ?? item.status)}
-                    size="sm"
-                  />
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
+                  <span className={shell.rowRight}>
+                    <StatusBadge
+                      tone={EDIT_REQUEST_STATUS_TONE[item.status] ?? 'neutral'}
+                      label={t(EDIT_REQUEST_STATUS_LABEL_KEYS[item.status] ?? item.status)}
+                      size="sm"
+                    />
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
         </>
       )}
-      {cursor && (
-        <div className={shell.loadMoreWrap}>
-          <AdminButton variant="secondary" onClick={() => void loadMore()} loading={loading}>
-            {t('adminEditRequests.loadMore')}
-          </AdminButton>
-        </div>
-      )}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        pageSize={PAGE_SIZE}
+        disabled={loading}
+        onChange={goToPage}
+      />
     </div>
   )
 }

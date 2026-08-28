@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { get } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
-import { useCursorList } from '@/hooks/useCursorList'
+import { usePagedList, toPagedResult } from '@/hooks/usePagedList'
 import {
-  AdminButton,
   Alert,
   EmptyState,
+  Pagination,
   Skeleton,
   StatusBadge,
   Tabs,
@@ -39,6 +39,8 @@ const STATUS_LABEL_KEYS: Record<string, string> = {
   hidden: 'myContributions.filterHidden',
   withdrawn: 'myContributions.filterWithdrawn',
 }
+
+const PAGE_SIZE = 20
 
 const FILTERS = [
   'all',
@@ -77,20 +79,15 @@ export const MyContributions = () => {
 
   const [filterStatus, setFilterStatus] = useState('all')
 
-  // 游标分页列表（统一模板）：切 tab（filterStatus 变化）自动重载，保留旧列表 + 加载条
-  const { items, cursor, loading, error, loadMore } = useCursorList<MyContribution>({
-    fetchPage: async (cursorVal) => {
-      const params = new URLSearchParams({ limit: '20' })
+  // 页码分页列表（统一模板）：切 tab（filterStatus 变化）自动回到第 1 页，保留旧列表 + 加载条
+  const { items, page, total, totalPages, loading, error, goToPage } = usePagedList<MyContribution>({
+    fetchPage: async (targetPage) => {
+      const params = new URLSearchParams({ limit: String(PAGE_SIZE), page: String(targetPage) })
       // api.md §4.1: status param is optional, defaults to all statuses when omitted
       if (filterStatus && filterStatus !== 'all') params.set('status', filterStatus)
-      if (cursorVal) params.set('cursor', cursorVal)
       const result = await get<MyContribution[]>(`/me/contributions?${params}`)
       if (!result.ok) throw new Error(result.error.message)
-      return {
-        data: result.data,
-        nextCursor: result.pagination?.nextCursor ?? null,
-        hasMore: result.pagination?.hasMore ?? false,
-      }
+      return toPagedResult(result.data, result.pagination)
     },
     deps: [user, filterStatus],
   })
@@ -166,13 +163,14 @@ export const MyContributions = () => {
                 </li>
               ))}
             </ul>
-            {cursor && (
-              <div className={shell.loadMoreWrap}>
-                <AdminButton variant="secondary" loading={loading} onClick={() => void loadMore()}>
-                  {t('myContributions.loadMore')}
-                </AdminButton>
-              </div>
-            )}
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              total={total}
+              pageSize={PAGE_SIZE}
+              disabled={loading}
+              onChange={goToPage}
+            />
           </>
         )}
       </div>

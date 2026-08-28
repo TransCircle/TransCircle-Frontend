@@ -1,0 +1,145 @@
+/* 分页控件：条目区间在左、页码在右；窄屏堆叠居中。
+   焦点环走全局 :focus-visible（--primary-pink 2px 外描边），此处不覆写。 */
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  flex-wrap: wrap;
+  padding-top: 0.35rem;
+}
+
+.summary {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-width: var(--control-h);
+  height: var(--control-h);
+  padding: 0 0.5rem;
+  border: 1px solid var(--divider-color);
+  border-radius: var(--radius-control);
+  background-color: var(--surface-card);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.btn:not([aria-disabled='true']):not(.current):hover {
+  border-color: var(--accent-pink);
+  color: var(--accent-pink);
+  background-color: var(--hover-bg);
+}
+
+/* 不可用态用 aria-disabled 表达（见组件注释：真 disabled 会丢焦点），
+   视觉与光标仍要说明「点不动」 */
+.btn[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* 当前页：实心，与其余页码拉开层级；仍可聚焦（点中后不丢焦点） */
+.current,
+.current:hover {
+  background-color: var(--cta-bg);
+  border-color: var(--cta-bg);
+  color: var(--cta-color);
+  font-weight: 600;
+  cursor: default;
+}
+
+/* 上一页 / 下一页：箭头 + 文字，比纯数字宽 */
+.step {
+  padding: 0 0.7rem;
+}
+
+/* 折叠占位：中间还有页码，但为了不撑爆一行而收起 */
+.gap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: var(--control-h);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  user-select: none;
+}
+
+.numbers {
+  display: contents;
+}
+
+/* 窄屏用的「第 x / 共 y 页」，宽屏隐藏 */
+.compact {
+  display: none;
+  align-items: center;
+  height: var(--control-h);
+  padding: 0 0.5rem;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 560px) {
+  .nav {
+    justify-content: center;
+  }
+
+  .summary {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* 逐个页码在窄屏会换行成两三排，收起后只留上一页/当前/下一页
+     （省略号是 .numbers 的子元素，随之一并隐藏） */
+  .numbers {
+    display: none;
+  }
+
+  .compact {
+    display: inline-flex;
+  }
+}
+
+/* 触屏：把点击目标撑到 44px */
+@media (any-pointer: coarse) {
+  .btn,
+  .gap,
+  .compact {
+    min-height: var(--tap-min);
+    height: var(--tap-min);
+  }
+
+  .btn {
+    min-width: var(--tap-min);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn {
+    transition: none;
+  }
+}

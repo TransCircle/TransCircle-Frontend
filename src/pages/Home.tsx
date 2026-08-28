@@ -3,8 +3,8 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { get } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
-import { useCursorList } from '@/hooks/useCursorList'
-import { AdminButton, Alert, EmptyState, PageHeader, Pill, SearchField, Skeleton } from '@/components/ui'
+import { usePagedList, toPagedResult } from '@/hooks/usePagedList'
+import { AdminButton, Alert, EmptyState, PageHeader, Pagination, Pill, SearchField, Skeleton } from '@/components/ui'
 import { useFormatTs } from '@/utils/datetime'
 import shell from './Page.module.css'
 
@@ -20,6 +20,8 @@ interface PublicContribution {
   }
   publishedAt: number
 }
+
+const PAGE_SIZE = 20
 
 const ChevronIcon = () => (
   <svg
@@ -48,20 +50,15 @@ export const Home = () => {
   const searchTerm = searchParams.get('search') || ''
   const [searchInput, setSearchInput] = useState(searchTerm)
 
-  // 游标分页列表（统一模板）：搜索词（URL search 参数）变化自动重载；
+  // 页码分页列表（统一模板）：搜索词（URL search 参数）变化自动回到第 1 页；
   // hook 内置 fetchSeq 竞态守卫，丢弃过期响应（loading-08）。
-  const { items, cursor, loading, error, loadMore } = useCursorList<PublicContribution>({
-    fetchPage: async (cursorVal) => {
-      const params = new URLSearchParams({ limit: '20' })
-      if (cursorVal) params.set('cursor', cursorVal)
+  const { items, page, total, totalPages, loading, error, goToPage } = usePagedList<PublicContribution>({
+    fetchPage: async (targetPage) => {
+      const params = new URLSearchParams({ limit: String(PAGE_SIZE), page: String(targetPage) })
       if (searchTerm) params.set('keyword', searchTerm)
       const result = await get<PublicContribution[]>(`/public/contributions?${params}`)
       if (!result.ok) throw new Error(result.error.message || t('home.errorLoad'))
-      return {
-        data: result.data,
-        nextCursor: result.pagination?.nextCursor ?? null,
-        hasMore: result.pagination?.hasMore ?? false,
-      }
+      return toPagedResult(result.data, result.pagination)
     },
     deps: [searchTerm],
   })
@@ -116,9 +113,7 @@ export const Home = () => {
           />
           {searchTerm && (
             <span className={shell.count}>
-              {loading
-                ? t('home.searchExpanding')
-                : t('home.localSearchHint', { count: items.length, keyword: searchTerm })}
+              {loading ? t('home.searchExpanding') : t('home.localSearchHint', { count: total, keyword: searchTerm })}
             </span>
           )}
         </div>
@@ -165,13 +160,14 @@ export const Home = () => {
               </li>
             ))}
           </ul>
-          {cursor && (
-            <div className={shell.loadMoreWrap}>
-              <AdminButton variant="secondary" loading={loading} onClick={loadMore}>
-                {t('home.loadMore')}
-              </AdminButton>
-            </div>
-          )}
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            disabled={loading}
+            onChange={goToPage}
+          />
         </>
       )}
     </div>

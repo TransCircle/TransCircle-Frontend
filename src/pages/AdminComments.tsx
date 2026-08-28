@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { get, post } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
-import { useCursorList } from '@/hooks/useCursorList'
+import { usePagedList, toPagedResult } from '@/hooks/usePagedList'
 import { useStepUpAction } from '@/hooks/useStepUpAction'
 import { limitByUnicode } from '@/utils/string'
 import { useFormatTs } from '@/utils/datetime'
@@ -12,6 +12,7 @@ import {
   Alert,
   ConfirmDialog,
   EmptyState,
+  Pagination,
   ReasonPromptDialog,
   Select,
   Skeleton,
@@ -19,6 +20,8 @@ import {
   type BadgeTone,
 } from '@/components/ui'
 import shell from './Page.module.css'
+
+const PAGE_SIZE = 50
 
 interface AdminComment {
   id: string
@@ -57,18 +60,13 @@ export const AdminComments = () => {
   const [restoreSubmitting, setRestoreSubmitting] = useState(false)
   const [restoreError, setRestoreError] = useState('')
 
-  const { items, cursor, hasMore, loading, error, reload, loadMore } = useCursorList<AdminComment>({
-    fetchPage: async (cursorVal) => {
-      const params = new URLSearchParams({ limit: '50' })
+  const { items, page, total, totalPages, loading, error, reload, refresh, goToPage } = usePagedList<AdminComment>({
+    fetchPage: async (targetPage) => {
+      const params = new URLSearchParams({ limit: String(PAGE_SIZE), page: String(targetPage) })
       if (statusFilter !== 'all') params.set('status', statusFilter)
-      if (cursorVal) params.set('cursor', cursorVal)
       const result = await get<AdminComment[]>(`/admin/comments?${params}`)
       if (!result.ok) throw new Error(result.error.message)
-      return {
-        data: result.data,
-        nextCursor: result.pagination?.nextCursor ?? null,
-        hasMore: result.pagination?.hasMore ?? false,
-      }
+      return toPagedResult(result.data, result.pagination)
     },
     deps: [statusFilter],
     autoLoad: false,
@@ -108,7 +106,7 @@ export const AdminComments = () => {
     }
     setHideTarget(null)
     setHideReason('')
-    await reload()
+    await refresh()
   }
 
   const performRestore = async () => {
@@ -124,7 +122,7 @@ export const AdminComments = () => {
       return
     }
     setRestoreTarget(null)
-    await reload()
+    await refresh()
   }
 
   const statusLabel = (status: AdminComment['status']) => {
@@ -198,13 +196,14 @@ export const AdminComments = () => {
               </li>
             ))}
           </ul>
-          {hasMore && cursor && (
-            <div className={shell.loadMoreWrap}>
-              <AdminButton variant="secondary" onClick={() => void loadMore()} loading={loading}>
-                {t('adminComments.loadMore')}
-              </AdminButton>
-            </div>
-          )}
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            disabled={loading}
+            onChange={goToPage}
+          />
         </>
       )}
 

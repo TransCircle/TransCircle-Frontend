@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
 import { get, post } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
-import { useCursorList } from '@/hooks/useCursorList'
+import { usePagedList, toPagedResult } from '@/hooks/usePagedList'
 import { useStepUpAction } from '@/hooks/useStepUpAction'
 import { limitByUnicode } from '@/utils/string'
 import { useFormatTs } from '@/utils/datetime'
@@ -24,10 +24,16 @@ import {
   CONTRIB_STATUS_TONE,
   type TabItem,
 } from '@/components/admin'
+import { Pagination } from '@/components/ui'
 import shell from './Page.module.css'
 
 // Temp token is kept in memory only (per api.md §JWT Payload Structure:
 // access tokens must not be stored in localStorage or sessionStorage).
+const PAGE_SIZE = 20
+// 审核历史是详情页里的嵌套列表，用独立的分页状态（不走 usePagedList：
+// 它绑定在被选中的投稿上，随详情开合而生灭）
+const REVIEW_EVENTS_PAGE_SIZE = 20
+
 type Status = 'pending' | 'in_review' | 'approved' | 'rejected' | 'published' | 'hidden'
 type ReviewAction = 'approved' | 'rejected'
 
@@ -119,29 +125,38 @@ export const Admin = () => {
   // 本地因子账号 onSuccess 后重放原操作；IAM 账号在对话框内跳转 IAM 完成后回本页重做。
   const { runWithStepUp, stepUpElement } = useStepUpAction(accessToken)
   const [activeTab, setActiveTab] = useState<Status>('pending')
-  // 游标分页列表（统一模板）：切 tab 自动重载，保留旧列表 + 加载条。
+  // 页码分页列表（统一模板）：切 tab 自动回到第 1 页，保留旧列表 + 加载条。
   // 403/401（权限变更后快照过期）在 fetchPage 内捕获并置 accessDenied 文案。
-  const { items: submissions, hasMore, loading, error, setError, reload, loadMore } =
-    useCursorList<Submission>({
-      fetchPage: async (cursorVal) => {
-        const params = new URLSearchParams({ status: activeTab, limit: '20' })
-        if (cursorVal) params.set('cursor', cursorVal)
-        // 不传 authHeaders / skipRefresh：apiRequest 自动注入 Authorization 并处理 401 刷新
-        const result = await get<Submission[]>(`/admin/contributions?${params}`)
-        if (result.status === 403 || result.status === 401) {
-          throw new Error(t('admin.accessDenied'))
-        }
-        if (!result.ok) throw new Error(result.error.message || t('admin.errorLoad'))
-        return {
-          data: result.data,
-          nextCursor: result.pagination?.nextCursor ?? null,
-          hasMore: result.pagination?.hasMore ?? false,
-        }
-      },
-      deps: [activeTab, isAdmin],
-      // 首载/切 tab 由下方 effect 显式触发（gate isAdmin，避免无权限时发无谓请求）
-      autoLoad: false,
-    })
+  const {
+    items: submissions,
+    page,
+    total,
+    totalPages,
+    loading,
+    error,
+    setError,
+    reload,
+    refresh,
+    goToPage,
+  } = usePagedList<Submission>({
+    fetchPage: async (targetPage) => {
+      const params = new URLSearchParams({
+        status: activeTab,
+        limit: String(PAGE_SIZE),
+        page: String(targetPage),
+      })
+      // 不传 authHeaders / skipRefresh：apiRequest 自动注入 Authorization 并处理 401 刷新
+      const result = await get<Submission[]>(`/admin/contributions?${params}`)
+      if (result.status === 403 || result.status === 401) {
+        throw new Error(t('admin.accessDenied'))
+      }
+      if (!result.ok) throw new Error(result.error.message || t('admin.errorLoad'))
+      return toPagedResult(result.data, result.pagination)
+    },
+    deps: [activeTab, isAdmin],
+    // 首载/切 tab 由下方 effect 显式触发（gate isAdmin，避免无权限时发无谓请求）
+    autoLoad: false,
+  })
 
   // 切 tab / 权限就绪时加载列表；非 admin 不发起（页面显示拒绝态）
   useEffect(() => {
@@ -157,6 +172,36 @@ export const Admin = () => {
   const [internalNote, setInternalNote] = useState('')
   const [reviewEvents, setReviewEvents] = useState<ReviewEvent[]>([])
   const [reviewEventsLoading, setReviewEventsLoading] = useState(false)
+  const [reviewEventsPage, setReviewEventsPage] = useState(1)
+  const [reviewEventsTotal, setReviewEventsTotal] = useState(0)
+  const [reviewEventsTotalPages, setReviewEventsTotalPages] = useState(1)
+  const [reviewEventsError, setReviewEventsError] = useState('')
+  // 竞态守卫：A 的慢响应若晚于 B 的详情返回，会把 A 的历史盖到 B 上（loading-08 同款）
+  const reviewEventsSeq = useRef(0)
+
+  // 审核历史取指定页；无 contribution:audit:read 时不发起必 403 的请求（api.md §6.7）
+  const loadReviewEvents = async (contributionId: string, targetPage: number) => {
+    if (!hasPermission(permissions, PERMISSIONS.CONTRIBUTION_AUDIT_READ)) return
+    const seq = ++reviewEventsSeq.current
+    setReviewEventsLoading(true)
+    setReviewEventsError('')
+    const params = new URLSearchParams({
+      limit: String(REVIEW_EVENTS_PAGE_SIZE),
+      page: String(targetPage),
+    })
+    const result = await get<ReviewEvent[]>(`/admin/contributions/${contributionId}/review-events?${params}`)
+    if (seq !== reviewEventsSeq.current) return // 过期响应，丢弃（含 loading，交给新请求收尾）
+    if (result.ok) {
+      setReviewEvents(result.data)
+      setReviewEventsPage(result.pagination?.page ?? 1)
+      setReviewEventsTotal(result.pagination?.total ?? result.data.length)
+      setReviewEventsTotalPages(result.pagination?.totalPages ?? 1)
+    } else {
+      // 翻页失败不清空已渲染的历史，否则整块连同重试入口一起消失，看起来像「没有审核记录」
+      setReviewEventsError(t('admin.reviewEventsError'))
+    }
+    setReviewEventsLoading(false)
+  }
 
   // 隐藏/删除原因对话框（替代原生 window.confirm 与内联原因输入框）
   const [reasonDialog, setReasonDialog] = useState<{ kind: 'hide' | 'delete' } | null>(null)
@@ -172,18 +217,9 @@ export const Admin = () => {
       setSelected(result.data)
       setReviewNotes('')
       setInternalNote('')
-      // 审核历史需 contribution:audit:read（api.md §6.7）：reviewer 无该权限时
-      // 不发起必 403 的无谓请求，历史区保持为空（前端无权限时后端本会拒绝）。
-      if (hasPermission(permissions, PERMISSIONS.CONTRIBUTION_AUDIT_READ)) {
-        setReviewEventsLoading(true)
-        const eventsResult = await get<ReviewEvent[]>(`/admin/contributions/${id}/review-events`)
-        if (eventsResult.ok) {
-          setReviewEvents(eventsResult.data)
-        } else {
-          setReviewEvents([])
-        }
-        setReviewEventsLoading(false)
-      }
+      // 清空上一条投稿的历史：否则加载新详情时会短暂显示别人的审核记录
+      setReviewEvents([])
+      await loadReviewEvents(id, 1)
     } catch {
       setReviewEventsLoading(false)
       setError(t('admin.errorDetail'))
@@ -219,7 +255,7 @@ export const Admin = () => {
         return
       }
       setSelected(null)
-      void reload()
+      void refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : t('admin.errorReview'))
     }
@@ -252,7 +288,7 @@ export const Admin = () => {
         return
       }
       setSelected(null)
-      void reload()
+      void refresh()
     }
     await doPublish()
   }
@@ -286,7 +322,7 @@ export const Admin = () => {
         return
       }
       setSelected(null)
-      void reload()
+      void refresh()
     }
     await doHide()
   }
@@ -316,7 +352,7 @@ export const Admin = () => {
       return
     }
     setSelected(null)
-    void reload()
+    void refresh()
   }
 
   const runDelete = async (reason: string) => {
@@ -346,7 +382,7 @@ export const Admin = () => {
         return
       }
       setSelected(null)
-      void reload()
+      void refresh()
     }
     await doDelete()
   }
@@ -403,9 +439,8 @@ export const Admin = () => {
       )
     }
 
-    const countLabel = hasMore
-      ? t('admin.countMore', { count: submissions.length })
-      : t('admin.count', { count: submissions.length })
+    // 总数由服务端 pagination.total 给出，不再是「当前已加载条数 +」
+    const countLabel = t('admin.count', { count: total })
 
     return (
       <div className={shell.page}>
@@ -465,13 +500,14 @@ export const Admin = () => {
                   </li>
                 ))}
               </ul>
-              {hasMore && (
-                <div className={shell.loadMoreWrap}>
-                  <AdminButton variant="secondary" onClick={() => void loadMore()} loading={loading}>
-                    {t('admin.loadMore')}
-                  </AdminButton>
-                </div>
-              )}
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                total={total}
+                pageSize={PAGE_SIZE}
+                disabled={loading}
+                onChange={goToPage}
+              />
             </>
           )}
         </div>
@@ -528,7 +564,10 @@ export const Admin = () => {
           )}
 
           {/* Review history (api.md §6.3: audit trail) */}
-          {reviewEventsLoading ? (
+          {reviewEventsError && <Alert tone="error">{reviewEventsError}</Alert>}
+
+          {/* 换页时保留已渲染的历史，只有首载（还没有内容）才用 spinner 占位 */}
+          {reviewEventsLoading && reviewEvents.length === 0 ? (
             <Spinner size="sm" label={t('admin.reviewEventsLoading')} />
           ) : (
             reviewEvents.length > 0 && (
@@ -559,6 +598,14 @@ export const Admin = () => {
                     </li>
                   ))}
                 </ul>
+                <Pagination
+                  page={reviewEventsPage}
+                  totalPages={reviewEventsTotalPages}
+                  total={reviewEventsTotal}
+                  pageSize={REVIEW_EVENTS_PAGE_SIZE}
+                  disabled={reviewEventsLoading}
+                  onChange={(p) => void loadReviewEvents(selected.id, p)}
+                />
               </Card>
             )
           )}

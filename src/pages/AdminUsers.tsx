@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { get, post } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
-import { useCursorList } from '@/hooks/useCursorList'
+import { usePagedList, toPagedResult } from '@/hooks/usePagedList'
 import { useStepUpAction } from '@/hooks/useStepUpAction'
 import {
   AdminButton,
@@ -20,7 +20,10 @@ import {
   USER_STATUS_LABEL_KEYS,
   type DescriptionItem,
 } from '@/components/admin'
+import { Pagination } from '@/components/ui'
 import shell from './Page.module.css'
+
+const PAGE_SIZE = 20
 
 interface ManagedUser {
   id: string
@@ -70,26 +73,22 @@ export const AdminUsers = () => {
   const [banReason, setBanReason] = useState('')
   const [banError, setBanError] = useState('')
 
-  // 游标分页列表（统一模板）：搜索由 onSearch 显式触发 reload，避免逐键触发请求
-  const { items: users, cursor, loading, error, setError, reload, loadMore } = useCursorList<ManagedUser>({
-    fetchPage: async (cursorVal) => {
-      const params = new URLSearchParams({ limit: '20' })
-      if (keyword.trim()) params.set('keyword', keyword.trim())
-      if (cursorVal) params.set('cursor', cursorVal)
-      const result = await get<ManagedUser[]>(`/admin/users?${params}`, {
-        /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
-      })
-      if (!result.ok) throw new Error(result.error.message)
-      return {
-        data: result.data,
-        nextCursor: result.pagination?.nextCursor ?? null,
-        hasMore: result.pagination?.hasMore ?? false,
-      }
-    },
-    deps: [authLoading, accessToken],
-    // 首载由下方 effect 守卫（权限门控 + 只载一次）显式触发，autoLoad 关闭避免重复请求
-    autoLoad: false,
-  })
+  // 页码分页列表（统一模板）：搜索由 onSearch 显式触发 reload（回到第 1 页），避免逐键触发请求
+  const { items: users, page, total, totalPages, loading, error, setError, reload, refresh, goToPage } =
+    usePagedList<ManagedUser>({
+      fetchPage: async (targetPage) => {
+        const params = new URLSearchParams({ limit: String(PAGE_SIZE), page: String(targetPage) })
+        if (keyword.trim()) params.set('keyword', keyword.trim())
+        const result = await get<ManagedUser[]>(`/admin/users?${params}`, {
+          /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
+        })
+        if (!result.ok) throw new Error(result.error.message)
+        return toPagedResult(result.data, result.pagination)
+      },
+      deps: [authLoading, accessToken],
+      // 首载由下方 effect 守卫（权限门控 + 只载一次）显式触发，autoLoad 关闭避免重复请求
+      autoLoad: false,
+    })
 
   // 首载：auth 就绪且持有 user:read 时加载一次；无权限不发起（页面下方显示拒绝态）
   const loadedRef = useRef(false)
@@ -147,7 +146,7 @@ export const AdminUsers = () => {
       )
       if (result.ok) {
         fetchDetail(userId)
-        void reload()
+        void refresh()
       } else if (result.error.code === 'STEP_UP_REQUIRED') {
         runWithStepUp(doBan)
       } else setError(result.error.message)
@@ -166,7 +165,7 @@ export const AdminUsers = () => {
       )
       if (result.ok) {
         fetchDetail(userId)
-        void reload()
+        void refresh()
       } else if (result.error.code === 'STEP_UP_REQUIRED') {
         runWithStepUp(doUnban)
       } else setError(result.error.message)
@@ -378,13 +377,14 @@ export const AdminUsers = () => {
         </>
       )}
 
-      {cursor && (
-        <div className={shell.loadMoreWrap}>
-          <AdminButton variant="secondary" onClick={() => void loadMore()} loading={loading}>
-            {t('adminUsers.loadMore')}
-          </AdminButton>
-        </div>
-      )}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        pageSize={PAGE_SIZE}
+        disabled={loading}
+        onChange={goToPage}
+      />
     </div>
   )
 }

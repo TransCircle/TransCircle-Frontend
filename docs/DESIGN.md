@@ -17,6 +17,7 @@ All color, elevation, radius, and layout values come from CSS custom properties.
 Never hardcode hex/rgba in component CSS — use a token so all three themes stay correct.
 
 ### Color (per theme: `:root` light, `[data-theme=dark]`, `[data-theme=contrast]`)
+
 - Surfaces: `--bg-color`, `--surface-card`, `--nav-bg`, `--divider-color`, `--overlay-bg`
 - Text: `--text-main`, `--text-secondary`, `--text-muted`, `--text-body`
 - Brand: `--accent-pink` (primary actions), `--primary-pink` (borders/focus), `--soft-pink`
@@ -26,6 +27,7 @@ Never hardcode hex/rgba in component CSS — use a token so all three themes sta
 - Elevation source: `--shadow-color`, `--shadow-color-hover`
 
 ### Scales (theme-invariant, `:root`)
+
 - Radius: `--radius-sm: 10px` (inputs, select, small controls), `--radius-md: 12px`
   (rows, popovers, alerts), `--radius-lg: 14px` (cards), `--radius-pill: 999px`
   (buttons, chips, badges, toggles).
@@ -42,6 +44,7 @@ Never hardcode hex/rgba in component CSS — use a token so all three themes sta
 ## 2. Type scale
 
 Use `<PageHeader>` for page/section headings — do not hardcode heading sizes.
+
 - Page title: `1.6rem / 700`, `letter-spacing: -0.02em` (mobile `1.4rem`).
 - Section title: `1.15rem / 700`.
 - Body: `0.9rem`; description/meta: `0.85–0.95rem` `--text-muted`; eyebrow/section label:
@@ -55,6 +58,7 @@ Import everything from **`@/components/ui`** (it re-exports the admin kit + adds
 shared controls). Admin pages may keep importing from `@/components/admin`.
 
 ### Existing primitives (`src/components/admin/*`)
+
 - **AdminButton** (alias `Button`) — variants `primary | secondary | ghost | danger`,
   sizes `sm | md`, `fullWidth`, `loading` (built-in spinner), `iconLeft`. Pill radius.
 - **TextField / TextArea / SearchField** — `label`, `hint`, `invalid`; 1.5px border,
@@ -69,6 +73,7 @@ shared controls). Admin pages may keep importing from `@/components/admin`.
   Escape. `ConfirmDialog` replaces `window.confirm`.
 
 ### New custom controls (`src/components/ui/*`) — replace browser-native widgets
+
 - **Select** — custom listbox (`combobox` + `listbox` + `aria-activedescendant`,
   keyboard + typeahead). Replaces native `<select>`.
 - **Checkbox** — drawn box over a hidden native input (keeps native keyboard).
@@ -81,6 +86,7 @@ shared controls). Admin pages may keep importing from `@/components/admin`.
 - **StatusScreen** — shared loading/success/error/info result screen.
 
 ### Date formatting
+
 Use `formatTs(ts, locale?)` / `useFormatTs()` from `@/utils/datetime` (locale-aware via
 `Intl.DateTimeFormat`). Never hardcode a locale or render raw UTC ISO strings.
 
@@ -91,11 +97,11 @@ Use `formatTs(ts, locale?)` / `useFormatTs()` from `@/utils/datetime` (locale-aw
 Shared page-level classes for both admin and customer list/detail pages: `.page`,
 `.stickyHead`, `.toolbar`, `.list` + `.rowBtn`/`.rowStatic` (+ `.rowMain`/`.rowTitle`/
 `.rowMeta`/`.rowRight`), `.contentBlock`, `.detailHead`/`.detailTitle`/`.metaRow`,
-`.stack`/`.stackSm`, `.actions`, `.loadMoreWrap`, `.history*`.
+`.stack`/`.stackSm`, `.actions`, `.history*`.
 
 **Page landmark rule:** a route component renders a `.page` **`<div>`** (or a
 `<CenteredCard>`), **never its own `<main>`** — `RootLayout` (customer) and `AdminShell`
-(admin) own the single `<main>`. *Exception:* the router `errorElement`
+(admin) own the single `<main>`. _Exception:_ the router `errorElement`
 (`ErrorBoundaryPage`) renders outside RootLayout and supplies its own `<main>`
 (via `<CenteredCard as="main">`).
 

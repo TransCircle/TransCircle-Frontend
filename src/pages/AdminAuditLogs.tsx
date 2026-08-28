@@ -3,11 +3,14 @@ import { useTranslation } from 'react-i18next'
 import { get } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
-import { useCursorList } from '@/hooks/useCursorList'
+import { usePagedList, toPagedResult } from '@/hooks/usePagedList'
 import { limitByUnicode } from '@/utils/string'
 import { useFormatTs } from '@/utils/datetime'
 import { AdminButton, Alert, EmptyState, Pill, SearchField, Skeleton } from '@/components/admin'
+import { Pagination } from '@/components/ui'
 import shell from './Page.module.css'
+
+const PAGE_SIZE = 50
 
 interface AuditLogEntry {
   id: string
@@ -35,22 +38,26 @@ export const AdminAuditLogs = () => {
 
   const actionLabel = (action: string): string => t(`adminAuditLogs.actions.${action.replace(/\./g, '_')}`, action)
 
-  // 游标分页列表（统一模板）：筛选由 onSearch 显式触发 reload
-  const { items: logs, cursor, loading, error, reload, loadMore } = useCursorList<AuditLogEntry>({
-    fetchPage: async (cursorVal) => {
-      const params = new URLSearchParams({ limit: '50' })
+  // 页码分页列表（统一模板）：筛选由 onSearch 显式触发 reload（回到第 1 页）
+  const {
+    items: logs,
+    page,
+    total,
+    totalPages,
+    loading,
+    error,
+    reload,
+    goToPage,
+  } = usePagedList<AuditLogEntry>({
+    fetchPage: async (targetPage) => {
+      const params = new URLSearchParams({ limit: String(PAGE_SIZE), page: String(targetPage) })
       if (actionFilter.trim()) params.set('action', actionFilter.trim())
       if (resourceFilter.trim()) params.set('resourceType', resourceFilter.trim())
-      if (cursorVal) params.set('cursor', cursorVal)
       const result = await get<AuditLogEntry[]>(`/admin/audit-logs?${params}`, {
         /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
       })
       if (!result.ok) throw new Error(result.error.message)
-      return {
-        data: result.data,
-        nextCursor: result.pagination?.nextCursor ?? null,
-        hasMore: result.pagination?.hasMore ?? false,
-      }
+      return toPagedResult(result.data, result.pagination)
     },
     deps: [authLoading, accessToken],
     autoLoad: false,
@@ -177,13 +184,14 @@ export const AdminAuditLogs = () => {
               </li>
             ))}
           </ul>
-          {cursor && (
-            <div className={shell.loadMoreWrap}>
-              <AdminButton variant="secondary" onClick={() => void loadMore()} loading={loading}>
-                {t('adminAuditLogs.loadMore')}
-              </AdminButton>
-            </div>
-          )}
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            disabled={loading}
+            onChange={goToPage}
+          />
         </>
       )}
     </div>

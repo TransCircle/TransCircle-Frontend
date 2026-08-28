@@ -186,9 +186,12 @@ export type ApiResult<T = unknown> = ApiResultBase &
         data: T
         /** 非 JSON 响应的原始 Response 对象（如 blob/image），此时 data=undefined */
         raw?: Response
+        /** 列表接口的页码分页元信息（apidocs.md §通用约定「分页」） */
         pagination?: {
           limit: number
-          nextCursor: string | null
+          page: number
+          total: number
+          totalPages: number
           hasMore: boolean
         }
       }
@@ -382,7 +385,9 @@ export async function apiRequest<T = unknown>(
       // path 可能含敏感 query（如 /admin/users?keyword=email），仅记录路径部分（api.md 安全基线）
       logRequestId(`${method} ${path.split('?')[0] ?? ''}`, json)
       const base = { requestId, status, rateLimit }
-      const pagination = json.pagination as { limit: number; nextCursor: string | null; hasMore: boolean } | undefined
+      const pagination = json.pagination as
+        | { limit: number; page: number; total: number; totalPages: number; hasMore: boolean }
+        | undefined
       const result: ApiResult<T> = pagination
         ? { ...base, ok: true as const, data: json.data as T, pagination }
         : { ...base, ok: true as const, data: json.data as T }
