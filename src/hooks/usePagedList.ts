@@ -2,19 +2,20 @@
  * usePagedList —— 统一的页码分页列表 hook。
  *
  * 收敛各列表页（Home / MyContributions / Admin / AdminUsers / AdminAuditLogs /
- * AdminEditRequests / AdminComments / CommentSection）重复的拉取样板：fetchSeq
- * 竞态守卫、loading/error 状态、切页替换列表、总数/总页数回填。
+ * AdminEditRequests / AdminComments / CommentSection）重复的拉取样板：竞态守卫、
+ * loading/error 状态、切页替换列表、总数与总页数回填。
  *
  * 接口侧是 offset 分页（apidocs.md §通用约定「分页」）：请求带 `page` + `limit`，
- * 响应回 `{ limit, page, total, totalPages, hasMore }`。因此这里能直接跳到任意
- * 一页并显示总页数 —— 这正是它取代旧 useCursorList（「加载更多」，只能一路往下
- * 追加、给不出总数）的原因。
+ * 响应回 `{ limit, page, total, totalPages, hasMore }`。因此这里能直接跳到任意一页
+ * 并显示总页数 —— 这是它取代「加载更多」和更早那版游标翻页的原因：游标既给不出
+ * 总数，也无法在不经过前序页的情况下定位第 N 页，页码簿记（游标缓存、末页判定、
+ * 链路分叉截断）也随之整块消失。
  *
  * 设计约束：
  * - 由调用方提供 fetchPage(page)：返回 { data, page, total, totalPages } 或抛错；
  * - 首次挂载自动加载（autoLoad=true 默认）；
  * - 切换筛选/搜索时调用 reload() 回到第 1 页（不清空旧内容，配合 loadingBar 保留观感）；
- * - goToPage(n) 换页，替换而非追加；
+ * - goToPage(n) 换页，替换而非追加；refresh() 就地重取当前页；
  * - 服务端会把越界页码回落到末页，页码状态一律以响应里的 page 为准。
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -66,79 +67,132 @@ export function usePagedList<T>({ fetchPage, deps, autoLoad = true, initialLoadi
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(initialLoading)
   const [error, setError] = useState('')
-  const fetchSeq = useRef(0)
+  /* 最近一次加载是否失败。与 error 分开记：error 是可写的展示通道，调用方会
+     往里塞「版本冲突，已刷新」这类**刷新成功之后**才产生的提示，拿它当「数据
+     是否可信」的判据会误锁。这个标志只由 load 自己维护。 */
+  const [loadFailed, setLoadFailed] = useState(false)
+  /* 屏幕上的数据是否已经不属于当前查询。切筛选/搜索后新查询的第一页失败时会是
+     true：旧列表还留在屏幕上，它的 total/totalPages 描述的却是上一份数据。
+     暴露给分页条置灰——否则用户点「第 2 页」，看到的页码区间对不上内容。 */
+  const [stale, setStale] = useState(false)
 
-  // fetchPage 取「最新一次渲染」的那份，而不是调用方闭包里捕获的：隐藏评论这类
-  // 异步操作返回时可能已经切了 tab，若 refresh() 沿用旧闭包，就会按旧筛选条件再发
-  // 一次请求，且因为序号更大反而覆盖掉新 tab 的数据。
+  const fetchSeq = useRef(0)
+  /* 「用户最后一次要求看的页」。在 load() 入口即写入，而不是等成功——
+     翻页请求尚在途中时若发生 refresh()，读已成功页会把用户拽回上一页，
+     并顺带取消他正在等的那一页。
+     请求失败时回滚到 lastGoodPageRef：失败的那一页并没有显示出来，
+     此后的 refresh() 应该刷新「屏幕上真正显示着的那一页」。 */
+  const targetPageRef = useRef(1)
+  const lastGoodPageRef = useRef(1)
+  /* 始终指向**最新**的 fetchPage。
+     调用页把 reload/refresh 捕获进了写操作的闭包（「操作成功后刷新列表」），
+     那个闭包活得比它所属的那次渲染长得多：用户可以在请求在途时切到另一个
+     筛选 tab。若 load 直接闭包捕获 fetchPage，旧回调发出的会是**旧筛选**的
+     请求，而它又持有最新的 fetchSeq，结果新 tab 底下显示的是旧 tab 的数据。
+     读 ref 就永远用当前筛选，同时也让 load / reload / refresh 保持稳定引用。 */
   const fetchPageRef = useRef(fetchPage)
   useEffect(() => {
     fetchPageRef.current = fetchPage
   })
+  /* 组件是否仍挂载。卸载后 setState 在 React 19 里虽是空操作，但在途请求
+     仍会跑完整个成功/失败分支；用它把后续写状态一并挡掉，语义上更干净。 */
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+    /* 只放下挂载标记，**不**去自增 fetchSeq 作废在途请求。
+       StrictMode 的开发期二次挂载会先跑一遍 cleanup：作废了 seq，首屏那次
+       加载就再也走不到 setLoading(false)，而调用页的「只载一次」闩锁又已经
+       合上，列表会永远停在骨架屏。mountedRef 已经足够挡住卸载后的 setState。 */
+  }, [])
 
-  // 「当前想要的页」——在 load 入口同步写入，而不是等 page state 落定。
-  // 已提交的 page 会滞后：在第 5 页切筛选时 load(1) 已在飞，page 仍是 5；此时
-  // refresh() 若读 page 就会去请求新筛选的第 5 页，把回第 1 页的请求挤掉。
-  const targetPageRef = useRef(1)
-
-  const load = useCallback(async (target: number) => {
+  const load = useCallback(async (target: number, opts?: { reset?: boolean }) => {
+    /* 组件已经卸载：调用方持有的 reload/refresh 是稳定引用，写操作的回调
+       完全可能在卸载之后才跑到「刷新列表」这一步。不在入口拦住的话，会白发
+       一次列表请求，并对已卸载的组件调 setLoading/setStale。 */
+    if (!mountedRef.current) return
+    /* 显式 reset（切筛选、点搜索）意味着「屏幕上这批已经不属于当前查询」，
+       在请求成功之前它一直是 stale —— 新查询的第一页若失败，旧列表还留着，
+       此时的 total/totalPages 描述的是上一份数据，分页条必须置灰。 */
+    if (opts?.reset) setStale(true)
     targetPageRef.current = target
     const seq = ++fetchSeq.current
     setLoading(true)
     setError('')
     try {
       const result = await fetchPageRef.current(target)
-      if (seq !== fetchSeq.current) return // 过期响应，丢弃
+      if (seq !== fetchSeq.current || !mountedRef.current) return // 过期响应或已卸载，丢弃
+      setStale(false)
+      setLoadFailed(false)
       setItems(result.data)
+      // 服务端可能把越界页回落到末页，一律以回显的页码为准
       setPage(result.page)
-      // 服务端可能把越界页回落到末页，以回显的页码为准
       targetPageRef.current = result.page
+      lastGoodPageRef.current = result.page
       setTotal(result.total)
       setTotalPages(result.totalPages)
     } catch (err) {
-      // 换页失败：保留当前页内容与页码，仅提示错误
-      if (seq === fetchSeq.current) setError(err instanceof Error ? err.message : String(err))
+      if (seq === fetchSeq.current && mountedRef.current) {
+        setLoadFailed(true)
+        setError(err instanceof Error ? err.message : String(err))
+        // 这一页没能显示出来，回滚意图页，后续 refresh 才会刷新当前可见页
+        targetPageRef.current = lastGoodPageRef.current
+      }
     } finally {
-      if (seq === fetchSeq.current) setLoading(false)
+      if (seq === fetchSeq.current && mountedRef.current) setLoading(false)
     }
   }, [])
 
   /** 跳到指定页（页码从 1 开始）。 */
   const goToPage = useCallback(
     (target: number) => {
-      if (loading || target === page || target < 1) return
+      if (loading) return
+      if (target < 1 || target > totalPages || target === page) return
       void load(target)
     },
-    [loading, page, load],
+    [loading, page, totalPages, load],
   )
 
-  /** 首载 / 切筛选 / 搜索：回到第 1 页并替换列表 */
-  const reload = useCallback(() => load(1), [load])
-
   /**
-   * 就地刷新当前页（审核、隐藏、删除等改动之后用）。
+   * 重新拉取**当前页**，不回到第 1 页。
    *
-   * 不能用 reload()：那会把停在第 5 页的人弹回第 1 页。若删掉的正好是末页最后
-   * 一条，服务端会把越界页回落到新的末页，所以这里直接重取当前页是安全的。
-   * 取 targetPageRef 而非 page：有请求在飞时，要刷的是「正在去的那一页」。
+   * 用于「本页发生了变更、但读者的位置不该被移走」的场景：审核、隐藏、封禁、
+   * 删除本页某一项。用 reload() 会把人甩回第 1 页，若变更发生在第 2 页之后，
+   * 改动后的内容反而看不见了。若删掉的正好是末页最后一条，服务端会把越界页
+   * 回落到新的末页，因此直接重取当前页是安全的。
+   *
+   * 页码取自 targetPageRef 而非 state：调用方通常在一个 await 之后才执行
+   * refresh()，期间用户可能已经翻页（甚至那一页还在路上），读 state 会拿到
+   * 过时的页码，既把人拽回去、又取消了他正在等的那一页。
    */
   const refresh = useCallback(() => load(targetPageRef.current), [load])
 
-  // 依赖变化时自动重载（切 tab / 搜索 / 用户变更）
+  /** 重新从第 1 页开始（切筛选/搜索/手动刷新）。 */
+  const reload = useCallback(() => load(1, { reset: true }), [load])
+
   useEffect(() => {
     if (!autoLoad) return
-    // fetch 数据是 effect 对外部数据源的订阅；load 首行 setLoading(true) 属该模式的同步 setState，
-    // 与 React 文档「effect 中订阅外部数据」一致，通过禁用规则抑制（与原列表页实现同款）。
+    // 拉取数据是 effect 对外部数据源的订阅；load 首行的 setLoading(true) 属该模式的同步 setState。
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load(1)
+    void load(1, { reset: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps)
+
+  /* 屏幕上这批条目已经不属于当前查询了——换了筛选/搜索词，而新查询的第一页
+     又失败了，旧结果还留在那儿。调用页据此停止把它们当作当前条件的结果渲染。
+     loading 期间不算：那是正常的切换过程，保留旧列表 + 加载条好过清空闪烁。 */
+  const staleResults = stale && !loading
 
   return {
     items,
     page,
     total,
     totalPages,
+    stale,
+    staleResults,
+    loadFailed,
     loading,
     error,
     setError,

@@ -1,71 +1,78 @@
-/* ── Theme Variables ─────────────────────────── */
-/* Light (default) */
+/* ═══════════════════════════════════════════════════════════════
+   story.transcircle.org 静态微站
+   与主站 src/styles/index.css 同一套设计方向：现代简约、圆角、冷调。
+   · 亮色 = 带粉的白（非灰、非暖米）
+   · 暗色 = 带靛底的深墨（非中性炭灰）
+   · 粉 = 面与线（选中、焦点、描边），从不承载文字
+   · 蓝 = 信息（正文与页脚链接）；作者名等文字一律墨色
+   · 只用系统字体栈，零渐变
+   ═══════════════════════════════════════════════════════════════ */
+
 :root {
   --bg-color: #fff9fb;
-  --text-main: #000000;
-  --text-secondary: #666666;
-  --text-muted: #888888;
-  --text-body: #333333;
-  --primary-pink: #ff85a2;
-  --soft-pink: #ffccd5;
-  --accent-pink: #f06292;
-  --nav-bg: rgba(255, 251, 252, 0.85);
-  --divider-color: #ffccd5;
-  --hover-bg: #ffedf1;
-  --overlay-bg: rgba(0, 0, 0, 0.3);
-  --card-bg: white;
+  --card-bg: #ffffff;
+  --text-main: #14161c;
+  --text-body: #2b2e36;
+  --text-secondary: #4a4f5a;
+  --text-muted: #6a6f79;
+  --accent-blue: #026a89;
+  --accent-pink: #c47687;
+  --divider-color: #f1e3e5;
+  --border-strong: #8a8f99;
+  --hover-bg: #fff0f3;
+  --on-accent: #14161c;
+  --shadow-card: 0 1px 2px rgba(20, 22, 28, 0.07);
 }
 
-/* Dark */
-[data-theme="dark"] {
-  --bg-color: #12121a;
-  --text-main: #f0f0f5;
-  --text-secondary: #a0a0b0;
-  --text-muted: #808090;
-  --text-body: #c0c0d0;
-  --primary-pink: #ff85a2;
-  --soft-pink: #3a2a35;
-  --accent-pink: #ff6b9d;
-  --nav-bg: rgba(24, 24, 35, 0.85);
-  --divider-color: #2a2a3a;
-  --hover-bg: #2a1f25;
-  --overlay-bg: rgba(0, 0, 0, 0.5);
-  --card-bg: #1a1a24;
+[data-theme='dark'] {
+  --bg-color: #0d0e12;
+  --card-bg: #16181e;
+  --text-main: #eceef2;
+  --text-body: #c8cbd2;
+  --text-secondary: #a5a9b2;
+  --text-muted: #868a93;
+  --accent-blue: #77c9ea;
+  --accent-pink: #efa3b7;
+  --divider-color: #24262d;
+  --border-strong: #6a6f7a;
+  --hover-bg: #1c1f26;
+  --on-accent: #14161c;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
-/* High Contrast */
-[data-theme="contrast"] {
+/* 高对比主题：功能性选择，纯黑白 + 单一强调色是刻意的。 */
+[data-theme='contrast'] {
   --bg-color: #000000;
+  --card-bg: #000000;
   --text-main: #ffffff;
+  --text-body: #ffffff;
   --text-secondary: #ffffff;
   --text-muted: #ffffff;
-  --text-body: #ffffff;
-  --primary-pink: #ffaa00;
-  --soft-pink: #332200;
-  --accent-pink: #ffaa00;
-  --nav-bg: rgba(0, 0, 0, 0.95);
+  --accent-blue: #ffd400;
+  --accent-pink: #ffd400;
   --divider-color: #ffffff;
-  --hover-bg: #332200;
-  --overlay-bg: rgba(0, 0, 0, 0.8);
-  --card-bg: #000000;
+  --border-strong: #ffffff;
+  --hover-bg: #332b00;
+  --on-accent: #000000;
+  --shadow-card: none;
 }
 
-/* Maintain prefers-color-scheme for visitors without JS theme system */
+/* 无 JS 主题系统的访客沿用系统偏好 */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
-    --bg-color: #12121a;
-    --text-main: #f0f0f5;
-    --text-secondary: #a0a0b0;
-    --text-muted: #808090;
-    --text-body: #c0c0d0;
-    --primary-pink: #ff85a2;
-    --soft-pink: #3a2a35;
-    --accent-pink: #ff6b9d;
-    --nav-bg: rgba(24, 24, 35, 0.85);
-    --divider-color: #2a2a3a;
-    --hover-bg: #2a1f25;
-    --overlay-bg: rgba(0, 0, 0, 0.5);
-    --card-bg: #1a1a24;
+    --bg-color: #0d0e12;
+    --card-bg: #16181e;
+    --text-main: #eceef2;
+    --text-body: #c8cbd2;
+    --text-secondary: #a5a9b2;
+    --text-muted: #868a93;
+    --accent-blue: #77c9ea;
+    --accent-pink: #efa3b7;
+    --divider-color: #24262d;
+    --border-strong: #6a6f7a;
+    --hover-bg: #1c1f26;
+    --on-accent: #14161c;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5);
   }
 }
 
@@ -78,17 +85,21 @@
 }
 
 /* ── Base ───────────────────────────────────── */
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 :focus-visible {
-  outline: 2px solid var(--primary-pink);
+  outline: 2px solid var(--accent-pink);
   outline-offset: 2px;
 }
 
 body {
   background: var(--bg-color);
   color: var(--text-body);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Noto Sans SC', Roboto, Helvetica, Arial, sans-serif;
   margin: 0;
   padding: 0;
 }
@@ -104,10 +115,10 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.6rem;
-  font-size: 2.2rem;
+  font-size: clamp(1.5rem, 1.25rem + 1.1vw, 1.9rem);
   font-weight: 700;
   margin: 0;
-  color: var(--accent-pink);
+  color: var(--text-main);
   letter-spacing: -0.02em;
 }
 
@@ -121,8 +132,8 @@ body {
 
 .tagline {
   color: var(--text-muted);
-  margin: 0.3rem 0 1.5rem;
-  font-size: 0.95rem;
+  margin: 0.4rem 0 1.5rem;
+  font-size: 0.9rem;
 }
 
 /* ── Filter ─────────────────────────────────── */
@@ -135,27 +146,42 @@ body {
 }
 
 .filterBtn {
-  border: 1.5px solid var(--divider-color);
+  border: 1px solid var(--border-strong);
   background: none;
-  color: var(--text-main);
+  color: var(--text-secondary);
   padding: 0.35rem 1rem;
-  border-radius: 50px;
+  border-radius: 6px;
   font-size: 0.85rem;
   cursor: pointer;
-  transition: all 0.15s;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
   font-family: inherit;
 }
 
 .filterBtn:hover {
   background: var(--hover-bg);
   border-color: var(--accent-pink);
-  color: var(--accent-pink);
+  color: var(--text-main);
 }
 
 .filterBtn.active {
-  background: var(--primary-pink);
-  color: white;
-  border-color: var(--primary-pink);
+  /* --accent-pink 与 --on-accent 在三套主题下是成对的（高对比主题里两者是
+     #ffd400 配纯黑），所以实心态直接用这一对，不要另找底色。 */
+  background: var(--accent-pink);
+  color: var(--on-accent);
+  border-color: var(--accent-pink);
+}
+
+/* Comfortable touch targets on touch devices. */
+@media (any-pointer: coarse) {
+  .filterBtn {
+    min-height: 44px;
+  }
+  .cardExpand {
+    padding: 0.5rem 0;
+  }
 }
 
 /* ── Grid ───────────────────────────────────── */
@@ -165,10 +191,11 @@ body {
   padding: 1rem 1.5rem 3rem;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 0.75rem;
 }
 
-.loading, .empty {
+.loading,
+.empty {
   text-align: center;
   color: var(--text-muted);
   padding: 3rem 1rem;
@@ -178,31 +205,34 @@ body {
 .card {
   background: var(--card-bg);
   border: 1px solid var(--divider-color);
-  border-radius: 12px;
-  padding: 1.5rem;
+  border-radius: 10px;
+  box-shadow: var(--shadow-card);
+  padding: 1.25rem;
 }
 
+/* 分类标签：描边式，不用「淡色底 + 同色深字」的 Material 色调容器 */
 .cardCategory {
-  font-size: 0.72rem;
-  font-weight: 600;
-  background: var(--primary-pink);
-  color: white;
-  padding: 0.15rem 0.6rem;
-  border-radius: 50px;
+  font-size: 0.75rem;
+  background: transparent;
+  border: 1px solid var(--divider-color);
+  color: var(--text-secondary);
+  padding: 0 8px;
+  border-radius: 3px;
 }
 
 .cardTitle {
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   font-weight: 600;
+  line-height: 1.35;
   margin: 0.75rem 0 0.5rem;
   color: var(--text-main);
 }
 
 .cardPreview {
-  font-size: 0.9rem;
-  color: var(--text-muted);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
   margin: 0 0 0.75rem;
-  line-height: 1.6;
+  line-height: 1.75;
 }
 
 .cardMeta {
@@ -210,12 +240,14 @@ body {
   color: var(--text-muted);
   display: flex;
   gap: 1rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .cardExpand {
   background: none;
   border: none;
-  color: var(--accent-pink);
+  /* 「展开全文」是动作不是信息，蓝留给页脚的真链接 */
+  color: var(--text-main);
   font-size: 0.85rem;
   cursor: pointer;
   padding: 0;
@@ -234,22 +266,36 @@ body {
 }
 
 .cardContent {
-  line-height: 1.8;
-  font-size: 0.92rem;
+  line-height: 1.85;
+  font-size: 1rem;
+  color: var(--text-body);
 }
 
-.cardContent h1, .cardContent h2 {
-  font-size: 1.1rem;
-  margin: 1.25rem 0 0.5rem;
+/* 正文里的链接（sanitizeHtml 的白名单允许 <a href>）：与主站 .prose a 一致，
+   蓝色 + 下划线——颜色之外还有第二个信号。 */
+.cardContent a {
+  color: var(--accent-blue);
+  text-underline-offset: 3px;
+}
+
+.cardContent h1,
+.cardContent h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 1.5rem 0 0.5rem;
 }
 
 .cardContent li {
   margin-left: 1.25rem;
 }
 
+/* 作者名用墨色：文字颜色在界面里读作「状态」，而人名不是状态。
+   粉留给头像片与筛选态。 */
 .cardAuthor {
-  color: var(--text-muted);
-  font-size: 0.82rem;
+  color: var(--text-main);
+  font-size: 0.875rem;
+  font-weight: 600;
   margin-top: 1.25rem;
 }
 
@@ -258,13 +304,12 @@ body {
   text-align: center;
   padding: 2rem 1rem 3rem;
   color: var(--text-muted);
-  font-size: 0.88rem;
+  font-size: 0.85rem;
 }
 
 .footer a {
-  color: var(--accent-pink);
+  color: var(--accent-blue);
   text-decoration: none;
-  font-weight: 500;
 }
 
 .footer a:hover {

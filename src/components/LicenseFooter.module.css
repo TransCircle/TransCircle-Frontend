@@ -7,13 +7,13 @@
 .bar {
   max-width: var(--width-content);
   margin: 0 auto;
-  padding: 0.6rem clamp(1rem, 0.4rem + 3vw, 3rem);
+  padding: 0.6rem clamp(0.75rem, 0.3rem + 2.4vw, 3rem);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem 1.25rem;
+  gap: var(--sp-2) var(--sp-5);
   flex-wrap: wrap;
-  font-size: 0.76rem;
+  font-size: var(--fs-micro);
   color: var(--text-muted);
   line-height: 1.5;
 }
@@ -22,14 +22,14 @@
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: var(--sp-2);
   flex-wrap: wrap;
   min-width: 0;
 }
 
 .heading {
-  color: var(--primary-pink);
-  font-weight: 600;
+  color: var(--text-secondary);
+  font-weight: var(--fw-label);
   letter-spacing: 0.06em;
   flex-shrink: 0;
 }
@@ -46,6 +46,6 @@
 
 @media (max-width: 768px) {
   .bar {
-    font-size: 0.72rem;
+    font-size: var(--fs-micro);
   }
 }

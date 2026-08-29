@@ -6,16 +6,19 @@ import { useAuth } from '@/context/useAuth'
 import { usePagedList, toPagedResult } from '@/hooks/usePagedList'
 import {
   Alert,
+  CONTRIB_STATUS_TONE,
   EmptyState,
+  PageHeader,
   Pagination,
   Skeleton,
   StatusBadge,
   Tabs,
-  CONTRIB_STATUS_TONE,
   type TabItem,
 } from '@/components/ui'
 import { useFormatTs } from '@/utils/datetime'
 import shell from './Page.module.css'
+
+const PAGE_SIZE = 20
 
 interface MyContribution {
   id: string
@@ -39,8 +42,6 @@ const STATUS_LABEL_KEYS: Record<string, string> = {
   hidden: 'myContributions.filterHidden',
   withdrawn: 'myContributions.filterWithdrawn',
 }
-
-const PAGE_SIZE = 20
 
 const FILTERS = [
   'all',
@@ -79,8 +80,8 @@ export const MyContributions = () => {
 
   const [filterStatus, setFilterStatus] = useState('all')
 
-  // 页码分页列表（统一模板）：切 tab（filterStatus 变化）自动回到第 1 页，保留旧列表 + 加载条
-  const { items, page, total, totalPages, loading, error, goToPage } = usePagedList<MyContribution>({
+  // 游标分页列表（统一模板）：切 tab（filterStatus 变化）自动重载，保留旧列表 + 加载条
+  const { items, page, total, totalPages, stale, staleResults, loading, error, goToPage } = usePagedList<MyContribution>({
     fetchPage: async (targetPage) => {
       const params = new URLSearchParams({ limit: String(PAGE_SIZE), page: String(targetPage) })
       // api.md §4.1: status param is optional, defaults to all statuses when omitted
@@ -100,6 +101,7 @@ export const MyContributions = () => {
   return (
     <div className={shell.page}>
       <div className={shell.head}>
+        <PageHeader title={t('myContributions.title')} size="section" as="h1" />
         <Tabs
           items={tabs}
           value={filterStatus}
@@ -119,7 +121,10 @@ export const MyContributions = () => {
 
         {loading && items.length === 0 ? (
           <Skeleton rows={6} />
-        ) : items.length === 0 ? (
+        ) : /* staleResults：屏幕上这批已经不属于当前筛选了（切换后新查询失败，旧结果还留着）。
+           不能再把它们摆出来——它们既不是当前条件的结果，行还是可点的，点进去会
+           对一个不属于本视图的条目执行操作。此时只显示上面的错误提示。 */
+        staleResults ? null : items.length === 0 ? (
           <EmptyState title={t('myContributions.empty')} />
         ) : (
           <>
@@ -163,16 +168,20 @@ export const MyContributions = () => {
                 </li>
               ))}
             </ul>
-            <Pagination
-              page={page}
-              totalPages={totalPages}
-              total={total}
-              pageSize={PAGE_SIZE}
-              disabled={loading}
-              onChange={goToPage}
-            />
           </>
         )}
+
+        {/* 分页留在空态判断之外：翻到后续页时若该页恰好为空
+            （并发删除、状态变更、游标过期），读者仍需要能退回上一页。
+            控件本身在只有一页时会自行隐藏。 */}
+        <Pagination
+          page={page}
+        totalPages={totalPages}
+        total={total}
+        pageSize={PAGE_SIZE}
+          disabled={loading || stale}
+          onChange={goToPage}
+        />
       </div>
     </div>
   )

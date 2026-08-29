@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { post, setIntentKey, newIdempotencyKey } from '@/api/client'
+import { post, isRetryableFailure } from '@/api/client'
+import { useIntentKey } from '@/hooks/useIntentKey'
 import { ERRORS } from '@/api/errors'
 import { limitByUnicode } from '@/utils/string'
 import { AdminButton, Alert, Card, PageHeader, StatusScreen, TagInput, TextArea, TextField } from '@/components/ui'
@@ -19,6 +20,7 @@ export const EditRequestForm = () => {
   const [proposedSummary, setProposedSummary] = useState('')
   const [proposedTags, setProposedTags] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const intent = useIntentKey()
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   // 服务端字段级错误（L8）
@@ -62,23 +64,23 @@ export const EditRequestForm = () => {
     }
     setSubmitting(true)
     setError('')
+    let retryable = false
     try {
-      setIntentKey(newIdempotencyKey())
-      const result = await post(
-        `/contributions/${id}/edit-requests`,
-        {
-          reason: reason.trim(),
-          proposedTitle: proposedTitle.trim() || undefined,
-          proposedContent: proposedContent || undefined,
-          proposedContentFormat: proposedContent ? 'markdown' : undefined,
-          proposedSummary: proposedSummary.trim() || undefined,
-          proposedTags: proposedTags.length > 0 ? proposedTags : undefined,
-        },
-        { idempotent: true },
-      )
+      const body = {
+        reason: reason.trim(),
+        proposedTitle: proposedTitle.trim() || undefined,
+        proposedContent: proposedContent || undefined,
+        proposedContentFormat: proposedContent ? 'markdown' : undefined,
+        proposedSummary: proposedSummary.trim() || undefined,
+        proposedTags: proposedTags.length > 0 ? proposedTags : undefined,
+      }
+      // 内容原样重试时复用同一个幂等键，避免网络抖动后再点一次多出一份申请
+      intent.begin(JSON.stringify([id, body]))
+      const result = await post(`/contributions/${id}/edit-requests`, body, { idempotent: true })
       if (result.ok) {
         setSuccess(true)
       } else {
+        retryable = isRetryableFailure(result.status)
         if (result.error.code === ERRORS.VALIDATION_ERROR && result.error.details) {
           // 映射服务端字段错误到表单字段（L8）
           const newFieldErrors: Record<string, string> = {}
@@ -103,9 +105,11 @@ export const EditRequestForm = () => {
         }
       }
     } catch {
+      // 抛到这里的只有 AbortError 等异常路径，一律按可重试处理
+      retryable = true
       setError(t('editRequest.networkError'))
     } finally {
-      setIntentKey(null)
+      intent.settle(retryable)
       setSubmitting(false)
     }
   }

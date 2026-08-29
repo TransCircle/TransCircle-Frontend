@@ -14,6 +14,26 @@
   overflow: hidden;
 }
 
+/* ── Skip link ───────────────────────────────── */
+
+.skipLink {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 1300;
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--accent-ink);
+  /* --on-accent 是给淡粉面用的墨色；这里底是墨，前景必须反过来。 */
+  color: var(--surface-card);
+  border-radius: 0 0 var(--radius-sm) 0;
+  font-size: var(--fs-sm);
+  text-decoration: none;
+}
+
+.skipLink:focus {
+  left: 0;
+}
+
 /* ── Main content ─────────────────────────────── */
 
 .mainContent {
@@ -22,8 +42,9 @@
   max-width: var(--width-content);
   margin: 0 auto;
   /* Fluid padding scales with the viewport so content breathes on large
-     screens and stays compact on phones — no fixed-step breakpoints needed. */
-  padding: clamp(1.5rem, 1rem + 1.5vw, 2.5rem) clamp(1rem, 0.4rem + 3vw, 3rem);
+     screens and stays compact on phones — no fixed-step breakpoints needed.
+     窄屏下限压到 0.75rem：手机上每一像素的横向留白都是从正文里扣的。 */
+  padding: clamp(1.25rem, 0.9rem + 1.4vw, 2.5rem) clamp(0.75rem, 0.3rem + 2.4vw, 3rem);
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -48,24 +69,55 @@
   transform: translateX(-50%);
   max-width: min(92vw, 32rem);
   box-sizing: border-box;
-  padding: 0.75rem 1.5rem;
+  padding: var(--sp-3) var(--sp-5);
   border-radius: var(--radius-sm);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   line-height: 1.5;
   z-index: 1250;
   box-shadow: var(--shadow-card-hover);
 }
 
 .toastError {
-  top: 1rem;
+  top: var(--sp-4);
   background: var(--error-color);
-  /* 错误底色上的白色前景为设计常量，无对应令牌。 */
-  color: #fff;
+  color: var(--on-error);
+}
+
+/* role="alert" lives on the outer div (above); the button inside stays a
+   plain, natively-focusable button so its implicit role isn't overridden by
+   a role ARIA-in-HTML doesn't allow on <button> (e.g. "alert"). */
+.toastErrorBtn {
+  display: block;
+  width: 100%;
+  border: none;
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  color: inherit;
   cursor: pointer;
+  transition: opacity var(--dur-fast) var(--ease-standard);
+}
+
+.toastErrorBtn:hover,
+.toastErrorBtn:focus-visible {
+  opacity: 0.9;
+}
+
+/* The default accent-pink ring is too close in hue/lightness to
+   --error-color to read against this toast's own background — swap to
+   --on-error (white) so the ring stays visible here specifically. */
+.toastErrorBtn:focus-visible {
+  outline-color: var(--on-error);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toastErrorBtn {
+    transition: none;
+  }
 }
 
 .toastInfo {
-  top: 4rem;
+  top: var(--sp-10);
   background: var(--surface-card);
   color: var(--text-main);
   border: 1px solid var(--divider-color);

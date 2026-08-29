@@ -1,69 +1,84 @@
+/* 投稿表单：写下自己的故事是件需要勇气的事，版面尽量安静——
+   字段之间给足呼吸，次要说明压低，不用任何强调色去催促。 */
+
 .form {
   display: flex;
   flex-direction: column;
-  gap: 1.4rem;
+  gap: var(--sp-6);
+  width: 100%;
+  max-width: var(--width-reading);
+  margin-inline: auto;
 }
 
-/* ── Login hint banner ───────────────────────────────────── */
+/* ── 身份提示条 ──────────────────────────────────────────── */
 
 .loginHint {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  padding: 0.75rem 1rem;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  padding: var(--sp-3) var(--sp-4);
   background-color: var(--hover-bg);
-  border-radius: var(--radius-sm);
-  line-height: 1.5;
+  border: 1px solid var(--divider-color);
+  border-radius: var(--radius-md);
+  line-height: 1.6;
 }
 
 .loginActions {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--sp-2);
   flex-wrap: wrap;
 }
 
 .userBadge {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--sp-2);
   flex-wrap: wrap;
 }
 
+/* 「这是你」的标记 → 人的语义 → 粉。全表单唯一的粉色元素。 */
 .userProvider {
-  font-size: 0.72rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 0.15rem 0.45rem;
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-label);
+  letter-spacing: 0.04em;
+  padding: 1px var(--sp-2);
   border-radius: var(--radius-pill);
-  background-color: var(--accent-pink);
-  color: var(--on-accent);
+  background-color: var(--soft-pink);
+  color: var(--text-secondary);
 }
 
 .userName {
-  font-weight: 600;
+  font-weight: var(--fw-label);
   color: var(--text-main);
 }
 
 .userTag {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--fs-meta);
 }
 
-/* Success result content (column inside an Alert) */
+/* ── 提交成功 ────────────────────────────────────────────── */
+
 .successContent {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: var(--sp-1);
   width: 100%;
 }
 
 .successTitle {
-  font-weight: 700;
+  font-weight: var(--fw-label);
 }
 
 .successId {
   word-break: break-all;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  font-size: var(--fs-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .form {
+    gap: var(--sp-5);
+  }
 }

@@ -1,22 +1,24 @@
 .fieldWrapper {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: var(--sp-1);
 }
 
 .label {
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-label);
   color: var(--text-main);
 }
 
+/* 必填星号：不能用墨色——label 本身就是 --text-main，同色等于没有标记。
+   用错误色：「这项你必须填」本来就是该语义，且是通用约定。 */
 .required {
-  color: var(--accent-pink);
+  color: var(--error-color);
   margin-left: 2px;
 }
 
 .error {
-  font-size: 0.8rem;
+  font-size: var(--fs-meta);
   color: var(--error-color);
   margin: 0;
 }

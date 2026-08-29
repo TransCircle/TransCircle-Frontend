@@ -1,13 +1,13 @@
 /* 分页控件：条目区间在左、页码在右；窄屏堆叠居中。
-   焦点环走全局 :focus-visible（--primary-pink 2px 外描边），此处不覆写。 */
+   焦点环走全局 :focus-visible，此处不覆写。 */
 
 .nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem 1rem;
+  gap: var(--sp-2) var(--sp-4);
   flex-wrap: wrap;
-  padding-top: 0.35rem;
+  padding-top: var(--sp-1);
 }
 
 .summary {
@@ -20,7 +20,7 @@
 .controls {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: var(--sp-1);
   flex-wrap: wrap;
 }
 
@@ -28,10 +28,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.25rem;
+  gap: var(--sp-1);
   min-width: var(--control-h);
   height: var(--control-h);
-  padding: 0 0.5rem;
+  padding: 0 var(--sp-2);
   border: 1px solid var(--divider-color);
   border-radius: var(--radius-control);
   background-color: var(--surface-card);
@@ -43,14 +43,14 @@
   cursor: pointer;
   white-space: nowrap;
   transition:
-    border-color 0.18s ease,
-    background-color 0.18s ease,
-    color 0.18s ease;
+    border-color var(--dur-fast) var(--ease-standard),
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
 }
 
-.btn:not([aria-disabled='true']):not(.current):hover {
+.btn:hover:not([aria-disabled='true']):not(.current) {
   border-color: var(--accent-pink);
-  color: var(--accent-pink);
+  color: var(--text-main);
   background-color: var(--hover-bg);
 }
 
@@ -61,19 +61,20 @@
   cursor: not-allowed;
 }
 
-/* 当前页：实心，与其余页码拉开层级；仍可聚焦（点中后不丢焦点） */
+/* 当前页是选中态，不是主按钮：用与其它选中态一致的「淡粉填充 + 粉描边 + 墨字」，
+   不借用 --cta-* —— 那组 token 属于主按钮，耦合上会让改按钮色时分页跟着变。 */
 .current,
 .current:hover {
-  background-color: var(--cta-bg);
-  border-color: var(--cta-bg);
-  color: var(--cta-color);
-  font-weight: 600;
+  background-color: var(--soft-pink);
+  border-color: var(--accent-pink);
+  color: var(--text-main);
+  font-weight: var(--fw-label);
   cursor: default;
 }
 
-/* 上一页 / 下一页：箭头 + 文字，比纯数字宽 */
+/* 上一页 / 下一页：文字 + 箭头，比纯数字宽 */
 .step {
-  padding: 0 0.7rem;
+  padding: 0 var(--sp-3);
 }
 
 /* 折叠占位：中间还有页码，但为了不撑爆一行而收起 */
@@ -81,7 +82,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.25rem;
+  min-width: var(--sp-6);
   height: var(--control-h);
   color: var(--text-muted);
   font-size: var(--fs-sm);
@@ -92,17 +93,21 @@
   display: contents;
 }
 
-/* 窄屏用的「第 x / 共 y 页」，宽屏隐藏 */
+/* 基础态：宽屏用 .numbers 显示完整页码，.compact 藏起来。
+   这条必须写在下面那个媒体查询**之前**——两者优先级相同，后写的胜出，
+   放在后面会把窄屏的 inline-flex 覆盖回 none，当前页码对视觉和读屏一起消失。 */
 .compact {
   display: none;
   align-items: center;
   height: var(--control-h);
-  padding: 0 0.5rem;
+  padding: 0 var(--sp-2);
   color: var(--text-secondary);
   font-size: var(--fs-sm);
   font-variant-numeric: tabular-nums;
 }
 
+/* 窄屏：隐藏中间页码，只留上一页/当前/下一页，避免换行成两三排
+   （省略号是 .numbers 的子元素，随之一并隐藏） */
 @media (max-width: 560px) {
   .nav {
     justify-content: center;
@@ -113,8 +118,6 @@
     text-align: center;
   }
 
-  /* 逐个页码在窄屏会换行成两三排，收起后只留上一页/当前/下一页
-     （省略号是 .numbers 的子元素，随之一并隐藏） */
   .numbers {
     display: none;
   }

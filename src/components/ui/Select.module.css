@@ -1,13 +1,13 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: var(--sp-1);
   width: 100%;
 }
 
 .label {
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: var(--fs-meta);
+  font-weight: var(--fw-label);
   color: var(--text-secondary);
 }
 
@@ -22,26 +22,35 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-  min-height: 40px;
-  padding: 0.55rem 0.8rem;
-  border: 1.5px solid var(--divider-color);
-  border-radius: var(--radius-sm);
-  font-size: 0.9rem;
+  gap: var(--sp-2);
+  min-height: 38px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  font-size: var(--fs-sm);
   font-family: inherit;
+  line-height: 1.5;
   color: var(--text-main);
-  background-color: var(--surface-card);
+  background-color: var(--surface-input);
+  appearance: none;
+  -webkit-appearance: none;
   cursor: pointer;
   text-align: left;
   outline: none;
   transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+    border-color var(--dur-fast) var(--ease-standard),
+    background-color var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard);
+}
+
+.trigger:hover:not(:disabled):not(.open) {
+  border-color: var(--accent-pink);
 }
 
 .trigger:focus-visible,
 .trigger.open {
-  border-color: var(--primary-pink);
+  border-color: var(--accent-pink);
+  background-color: var(--surface-card);
   outline: none;
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
@@ -73,7 +82,7 @@
 .chevron {
   flex-shrink: 0;
   color: var(--text-muted);
-  transition: transform 0.2s ease;
+  transition: transform var(--dur-base) var(--ease-emphasized);
 }
 
 .trigger.open .chevron {
@@ -89,7 +98,7 @@
   right: 0;
   z-index: 50;
   margin: 0;
-  padding: 0.3rem;
+  padding: var(--sp-1);
   list-style: none;
   background-color: var(--surface-card);
   border: 1px solid var(--divider-color);
@@ -103,12 +112,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.5rem 0.7rem;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
   border-radius: var(--radius-sm);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   color: var(--text-body);
   cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
 }
 
 .optionLabel {
@@ -129,8 +141,8 @@
 }
 
 .option.selected {
-  color: var(--accent-pink);
-  font-weight: 600;
+  color: var(--text-main);
+  font-weight: var(--fw-label);
 }
 
 .optionDisabled {
@@ -144,7 +156,7 @@
 }
 
 .hint {
-  font-size: 0.78rem;
+  font-size: var(--fs-micro);
   color: var(--text-muted);
 }
 
@@ -154,7 +166,8 @@
 
 @media (any-pointer: coarse) {
   .trigger {
-    min-height: 44px;
+    min-height: var(--tap-min);
+    font-size: var(--fs-body);
   }
   .option {
     padding: 0.65rem 0.7rem;
@@ -163,7 +176,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .trigger,
-  .chevron {
+  .chevron,
+  .option {
     transition: none;
   }
 }

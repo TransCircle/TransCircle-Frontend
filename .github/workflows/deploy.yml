@@ -29,7 +29,11 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Vite 构建期内联环境变量；VITE_TURNSTILE_SITE_KEY 是公开站点密钥（随 JS 分发，
+      # 与主站 Pass 登录共用同一 Turnstile 站点），不属于机密。
       - run: pnpm run build
+        env:
+          VITE_TURNSTILE_SITE_KEY: 0x4AAAAAADyihCEgm__pJamm
 
       - name: Check secrets
         run: |

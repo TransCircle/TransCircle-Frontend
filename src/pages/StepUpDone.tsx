@@ -19,6 +19,11 @@ export const StepUpDone = () => {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const [state, setState] = useState<'polling' | 'verified' | 'failed' | 'popup'>('polling')
+  /* 整页兜底成功后要回哪一页。原操作**不会**被自动重放：发起它的闭包随整页跳转
+     一起销毁了，`useStepUpAction` 的 pendingActionRef 也不复存在。以前这里静默
+     跳回原页，用户会以为操作已经执行——实际上什么都没发生。现在明说，并把
+     「回去」交给用户点。 */
+  const [returnTo, setReturnTo] = useState('/admin')
   const ran = useRef(false)
 
   useEffect(() => {
@@ -47,8 +52,10 @@ export const StepUpDone = () => {
       return
     }
 
+    let cancelled = false
+
     const run = async () => {
-      const returnTo = sessionStorage.getItem('iamStepUpReturnTo') || '/admin'
+      const backTo = sessionStorage.getItem('iamStepUpReturnTo') || '/admin'
       sessionStorage.removeItem('iamStepUpVerificationId')
       sessionStorage.removeItem('iamStepUpReturnTo')
 
@@ -60,18 +67,22 @@ export const StepUpDone = () => {
         // 整页跳转后内存中的 access token 已丢失：先用 refresh cookie 恢复，再回查
         await tryRefreshToken()
         const result = await post<{ verified?: boolean }>('/auth/step-up/iam/poll', { verificationId })
+        if (cancelled) return
         if (result.ok && result.data.verified) {
+          setReturnTo(backTo)
           setState('verified')
-          setTimeout(() => navigate(returnTo, { replace: true }), 1200)
         } else {
           setState('failed')
         }
       } catch {
         // 网络/刷新异常也归为失败，避免页面卡在 polling
-        setState('failed')
+        if (!cancelled) setState('failed')
       }
     }
     void run()
+    return () => {
+      cancelled = true
+    }
   }, [params, navigate])
 
   if (state === 'polling') {
@@ -81,7 +92,20 @@ export const StepUpDone = () => {
     return <StatusScreen kind="info" title={t('stepUp.iamDoneTitle')} description={t('stepUp.iamPopupClose')} />
   }
   if (state === 'verified') {
-    return <StatusScreen kind="success" title={t('stepUp.iamDoneTitle')} description={t('stepUp.iamVerified')} />
+    return (
+      <StatusScreen
+        kind="success"
+        title={t('stepUp.iamDoneTitle')}
+        description={t('stepUp.iamVerifiedRedo')}
+        actions={[
+          {
+            label: t('stepUp.iamBack'),
+            variant: 'primary',
+            onClick: () => navigate(returnTo, { replace: true }),
+          },
+        ]}
+      />
+    )
   }
   return (
     <StatusScreen
