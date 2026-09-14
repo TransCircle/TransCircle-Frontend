@@ -156,12 +156,13 @@ function storyCard(s) {
 
 function formatDate(ts) {
   if (!ts) return ''
-  if (typeof ts === 'number' || !ts.includes('-')) {
-    const n = typeof ts === 'number' ? ts : Number(ts)
-    if (isNaN(n)) return String(ts)
-    return new Date(n).toISOString().slice(0, 10)
-  }
-  return ts.slice(0, 10)
+  const n = typeof ts === 'number' ? ts : Number(ts)
+  const d = new Date(Number.isNaN(n) ? ts : n)
+  // publishedAt 是 UTC 毫秒；toISOString 会把北京时间 00:00-07:59 发布的故事显示成前一天。
+  // 按读者本地时区取日——那才是发布者当天真正感受到的日期。
+  if (Number.isNaN(d.getTime())) return String(ts).slice(0, 10)
+  const p = (x) => String(x).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
 /**
