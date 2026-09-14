@@ -16,19 +16,21 @@ export default {
     const url = new URL(request.url);
 
     // Proxy API requests to backend server
-    if (url.pathname.startsWith('/v1/')) {
-      const backend = env.API_BACKEND_URL;
+    if (url.pathname === '/v1' || url.pathname.startsWith('/v1/')) {
+      const backend = env.API_BACKEND_URL?.replace(/\/+$/, '');
       if (!backend) {
-        return new Response('API_BACKEND_URL not configured', { status: 502 });
+        // 与后端信封保持一致：SPA 统一按 {error:{code,message}} 解析，纯文本会渲染成无意义响应
+        return jsonError('UPSTREAM_UNCONFIGURED', 'API_BACKEND_URL not configured', 'req_skipped');
       }
 
       // 用户没有 refresh_token cookie 时跳过向后端转发 /auth/refresh，
       // 直接返回 200（accessToken: null），避免产生 400/401 响应。
       if (url.pathname === '/v1/auth/refresh' && request.method === 'POST') {
         const cookies = request.headers.get('cookie') || '';
-        const hasRefreshToken = cookies.split(';').some(c =>
-          c.trim().startsWith('refresh_token='),
-        );
+        const hasRefreshToken = cookies.split(';').some((c) => {
+          const pair = c.trim();
+          return pair.length > 'refresh_token='.length && pair.startsWith('refresh_token=');
+        });
         if (!hasRefreshToken) {
           return new Response(
             JSON.stringify({
@@ -47,11 +49,17 @@ export default {
       const forwardHeaders = new Headers(request.headers);
       forwardHeaders.delete('x-forwarded-for');
 
-      return fetch(`${backend}${url.pathname}${url.search}`, {
-        method: request.method,
-        headers: forwardHeaders,
-        body: request.body,
-      });
+      try {
+        return await fetch(`${backend}${url.pathname}${url.search}`, {
+          method: request.method,
+          headers: forwardHeaders,
+          body: request.body,
+        });
+      } catch {
+        // 上游不可达时 fetch 抛异常，Workers 会返回 1101 内部错误页（HTML）——
+        // SPA 的 apiFetch 解析 JSON 会直接崩。统一成 502 信封，前端按 code 显示网络不可用。
+        return jsonError('UPSTREAM_UNREACHABLE', 'Backend is unreachable', makeRequestId());
+      }
     }
 
     // SPA fallback is handled by wrangler.jsonc asset config
@@ -59,3 +67,16 @@ export default {
     return env.ASSETS.fetch(request);
   },
 };
+
+/** Workers 运行时有原生 crypto.randomUUID，不引入手写随机。 */
+function makeRequestId() {
+  return 'req_' + crypto.randomUUID();
+}
+
+/** @param {string} code @param {string} message @param {string} requestId */
+function jsonError(code, message, requestId) {
+  return new Response(JSON.stringify({ error: { code, message }, requestId }), {
+    status: 502,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
