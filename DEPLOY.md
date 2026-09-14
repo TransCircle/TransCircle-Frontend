@@ -111,7 +111,7 @@ https://api.transcircle.org/pass
 ### UI
 
 - [ ] light/dark 两主题正常；不存在独立 high-contrast 模式要求。
-- [ ] `zh-CN` / `zh-TW` 文案同步。
+- [ ] `zh-CN` 文案完整（zh-TW 已于 2026-08-16 全线移除，不再有多语言文案同步项）。
 - [ ] 登录按钮使用真实 button，支持键盘和可见焦点。
 - [ ] 移动抽屉开始登录前正确关闭，主内容不会残留 `inert`。
 - [ ] 加载与错误状态有屏幕阅读器可读的 status/alert。
