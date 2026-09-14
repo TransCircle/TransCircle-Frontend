@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ThemeToggle } from './ThemeToggle'
 import { useAuth } from '@/context/useAuth'
+import { landingPath } from '@/api/permissions'
 import { LOGOUT_REDIRECT } from '@/config'
 import styles from './Navbar.module.css'
 import { hasModalLayer } from '@/components/admin/modalStack'
@@ -32,9 +33,13 @@ const DRAWER_FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabin
 
 export const Navbar = () => {
   const { t } = useTranslation()
-  const { user, isAdmin, logout, loginWithPass } = useAuth()
+  const { user, isAdmin, permissions, logout, loginWithPass } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+  // 管理入口按 landingPath 计算：isAdmin 的口径（含 user:read / audit:read）宽于
+  // /admin 索引路由的守卫（contribution:read），直链 /admin 会让只读型管理员撞进
+  // 访问被拒的死胡同；landingPath 返回的正是守卫放行、用户真正能打开的首个管理页。
+  const adminEntry = landingPath(permissions)
   const [isOpen, setIsOpen] = useState(false)
   const [linksDropdownOpen, setLinksDropdownOpen] = useState(false)
   const [acctDropdownOpen, setAcctDropdownOpen] = useState(false)
@@ -366,7 +371,7 @@ export const Navbar = () => {
                     </li>
                     {isAdmin && (
                       <li role="none">
-                        <Link role="menuitem" to="/admin" onClick={closeMenu}>
+                        <Link role="menuitem" to={adminEntry} onClick={closeMenu}>
                           {t('nav.adminDashboard')}
                         </Link>
                       </li>
@@ -442,7 +447,7 @@ export const Navbar = () => {
                 {t('nav.securitySettings')}
               </Link>
               {isAdmin && (
-                <Link to="/admin" className={styles.drawerLink} onClick={closeMenu}>
+                <Link to={adminEntry} className={styles.drawerLink} onClick={closeMenu}>
                   {t('nav.adminDashboard')}
                 </Link>
               )}
