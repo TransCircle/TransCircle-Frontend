@@ -171,13 +171,17 @@ async function autoRefreshOn401(
  * Generate a UUID v4 Idempotency-Key per api.md §12.
  * UUID v4 matches the required format (16-64 chars, UUID v4 or ULID).
  */
-/** UUID v4，带 Safari 15.3- 的降级实现（那些环境没有 crypto.randomUUID）。 */
+/** UUID v4，降级实现走 crypto.getRandomValues（覆盖面远大于 randomUUID）。
+ *  不用 Math.random：它撑不起 v4 的 122 位随机段，键相撞就可能把两笔不同业务判成同一笔。 */
 function uuidV4(): string {
   if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0
-    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
-  })
+  const hex = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+    .map((b, i) => {
+      const v = i === 6 ? (b & 0x0f) | 0x40 : i === 8 ? (b & 0x3f) | 0x80 : b
+      return v.toString(16).padStart(2, '0')
+    })
+    .join('')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
 }
 
 export function newIdempotencyKey(): string {
