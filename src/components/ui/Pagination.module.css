@@ -5,9 +5,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--sp-2) var(--sp-4);
+  gap: var(--s-2) var(--s-4);
   flex-wrap: wrap;
-  padding-top: var(--sp-1);
+  padding-top: var(--s-1);
 }
 
 .summary {
@@ -20,7 +20,7 @@
 .controls {
   display: flex;
   align-items: center;
-  gap: var(--sp-1);
+  gap: var(--s-1);
   flex-wrap: wrap;
 }
 
@@ -28,13 +28,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--sp-1);
-  min-width: var(--control-h);
-  height: var(--control-h);
-  padding: 0 var(--sp-2);
-  border: 1px solid var(--divider-color);
-  border-radius: var(--radius-control);
-  background-color: var(--surface-card);
+  gap: var(--s-1);
+  min-width: var(--btn-h);
+  height: var(--btn-h);
+  padding: 0 var(--s-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background-color: var(--surface);
   color: var(--text-secondary);
   font-family: inherit;
   font-size: var(--fs-sm);
@@ -43,15 +43,15 @@
   cursor: pointer;
   white-space: nowrap;
   transition:
-    border-color var(--dur-fast) var(--ease-standard),
-    background-color var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard);
+    border-color var(--dur-1) var(--ease-standard),
+    background-color var(--dur-1) var(--ease-standard),
+    color var(--dur-1) var(--ease-standard);
 }
 
 .btn:hover:not([aria-disabled='true']):not(.current) {
-  border-color: var(--accent-pink);
-  color: var(--text-main);
-  background-color: var(--hover-bg);
+  border-color: var(--pink-600);
+  color: var(--ink);
+  background-color: var(--pink-100);
 }
 
 /* 不可用态用 aria-disabled 表达（见组件注释：真 disabled 会丢焦点），
@@ -62,19 +62,19 @@
 }
 
 /* 当前页是选中态，不是主按钮：用与其它选中态一致的「淡粉填充 + 粉描边 + 墨字」，
-   不借用 --cta-* —— 那组 token 属于主按钮，耦合上会让改按钮色时分页跟着变。 */
+   不直接铺 --pink-600 —— 那是主行动色，分页当前页并不是本页的主要动作。 */
 .current,
 .current:hover {
-  background-color: var(--soft-pink);
-  border-color: var(--accent-pink);
-  color: var(--text-main);
-  font-weight: var(--fw-label);
+  background-color: var(--pink-200);
+  border-color: var(--pink-600);
+  color: var(--ink);
+  font-weight: var(--fw-semibold);
   cursor: default;
 }
 
 /* 上一页 / 下一页：文字 + 箭头，比纯数字宽 */
 .step {
-  padding: 0 var(--sp-3);
+  padding: 0 var(--s-3);
 }
 
 /* 折叠占位：中间还有页码，但为了不撑爆一行而收起 */
@@ -82,8 +82,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: var(--sp-6);
-  height: var(--control-h);
+  min-width: var(--s-5);
+  height: var(--btn-h);
   color: var(--text-muted);
   font-size: var(--fs-sm);
   user-select: none;
@@ -99,8 +99,8 @@
 .compact {
   display: none;
   align-items: center;
-  height: var(--control-h);
-  padding: 0 var(--sp-2);
+  height: var(--btn-h);
+  padding: 0 var(--s-2);
   color: var(--text-secondary);
   font-size: var(--fs-sm);
   font-variant-numeric: tabular-nums;

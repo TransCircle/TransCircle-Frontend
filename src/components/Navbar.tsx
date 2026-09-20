@@ -26,7 +26,18 @@ const ExternalLinkIcon = () => (
   </svg>
 )
 
-const MOBILE_BREAKPOINT = 1100
+/** 导航折叠断点，与 Navbar.module.css 的 `@media (max-width: 1200px)` 对应（DESIGN §4）。 */
+const MOBILE_BREAKPOINT = 1200
+
+/** 迷你旗帜条纹：当前导航项指示条（DESIGN §3.1 / §5.3）。
+ *  三个实色 span，不用渐变；白段靠 CSS 的 inset 描边在亮底上显形。 */
+const NavFlagStripe = () => (
+  <span className={`${styles.flagStripe} ${styles.navCurrentStripe}`} aria-hidden="true">
+    <span className={styles.flagPink} />
+    <span className={styles.flagWhite} />
+    <span className={styles.flagBlue} />
+  </span>
+)
 
 /** 抽屉内的可聚焦元素选择器（打开时的初始聚焦与 Tab 循环共用）。 */
 const DRAWER_FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -43,20 +54,53 @@ export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false)
   const [linksDropdownOpen, setLinksDropdownOpen] = useState(false)
   const [acctDropdownOpen, setAcctDropdownOpen] = useState(false)
+  const [loginStarting, setLoginStarting] = useState(false)
+  const [logoutPending, setLogoutPending] = useState(false)
+  const [logoutError, setLogoutError] = useState<string | null>(null)
 
   const hamburgerRef = useRef<HTMLButtonElement>(null)
   const drawerRef = useRef<HTMLDivElement>(null)
   const linksDropdownRef = useRef<HTMLButtonElement>(null)
   const acctDropdownRef = useRef<HTMLButtonElement>(null)
-  const loginStartingRef = useRef(false)
 
-  const closeMenu = () => setIsOpen(false)
+  // 仅首页是站内路由，其余导航项都是外链，故当前项指示只对首页生效。
+  const isHome = location.pathname === '/'
 
+  const closeMenu = () => {
+    setIsOpen(false)
+    hamburgerRef.current?.focus()
+  }
+
+  const closeMenuForNavigation = () => {
+    setIsOpen(false)
+  }
+
+  // OIDC 登录跳转：state 驱动，失败/异常必须复位——否则一次失败的跳转后
+  // 按钮变成「点了没有任何反应」的死控件。
   const startPassLogin = () => {
-    if (loginStartingRef.current) return
-    loginStartingRef.current = true
+    if (loginStarting) return
+    setLoginStarting(true)
     closeMenu()
-    void loginWithPass()
+    void loginWithPass().catch(() => setLoginStarting(false))
+  }
+
+  const doLogout = async () => {
+    if (logoutPending) return
+    setLogoutError(null)
+    setLogoutPending(true)
+    try {
+      await logout()
+      closeMenu()
+      if (LOGOUT_REDIRECT.startsWith('/')) {
+        navigate(LOGOUT_REDIRECT, { replace: true })
+      } else {
+        window.location.href = LOGOUT_REDIRECT
+      }
+    } catch {
+      setLogoutError(t('nav.logoutFailed'))
+    } finally {
+      setLogoutPending(false)
+    }
   }
 
   const openMenu = () => {
@@ -85,7 +129,7 @@ export const Navbar = () => {
   // after programmatic navigation (redirects from guards, navigate() calls, etc.)
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    closeMenu()
+    closeMenuForNavigation()
   }, [location.pathname])
 
   useEffect(() => {
@@ -241,9 +285,23 @@ export const Navbar = () => {
             </button>
 
             <div className={styles.logo}>
-              <Link to="/" onClick={closeMenu}>
-                <img className={styles.logoMark} src="/logo-mark.svg" width={28} height={28} alt="" aria-hidden="true" />
-                {t('nav.logo')}
+              <Link to="/" onClick={closeMenu} aria-label={t('nav.logo')}>
+                <img
+                  className={`${styles.logoImage} ${styles.logoImageLight}`}
+                  src="/brand/transcircle-horizontal-on-light.svg"
+                  width={400}
+                  height={120}
+                  alt=""
+                  aria-hidden="true"
+                />
+                <img
+                  className={`${styles.logoImage} ${styles.logoImageDark}`}
+                  src="/brand/transcircle-horizontal-on-dark.svg"
+                  width={400}
+                  height={120}
+                  alt=""
+                  aria-hidden="true"
+                />
               </Link>
             </div>
           </div>
@@ -251,12 +309,17 @@ export const Navbar = () => {
           {/* Desktop navigation — hidden on mobile via CSS */}
           <ul className={styles.navLinks}>
             <li>
-              <Link to="/">
+              <Link
+                to="/"
+                className={isHome ? styles.navCurrent : undefined}
+                aria-current={isHome ? 'page' : undefined}
+              >
                 {t('nav.home')}
+                {isHome && <NavFlagStripe />}
               </Link>
             </li>
             <li>
-              <a href="https://transcircle.org/#archive" target="_blank" rel="noopener noreferrer">
+              <a href="https://transcircle.org/#about" target="_blank" rel="noopener noreferrer">
                 {t('nav.archive')}
               </a>
             </li>
@@ -381,26 +444,22 @@ export const Navbar = () => {
                         role="menuitem"
                         type="button"
                         className={styles.acctLogout}
-                        onClick={async () => {
-                          await logout()
-                          if (LOGOUT_REDIRECT.startsWith('/')) {
-                            navigate(LOGOUT_REDIRECT, { replace: true })
-                          } else {
-                            window.location.href = LOGOUT_REDIRECT
-                          }
-                        }}
+                        disabled={logoutPending}
+                        aria-busy={logoutPending}
+                        onClick={() => void doLogout()}
                       >
-                        {t('nav.logout')}
+                        {logoutPending ? t('nav.loggingOut') : t('nav.logout')}
                       </button>
                     </li>
                   </ul>
                 )}
               </div>
             ) : (
-              <button type="button" className={styles.loginBtn} onClick={startPassLogin}>
+              <button type="button" className={styles.loginBtn} disabled={loginStarting} aria-busy={loginStarting} onClick={startPassLogin}>
                 {t('nav.login')}
               </button>
             )}
+            {logoutError && <p className={styles.logoutError} role="alert">{logoutError}</p>}
           </div>
         </div>
       </nav>
@@ -411,12 +470,36 @@ export const Navbar = () => {
         id="nav-drawer"
         className={`${styles.drawer} ${isOpen ? styles.drawerOpen : ''}`}
         inert={!isOpen ? true : undefined}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('nav.menuLabel')}
       >
+        <div className={styles.drawerHeader}>
+          <div className={styles.drawerBrand} aria-hidden="true">
+            <img
+              className={`${styles.logoImage} ${styles.logoImageLight}`}
+              src="/brand/transcircle-horizontal-on-light.svg"
+              width={400}
+              height={120}
+              alt=""
+            />
+            <img
+              className={`${styles.logoImage} ${styles.logoImageDark}`}
+              src="/brand/transcircle-horizontal-on-dark.svg"
+              width={400}
+              height={120}
+              alt=""
+            />
+          </div>
+          <button type="button" className={styles.drawerClose} aria-label={t('nav.closeMenu')} onClick={closeMenu}>
+            <span aria-hidden="true">×</span>
+          </button>
+        </div>
         <div className={styles.drawerInner}>
-          <Link to="/" className={styles.drawerLink} onClick={closeMenu}>
+          <Link to="/" className={styles.drawerLink} aria-current={isHome ? 'page' : undefined} onClick={closeMenu}>
             {t('nav.home')}
           </Link>
-          <a href="https://transcircle.org/#archive" className={styles.drawerLink} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
+          <a href="https://transcircle.org/#about" className={styles.drawerLink} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
             {t('nav.archive')}
           </a>
           <a href="https://community.transcircle.org/" className={styles.drawerLink} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
@@ -451,39 +534,40 @@ export const Navbar = () => {
                   {t('nav.adminDashboard')}
                 </Link>
               )}
-              <Link
-                to="/"
+              <button
+                type="button"
                 className={styles.drawerLink}
-                onClick={async (e) => {
-                  e.preventDefault()
-                  await logout()
-                  closeMenu()
-                  if (LOGOUT_REDIRECT.startsWith('/')) {
-                    navigate(LOGOUT_REDIRECT, { replace: true })
-                  } else {
-                    window.location.href = LOGOUT_REDIRECT
-                  }
-                }}
+                disabled={logoutPending}
+                aria-busy={logoutPending}
+                onClick={() => void doLogout()}
               >
-                {t('nav.logout')}
-              </Link>
+                {logoutPending ? t('nav.loggingOut') : t('nav.logout')}
+              </button>
             </>
           )}
           {!user && (
-            <button type="button" className={styles.drawerLink} onClick={startPassLogin}>
-              {t('nav.login')}
+            <button
+              type="button"
+              className={styles.drawerLink}
+              disabled={loginStarting}
+              aria-busy={loginStarting}
+              onClick={startPassLogin}
+            >
+              {loginStarting ? t('nav.loggingIn') : t('nav.login')}
             </button>
           )}
 
         </div>
       </div>
 
-      {/* Overlay backdrop */}
-      <div
+      {/* Overlay backdrop — 真 button 语义，键盘出口另有 Esc */}
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-hidden="true"
         className={`${styles.overlay} ${isOpen ? styles.overlayOn : ''}`}
         onClick={closeMenu}
-        aria-hidden="true"
-      ></div>
+      />
     </>
   )
 }

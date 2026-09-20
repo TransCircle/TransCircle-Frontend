@@ -4,47 +4,47 @@
 .section {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
-  padding-top: var(--sp-6);
-  border-top: 1px solid var(--divider-color);
+  gap: var(--s-4);
+  padding-top: var(--s-5);
+  border-top: 1px solid var(--line);
 }
 
 .title {
   margin: 0;
-  font-size: var(--fs-subtitle);
-  font-weight: var(--fw-label);
-  color: var(--text-main);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  color: var(--ink);
 }
 
 .composer {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
+  gap: var(--s-2);
 }
 
 .composerActions {
   display: flex;
   justify-content: flex-end;
-  gap: var(--sp-2);
+  gap: var(--s-2);
 }
 
 /* 人机验证：验证组件 + 就近的失败提示排成一列，左对齐跟随表单流 */
 .captcha {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
+  gap: var(--s-2);
   align-items: flex-start;
 }
 
 .loginCta {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-3);
+  gap: var(--s-3);
   align-items: flex-start;
-  padding: var(--sp-4);
-  background-color: var(--hover-bg);
-  border: 1px solid var(--divider-color);
-  border-radius: var(--radius-md);
+  padding: var(--s-4);
+  background-color: var(--pink-100);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
   color: var(--text-secondary);
   font-size: var(--fs-sm);
   line-height: 1.6;
@@ -56,36 +56,36 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
+  gap: var(--s-2);
 }
 
 .listItem {
-  background-color: var(--surface-card);
-  border: 1px solid var(--divider-color);
-  border-radius: var(--radius-md);
-  padding: var(--sp-4);
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: var(--s-4);
 }
 
 .comment,
 .reply {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
+  gap: var(--s-2);
 }
 
 /* 回复：靠一条左轨和缩进表示从属，不再嵌套第二层卡片 */
 .reply {
-  margin-left: var(--sp-3);
-  padding-left: var(--sp-4);
-  border-left: 2px solid var(--divider-color);
+  margin-left: var(--s-3);
+  padding-left: var(--s-4);
+  border-left: 2px solid var(--line);
 }
 
 .meta {
   display: flex;
   align-items: center;
-  gap: var(--sp-2);
+  gap: var(--s-2);
   flex-wrap: wrap;
-  font-size: var(--fs-meta);
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
@@ -94,9 +94,9 @@
 .avatarFallback {
   width: 22px;
   height: 22px;
-  border-radius: 50%;
+  border-radius: var(--r-pill);
   flex-shrink: 0;
-  background-color: var(--soft-pink);
+  background-color: var(--pink-200);
 }
 
 .avatar {
@@ -107,16 +107,16 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-main);
-  font-size: var(--fs-micro);
-  font-weight: var(--fw-label);
+  color: var(--ink);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
   user-select: none;
 }
 
 .author {
-  font-weight: var(--fw-label);
+  font-weight: var(--fw-semibold);
   font-size: var(--fs-sm);
-  color: var(--text-main);
+  color: var(--ink);
 }
 
 .time {
@@ -143,34 +143,34 @@
 
 .actions {
   display: flex;
-  gap: var(--sp-1);
+  gap: var(--s-1);
   align-items: center;
   flex-wrap: wrap;
 }
 
 .replies {
   list-style: none;
-  margin: var(--sp-1) 0 0;
+  margin: var(--s-1) 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--sp-3);
+  gap: var(--s-3);
 }
 
 .replyComposer {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
-  margin-top: var(--sp-1);
+  gap: var(--s-2);
+  margin-top: var(--s-1);
 }
 
 @media (max-width: 640px) {
   .listItem {
-    padding: var(--sp-3);
+    padding: var(--s-3);
   }
 
   .reply {
     margin-left: 0;
-    padding-left: var(--sp-3);
+    padding-left: var(--s-3);
   }
 }

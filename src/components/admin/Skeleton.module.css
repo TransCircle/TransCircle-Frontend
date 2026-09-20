@@ -16,7 +16,7 @@
 .lineMid,
 .lineNarrow,
 .lineShort {
-  background: var(--hover-bg);
+  background: var(--pink-100);
   animation: skeletonPulse 1.6s ease-in-out infinite;
 }
 
@@ -27,61 +27,61 @@
 .lineNarrow,
 .lineShort {
   display: block;
-  border-radius: var(--radius-xs);
+  border-radius: var(--r-xs);
 }
 
 .avatar,
 .avatarLg {
-  border-radius: 50%;
+  border-radius: var(--r-pill);
   flex-shrink: 0;
 }
 
 /* ── list：后台数据行（.rowBtn 约 60px 高） ── */
 .list {
-  gap: var(--sp-2);
+  gap: var(--s-2);
 }
 
 .row {
   height: 60px;
-  border-radius: var(--radius-md);
+  border-radius: var(--r-sm);
 }
 
 /* ── card：通用详情卡片 ── */
 .card {
   min-height: 16rem;
-  padding: var(--sp-4) var(--sp-5);
-  border: 1px solid var(--divider-color);
-  border-radius: var(--radius-lg);
-  background: var(--surface-card);
-  gap: var(--sp-4);
+  padding: var(--s-4) var(--s-5);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  gap: var(--s-4);
 }
 
 .cardBody {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-3);
+  gap: var(--s-3);
 }
 
 /* ── feed：公共故事流卡片（对应 Story.module.css .entryLink） ── */
 .feed {
-  gap: var(--sp-3);
+  gap: var(--s-3);
 }
 
 .feedCard {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
-  padding: var(--sp-4);
-  background-color: var(--surface-card);
-  border: 1px solid var(--divider-color);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  gap: var(--s-2);
+  padding: var(--s-4);
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-2);
 }
 
 .metaRow {
   display: flex;
   align-items: center;
-  gap: var(--sp-2);
+  gap: var(--s-2);
 }
 
 .avatar {
@@ -91,22 +91,22 @@
 
 /* ── article：公共阅读页 ── */
 .article {
-  gap: var(--sp-5);
+  gap: var(--s-5);
 }
 
 .articleBody {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
+  gap: var(--s-4);
 }
 
 .authorRow {
   display: flex;
   align-items: center;
-  gap: var(--sp-3);
-  padding: var(--sp-3) 0;
-  border-top: 1px solid var(--divider-color);
-  border-bottom: 1px solid var(--divider-color);
+  gap: var(--s-3);
+  padding: var(--s-3) 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 
 .avatarLg {
@@ -157,8 +157,7 @@
 
 @media (max-width: 640px) {
   .feedCard {
-    padding: var(--sp-3) var(--sp-4);
-    border-radius: var(--radius-md);
+    padding: var(--s-3) var(--s-4);
   }
 }
 

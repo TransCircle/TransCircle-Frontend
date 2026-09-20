@@ -10,22 +10,40 @@
 
 .holder {
   width: 100%;
-  max-width: var(--width-form);
+  max-width: var(--w-form);
 }
 
+/* 认证 / 状态页的居中卡 —— DESIGN.md v3.0 §7 落地：玻璃化 + --r-lg。
+   这是 §1.4 允许的玻璃场景（悬浮卡）：它浮在页面底色之上，
+   不是内容流里的文章卡。 */
 .card {
   width: 100%;
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-3);
+  background-color: var(--glass-bg);
+  border-color: var(--glass-border);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+}
+
+/* 玻璃必须有实色回退（§2.5），否则不支持 backdrop-filter 的浏览器
+   会看到一层直接压在页面底色上的半透明面。 */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .card {
+    background-color: var(--surface);
+    border-color: var(--line);
+  }
 }
 
 .body {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
+  gap: var(--s-4);
 }
 
 @media (max-width: 640px) {
   .shell {
     min-height: 0;
-    padding: var(--sp-2) 0 var(--sp-6);
+    padding: var(--s-2) 0 var(--s-5);
   }
 }

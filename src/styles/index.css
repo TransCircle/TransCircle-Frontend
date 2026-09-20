@@ -1,335 +1,310 @@
 /* ═══════════════════════════════════════════════════════════════
-   TransCircle 设计令牌 —— 唯一真源
-   方向见 docs/DESIGN.md §0。风格：现代简约、圆角。三条支柱：
+   TransCircle 设计令牌 —— TransCircle-Frontend 落地
+   规范源：../../docs/DESIGN.md → D:/TransCircle/docs/DESIGN.md
+            「TransCircle 设计系统 v3.0 / Spectrum·光谱」
 
-   1. 粉做面与线，蓝做信息，墨做文字：粉永远不承载文字——面上的字是墨色，
-      线只需满足非文本的 3:1，粉因此可以一直停在淡彩区。蓝取自旗蓝色相，
-      只用于正文链接与 info 语义。理由见下方 --accent-pink 处的注释。
-      两色不混合、不做渐变。
-   2. 圆角克制：卡片 10px、控件/徽章 6px。刻意避开 Material 的全圆胶囊
-      与 12/16/28 圆角梯度——那是消费级产品 UI 的语言，这里是故事档案。
-      发丝描边 + 极轻投影，不用彩色光晕、不用多层大扩散阴影。
-   3. 字号按中文调校（正文 1rem → 列表标题 1.25rem → 文章标题 1.5–1.9rem）：
-      方块字视觉重量大于拉丁字母，标题档位相应压低一档。
-      仅用系统字体栈，不引入特殊字体。
-   4. 表单控件全部自绘：填充 + 1px 描边 + 粉色焦点环，关闭一切浏览器原生
-      外观（含自动填充黄底、搜索框装饰、数字步进器）。
+   本文件不定义设计，只落地规范 §2 的令牌。名称与值必须与全局规范
+   逐字一致；要改值先改全局规范文档。
 
-   底色纪律：亮色为向品牌微调过的白（非灰、非暖米），暗色为带靛底的深墨
-   （非中性炭灰）。中性色阶一律不含暖色相。
+   方向（§0）：粉是主色（能量与行动），旗蓝是辅色（信息与理性），
+   白是呼吸。亮色通透轻快，暗色深靛底 + 霓虹光。
+
+   硬纪律（§1）：禁止一切渐变填充；发光只用 box-shadow / blur 实体光斑；
+   玻璃只在浮动层；粉做文字只能用 --pink-700 / --blue-600；
+   间距只走 4px 刻度；同类同圆角；禁止 pill 按钮。
+
+   暗色双通道：[data-theme='dark']（JS）+ @media (prefers-color-scheme)
+   （无 JS 回退）——两处必须逐条同步。
    ═══════════════════════════════════════════════════════════════ */
 
-:root {
-  /* ── 亮色主题（默认）───────────────────────────────────── */
-  /* 页面底是带粉的白（R255 G249 B251）：粉调铺在最大的那块面上，
-     整体才会「淡淡地有颜色」，而不是靠某几个控件去点缀。 */
-  --bg-color: #fff9fb;
-  --surface-card: #ffffff;
-
-  /* 墨色带靛底，不是中性黑——性格从底色转移到墨色。 */
-  --text-main: #14161c;
-  --text-body: #2b2e36;
-  --text-secondary: #4a4f5a;
-  --text-muted: #6a6f79;
-
-  --error-color: #b3261e;
-  /* 与 --error-color 同值：浅淡描边在白底上达不到 3:1 的非文本对比下限。 */
-  --error-border: #b3261e;
-  --success-color: #1f6b45;
-
-  /* ── 三色分工：粉=行动，蓝=信息，墨=文字 ────────────────
-     旗帜是被**引用**，不是被复刻。跨性别旗的两个色都活在明度高端
-     （#F5A9B8 / #5BCEFA），直接拿去压白底承载文字与按钮当然不够；但把
-     色相留住、只把明度压到可用区间，得到的仍然是「那面旗的粉」和
-     「那面旗的蓝」，而不是另一个凭空挑出来的颜色。
-
-     关键约束：**粉永远不做文字**。想让粉承载文字就得压到 4.5:1，那要一路
-     压成深玫红，整个界面立刻变重——这正是上一版走错的地方。改成让粉只做
-     「面」和「线」：面上的字是墨色（12:1 以上），线只需满足非文本的 3:1
-     下限。这样粉可以一直停在淡彩区，可读性反而更好。
-
-     粉的四个功能停点（色相全部锁在旗粉 6.3）：
-       --soft-pink  #ffd2da  身份面：头像片、柔粉底
-       --cta-bg     #fec9d2  主按钮底（墨字 12.49:1）
-       --cta-hover  #f8b8c4  （墨字 10.89:1）
-       --accent-pink #c47687 面与线：描边、焦点环、下划线、勾选态
-                             在它实际压着的每一种面上都过 3:1：白卡 3.34、
-                             页面底 3.21、输入面 3.08、悬停面 3.02。
-                             注意 hover 时背景会换成 --hover-bg，粉线是压在
-                             那个面上的，只按页面底取值会差一档。
-     蓝是信息色，取旗蓝色相 226.5、与旧版同明度，所以「为什么是这个蓝」
-     有答案；墨色只管正文、标题、次要按钮。 */
-  --accent-ink: #1b1e26;
-  /* 信息语义：正文链接、Alert info、info 徽章。 */
-  --accent-blue: #026a89;
-  /* 面与线。不做文字——见上方约束。 */
-  --accent-pink: #c47687;
-  /* 淡粉填充面：头像片、accent 徽章、以及各处选中态的底（分页当前页、
-     编辑器工具栏激活项）。与 --hover-bg 拉开一档，让「选中」比「划过」更重。 */
-  --soft-pink: #ffd2da;
-
-  --nav-bg: rgba(255, 249, 251, 0.85);
-  /* 发丝线：纯装饰性分隔。 */
-  --divider-color: #f1e3e5;
-  /* 表单控件描边：WCAG 1.4.11 要求非文本边界 ≥3:1，发丝线达不到。 */
-  --border-strong: #8a8f99;
-
-  /* 悬停 / 只读内容面：同样带粉，让每一次划过都能看到主题色。 */
-  --hover-bg: #fff0f3;
-  --hover-bg-mix: color-mix(in srgb, var(--accent-pink) 12%, white);
-  /* 输入控件填充：与卡片面拉开，让字段不必靠粗描边才能被认出。 */
-  --surface-input: #fef3f5;
-
-  /* 主按钮 = 淡粉底 + 墨字（12.49:1）。深色实心按钮在这个题材上太重了。 */
-  --cta-bg: #fec9d2;
-  --cta-color: #14161c;
-  --cta-hover: #f8b8c4;
-  /* 往按钮底色里加粉，而不是往白里加粉：混白会同时抬高明度，算出来的
-     #e9cad1 相对基础态只掉了 R 通道，看着是「发灰」而不是「更深一点的粉」。
-     这条在所有支持 color-mix 的浏览器上都会覆盖 --cta-hover，必须对得上。 */
-  --cta-hover-mix: color-mix(in srgb, var(--accent-pink) 20%, var(--cta-bg));
-
-  --shadow-color: rgba(20, 22, 28, 0.07);
-  --shadow-color-hover: rgba(20, 22, 28, 0.1);
-  --overlay-bg: rgba(20, 22, 28, 0.42);
-
-  /* 语义软面：底 / 描边 / 文字三件套。 */
-  --soft-success-bg: #e6f3ec;
-  --soft-success-border: #b6dcc6;
-  --soft-success-text: #1f6b45;
-  --soft-error-bg: #fceceb;
-  --soft-error-border: #f0c4c1;
-  --soft-error-text: #a3231c;
-  --soft-info-bg: #e9f1f5;
-  --soft-info-border: #c5dae3;
-  --soft-info-text: #026a89;
-  --soft-amber-bg: #fbf1de;
-  --soft-amber-border: #ecd8ac;
-  --soft-amber-text: #8a5a08;
-
-  /* 投票条：数据可视化，比语义文字色更饱和一档，故独立成令牌。 */
-  --vote-approve: #1d7a4a;
-  --vote-reject: #c33027;
-
-  /* 焦点环跟行动色走：它标记的是「你现在能操作这个」。 */
-  /* 与 --accent-pink #c47687 同色。改粉时这条必须跟着改——不支持 color-mix 的
-     浏览器走的就是它。 */
-  --focus-ring: rgba(196, 118, 135, 0.38);
-  --focus-ring-error: rgba(179, 38, 30, 0.2);
-  /* 粉色面上的前景色。粉是淡的，所以这里是墨色——亮暗两套主题同值。 */
-  --on-accent: #14161c;
-  /* 实心 --error-color 面上的前景色（错误 toast）。 */
-  --on-error: #ffffff;
-  --select: #f7dce1;
-
-  /* ═══ 以下为主题无关的共享刻度 ═══════════════════════════ */
-
-  /* ── 字体：只用系统栈，不引入特殊字体 ───────────────────
-     项目禁止外部字体；层级完全靠字号级差与字重实现。 */
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
-    'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
-
-  /* ── 字号刻度 ────────────────────────────────────────────
-     按中文调校：方块字填满字身框，同字号下视觉重量明显大于拉丁字母，
-     因此标题档位比英文站点低一档。级差保持清晰但不夸张。 */
-  --fs-micro: 0.75rem;
-  --fs-meta: 0.8125rem;
-  --fs-sm: 0.875rem;
-  --fs-body: 1rem;
-  --fs-subtitle: 1.125rem;
-  --fs-title: 1.25rem;
-  --fs-display: clamp(1.5rem, 1.25rem + 1.1vw, 1.9rem);
-
-  /* ── 字重 ──────────────────────────────────────────────── */
-  --fw-display: 700;
-  --fw-title: 600;
-  --fw-body: 400;
-  --fw-label: 600;
-
-  --lh-body: 1.85;
-  --lh-tight: 1.2;
-
-  /* ── 间距：严格 4px 刻度 ───────────────────────────────── */
-  --sp-1: 4px;
-  --sp-2: 8px;
-  --sp-3: 12px;
-  --sp-4: 16px;
-  --sp-5: 20px;
-  --sp-6: 24px;
-  --sp-7: 32px;
-  --sp-8: 40px;
-  --sp-9: 48px;
-  --sp-10: 64px;
-
-  /* ── 圆角：现代简约的圆角主题 ──────────────────────────── */
-  --radius-xs: 3px;
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
-  --radius-pill: 6px;
-  --radius-control: 6px;
-  --radius-pop: 10px;
-
-  /* ── 投影：克制。单层、无色、小扩散；不用彩色光晕 ──────── */
-  --shadow-card: 0 1px 2px var(--shadow-color);
-  --shadow-card-hover: 0 4px 12px var(--shadow-color-hover);
-  --shadow-pop: 0 6px 20px var(--shadow-color);
-  --shadow-dialog: 0 8px 40px rgba(20, 22, 28, 0.24);
-  --shadow-drawer: 2px 0 20px rgba(20, 22, 28, 0.16);
-
-  /* ── 版心 ─────────────────────────────────────────────── */
-  --width-content: 1200px;
-  /* 故事流吃满 --width-content，始终单列（内容稀疏时多列会留空格位）；
-     卡片内的标题与摘要各自收在 --width-reading 内，保证行宽可读。 */
-  --width-reading: 48rem;
-  --width-form: 26rem;
-  /* 边栏构图：日期/作者所在的左栏宽度（打破均匀垂直堆叠）。 */
-  --rail-w: 6.5rem;
-
-  /* ── 动效：安静。只在状态变化时发生 ────────────────────── */
-  --ease-emphasized: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
-  --dur-fast: 150ms;
-  --dur-base: 200ms;
-  --dur-slow: 320ms;
-
-  /* ── 控件节奏与触控下限 ────────────────────────────────── */
-  --control-h: 34px;
-  --control-h-cell: 48px;
-  --tap-min: 44px;
+/* ── 字体资产（§2.6 / §9）───────────────────────────────────────
+   Nunito Brand 与 Space Grotesk 取 Google Fonts 的 latin 子集自托管。
+   前者仅服务品牌词，后者用于标签与数字；中文由 --font-sans 系统栈呈现。 */
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('/fonts/space-grotesk-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
-/* ═══ 暗色主题（系统偏好，无 JS 回退）═══════════════════════
-   注意：必须与下方 [data-theme='dark'] 逐项保持一致。 */
+@font-face {
+  font-family: 'Nunito Brand';
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url('/fonts/nunito-brand-latin.woff2') format('woff2');
+  unicode-range: U+0000-024F, U+1E00-1EFF, U+2000-206F;
+}
+
+:root {
+  /* ═══ 2.1 粉 —— 主色 ═══════════════════════════════════════ */
+  --pink-100: #ffe9f1; /* 浅表面：chip 底、hover 面 */
+  --pink-200: #ffd3e2; /* 柔和面 */
+  --pink-300: #ffb3cb;
+  --pink-400: #ec9eb0; /* 装饰面、非关键填充 */
+  --pink-500: #f0aac1;
+  --pink-600: #efa8c0; /* 主行动色：主按钮、激活态、强调 */
+  --pink-700: #c22e68; /* 粉文字专用（≥4.5:1）；禁止用 600 及以下档做文字 */
+
+  /* ═══ 2.2 旗蓝 —— 辅色 / 信息 ═══════════════════════════════ */
+  --blue-100: #e3f4fe;
+  --blue-400: #5bcefa; /* 旗帜原蓝：装饰面、图标、进度 */
+  --blue-500: #2fb5f0;
+  --blue-600: #0a6e9e; /* 链接与信息文字专用（≥4.5:1） */
+
+  /* ═══ 2.3 中性 / 表面 / 线 ═════════════════════════════════ */
+  --bg: #fdf9fb; /* 页面底：微暖粉白 */
+  --surface: #ffffff; /* 卡片面 */
+  --surface-2: #faf0f4; /* 输入框、凹陷面、代码行底色 */
+  --ink: #1a1420; /* 主文字（深李紫墨，替代纯黑） */
+  --text-body: #3e3646;
+  --text-secondary: #6d6478;
+  --text-muted: #6f6678;
+  --line: #eedfe6; /* 发丝线：卡片描边、分隔线 */
+  --line-strong: #8c7b88; /* 表单描边（对 --bg ≥3:1） */
+
+  /* ═══ 2.4 语义（文字档均 ≥4.5:1）═══════════════════════════ */
+  --success-bg: #e2f4ea;
+  --success-border: #bee6cf;
+  --success-text: #1e7a4f;
+  --error-bg: #fcebea;
+  --error-border: #f2c6c2;
+  --error-text: #b3261e;
+  --warning-bg: #fff4dc;
+  --warning-border: #f2e0b0;
+  --warning-text: #8a5a00;
+  --info-bg: var(--blue-100);
+  --info-border: #b9e3f9;
+  --info-text: var(--blue-600);
+
+  /* 投票 / 对比语义（Frontend 专有，§2.4 末） */
+  --vote-approve: #1fa05c;
+  --vote-reject: #e5484d;
+
+  /* ═══ 2.5 玻璃与发光 ═══════════════════════════════════════ */
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(26, 18, 32, 0.09);
+  --glass-blur: 16px;
+  --overlay: rgba(12, 10, 19, 0.5);
+  --glow-pink: 0 0 0 1px rgba(239, 168, 192, 0.09), 0 8px 28px -8px rgba(239, 168, 192, 0.16);
+  --glow-pink-dark: 0 0 18px rgba(245, 182, 201, 0.20);
+  --glow-blue: 0 0 0 1px rgba(91, 206, 250, 0.18), 0 8px 32px -6px rgba(91, 206, 250, 0.32);
+
+  /* ── 落地补充（规范正文指定了值但未给名，本仓统一命名）──────
+     散写 hex 违反 §1.7，故收成令牌。 */
+  --on-pink: #210a16; /* §5.1 / §5.6：粉面上的墨字 */
+  --pink-600-hover: #e38faa; /* §5.1 主按钮 hover 加深档 */
+  /* 跨性别旗是固定品牌图案；它不随亮暗主题翻转。 */
+  --flag-pink: #f5a9b8;
+  --flag-white: #ffffff;
+  --flag-blue: #5bcefa;
+  --ring-pink: rgba(239, 168, 192, 0.5); /* §5.4 焦点环，色值回退；下方 @supports 换 color-mix */
+  --ring-error: rgba(179, 38, 30, 0.22);
+
+  /* ═══ 2.6 字体 ═════════════════════════════════════════════ */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  --font-brand: 'Nunito Brand', Nunito, 'Avenir Next Rounded', var(--font-sans); /* TransCircle 品牌文本 */
+  --font-tech: 'Space Grotesk', var(--font-sans); /* eyebrow 标签、数字、徽章 */
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* ═══ 2.7 字阶（流体，基准 16px）═══════════════════════════ */
+  --fs-hero: clamp(2.4rem, 1.8rem + 3vw, 4rem);
+  --fs-display: clamp(1.8rem, 1.45rem + 1.6vw, 2.6rem);
+  --fs-h1: clamp(1.5rem, 1.3rem + 1vw, 2rem);
+  --fs-h2: 1.5rem;
+  --fs-h3: 1.25rem;
+  --fs-lg: 1.125rem;
+  --fs-body: 1rem;
+  --fs-sm: 0.875rem;
+  --fs-xs: 0.75rem;
+
+  --lh-display: 1.15;
+  --lh-heading: 1.3;
+  --lh-body: 1.75;
+  --lh-prose: 1.85;
+  --lh-caption: 1.5;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* ═══ 2.8 间距 / 圆角 / 阴影 / 层级 ═══════════════════════ */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+  --s-9: 96px;
+
+  /* 同类同圆角是铁律：卡片一律 r-md，控件一律 r-sm，禁止 pill 按钮。 */
+  --r-xs: 4px; /* chip、标签、inline code */
+  --r-sm: 8px; /* 按钮、输入框、小图 */
+  --r-md: 12px; /* 卡片 */
+  --r-lg: 16px; /* 浮动层：弹窗、抽屉、玻璃面板 */
+  --r-pill: 999px; /* 仅头像、进度条轨道 */
+
+  --shadow-1: 0 1px 2px rgba(26, 18, 32, 0.05);
+  --shadow-2: 0 1px 2px rgba(26, 18, 32, 0.04), 0 8px 24px -12px rgba(26, 18, 32, 0.12);
+  --shadow-3: 0 2px 6px rgba(26, 18, 32, 0.06), 0 16px 40px -16px rgba(26, 18, 32, 0.2);
+
+  --z-sticky: 10;
+  --z-nav: 50;
+  --z-overlay: 80;
+  --z-drawer: 90;
+  --z-modal: 100;
+  --z-toast: 120;
+  --z-skip: 200;
+
+  /* ═══ 2.9 动效 ═════════════════════════════════════════════ */
+  --dur-1: 150ms; /* 悬停、按压 */
+  --dur-2: 250ms; /* 常规过渡、抽屉 */
+  --dur-3: 400ms; /* 卡片入场、主题切换 */
+  --dur-4: 600ms; /* 滚动 reveal */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.3, 0.64, 1); /* 仅微交互，位移 ≤4px */
+
+  /* ═══ 4. 布局轨 ════════════════════════════════════════════ */
+  --w-content: 1280px; /* 内容轨 */
+  --w-reading: 46rem; /* 阅读轨 */
+  --w-form: 26rem; /* 表单轨 */
+  --nav-h: 64px; /* 顶栏高，移动端 56px */
+  --page-x: clamp(16px, 4vw, 48px); /* 顶栏与内容区共用，保证左缘对齐 */
+  --tap-min: 44px;
+
+  /* ── 控件节奏（落地补充）────────────────────────────────── */
+  --btn-h: 40px; /* §5.1 按钮高，移动端抬到 --tap-min */
+  --control-h: 44px; /* §5.4 表单控件高 */
+  --admin-sidebar-w: 232px; /* 管理台侧栏 */
+}
+
+/* ═══ 暗色主题（系统偏好，无 JS 回退）═══════════════════════════
+   注意：必须与下方 [data-theme='dark'] 块逐条保持一致。 */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
-    /* 靛底深墨：压到近黑，但底子是蓝紫，不是中性炭灰。 */
-    --bg-color: #0d0e12;
-    --surface-card: #16181e;
+    --pink-100: #3a1e2e;
+    --pink-200: #54263c;
+    --pink-300: #a63d68;
+    --pink-400: #f49bbe;
+    --pink-500: #f7bfce;
+    --pink-600: #f5b6c9;
+    --pink-700: #ff8fbb;
 
-    --text-main: #eceef2;
-    --text-body: #c8cbd2;
-    --text-secondary: #a5a9b2;
-    --text-muted: #868a93;
+    --blue-100: #122b3a;
+    --blue-400: #5bcefa;
+    --blue-500: #37bdf5;
+    --blue-600: #7cd4fa;
 
-    --error-color: #f2938a;
-    --error-border: #f2938a;
-    --success-color: #6cc292;
+    --bg: #0c0a13;
+    --surface: #17131f;
+    --surface-2: #1e1929;
+    --ink: #f5f2f8;
+    --text-body: #cfc9da;
+    --text-secondary: #9c94ac;
+    --text-muted: #8f86a4;
+    --line: #2b2438;
+    --line-strong: #7a7090;
 
-    --accent-ink: #eceef2;
+    --success-bg: #12281c;
+    --success-border: #1e4630;
+    --success-text: #6fcf97;
+    --error-bg: #2e1518;
+    --error-border: #57262a;
+    --error-text: #ff8a80;
+    --warning-bg: #2a2113;
+    --warning-border: #4a3a1c;
+    --warning-text: #f2c572;
+    --info-border: #1c4257;
 
-    --accent-blue: #77c9ea;
-    --accent-pink: #efa3b7;
-    --soft-pink: #33202a;
+    --vote-approve: #34c77b;
+    --vote-reject: #ff6b6b;
 
-    --nav-bg: rgba(13, 14, 18, 0.85);
-    --divider-color: #24262d;
-    --border-strong: #6a6f7a;
+    --glass-bg: rgba(23, 19, 31, 0.62);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --overlay: rgba(12, 10, 19, 0.62);
 
-    --hover-bg: #1c1f26;
-    --surface-input: #1a1d23;
-    --hover-bg-mix: color-mix(in srgb, var(--text-main) 8%, var(--bg-color));
-
-    --cta-bg: #efa3b7;
-    --cta-color: #14161c;
-    --cta-hover: #d78da1;
-    --cta-hover-mix: color-mix(in srgb, var(--accent-pink) 92%, black);
-
-    --shadow-color: rgba(0, 0, 0, 0.5);
-    --shadow-color-hover: rgba(0, 0, 0, 0.6);
-    --overlay-bg: rgba(0, 0, 0, 0.62);
-
-    --soft-success-bg: #14301f;
-    --soft-success-border: #285c3c;
-    --soft-success-text: #6cc292;
-    --soft-error-bg: #331817;
-    --soft-error-border: #6b2f2a;
-    --soft-error-text: #f2938a;
-    --soft-info-bg: #132932;
-    --soft-info-border: #274e5e;
-    --soft-info-text: #77c9ea;
-    --soft-amber-bg: #33280f;
-    --soft-amber-border: #6b5423;
-    --soft-amber-text: #e0ad5c;
-
-    --vote-approve: #6cc292;
-    --vote-reject: #f2938a;
-
-    --focus-ring: rgba(239, 163, 183, 0.30);
-    --focus-ring-error: rgba(242, 147, 138, 0.26);
-    --on-accent: #14161c;
-    --on-error: #2a0f1a;
-    --select: #2a2e37;
-
-    --shadow-dialog: 0 8px 40px rgba(0, 0, 0, 0.6);
-    --shadow-drawer: 2px 0 20px rgba(0, 0, 0, 0.5);
+    --pink-600-hover: #eea4bc;
+    --ring-pink: rgba(245, 182, 201, 0.25);
+    --ring-error: rgba(255, 138, 128, 0.26);
   }
 }
 
-/* ═══ 暗色主题（JS 控制）═══════════════════════════════════
-   注意：必须与上方 prefers-color-scheme 块逐项保持一致。 */
+/* ═══ 暗色主题（JS 控制）═══════════════════════════════════════
+   注意：必须与上方 prefers-color-scheme 块逐条保持一致。 */
 [data-theme='dark'] {
-  --bg-color: #0d0e12;
-  --surface-card: #16181e;
+  --pink-100: #3a1e2e;
+  --pink-200: #54263c;
+  --pink-300: #a63d68;
+  --pink-400: #f49bbe;
+  --pink-500: #f7bfce;
+  --pink-600: #f5b6c9;
+  --pink-700: #ff8fbb;
 
-  --text-main: #eceef2;
-  --text-body: #c8cbd2;
-  --text-secondary: #a5a9b2;
-  --text-muted: #868a93;
+  --blue-100: #122b3a;
+  --blue-400: #5bcefa;
+  --blue-500: #37bdf5;
+  --blue-600: #7cd4fa;
 
-  --error-color: #f2938a;
-  --error-border: #f2938a;
-  --success-color: #6cc292;
+  --bg: #0c0a13;
+  --surface: #17131f;
+  --surface-2: #1e1929;
+  --ink: #f5f2f8;
+  --text-body: #cfc9da;
+  --text-secondary: #9c94ac;
+  --text-muted: #8f86a4;
+  --line: #2b2438;
+  --line-strong: #7a7090;
 
-  --accent-ink: #eceef2;
+  --success-bg: #12281c;
+  --success-border: #1e4630;
+  --success-text: #6fcf97;
+  --error-bg: #2e1518;
+  --error-border: #57262a;
+  --error-text: #ff8a80;
+  --warning-bg: #2a2113;
+  --warning-border: #4a3a1c;
+  --warning-text: #f2c572;
+  --info-border: #1c4257;
 
-  --accent-blue: #77c9ea;
-  --accent-pink: #efa3b7;
-  --soft-pink: #33202a;
+  --vote-approve: #34c77b;
+  --vote-reject: #ff6b6b;
 
-  --nav-bg: rgba(13, 14, 18, 0.85);
-  --divider-color: #24262d;
-  --border-strong: #6a6f7a;
+  --glass-bg: rgba(23, 19, 31, 0.62);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --overlay: rgba(12, 10, 19, 0.62);
 
-  --hover-bg: #1c1f26;
-  --surface-input: #1a1d23;
-  --hover-bg-mix: color-mix(in srgb, var(--text-main) 8%, var(--bg-color));
-
-  --cta-bg: #efa3b7;
-  --cta-color: #14161c;
-  --cta-hover: #d78da1;
-  --cta-hover-mix: color-mix(in srgb, var(--accent-pink) 92%, black);
-
-  --shadow-color: rgba(0, 0, 0, 0.5);
-  --shadow-color-hover: rgba(0, 0, 0, 0.6);
-  --overlay-bg: rgba(0, 0, 0, 0.62);
-
-  --soft-success-bg: #14301f;
-  --soft-success-border: #285c3c;
-  --soft-success-text: #6cc292;
-  --soft-error-bg: #331817;
-  --soft-error-border: #6b2f2a;
-  --soft-error-text: #f2938a;
-  --soft-info-bg: #132932;
-  --soft-info-border: #274e5e;
-  --soft-info-text: #77c9ea;
-  --soft-amber-bg: #33280f;
-  --soft-amber-border: #6b5423;
-  --soft-amber-text: #e0ad5c;
-
-  --vote-approve: #6cc292;
-  --vote-reject: #f2938a;
-
-  --focus-ring: rgba(239, 163, 183, 0.30);
-  --focus-ring-error: rgba(242, 147, 138, 0.26);
-  --on-accent: #14161c;
-  --on-error: #2a0f1a;
-  --select: #2a2e37;
-
-  --shadow-dialog: 0 8px 40px rgba(0, 0, 0, 0.6);
-  --shadow-drawer: 2px 0 20px rgba(0, 0, 0, 0.5);
+  --pink-600-hover: #eea4bc;
+  --ring-pink: rgba(245, 182, 201, 0.25);
+  --ring-error: rgba(255, 138, 128, 0.26);
 }
+
+/* 焦点环首选 color-mix（§5.4）；上方 rgba 是不支持时的硬编码回退。
+   这里引用 var(--pink-600)，故一条声明同时覆盖亮暗两套主题。 */
+@supports (color: color-mix(in srgb, red 25%, transparent)) {
+  :root {
+    --ring-pink: color-mix(in srgb, var(--pink-600) 25%, transparent);
+    --ring-error: color-mix(in srgb, var(--error-text) 25%, transparent);
+  }
+}
+
+/* 移动端顶栏 56px（§4） */
+@media (max-width: 768px) {
+  :root {
+    --nav-h: 56px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   全局基础
+   ═══════════════════════════════════════════════════════════════ */
 
 *,
 *::before,
@@ -337,33 +312,77 @@
   box-sizing: border-box;
 }
 
+html {
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme]) {
+    color-scheme: dark;
+  }
+}
+
 body {
-  background-color: var(--bg-color);
-  font-family: var(--font-sans);
-  font-weight: var(--fw-body);
   margin: 0;
   padding: 0;
-  color: var(--text-main);
-  scrollbar-color: var(--divider-color) var(--bg-color);
-  scrollbar-width: auto;
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* 中文标题使用系统栈，并保持自然字距。 */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-sans);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0;
+  line-height: var(--lh-heading);
+  color: var(--ink);
 }
 
 ::selection {
-  background-color: var(--select);
+  background-color: var(--pink-200);
+  color: var(--ink);
+}
+
+/* ── 焦点：全局可见（§7）。各组件的 outline 只是就近覆盖本条；
+   漏改这一条，没单独声明 outline 的控件就全失去可见焦点。 ── */
+:focus-visible {
+  outline: 2px solid var(--pink-700);
+  outline-offset: 2px;
+}
+
+/* ── 滚动条 ─────────────────────────────────────────────────── */
+body {
+  scrollbar-color: var(--line-strong) transparent;
+  scrollbar-width: auto;
 }
 
 ::-webkit-scrollbar-track {
-  background-color: var(--bg-color);
+  background-color: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: var(--divider-color);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--bg-color);
+  background-color: var(--line-strong);
+  border: 3px solid var(--bg);
+  border-radius: var(--r-pill);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: var(--text-muted);
+  background-color: var(--pink-600);
 }
 
 @media (pointer: fine) {
@@ -372,37 +391,126 @@ body {
   }
 
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 12px;
+    height: 12px;
   }
 }
 
-/* 仅在用户未偏好减少动画时启用主题切换过渡 */
+/* ── 主题切换：全局 300ms 配色过渡（§6.5）。
+   只过渡配色属性，避免布局属性被卷入造成掉帧。 ── */
 @media (prefers-reduced-motion: no-preference) {
   html {
     scroll-behavior: smooth;
   }
 
-  body {
+  body,
+  [data-theme-transition] {
     transition:
-      background-color var(--dur-base) var(--ease-standard),
-      color var(--dur-base) var(--ease-standard);
+      background-color var(--dur-3) var(--ease-standard),
+      border-color var(--dur-3) var(--ease-standard),
+      color var(--dur-3) var(--ease-standard);
   }
 }
 
+/* ── 页面转场：支持的浏览器淡入，其余静默回退（§6.6）── */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+}
+
+/* ── 主题切换的圆形遮罩过渡（§5.11）──
+   .theme-switching 只在 ThemeToggle 点击期间挂在 <html> 上：
+   新旧快照都停掉默认交叉淡入，改由 JS 在 ::view-transition-new(root) 上
+   跑 clip-path 圆形扩散（--dur-3）。限定 .theme-switching 是为了不影响
+   上面 @view-transition 的页面导航淡入。 */
+html.theme-switching::view-transition-old(root),
+html.theme-switching::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+html.theme-switching::view-transition-old(root) {
+  z-index: 1;
+}
+
+html.theme-switching::view-transition-new(root) {
+  z-index: 2;
+}
+
+/* ── 滚动 reveal（§6.4）：首屏以下区块入场。
+   .reveal 默认隐形，IntersectionObserver 加 .is-visible 后落位；
+   --i 为交错序号，每级 60ms。 ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity var(--dur-4) var(--ease-out),
+    transform var(--dur-4) var(--ease-out);
+  transition-delay: calc(var(--i, 0) * 60ms);
+  will-change: opacity, transform;
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── 玻璃：仅浮动层（§1.4 / §2.5）。
+   必须带 @supports 回退为实色，否则不支持 backdrop-filter 的浏览器
+   会得到一层半透明糊面。 ── */
+.glass {
+  background-color: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background-color: var(--surface);
+  }
+}
+
+/* ── 跳转链接 ──────────────────────────────────────────────── */
+.skip-link {
+  position: fixed;
+  top: var(--s-2);
+  left: var(--s-2);
+  z-index: var(--z-skip);
+  padding: var(--s-2) var(--s-4);
+  background-color: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  text-decoration: none;
+  box-shadow: var(--shadow-3);
+  transform: translateY(calc(-100% - var(--s-4)));
+}
+
+.skip-link:focus-visible {
+  transform: none;
+}
+
+/* ── 全局动效降级（§2.9 / §7）。放在最后，压过一切组件声明。 ── */
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
   }
-}
 
-/* 焦点环跟行动色走。这是全局默认值——各组件里的 outline 只是就近覆盖它，
-   漏改这一条的话，没有单独声明 outline 的控件全都还是蓝的。 */
-:focus-visible {
-  outline: 2px solid var(--accent-pink);
-  outline-offset: 2px;
+  /* reveal 在降级下恒可见，不能停在 opacity:0 */
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
 }

@@ -1,13 +1,19 @@
+/* Modal —— DESIGN.md v3.0 §5.7
+   遮罩 --overlay + blur(4px)；面板 --r-lg + --shadow-3，
+   入场 opacity 0→1 + scale(.96→1) --dur-2。 */
+
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 1100;
+  z-index: var(--z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--sp-6);
-  background-color: var(--overlay-bg);
-  animation: adminOverlayIn var(--dur-base) var(--ease-standard);
+  padding: var(--s-5);
+  background-color: var(--overlay);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  animation: adminOverlayIn var(--dur-2) var(--ease-standard);
 }
 
 .panel {
@@ -16,12 +22,12 @@
   max-height: calc(100vh - 3rem);
   max-height: calc(100dvh - 3rem);
   overflow-y: auto;
-  background-color: var(--surface-card);
-  border: 1px solid var(--divider-color);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-dialog);
-  padding: var(--sp-6);
-  animation: adminPanelIn var(--dur-base) var(--ease-emphasized);
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-3);
+  padding: var(--s-5);
+  animation: adminPanelIn var(--dur-2) var(--ease-out);
 }
 
 .panelMd {
@@ -30,13 +36,13 @@
 
 .title {
   margin: 0;
-  font-size: var(--fs-subtitle);
-  font-weight: var(--fw-display);
-  color: var(--text-main);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--ink);
 }
 
 .desc {
-  margin: var(--sp-2) 0 0;
+  margin: var(--s-2) 0 0;
   font-size: var(--fs-sm);
   line-height: 1.6;
   color: var(--text-secondary);
@@ -46,7 +52,7 @@
   margin-top: 1rem;
   display: flex;
   flex-direction: column;
-  gap: var(--sp-3);
+  gap: var(--s-3);
 }
 
 .prompt {
@@ -56,7 +62,7 @@
 }
 
 .counter {
-  font-size: var(--fs-micro);
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   text-align: right;
 }
@@ -65,7 +71,7 @@
   margin-top: 1.5rem;
   display: flex;
   justify-content: flex-end;
-  gap: var(--sp-2);
+  gap: var(--s-2);
   flex-wrap: wrap;
 }
 
@@ -78,7 +84,11 @@
 @keyframes adminPanelIn {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.985);
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 

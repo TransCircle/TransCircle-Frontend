@@ -450,6 +450,7 @@ export const AdminEditRequests = () => {
                 {/* 提交期间冻结：请求带走的是点按钮那一刻的备注，此时还能改的话，
                     屏幕上显示的和实际发出去的不是同一份，成功后还会清掉刚敲的新内容。 */}
                 <TextArea
+                  label={t('adminEditRequests.voteNoteLabel')}
                   value={voteNote}
                   disabled={voteSubmitting}
                   onChange={(e) => setVoteNote(e.target.value)}

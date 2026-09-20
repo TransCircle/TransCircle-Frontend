@@ -1,32 +1,42 @@
+/* 按钮 —— DESIGN.md v3.0 §5.1
+   高 40px（移动端 44px），padding 0 20px，--r-sm（禁止 pill 按钮），
+   --fw-semibold --fs-sm，过渡覆盖 background/border/color + transform（--ease-spring）。 */
+
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--sp-2);
+  gap: var(--s-2);
   font-family: inherit;
-  font-weight: var(--fw-title);
+  font-weight: var(--fw-semibold);
   cursor: pointer;
-  border-radius: var(--radius-pill);
-  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  border: 1.5px solid transparent;
   white-space: nowrap;
   line-height: 1.2;
   transition:
-    background-color var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard),
-    border-color var(--dur-fast) var(--ease-standard),
-    box-shadow var(--dur-fast) var(--ease-standard),
-    transform var(--dur-fast) var(--ease-emphasized);
+    background-color var(--dur-1) var(--ease-standard),
+    color var(--dur-1) var(--ease-standard),
+    border-color var(--dur-1) var(--ease-standard),
+    box-shadow var(--dur-1) var(--ease-standard),
+    transform var(--dur-1) var(--ease-spring);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--pink-600);
+  outline-offset: 2px;
 }
 
 .md {
-  min-height: 40px;
-  padding: var(--sp-2) var(--sp-5);
+  height: var(--btn-h);
+  padding: 0 20px;
   font-size: var(--fs-sm);
 }
 
 .sm {
-  padding: var(--sp-2) var(--sp-3);
-  font-size: var(--fs-meta);
+  height: 32px;
+  padding: 0 var(--s-3);
+  font-size: var(--fs-xs);
 }
 
 .fullWidth {
@@ -44,100 +54,99 @@
   align-items: center;
 }
 
-/* ── Primary ─────────────────────────────────────────────── */
+/* ── Primary：墨字 on --pink-600 ─────────────────────────────
+   默认态干净不带阴影（§3.2：亮色只在 hover 用光）。 */
 
 .primary {
-  background-color: var(--cta-bg);
-  color: var(--cta-color);
-  box-shadow: var(--shadow-card);
+  background-color: var(--pink-600);
+  color: var(--on-pink);
 }
 
 .primary:not(:disabled):hover {
-  background-color: var(--cta-hover);
+  background-color: var(--pink-600-hover);
   transform: translateY(-1px);
-  box-shadow: var(--shadow-card-hover);
+  box-shadow: var(--glow-pink);
 }
 
 .primary:not(:disabled):active {
-  transform: translateY(0);
-  box-shadow: var(--shadow-card);
+  transform: scale(0.97);
 }
 
-@supports (background-color: color-mix(in srgb, red 85%, black)) {
-  .primary:not(:disabled):hover {
-    background-color: var(--cta-hover-mix);
+/* 暗色：hover 换霓虹光（§3.2）。同一视野 glow ≤3 处。 */
+[data-theme='dark'] .primary:not(:disabled):hover {
+  box-shadow: var(--glow-pink-dark);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .primary:not(:disabled):hover {
+    box-shadow: var(--glow-pink-dark);
   }
 }
 
-/* ── Secondary ───────────────────────────────────────────── */
+/* ── Secondary：透明底 + 1.5px --line-strong 描边 + --ink 字 ── */
 
 .secondary {
   background-color: transparent;
-  color: var(--accent-ink);
-  border-color: var(--accent-ink);
+  color: var(--ink);
+  border-color: var(--line-strong);
 }
 
-/* 描边转粉：原本这里和基础态同值，等于没有描边上的悬停反馈。 */
+/* hover 描边与文字一起转粉（§5.1）。 */
 .secondary:not(:disabled):hover {
-  border-color: var(--accent-pink);
-  background-color: var(--hover-bg);
+  border-color: var(--pink-600);
+  color: var(--pink-700);
 }
 
 .secondary:not(:disabled):active {
-  background-color: var(--hover-bg);
+  transform: scale(0.97);
 }
 
-@supports (background-color: color-mix(in srgb, red 15%, white)) {
-  .secondary:not(:disabled):hover {
-    background-color: var(--hover-bg-mix);
+[data-theme='dark'] .secondary:not(:disabled):hover {
+  border-color: var(--pink-500);
+  color: var(--pink-700);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .secondary:not(:disabled):hover {
+    border-color: var(--pink-500);
+    color: var(--pink-700);
   }
 }
 
-/* ── Ghost ───────────────────────────────────────────────── */
+/* ── Ghost：无底无边，hover 铺 --pink-100 ─────────────────── */
 
 .ghost {
   background: transparent;
-  color: var(--accent-ink);
+  color: var(--ink);
 }
 
 .ghost:not(:disabled):hover {
-  background-color: var(--hover-bg);
+  background-color: var(--pink-100);
 }
 
 .ghost:not(:disabled):active {
-  background-color: var(--hover-bg);
+  transform: scale(0.97);
 }
 
-/* ── Danger ──────────────────────────────────────────────── */
+/* ── Danger：--error-text 描边/文字，hover 铺 --error-bg ──── */
 
 .danger {
   background-color: transparent;
-  color: var(--soft-error-text);
-  border-color: var(--soft-error-border);
+  color: var(--error-text);
+  border-color: var(--error-text);
 }
 
 .danger:not(:disabled):hover {
-  border-color: var(--soft-error-border);
-  background-color: var(--soft-error-bg);
+  background-color: var(--error-bg);
 }
 
 .danger:not(:disabled):active {
-  background-color: var(--soft-error-border);
+  transform: scale(0.97);
 }
 
-/* Comfortable touch targets on touch devices. */
+/* 触屏目标 ≥44px（§4） */
 @media (any-pointer: coarse) {
   .btn {
-    min-height: 44px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .btn {
-    transition: none;
-  }
-  .primary:not(:disabled):hover,
-  .primary:not(:disabled):active {
-    transform: none;
+    min-height: var(--tap-min);
   }
 }

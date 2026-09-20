@@ -288,9 +288,24 @@ export const AdminShell = () => {
           不设 inert 的话，没打开抽屉时一路 Tab 也会走进那些看不见的导航链接。 */}
       <aside ref={sidebarRef} id="admin-sidebar" className={styles.sidebar} inert={isMobile && !drawerOpen}>
         <div className={styles.sidebarHead}>
-          <span className={styles.brand}>
-            <img className={styles.brandMark} src="/logo-mark.svg" width={24} height={24} alt="" aria-hidden="true" />
-            <span className={styles.brandText}>{t('adminShell.brand')}</span>
+          {/* §9：品牌标识必须用 logo/ 正式横版 SVG（文字已转 path），禁止图标+文本拼装。 */}
+          <span className={styles.brand} aria-label="TransCircle">
+            <img
+              className={`${styles.brandLogo} ${styles.brandLogoLight}`}
+              src="/brand/transcircle-horizontal-on-light.svg"
+              width={400}
+              height={120}
+              alt=""
+              aria-hidden="true"
+            />
+            <img
+              className={`${styles.brandLogo} ${styles.brandLogoDark}`}
+              src="/brand/transcircle-horizontal-on-dark.svg"
+              width={400}
+              height={120}
+              alt=""
+              aria-hidden="true"
+            />
           </span>
           <button
             type="button"
@@ -323,10 +338,11 @@ export const AdminShell = () => {
         </nav>
       </aside>
 
-      <div
+      <button
+        type="button"
         className={styles.overlay}
+        aria-label={t('nav.closeMenu')}
         onClick={closeDrawer}
-        aria-hidden="true"
       />
 
       <div className={styles.contentCol}>

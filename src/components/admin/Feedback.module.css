@@ -3,17 +3,18 @@
 .spinner {
   display: inline-flex;
   align-items: center;
-  gap: var(--sp-2);
+  gap: var(--s-2);
   color: var(--text-muted);
   font-size: var(--fs-sm);
 }
 
+/* §5.12：16px 圆环，--pink-600，600ms linear。 */
 .ring {
   display: inline-block;
-  border-radius: 50%;
-  border: 2px solid var(--divider-color);
-  border-top-color: var(--accent-pink);
-  animation: adminSpin 0.7s linear infinite;
+  border-radius: var(--r-pill);
+  border: 2px solid var(--line);
+  border-top-color: var(--pink-600);
+  animation: adminSpin 600ms linear infinite;
   flex-shrink: 0;
 }
 
@@ -24,14 +25,14 @@
 }
 
 .ring_md {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   border-width: 2px;
 }
 
 .ring_lg {
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   border-width: 3px;
 }
 
@@ -54,31 +55,42 @@
 /* ── Alert ───────────────────────────────────────────────── */
 
 .alert {
-  border: 1px solid var(--divider-color);
-  border-radius: var(--radius-md);
-  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: var(--s-3) var(--s-4);
   font-size: var(--fs-sm);
-  line-height: 1.55;
+  line-height: var(--lh-caption);
   display: flex;
-  gap: var(--sp-2);
+  gap: var(--s-2);
+}
+
+/* 语义色点：状态不靠颜色单独传达（§7），与 Toast 同一方案。 */
+.alert::before {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 0.45em;
+  border-radius: var(--r-pill);
+  background-color: currentColor;
 }
 
 .alert_error {
-  background-color: var(--soft-error-bg);
-  border-color: var(--soft-error-border);
-  color: var(--soft-error-text);
+  background-color: var(--error-bg);
+  border-color: var(--error-border);
+  color: var(--error-text);
 }
 
 .alert_success {
-  background-color: var(--soft-success-bg);
-  border-color: var(--soft-success-border);
-  color: var(--soft-success-text);
+  background-color: var(--success-bg);
+  border-color: var(--success-border);
+  color: var(--success-text);
 }
 
 .alert_info {
-  background-color: var(--soft-info-bg);
-  border-color: var(--soft-info-border);
-  color: var(--soft-info-text);
+  background-color: var(--info-bg);
+  border-color: var(--info-border);
+  color: var(--info-text);
 }
 
 /* ── EmptyState ──────────────────────────────────────────── */
@@ -89,23 +101,28 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: var(--sp-1);
-  padding: var(--sp-9) var(--sp-5);
+  gap: var(--s-1);
+  padding: var(--s-7) var(--s-5);
   color: var(--text-muted);
 }
 
+/* §5.12：48px 线性 SVG 图标 + --fs-h3 标题 + 一句提示 + 一个 CTA。 */
 .emptyIcon {
   display: inline-flex;
   color: var(--text-muted);
-  opacity: 0.55;
-  margin-bottom: 0.25rem;
+  margin-bottom: var(--s-2);
+}
+
+.emptyIcon svg {
+  width: 48px;
+  height: 48px;
 }
 
 .emptyTitle {
   margin: 0;
-  font-size: var(--fs-body);
-  font-weight: var(--fw-label);
-  color: var(--text-secondary);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-semibold);
+  color: var(--ink);
 }
 
 .emptyDesc {
@@ -116,5 +133,5 @@
 }
 
 .emptyAction {
-  margin-top: 0.85rem;
+  margin-top: var(--s-3);
 }

@@ -1,49 +1,105 @@
+/* 顶栏 —— DESIGN.md v3.0 §5.3
+   玻璃浮动层（§1.4 允许：顶栏/下拉/抽屉），当前项用迷你旗帜条纹标记（§3.1）。
+   旗帜条纹每屏 ≤1 处：顶栏这一处用掉配额，页面内不得再出现第二处。 */
+
 .navbar {
   width: 100%;
-  /* Fallback for browsers without backdrop-filter support (Safari < 9, older Android) */
-  background-color: var(--bg-color);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
-  backdrop-filter: blur(12px) saturate(180%);
   position: sticky;
   top: 0;
-  z-index: 80;
-  border-bottom: 1px solid var(--divider-color);
+  z-index: var(--z-nav);
+  border-bottom: 1px solid var(--line);
+  /* 玻璃回退：不支持 backdrop-filter 时退成实色表面（§2.5） */
+  background-color: var(--surface);
 }
 
-/* When backdrop-filter is supported, use the translucent nav background */
-@supports (backdrop-filter: blur(12px) saturate(180%)) or (-webkit-backdrop-filter: blur(12px) saturate(180%)) {
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .navbar {
-    background-color: var(--nav-bg);
+    background-color: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    backdrop-filter: blur(var(--glass-blur));
   }
 }
 
 .container {
   display: flex;
   align-items: center;
-  gap: var(--sp-4);
-  /* Matches .mainContent's fluid padding (App.module.css) so the logo and
-     page title share the same left edge across viewport widths. */
-  padding: 0.6rem clamp(0.75rem, 0.3rem + 2.4vw, 3rem);
-  max-width: var(--width-content);
+  gap: var(--s-4);
+  /* 与 .mainContent 共用 --page-x（§4），保证 logo 与页面标题左缘对齐。 */
+  padding: 0 var(--page-x);
+  height: var(--nav-h);
+  max-width: var(--w-content);
   margin-inline: auto;
 }
 
-.rightSection {
+.leftSection {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: var(--sp-2);
+  gap: var(--s-2);
   flex: 1;
 }
 
-/* ThemeToggle 容器（预留：未来可扩展其他顶栏开关）。 */
+.rightSection {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s-2);
+  flex: 1;
+}
+
+.logoutError {
+  position: absolute;
+  top: calc(100% + var(--s-2));
+  right: 0;
+  z-index: var(--z-toast);
+  margin: 0;
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--error-border);
+  border-radius: var(--r-sm);
+  background-color: var(--error-bg);
+  color: var(--error-text);
+  font-size: var(--fs-sm);
+  box-shadow: var(--shadow-2);
+  white-space: nowrap;
+}
+
 .toggles {
   display: flex;
   align-items: center;
-  gap: var(--sp-2);
+  gap: var(--s-2);
 }
 
-/* ── Login pill button ─────────────────────────── */
+/* ── 旗帜条纹（§3.1）：三个实色 span，禁止渐变。
+   白段在亮底上需要 1px --line 描边才看得见。 ── */
+.flagStripe {
+  display: flex;
+  width: 24px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 1px;
+}
+
+.flagStripe > span {
+  display: block;
+  flex: 1;
+  height: 100%;
+}
+
+.flagPink {
+  background-color: var(--flag-pink);
+}
+
+.flagWhite {
+  background-color: var(--flag-white);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.flagBlue {
+  background-color: var(--flag-blue);
+}
+
+/* ── 登录按钮（§5.1 Primary）──
+   墨字 on --pink-600；--r-sm，不做 pill。 */
 .loginBtn {
   appearance: none;
   border: 0;
@@ -51,73 +107,72 @@
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  height: var(--control-h);
-  padding: 0 var(--sp-4);
-  border-radius: var(--radius-pill);
-  background-color: var(--cta-bg);
-  color: var(--cta-color);
+  height: var(--btn-h);
+  padding: 0 20px;
+  border-radius: var(--r-sm);
+  background-color: var(--pink-600);
+  color: var(--on-pink);
   font-size: var(--fs-sm);
-  font-weight: var(--fw-title);
+  font-weight: var(--fw-semibold);
   text-decoration: none;
   white-space: nowrap;
-  box-shadow: var(--shadow-card);
   transition:
-    background-color var(--dur-fast) var(--ease-standard),
-    transform var(--dur-fast) var(--ease-emphasized);
+    background-color var(--dur-1) var(--ease-standard),
+    box-shadow var(--dur-1) var(--ease-standard),
+    transform var(--dur-1) var(--ease-spring);
 }
+
 .loginBtn:hover {
-  background-color: var(--cta-hover);
+  background-color: var(--pink-600-hover);
   transform: translateY(-1px);
 }
+
 .loginBtn:active {
-  transform: translateY(0);
+  transform: scale(0.97);
 }
-@supports (background-color: color-mix(in srgb, red 85%, black)) {
-  .loginBtn:hover {
-    background-color: var(--cta-hover-mix);
+
+/* 暗色下主行动色带霓虹光（§3.2）。同一视野 glow ≤3 处。 */
+[data-theme='dark'] .loginBtn:hover {
+  box-shadow: var(--glow-pink-dark);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .loginBtn:hover {
+    box-shadow: var(--glow-pink-dark);
   }
 }
 
-/* DESIGN §6.1.10：登录 CTA 属「大面积行/链接」类，触屏下 min-height 抬到 44px */
+/* 触屏下按钮抬到 44px（§4） */
 @media (any-pointer: coarse) {
   .loginBtn {
     min-height: var(--tap-min);
   }
 }
-.leftSection {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  flex: 1;
-}
 
+/* ── 汉堡 ────────────────────────────────────── */
 .hamburger {
   display: none;
   flex-direction: column;
   justify-content: center;
   gap: 4px;
-  width: var(--control-h);
-  height: var(--control-h);
+  width: var(--btn-h);
+  height: var(--btn-h);
   padding: 8px;
   box-sizing: border-box;
-  border-radius: var(--radius-control);
+  border-radius: var(--r-sm);
   background: transparent;
   border: none;
   cursor: pointer;
-  /* ::after 命中区扩大的定位祖先（DESIGN §6.1.10） */
   position: relative;
-  z-index: 75;
-  transition: background-color var(--dur-fast) var(--ease-standard);
-}
-.hamburger:hover {
-  background-color: var(--hover-bg);
-}
-.hamburger:active {
-  background-color: var(--hover-bg);
+  z-index: calc(var(--z-drawer) + 1);
+  transition: background-color var(--dur-1) var(--ease-standard);
 }
 
-/* DESIGN §6.1.10：顶栏图标控件触屏命中区扩到 44px（视觉仍 34px，用居中 ::after），
-   不撑高顶栏。 */
+.hamburger:hover {
+  background-color: var(--pink-100);
+}
+
+/* 触屏命中区扩到 44px（视觉仍 40px，用居中 ::after），不撑高顶栏。 */
 @media (any-pointer: coarse) {
   .hamburger::after {
     content: '';
@@ -130,71 +185,81 @@
   }
 }
 
-.externalIcon {
-  margin-left: 0.15rem;
-  opacity: 0.7;
-}
-
 .bar {
   display: block;
   height: 2px;
   width: 100%;
-  background-color: var(--text-main);
+  background-color: var(--ink);
   border-radius: 2px;
   transition:
-    transform var(--dur-base) var(--ease-emphasized),
-    opacity var(--dur-fast) var(--ease-standard);
+    transform var(--dur-2) var(--ease-out),
+    opacity var(--dur-1) var(--ease-standard);
   transform-origin: center center;
-  will-change: transform, opacity;
 }
 
 .hamburgerOpen .barTop {
   transform: translateY(6px) rotate(45deg);
 }
+
 .hamburgerOpen .barMid {
   opacity: 0;
 }
+
 .hamburgerOpen .barBot {
   transform: translateY(-6px) rotate(-45deg);
 }
 
+.externalIcon {
+  margin-left: 0.15rem;
+  opacity: 0.7;
+}
+
 .logo {
-  font-size: var(--fs-subtitle);
-  font-weight: var(--fw-display);
-  letter-spacing: -0.02em;
-  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .logo a {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: var(--sp-2);
+  height: 40px;
   text-decoration: none;
-  color: inherit;
-  cursor: pointer;
 }
 
-/* 悬停信号交给下面标识环的四分之一圈旋转，文字不变色：
-   淡粉在 18px 粗体上达不到 4.5:1，而把粉压到能当文字就又变重了。 */
-
-/* 固定尺寸，避免 SVG 加载前的布局抖动 */
-.logoMark {
+.logoImage {
   display: block;
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-  transition: transform var(--dur-slow) var(--ease-emphasized);
+  width: 132px;
+  height: auto;
 }
 
-/* 标识本身是一个环，旋转是它最自然的动作——四分之一圈，够察觉又不喧哗。 */
-.logo a:hover .logoMark {
-  transform: rotate(90deg);
+.logoImageDark {
+  display: none;
 }
 
+:global([data-theme='dark']) .logoImageLight {
+  display: none;
+}
+
+:global([data-theme='dark']) .logoImageDark {
+  display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme])) .logoImageLight {
+    display: none;
+  }
+
+  :global(:root:not([data-theme])) .logoImageDark {
+    display: block;
+  }
+}
+
+/* ── 桌面导航链接 ──────────────────────────── */
 .navLinks {
   list-style: none;
   display: flex;
-  gap: var(--sp-1);
+  gap: var(--s-1);
   margin: 0;
   padding: 0;
   flex-wrap: nowrap;
@@ -202,9 +267,10 @@
 
 .navLinks li a,
 .dropdownTrigger {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: var(--sp-1);
+  gap: var(--s-1);
   border: none;
   background: none;
   font: inherit;
@@ -212,39 +278,57 @@
   text-decoration: none;
   color: var(--text-secondary);
   font-size: var(--fs-sm);
-  transition:
-    background-color var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard);
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--radius-sm);
+  font-weight: var(--fw-semibold);
+  transition: color var(--dur-1) var(--ease-standard);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-sm);
   box-sizing: border-box;
   white-space: nowrap;
 }
 
+/* 导航 hover 是「色转移」，不铺底色（§5.3 / §6.2）。暗色下转 --pink-400（§5.1 文字档）。 */
 .navLinks li a:hover,
 .dropdown:hover .dropdownTrigger,
 .dropdownOpen .dropdownTrigger {
-  color: var(--text-main);
-  background-color: var(--hover-bg);
+  color: var(--pink-700);
 }
 
-@supports (background-color: color-mix(in srgb, red 15%, white)) {
-  .navLinks li a:hover,
-  .dropdown:hover .dropdownTrigger,
-  .dropdownOpen .dropdownTrigger {
-    background-color: var(--hover-bg-mix);
+[data-theme='dark'] .navLinks li a:hover,
+[data-theme='dark'] .dropdown:hover .dropdownTrigger,
+[data-theme='dark'] .dropdownOpen .dropdownTrigger {
+  color: var(--pink-400);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .navLinks li a:hover,
+  :root:not([data-theme]) .dropdown:hover .dropdownTrigger,
+  :root:not([data-theme]) .dropdownOpen .dropdownTrigger {
+    color: var(--pink-400);
   }
+}
+
+/* 当前项：底部挂 24×3px 迷你旗帜条纹（§5.3），不用下划线。 */
+.navCurrent {
+  color: var(--ink) !important;
+}
+
+.navCurrentStripe {
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  transform: translateX(-50%);
 }
 
 .navLinks li .disabled {
   display: inline-flex;
   align-items: center;
   font-size: var(--fs-sm);
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--radius-sm);
+  font-weight: var(--fw-semibold);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-sm);
   box-sizing: border-box;
   white-space: nowrap;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   cursor: default;
 }
 
@@ -256,16 +340,12 @@
   appearance: none;
   -webkit-appearance: none;
   font-family: inherit;
-  font-size: var(--fs-sm);
-  background: none;
-  border: none;
   margin: 0;
-  cursor: pointer;
   user-select: none;
 }
 
 .chevron {
-  transition: transform var(--dur-fast) var(--ease-emphasized);
+  transition: transform var(--dur-1) var(--ease-out);
 }
 
 .dropdownOpen .chevron,
@@ -273,104 +353,107 @@
   transform: rotate(180deg);
 }
 
-.dropdownTrigger:focus-visible {
-  outline: 2px solid var(--accent-pink);
-  outline-offset: 2px;
+/* ── 下拉面板：玻璃 + --shadow-3 + scale(.96→1) 入场（§5.3 / §6.8）── */
+.dropdownMenu,
+.acctMenu {
+  position: absolute;
+  top: calc(100% + var(--s-2));
+  list-style: none;
+  margin: 0;
+  padding: var(--s-1);
+  border-radius: var(--r-lg);
+  min-width: 11rem;
+  box-shadow: var(--shadow-3);
+  z-index: var(--z-nav);
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+}
+
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .dropdownMenu,
+  .acctMenu {
+    background-color: var(--glass-bg);
+    border-color: var(--glass-border);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    backdrop-filter: blur(var(--glass-blur));
+  }
 }
 
 .dropdownMenu {
-  position: absolute;
-  top: calc(100% + 6px);
   left: 0;
-  list-style: none;
-  margin: 0;
-  padding: var(--sp-1);
-  background-color: var(--surface-card);
-  border: 1px solid var(--divider-color);
-  border-radius: var(--radius-md);
-  min-width: 11rem;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-pop);
-  z-index: 60;
+  transform: scale(0.96);
+  transform-origin: top left;
+  /* visibility 是离散属性：关闭时延后到过渡结束再隐藏，打开时立即可见。
+     若写成 visibility var(--dur-2)，会在 50% 处翻转，打开前一半时间菜单不可见。 */
   transition:
-    opacity var(--dur-fast) var(--ease-emphasized),
-    transform var(--dur-fast) var(--ease-emphasized),
-    visibility var(--dur-fast);
+    opacity var(--dur-2) var(--ease-out),
+    transform var(--dur-2) var(--ease-out),
+    visibility 0s linear var(--dur-2);
 }
 
 .dropdownOpen .dropdownMenu {
   opacity: 1;
   visibility: visible;
-  transform: translateY(0);
+  transform: scale(1);
+  transition:
+    opacity var(--dur-2) var(--ease-out),
+    transform var(--dur-2) var(--ease-out),
+    visibility 0s;
+}
+
+.acctMenu {
+  right: 0;
+  transform-origin: top right;
+  animation: menuIn var(--dur-2) var(--ease-out);
 }
 
 @keyframes menuIn {
   from {
     opacity: 0;
-    transform: translateY(-4px);
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .navLinks li a,
-  .dropdownTrigger,
-  .dropdownMenu,
-  .acctBtn,
-  .loginBtn,
-  .drawer,
-  .overlay,
-  .hamburger,
-  .dropdownOpen .dropdownMenu {
-    transition: none;
-    transform: none;
-  }
-
-  .chevron,
-  .dropdownOpen .chevron,
-  .dropdownTrigger[aria-expanded='true'] .chevron,
-  .logoMark,
-  .logo a:hover .logoMark {
-    transition: none;
-    transform: none;
-  }
-
-  .acctMenu {
-    animation: none;
-  }
-  .loginBtn:hover,
-  .acctBtn:active {
-    transform: none;
-  }
-}
-
-.dropdownMenu li a {
+.dropdownMenu li a,
+.acctMenu li a,
+.acctMenu li button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--sp-2);
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--radius-sm);
+  gap: var(--s-2);
+  width: 100%;
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-sm);
   font-size: var(--fs-sm);
   color: var(--text-body);
   white-space: nowrap;
   text-decoration: none;
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+  box-sizing: border-box;
   transition:
-    background-color var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard);
-}
-.dropdownMenu li a:hover {
-  background-color: var(--hover-bg);
-  color: var(--text-main);
-}
-@supports (background-color: color-mix(in srgb, red 15%, white)) {
-  .dropdownMenu li a:hover {
-    background-color: var(--hover-bg-mix);
-  }
+    background-color var(--dur-1) var(--ease-standard),
+    color var(--dur-1) var(--ease-standard);
 }
 
-/* ── Account avatar / dropdown ─────────────────── */
+.dropdownMenu li a:hover,
+.acctMenu li a:hover,
+.acctMenu li button:hover {
+  background-color: var(--pink-100);
+  color: var(--ink);
+}
+
+/* ── 头像 / 账户（§5.11）──
+   头像 --r-pill，--pink-100 底 + --ink 首字母。 */
 .acctDropdown {
   position: relative;
 }
@@ -379,22 +462,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--control-h);
-  height: var(--control-h);
+  width: var(--btn-h);
+  height: var(--btn-h);
   border: none;
   background: none;
-  border-radius: 50%;
+  border-radius: var(--r-pill);
   cursor: pointer;
   padding: 0;
   overflow: hidden;
-  /* ::after 命中区扩大的定位祖先（DESIGN §6.1.10） */
   position: relative;
-  transition: box-shadow var(--dur-fast) var(--ease-standard),
-    transform var(--dur-fast) var(--ease-standard);
+  transition:
+    box-shadow var(--dur-1) var(--ease-standard),
+    transform var(--dur-1) var(--ease-spring);
 }
 
-/* DESIGN §6.1.10：顶栏图标控件触屏命中区扩到 44px（视觉仍 34px，用居中 ::after），
-   不撑高顶栏。 */
 @media (any-pointer: coarse) {
   .acctBtn::after {
     content: '';
@@ -405,27 +486,27 @@
     height: var(--tap-min);
     transform: translate(-50%, -50%);
   }
+
+  /* 桌面导航链接（>1200px 触屏设备上仍可见）命中区补足 44px。 */
+  .navLinks li a {
+    min-height: var(--tap-min);
+  }
 }
-.acctBtn:hover {
-  /* 用 --accent-pink 而非 --soft-pink：后者在导航底上只有约 1.15:1，等于没有反馈 */
-  box-shadow: 0 0 0 2px var(--accent-pink);
-}
+
+.acctBtn:hover,
 .acctBtn[aria-expanded='true'] {
-  box-shadow: 0 0 0 2px var(--accent-pink);
+  box-shadow: 0 0 0 2px var(--pink-600);
 }
+
 .acctBtn:active {
-  transform: scale(0.96);
-}
-.acctBtn:focus-visible {
-  outline: 2px solid var(--accent-pink);
-  outline-offset: 2px;
+  transform: scale(0.97);
 }
 
 .acctAvatar {
   display: block;
-  width: var(--control-h);
-  height: var(--control-h);
-  border-radius: 50%;
+  width: var(--btn-h);
+  height: var(--btn-h);
+  border-radius: var(--r-pill);
   object-fit: cover;
 }
 
@@ -433,81 +514,27 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--control-h);
-  height: var(--control-h);
-  border-radius: 50%;
-  /* 身份面：纯色，不使用渐变（见 DESIGN.md 去 AI 化纪律）。 */
-  background-color: var(--soft-pink);
-  color: var(--text-main);
+  width: var(--btn-h);
+  height: var(--btn-h);
+  border-radius: var(--r-pill);
+  /* 身份面：纯色，不使用渐变（§1.1）。 */
+  background-color: var(--pink-100);
+  color: var(--ink);
+  font-family: var(--font-tech);
   font-size: var(--fs-sm);
-  font-weight: var(--fw-label);
+  font-weight: var(--fw-semibold);
   user-select: none;
 }
 
-.acctMenu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  list-style: none;
-  margin: 0;
-  padding: var(--sp-1);
-  background-color: var(--surface-card);
-  border: 1px solid var(--divider-color);
-  border-radius: var(--radius-md);
-  min-width: 11rem;
-  box-shadow: var(--shadow-pop);
-  z-index: 60;
-  animation: menuIn var(--dur-fast) var(--ease-emphasized);
-}
-
-.acctMenu li a,
-.acctMenu li button {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  width: 100%;
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--radius-sm);
-  font-size: var(--fs-sm);
-  color: var(--text-body);
-  text-decoration: none;
-  text-align: left;
-  cursor: pointer;
-  background: none;
-  border: none;
-  font: inherit;
-  transition:
-    background-color var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard);
-  box-sizing: border-box;
-}
-
-.acctMenu li a:hover,
-.acctMenu li button:hover {
-  background-color: var(--hover-bg);
-  color: var(--text-main);
-}
-
-@supports (background-color: color-mix(in srgb, red 15%, white)) {
-  .acctMenu li a:hover,
-  .acctMenu li button:hover {
-    background-color: var(--hover-bg-mix);
-  }
-}
-
-@media (max-width: 1100px) {
+/* ── ≤1200px：导航折叠为抽屉（§4）── */
+@media (max-width: 1200px) {
   .container {
-    padding: var(--sp-2) var(--sp-3);
+    padding: 0 var(--page-x);
   }
 
-  .logo {
-    font-size: var(--fs-subtitle);
-  }
-
-  /* docs 6.1.7: 移动端保留可见登录入口（压扁药丸）+ 头像身份入口，不整体隐藏。 */
   .loginBtn {
-    padding: 0 var(--sp-3);
-    font-size: var(--fs-meta);
+    padding: 0 var(--s-3);
+    font-size: var(--fs-xs);
   }
 
   .hamburger {
@@ -517,22 +544,21 @@
   .navLinks {
     display: none;
   }
-
 }
 
+/* ── 抽屉：右侧滑入（§5.3）──────────────────── */
 .drawer {
   position: fixed;
   top: 0;
-  left: 0;
+  right: 0;
   bottom: 0;
-  width: 280px;
-  max-width: 84vw;
-  z-index: 70;
-  background-color: var(--surface-card);
-  border-right: 1px solid var(--divider-color);
-  box-shadow: var(--shadow-drawer);
-  transform: translateX(-100%);
-  transition: transform var(--dur-slow) var(--ease-emphasized);
+  width: min(320px, 88vw);
+  z-index: var(--z-drawer);
+  background-color: var(--surface);
+  border-left: 1px solid var(--line);
+  box-shadow: var(--shadow-3);
+  transform: translateX(100%);
+  transition: transform var(--dur-2) var(--ease-out);
   overflow-y: auto;
 }
 
@@ -540,39 +566,136 @@
   transform: translateX(0);
 }
 
+.drawerHeader {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--nav-h);
+  padding-inline: var(--s-4) var(--s-2);
+  background-color: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.drawerBrand {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+}
+
+.drawerClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-h2);
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--dur-1) var(--ease-standard),
+    color var(--dur-1) var(--ease-standard);
+}
+
+.drawerClose:hover {
+  color: var(--pink-700);
+  background-color: var(--pink-100);
+}
+
 .drawerInner {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1);
-  padding: 4.5rem 1rem 1.25rem;
+  gap: var(--s-1);
+  padding: var(--s-4) var(--s-4) var(--s-5);
 }
 
 .drawerLink {
   display: flex;
   align-items: center;
-  gap: var(--sp-2);
-  padding: var(--sp-3) var(--sp-3);
+  gap: var(--s-2);
+  padding: var(--s-3);
   border: none;
   background: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--r-sm);
   font: inherit;
   font-size: var(--fs-body);
   color: var(--text-body);
   text-decoration: none;
   text-align: left;
   cursor: pointer;
-  transition: background-color var(--dur-fast) var(--ease-standard);
+  transition:
+    background-color var(--dur-1) var(--ease-standard),
+    color var(--dur-1) var(--ease-standard);
 }
 
 .drawerLink:hover {
-  background-color: var(--hover-bg);
+  background-color: var(--pink-100);
+  color: var(--ink);
 }
 
 .drawerLink.disabled {
   cursor: default;
 }
 
-/* DESIGN §6.1.10：抽屉链接属「大面积行/链接」类，触屏下 min-height 抬到 44px */
+/* 抽屉链接逐个 40ms 交错上浮入场（§5.3）。
+   backwards 让元素在延迟期间就保持起始态，否则会先闪一下终态。 */
+@media (prefers-reduced-motion: no-preference) {
+  .drawerOpen .drawerLink {
+    animation: drawer-link-in var(--dur-2) var(--ease-out) backwards;
+    animation-delay: calc(var(--n, 0) * 40ms);
+  }
+
+  .drawerOpen .drawerLink:nth-child(1) {
+    --n: 0;
+  }
+  .drawerOpen .drawerLink:nth-child(2) {
+    --n: 1;
+  }
+  .drawerOpen .drawerLink:nth-child(3) {
+    --n: 2;
+  }
+  .drawerOpen .drawerLink:nth-child(4) {
+    --n: 3;
+  }
+  .drawerOpen .drawerLink:nth-child(5) {
+    --n: 4;
+  }
+  .drawerOpen .drawerLink:nth-child(6) {
+    --n: 5;
+  }
+  .drawerOpen .drawerLink:nth-child(7) {
+    --n: 6;
+  }
+  .drawerOpen .drawerLink:nth-child(8) {
+    --n: 7;
+  }
+  .drawerOpen .drawerLink:nth-child(9) {
+    --n: 8;
+  }
+  .drawerOpen .drawerLink:nth-child(n + 10) {
+    --n: 9;
+  }
+}
+
+@keyframes drawer-link-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 触屏下抽屉链接抬到 44px（§4） */
 @media (any-pointer: coarse) {
   .drawerLink {
     min-height: var(--tap-min);
@@ -581,31 +704,25 @@
 
 .drawerDivider {
   height: 1px;
-  background-color: var(--divider-color);
-  margin: var(--sp-2) 0;
+  background-color: var(--line);
+  margin: var(--s-2) 0;
 }
 
+/* ── 遮罩：--overlay + blur(4px)（§5.3）── */
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 65;
+  z-index: var(--z-overlay);
   border: none;
-  background-color: var(--overlay-bg);
+  background-color: var(--overlay);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--dur-slow) var(--ease-standard);
+  transition: opacity var(--dur-2) var(--ease-standard);
 }
 
 .overlayOn {
   opacity: 1;
   pointer-events: auto;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .navLinks,
-  .bar,
-  .drawer,
-  .overlay {
-    transition: none;
-  }
 }

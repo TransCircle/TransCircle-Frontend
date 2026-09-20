@@ -6,6 +6,8 @@ import { sanitizeHtml } from '@/utils/sanitize'
 import { AdminButton, Alert, Skeleton } from '@/components/ui'
 import { CommentSection } from '@/components/CommentSection'
 import { useFormatTs } from '@/utils/datetime'
+import { useReadingProgress } from '@/hooks/useReadingProgress'
+import { useReveal } from '@/hooks/useReveal'
 import styles from './Story.module.css'
 
 interface PublicDetail {
@@ -82,6 +84,11 @@ export const PublicContributionDetail = () => {
     }
   }, [id, t])
 
+  /* 阅读进度条与 reveal。Hook 必须在早退分支之前无条件调用；
+     加载/错误分支里 ref 拿不到节点，hook 内部会直接跳过。 */
+  const progressRef = useReadingProgress<HTMLDivElement>()
+  const revealRef = useReveal<HTMLDivElement>([detail])
+
   if (loading) {
     // 保留页面框架（返回按钮 + 容器），仅内容区骨架占位，避免整页替换为 Spinner 的布局跳变
     return (
@@ -105,7 +112,13 @@ export const PublicContributionDetail = () => {
   }
 
   return (
-    <div className={styles.reading}>
+    <div className={styles.reading} ref={revealRef}>
+      {/* 阅读进度条（§5.10）：固定在顶栏下方，scaleX 随滚动。
+          纯装饰性进度指示，对辅助技术隐藏——真正的位置信息由滚动条本身提供。 */}
+      <div className={styles.progressTrack} aria-hidden="true">
+        <div className={styles.progressBar} ref={progressRef} />
+      </div>
+
       {/* 顶部动作条：左侧返回（导航），右侧修改申请（本页唯一的次要动作）。
           放在正文之上而不是文末——读完再滚回顶部找入口是反直觉的。 */}
       <div className={styles.topBar}>
@@ -122,7 +135,7 @@ export const PublicContributionDetail = () => {
         </AdminButton>
       </div>
 
-      <article className={styles.article}>
+      <article className={`${styles.article} reveal`} data-reveal="">
         <h1 className={styles.articleTitle}>{detail.title}</h1>
 
         {/* 摘要紧跟标题，作为导语独立成段——排在作者区之前，靠下方的发丝线

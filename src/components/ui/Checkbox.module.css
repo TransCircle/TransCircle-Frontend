@@ -1,14 +1,14 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1);
+  gap: var(--s-1);
   width: 100%;
 }
 
 .row {
   display: inline-flex;
   align-items: center;
-  gap: var(--sp-2);
+  gap: var(--s-2);
   cursor: pointer;
   font-size: var(--fs-sm);
   color: var(--text-body);
@@ -41,25 +41,26 @@
   justify-content: center;
   width: 18px;
   height: 18px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-xs);
-  background-color: var(--surface-card);
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--r-xs);
+  background-color: var(--surface);
   transition:
-    background-color var(--dur-fast) var(--ease-standard),
-    border-color var(--dur-fast) var(--ease-standard);
+    background-color var(--dur-1) var(--ease-standard),
+    border-color var(--dur-1) var(--ease-standard);
 }
 
 .row:hover:not(.disabled) .box {
-  border-color: var(--accent-pink);
+  border-color: var(--pink-600);
 }
 
+/* §5.4：选中 --pink-600 填充 + 对勾，--ease-spring 120ms 形变。 */
 .check {
-  color: var(--on-accent);
+  color: var(--on-pink);
   opacity: 0;
   transform: scale(0.6);
   transition:
-    opacity var(--dur-fast) var(--ease-standard),
-    transform var(--dur-fast) var(--ease-emphasized);
+    opacity 120ms var(--ease-standard),
+    transform 120ms var(--ease-spring);
 }
 
 .dash {
@@ -67,13 +68,13 @@
   width: 10px;
   height: 2px;
   border-radius: 2px;
-  background-color: var(--on-accent);
+  background-color: var(--on-pink);
   opacity: 0;
 }
 
 .input:checked + .box {
-  background-color: var(--accent-pink);
-  border-color: var(--accent-pink);
+  background-color: var(--pink-600);
+  border-color: var(--pink-600);
 }
 
 .input:checked + .box .check {
@@ -82,8 +83,8 @@
 }
 
 .input:indeterminate + .box {
-  background-color: var(--accent-pink);
-  border-color: var(--accent-pink);
+  background-color: var(--pink-600);
+  border-color: var(--pink-600);
 }
 
 .input:indeterminate + .box .check {
@@ -95,13 +96,13 @@
 }
 
 .input:focus-visible + .box {
-  border-color: var(--accent-pink);
+  border-color: var(--pink-600);
   outline: none;
-  box-shadow: 0 0 0 3px var(--focus-ring);
+  box-shadow: 0 0 0 3px var(--ring-pink);
 }
 
 .invalid .box {
-  border-color: var(--error-border);
+  border-color: var(--error-text);
 }
 
 .labelText {
@@ -109,12 +110,12 @@
 }
 
 .hint {
-  font-size: var(--fs-micro);
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
 .hintError {
-  color: var(--error-color);
+  color: var(--error-text);
 }
 
 @media (any-pointer: coarse) {

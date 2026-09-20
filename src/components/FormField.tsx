@@ -53,6 +53,14 @@ export const FormField = ({ label, required, error, children, htmlFor }: FormFie
       }
     }
 
+    // 必填进无障碍树：星号是 aria-hidden 的视觉记号，控件本身要有 required。
+    if (required && isLabelableElement(child)) {
+      extra['aria-required'] = true
+      if (child.type === 'input' || child.type === 'textarea' || child.type === 'select') {
+        extra.required = true
+      }
+    }
+
     return Object.keys(extra).length > 0 ? cloneElement(child, extra) : child
   })
 
@@ -65,13 +73,17 @@ export const FormField = ({ label, required, error, children, htmlFor }: FormFie
             {required && <span className={styles.required} aria-hidden="true">*</span>}
           </label>
         )}
+        {/* 复合控件通过自身的 aria-label 公开名称；不以 label 包裹多个交互后代。 */}
         {label && !canAutoAssociate && (
-          <label className={styles.label}>
-            {label}
-            {required && <span className={styles.required} aria-hidden="true">*</span>}
-          </label>
+          <>
+            <p className={styles.label}>
+              {label}
+              {required && <span className={styles.required} aria-hidden="true">*</span>}
+            </p>
+            {enhanced}
+          </>
         )}
-        {enhanced}
+        {label && canAutoAssociate && enhanced}
         {error && (
           <p id={errorId} className={styles.error} role="alert">
             {error}

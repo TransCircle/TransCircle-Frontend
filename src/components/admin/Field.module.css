@@ -7,48 +7,49 @@
    元素、把原生「外观」全部关掉——appearance、自动填充黄底、搜索框装饰、
    数字步进器、iOS 圆角与内阴影。
 
-   视觉：填充面（--surface-input）+ 1px 描边。填充让字段不必靠粗描边就能
-   被认出；描边取 --border-strong，刚好越过 WCAG 1.4.11 的 3:1 下限。
+   视觉：填充面（--surface-2）+ 1px 描边。填充让字段不必靠粗描边就能
+   被认出；描边取 --line-strong，刚好越过 WCAG 1.4.11 的 3:1 下限。
    ═══════════════════════════════════════════════════════════════ */
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
+  gap: var(--s-2);
   width: 100%;
 }
 
 .label {
-  font-size: var(--fs-meta);
-  font-weight: var(--fw-label);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
   color: var(--text-secondary);
 }
 
 /* 必填星号：见 FormField.module.css 同名说明——墨色会与 label 同色而失效。 */
 .required {
-  margin-left: var(--sp-1);
-  color: var(--error-color);
+  margin-left: var(--s-1);
+  color: var(--error-text);
 }
 
 .input {
   width: 100%;
-  min-height: 38px;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-control);
+  /* §5.4：控件高 44px，1.5px --line-strong 描边，--surface-2 填充。 */
+  min-height: var(--control-h);
+  padding: var(--s-2) var(--s-3);
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--r-sm);
   font-size: var(--fs-sm);
   font-family: inherit;
   line-height: 1.5;
-  color: var(--text-main);
-  background-color: var(--surface-input);
+  color: var(--ink);
+  background-color: var(--surface-2);
   /* 关闭原生外观：iOS 的圆角与内阴影、Windows 的凹陷边框都源于此 */
   appearance: none;
   -webkit-appearance: none;
   outline: none;
   transition:
-    border-color var(--dur-fast) var(--ease-standard),
-    background-color var(--dur-fast) var(--ease-standard),
-    box-shadow var(--dur-fast) var(--ease-standard);
+    border-color var(--dur-1) var(--ease-standard),
+    background-color var(--dur-1) var(--ease-standard),
+    box-shadow var(--dur-1) var(--ease-standard);
 }
 
 .input::placeholder {
@@ -57,15 +58,15 @@
 }
 
 .input:hover:not(:disabled):not(:focus) {
-  border-color: var(--accent-pink);
+  border-color: var(--pink-600);
 }
 
 /* 聚焦时填充退回卡片色：字段「亮起来」，比单纯加边框更易察觉 */
 .input:focus {
-  border-color: var(--accent-pink);
-  background-color: var(--surface-card);
+  border-color: var(--pink-600);
+  background-color: var(--surface);
   outline: none;
-  box-shadow: 0 0 0 3px var(--focus-ring);
+  box-shadow: 0 0 0 3px var(--ring-pink);
 }
 
 .input:disabled {
@@ -79,16 +80,16 @@
 .input:-webkit-autofill:hover,
 .input:-webkit-autofill:focus,
 .input:-webkit-autofill:active {
-  -webkit-text-fill-color: var(--text-main);
-  -webkit-box-shadow: 0 0 0 100px var(--surface-input) inset;
-  caret-color: var(--text-main);
+  -webkit-text-fill-color: var(--ink);
+  -webkit-box-shadow: 0 0 0 100px var(--surface-2) inset;
+  caret-color: var(--ink);
   transition: background-color 100000s ease-in-out 0s;
 }
 
 .input:focus:-webkit-autofill {
   -webkit-box-shadow:
-    0 0 0 100px var(--surface-card) inset,
-    0 0 0 3px var(--focus-ring);
+    0 0 0 100px var(--surface) inset,
+    0 0 0 3px var(--ring-pink);
 }
 
 /* 数字输入的原生步进器 */
@@ -100,29 +101,30 @@
 }
 
 .invalid {
-  border-color: var(--error-border);
+  border-color: var(--error-text);
 }
 
 .invalid:focus {
-  border-color: var(--error-color);
+  border-color: var(--error-text);
   outline: none;
-  box-shadow: 0 0 0 3px var(--focus-ring-error);
+  box-shadow: 0 0 0 3px var(--ring-error);
 }
 
 .textarea {
   resize: vertical;
   min-height: 96px;
+  padding: var(--s-3);
   line-height: var(--lh-body);
 }
 
 .hint {
-  font-size: var(--fs-micro);
+  font-size: var(--fs-xs);
   line-height: 1.6;
   color: var(--text-muted);
 }
 
 .hintError {
-  color: var(--error-color);
+  color: var(--error-text);
 }
 
 /* ── SearchField ─────────────────────────────────────────── */
@@ -167,23 +169,23 @@
   height: 26px;
   padding: 0;
   border: none;
-  border-radius: 50%;
+  border-radius: var(--r-sm);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
   transition:
-    background-color var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard);
+    background-color var(--dur-1) var(--ease-standard),
+    color var(--dur-1) var(--ease-standard);
 }
 
 .clearBtn:hover {
-  background-color: var(--hover-bg);
-  color: var(--text-main);
+  background-color: var(--pink-100);
+  color: var(--ink);
 }
 
 .clearBtn:active {
-  background-color: var(--divider-color);
-  color: var(--text-main);
+  background-color: var(--line);
+  color: var(--ink);
 }
 
 /* 触屏：命中区扩到 44px（用居中 ::after，不撑破输入框高度）；
