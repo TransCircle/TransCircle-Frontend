@@ -1,5 +1,8 @@
+/* 管理台外壳 —— DESIGN.md v3.0 §5.8 / §8。
+   后台信息密度允许 14px 基准（--fs-sm），公共侧不行。
+   --admin-sidebar-w 的默认值来自 styles/index.css，这里只声明折叠档。 */
+
 .shell {
-  --admin-sidebar-w: 240px;
   display: grid;
   grid-template-columns: var(--admin-sidebar-w) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
@@ -20,7 +23,7 @@
   align-items: center;
   justify-content: center;
   min-height: 50vh;
-  padding: var(--sp-7);
+  padding: var(--s-6);
 }
 
 /* ── Skip link ───────────────────────────────────────────── */
@@ -29,12 +32,12 @@
   position: absolute;
   left: -9999px;
   top: 0;
-  z-index: 1300;
-  padding: var(--sp-2) var(--sp-4);
-  background: var(--accent-ink);
-  /* --on-accent 是给淡粉面用的墨色；这里底是墨，前景必须反过来。 */
-  color: var(--surface-card);
-  border-radius: 0 0 var(--radius-sm) 0;
+  z-index: var(--z-skip);
+  padding: var(--s-2) var(--s-4);
+  background: var(--ink);
+  /* 底是墨，前景必须反过来取表面色。 */
+  color: var(--surface);
+  border-radius: 0 0 var(--r-sm) 0;
   font-size: var(--fs-sm);
   text-decoration: none;
 }
@@ -51,44 +54,56 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background-color: var(--surface-card);
-  border-right: 1px solid var(--divider-color);
+  background-color: var(--surface);
+  border-right: 1px solid var(--line);
   overflow-y: auto;
   overflow-x: hidden;
-  z-index: 6;
+  z-index: var(--z-sticky);
 }
 
 .sidebarHead {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--sp-2);
-  padding: var(--sp-4) var(--sp-4) var(--sp-2);
+  gap: var(--s-2);
+  padding: var(--s-4) var(--s-4) var(--s-2);
   min-height: 56px;
 }
 
 .brand {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: var(--sp-2);
   min-width: 0;
-  font-size: var(--fs-body);
-  font-weight: var(--fw-display);
-  color: var(--text-main);
-  letter-spacing: -0.01em;
 }
 
-/* 固定尺寸，避免 SVG 加载前的布局抖动；折叠为 mini 侧栏时仍保留可见 */
-.brandMark {
+/* 正式横版字标：固定宽度避免加载前抖动；折叠为 mini 侧栏时由 .shellCollapsed 隐藏。 */
+.brandLogo {
   display: block;
-  width: 24px;
-  height: 24px;
+  width: 128px;
+  height: auto;
   flex-shrink: 0;
 }
 
-.brandText {
-  white-space: nowrap;
-  overflow: hidden;
+.brandLogoDark {
+  display: none;
+}
+
+[data-theme='dark'] .brandLogoLight {
+  display: none;
+}
+
+[data-theme='dark'] .brandLogoDark {
+  display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .brandLogoLight {
+    display: none;
+  }
+
+  :root:not([data-theme]) .brandLogoDark {
+    display: block;
+  }
 }
 
 .collapseBtn {
@@ -98,19 +113,19 @@
   justify-content: center;
   width: 30px;
   height: 30px;
-  border: 1px solid var(--divider-color);
-  border-radius: var(--radius-sm);
-  background: var(--bg-color);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg);
   color: var(--text-secondary);
   cursor: pointer;
   transition:
-    background-color var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard);
+    background-color var(--dur-1) var(--ease-standard),
+    color var(--dur-1) var(--ease-standard);
 }
 
 .collapseBtn:hover {
-  background-color: var(--hover-bg);
-  color: var(--text-main);
+  background-color: var(--pink-100);
+  color: var(--ink);
 }
 
 /* DESIGN §6.1.10：粗指针下折叠按钮命中区扩到 44px（视觉仍 30px，用居中 ::after） */
@@ -131,7 +146,7 @@
 
 .collapseIcon {
   display: inline-flex;
-  transition: transform var(--dur-base) var(--ease-emphasized);
+  transition: transform var(--dur-2) var(--ease-out);
 }
 
 .collapseIconFlipped {
@@ -143,44 +158,44 @@
 .nav {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1);
-  padding: var(--sp-2) var(--sp-3) var(--sp-4);
+  gap: var(--s-1);
+  padding: var(--s-2) var(--s-3) var(--s-4);
 }
 
 .navItem {
   display: flex;
   align-items: center;
-  gap: var(--sp-3);
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--radius-control);
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-sm);
   color: var(--text-secondary);
   text-decoration: none;
   font-size: var(--fs-sm);
-  font-weight: var(--fw-title);
+  font-weight: var(--fw-semibold);
   white-space: nowrap;
   transition:
-    background-color var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard);
+    background-color var(--dur-1) var(--ease-standard),
+    color var(--dur-1) var(--ease-standard);
 }
 
 .navItem:hover {
-  background-color: var(--hover-bg);
-  color: var(--text-main);
+  background-color: var(--pink-100);
+  color: var(--ink);
 }
 
 /* 当前项除了底色与字重，还要有一条粉色左侧标记——只靠字重区分太弱，
    而且颜色不能是唯一信号。 */
 .navItemActive,
 .navItemActive:hover {
-  background-color: var(--hover-bg);
-  color: var(--text-main);
-  font-weight: var(--fw-label);
-  box-shadow: inset 3px 0 0 var(--accent-pink);
+  background-color: var(--pink-100);
+  color: var(--ink);
+  font-weight: var(--fw-semibold);
+  box-shadow: inset 3px 0 0 var(--pink-600);
 }
 
 @supports (background-color: color-mix(in srgb, red 15%, white)) {
   .navItem:hover {
-    background-color: var(--hover-bg-mix);
+    background-color: var(--pink-100);
   }
 }
 
@@ -238,15 +253,25 @@
   overflow: hidden;
 }
 
+/* 顶栏是浮动层，可用玻璃（§1.4）。回退为实色 --bg。 */
 .topbar {
   flex-shrink: 0;
-  z-index: 5;
+  z-index: var(--z-sticky);
   display: flex;
   align-items: center;
-  gap: var(--sp-4);
-  padding: 0.85rem 1.8rem;
-  background-color: var(--bg-color);
-  border-bottom: 1px solid var(--divider-color);
+  gap: var(--s-4);
+  padding: var(--s-3) var(--s-5);
+  min-height: var(--nav-h);
+  background-color: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .topbar {
+    background-color: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    backdrop-filter: blur(var(--glass-blur));
+  }
 }
 
 .hamburger {
@@ -255,26 +280,26 @@
   justify-content: center;
   width: 38px;
   height: 38px;
-  border: 1px solid var(--divider-color);
-  border-radius: var(--radius-sm);
-  background: var(--surface-card);
-  color: var(--text-main);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
   cursor: pointer;
   flex-shrink: 0;
   /* ::after 命中区扩大的定位祖先（DESIGN §6.1.10） */
   position: relative;
   transition:
-    background-color var(--dur-fast) var(--ease-standard),
-    border-color var(--dur-fast) var(--ease-standard);
+    background-color var(--dur-1) var(--ease-standard),
+    border-color var(--dur-1) var(--ease-standard);
 }
 
 .hamburger:hover {
-  background-color: var(--hover-bg);
-  border-color: var(--accent-pink);
+  background-color: var(--pink-100);
+  border-color: var(--pink-600);
 }
 
 .hamburger:active {
-  background-color: var(--hover-bg);
+  background-color: var(--pink-100);
 }
 
 /* DESIGN §6.1.10：顶栏图标控件触屏命中区扩到 44px（视觉 38px，用居中 ::after） */
@@ -292,10 +317,10 @@
 
 .pageTitle {
   margin: 0;
-  font-size: var(--fs-subtitle);
-  font-weight: var(--fw-display);
-  color: var(--text-main);
-  letter-spacing: -0.01em;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--ink);
+  letter-spacing: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -305,7 +330,7 @@
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: var(--sp-2);
+  gap: var(--s-2);
   min-width: 0;
 }
 
@@ -318,15 +343,15 @@
 
 .identityName {
   font-size: var(--fs-sm);
-  font-weight: var(--fw-label);
-  color: var(--text-main);
+  font-weight: var(--fw-semibold);
+  color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .identityRole {
-  font-size: var(--fs-micro);
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
@@ -336,7 +361,7 @@
   width: 100%;
   overflow-y: auto;
   /* 顶部留白移交给 .page / .stickyHead，使 sticky 头部能贴顶覆盖、避免滚动行从透明带透出 */
-  padding: 0 1.8rem 2rem;
+  padding: 0 var(--s-5) var(--s-6);
   box-sizing: border-box;
 }
 
@@ -365,9 +390,9 @@
     /* 窄屏兜底：与站点导航抽屉同规格（DESIGN §6.1.9），避免 320px 屏上几乎铺满 */
     width: min(270px, 84vw);
     transform: translateX(-100%);
-    transition: transform var(--dur-slow) var(--ease-emphasized);
-    box-shadow: var(--shadow-drawer);
-    z-index: 1200;
+    transition: transform var(--dur-2) var(--ease-out);
+    box-shadow: var(--shadow-3);
+    z-index: var(--z-drawer);
   }
 
   .drawerOpen .sidebar {
@@ -404,7 +429,7 @@
   /* AGENTS.md §8.3：1024px 断点语义即「后台主内容回收内边距」（1.8rem → 1.25rem），
      768px 再收到 1rem。此前仅做侧栏→抽屉切换，漏了内边距回收。 */
   .content {
-    padding: 0 var(--sp-5) var(--sp-7);
+    padding: 0 var(--s-5) var(--s-6);
   }
 
   .hamburger {
@@ -415,11 +440,13 @@
     display: block;
     position: fixed;
     inset: 0;
-    z-index: 1199;
-    background-color: var(--overlay-bg);
+    z-index: var(--z-overlay);
+    background-color: var(--overlay);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
     opacity: 0;
     pointer-events: none;
-    transition: opacity var(--dur-slow) var(--ease-standard);
+    transition: opacity var(--dur-2) var(--ease-standard);
   }
 
   .drawerOpen .overlay {
@@ -432,12 +459,12 @@
 
 @media (max-width: 768px) {
   .topbar {
-    padding: var(--sp-3) var(--sp-4);
-    gap: var(--sp-3);
+    padding: var(--s-3) var(--s-4);
+    gap: var(--s-3);
   }
 
   .content {
-    padding: 0 var(--sp-4) var(--sp-6);
+    padding: 0 var(--s-4) var(--s-5);
   }
 
   .identityText {

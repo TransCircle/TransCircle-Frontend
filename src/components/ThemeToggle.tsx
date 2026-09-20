@@ -1,7 +1,19 @@
 import { useCallback, useRef } from 'react'
+import { flushSync } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useTheme, type Theme } from '../context/useTheme'
 import styles from './ThemeToggle.module.css'
+
+/** 主题切换的圆形遮罩过渡（DESIGN §5.11）。
+ *  用 View Transition API 从按钮圆心扩散一个 clip-path 圆；
+ *  不支持该 API、或用户偏好减少动画时，直接切换（无动画）。 */
+type ViewTransitionDocument = Document & {
+  startViewTransition?: (callback: () => void) => { ready: Promise<void>; finished: Promise<void> }
+}
+
+/** 过渡期间挂在 <html> 上，让 index.css 的 ::view-transition 覆盖只作用于本次切换，
+ *  不影响 @view-transition 的页面导航淡入。 */
+const SWITCHING_CLASS = 'theme-switching'
 
 const SunIcon = () => (
   <svg
@@ -58,7 +70,41 @@ export const ThemeToggle = ({ className = '' }: ThemeToggleProps) => {
 
   const handleToggle = useCallback(() => {
     const nextTheme: Theme = theme === 'light' ? 'dark' : 'light'
-    setTheme(nextTheme)
+    const btn = btnRef.current
+    const doc = document as ViewTransitionDocument
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+    if (!btn || prefersReduced || typeof doc.startViewTransition !== 'function') {
+      setTheme(nextTheme)
+      return
+    }
+
+    const rect = btn.getBoundingClientRect()
+    const x = rect.left + rect.width / 2
+    const y = rect.top + rect.height / 2
+    // 圆要盖满视口：半径取圆心到最远视口角的距离。
+    const endRadius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y))
+
+    doc.documentElement.classList.add(SWITCHING_CLASS)
+    // flushSync：快照必须在 data-theme 与图标都更新后才拍，否则会先闪一帧旧图标。
+    const transition = doc.startViewTransition(() => {
+      flushSync(() => setTheme(nextTheme))
+    })
+
+    void transition.ready.then(() => {
+      doc.documentElement.animate(
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${endRadius}px at ${x}px ${y}px)`] },
+        {
+          duration: 400,
+          easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+          pseudoElement: '::view-transition-new(root)',
+        },
+      )
+    })
+
+    void transition.finished.finally(() => {
+      doc.documentElement.classList.remove(SWITCHING_CLASS)
+    })
   }, [theme, setTheme])
 
   const isDark = theme === 'dark'
@@ -70,7 +116,7 @@ export const ThemeToggle = ({ className = '' }: ThemeToggleProps) => {
         type="button"
         className={`${styles.toggleBtn} ${className}`.trim()}
         onClick={handleToggle}
-        aria-label={isDark ? t('theme.light') : t('theme.dark')}
+        aria-label={isDark ? t('theme.switchToLight') : t('theme.switchToDark')}
       >
         {isDark ? <SunIcon /> : <MoonIcon />}
       </button>

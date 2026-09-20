@@ -55,7 +55,7 @@ export function EmptyState({ title, description, icon, action }: EmptyStateProps
           {icon}
         </span>
       )}
-      <p className={styles.emptyTitle}>{title}</p>
+      <h2 className={styles.emptyTitle}>{title}</h2>
       {description && <p className={styles.emptyDesc}>{description}</p>}
       {action && <div className={styles.emptyAction}>{action}</div>}
     </div>

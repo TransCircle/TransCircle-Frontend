@@ -7,8 +7,8 @@ export const NotFound = () => {
   return (
     <StatusScreen
       kind="error"
-      showIcon={false}
-      title="404"
+      showIcon
+      title={t('notFound.title')}
       description={t('notFound.description')}
       actions={[{ label: t('notFound.backToHome'), to: '/' }]}
     />

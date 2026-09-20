@@ -1,13 +1,13 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1);
+  gap: var(--s-1);
   width: 100%;
 }
 
 .label {
-  font-size: var(--fs-meta);
-  font-weight: var(--fw-label);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
   color: var(--text-secondary);
 }
 
@@ -22,46 +22,46 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--sp-2);
-  min-height: 38px;
-  padding: var(--sp-2) var(--sp-3);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-control);
+  gap: var(--s-2);
+  min-height: var(--control-h);
+  padding: var(--s-2) var(--s-3);
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--r-sm);
   font-size: var(--fs-sm);
   font-family: inherit;
   line-height: 1.5;
-  color: var(--text-main);
-  background-color: var(--surface-input);
+  color: var(--ink);
+  background-color: var(--surface-2);
   appearance: none;
   -webkit-appearance: none;
   cursor: pointer;
   text-align: left;
   outline: none;
   transition:
-    border-color var(--dur-fast) var(--ease-standard),
-    background-color var(--dur-fast) var(--ease-standard),
-    box-shadow var(--dur-fast) var(--ease-standard);
+    border-color var(--dur-1) var(--ease-standard),
+    background-color var(--dur-1) var(--ease-standard),
+    box-shadow var(--dur-1) var(--ease-standard);
 }
 
 .trigger:hover:not(:disabled):not(.open) {
-  border-color: var(--accent-pink);
+  border-color: var(--pink-600);
 }
 
 .trigger:focus-visible,
 .trigger.open {
-  border-color: var(--accent-pink);
-  background-color: var(--surface-card);
+  border-color: var(--pink-600);
+  background-color: var(--surface);
   outline: none;
-  box-shadow: 0 0 0 3px var(--focus-ring);
+  box-shadow: 0 0 0 3px var(--ring-pink);
 }
 
 .trigger.invalid {
-  border-color: var(--error-border);
+  border-color: var(--error-text);
 }
 
 .trigger.invalid:focus-visible {
-  border-color: var(--error-border);
-  box-shadow: 0 0 0 3px var(--focus-ring-error);
+  border-color: var(--error-text);
+  box-shadow: 0 0 0 3px var(--ring-error);
 }
 
 .trigger:disabled {
@@ -82,7 +82,7 @@
 .chevron {
   flex-shrink: 0;
   color: var(--text-muted);
-  transition: transform var(--dur-base) var(--ease-emphasized);
+  transition: transform var(--dur-2) var(--ease-out);
 }
 
 .trigger.open .chevron {
@@ -91,36 +91,50 @@
 
 /* ── Listbox popover ─────────────────────────────────────── */
 
+/* 浮动层：--r-lg + --shadow-3 + scale(.96→1) 入场（§5.7 / §6.8）。 */
 .listbox {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + var(--s-1));
   left: 0;
   right: 0;
-  z-index: 50;
+  z-index: var(--z-nav);
   margin: 0;
-  padding: var(--sp-1);
+  padding: var(--s-1);
   list-style: none;
-  background-color: var(--surface-card);
-  border: 1px solid var(--divider-color);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-pop);
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-3);
   max-height: 280px;
   overflow-y: auto;
+  transform-origin: top center;
+  animation: listbox-in var(--dur-2) var(--ease-out);
+}
+
+@keyframes listbox-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .option {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--sp-2);
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--radius-sm);
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-sm);
   font-size: var(--fs-sm);
   color: var(--text-body);
   cursor: pointer;
   transition:
-    background-color var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard);
+    background-color var(--dur-1) var(--ease-standard),
+    color var(--dur-1) var(--ease-standard);
 }
 
 .optionLabel {
@@ -130,19 +144,19 @@
 }
 
 .option.active {
-  background-color: var(--hover-bg);
-  color: var(--text-main);
+  background-color: var(--pink-100);
+  color: var(--ink);
 }
 
 @supports (background-color: color-mix(in srgb, red 15%, white)) {
   .option.active {
-    background-color: var(--hover-bg-mix);
+    background-color: var(--pink-100);
   }
 }
 
 .option.selected {
-  color: var(--text-main);
-  font-weight: var(--fw-label);
+  color: var(--ink);
+  font-weight: var(--fw-semibold);
 }
 
 .optionDisabled {
@@ -152,16 +166,16 @@
 
 .check {
   flex-shrink: 0;
-  color: var(--accent-pink);
+  color: var(--pink-700);
 }
 
 .hint {
-  font-size: var(--fs-micro);
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
 .hintError {
-  color: var(--error-color);
+  color: var(--error-text);
 }
 
 @media (any-pointer: coarse) {
@@ -170,7 +184,8 @@
     font-size: var(--fs-body);
   }
   .option {
-    padding: 0.65rem 0.7rem;
+    min-height: var(--tap-min);
+    padding: var(--s-2) var(--s-3);
   }
 }
 

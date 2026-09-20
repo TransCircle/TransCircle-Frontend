@@ -1,20 +1,20 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
+  gap: var(--s-2);
   width: 100%;
 }
 
 .label {
-  font-size: var(--fs-meta);
-  font-weight: var(--fw-label);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
   color: var(--text-secondary);
 }
 
 .group {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
+  gap: var(--s-2);
 }
 
 .horizontal {
@@ -27,25 +27,25 @@
   min-width: 0;
   display: flex;
   align-items: flex-start;
-  gap: var(--sp-2);
-  min-height: 40px;
-  padding: 0.65rem 0.8rem;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  background-color: var(--surface-card);
+  gap: var(--s-2);
+  min-height: var(--control-h);
+  padding: var(--s-2) var(--s-3);
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background-color: var(--surface);
   color: var(--text-body);
   font-family: inherit;
   font-size: var(--fs-sm);
   text-align: left;
   cursor: pointer;
   transition:
-    border-color var(--dur-fast) var(--ease-standard),
-    background-color var(--dur-fast) var(--ease-standard),
-    transform var(--dur-fast) var(--ease-emphasized);
+    border-color var(--dur-1) var(--ease-standard),
+    background-color var(--dur-1) var(--ease-standard),
+    transform var(--dur-1) var(--ease-out);
 }
 
 .option:hover:not(:disabled) {
-  border-color: var(--accent-pink);
+  border-color: var(--pink-700);
 }
 
 .option:active:not(:disabled) {
@@ -53,7 +53,7 @@
 }
 
 .option:focus-visible {
-  outline: 2px solid var(--accent-pink);
+  outline: 2px solid var(--pink-700);
   outline-offset: 2px;
 }
 
@@ -63,12 +63,12 @@
 }
 
 .option.checked {
-  border-color: var(--accent-pink);
-  background-color: var(--hover-bg);
+  border-color: var(--pink-700);
+  background-color: var(--pink-100);
 }
 
 .option.invalid {
-  border-color: var(--error-border);
+  border-color: var(--error-text);
 }
 
 .dot {
@@ -76,23 +76,31 @@
   position: relative;
   width: 18px;
   height: 18px;
-  margin-top: 0.1rem;
-  border: 1px solid var(--border-strong);
-  border-radius: 50%;
-  background-color: var(--surface-card);
-  transition: border-color var(--dur-fast) var(--ease-standard);
+  margin-top: var(--s-1);
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  background-color: var(--surface);
+  transition: border-color var(--dur-1) var(--ease-standard);
 }
 
 .option.checked .dot {
-  border-color: var(--accent-pink);
+  border-color: var(--pink-700);
 }
 
-.option.checked .dot::after {
+/* 圆点常驻，靠 scale 弹入（§5.4：--ease-spring 120ms 形变）。
+   ::after 一直在，否则没有可过渡的起始态。 */
+.dot::after {
   content: '';
   position: absolute;
   inset: 3px;
-  border-radius: 50%;
-  background-color: var(--accent-pink);
+  border-radius: var(--r-pill);
+  background-color: var(--pink-700);
+  transform: scale(0);
+  transition: transform 120ms var(--ease-spring);
+}
+
+.option.checked .dot::after {
+  transform: scale(1);
 }
 
 .optionText {
@@ -103,12 +111,12 @@
 }
 
 .optionLabel {
-  font-weight: var(--fw-title);
-  color: var(--text-main);
+  font-weight: var(--fw-semibold);
+  color: var(--ink);
 }
 
 .optionHint {
-  font-size: var(--fs-micro);
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 

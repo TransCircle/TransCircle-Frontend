@@ -1,25 +1,27 @@
+/* §5.6：徽章高 24–28px、padding 0 10px、--fs-sm、--r-xs、色点 6px。 */
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: var(--sp-2);
-  padding: var(--sp-1) var(--sp-2) var(--sp-1) var(--sp-2);
-  border-radius: var(--radius-pill);
+  gap: var(--s-2);
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: var(--r-xs);
   border: 1px solid transparent;
-  font-size: var(--fs-micro);
-  font-weight: var(--fw-label);
-  line-height: 1.4;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  line-height: 1;
   white-space: nowrap;
 }
 
 .badge.sm {
-  font-size: var(--fs-micro);
-  padding: 1px var(--sp-2);
+  min-height: 24px;
+  padding: 0 var(--s-2);
 }
 
 .dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-pill);
   background-color: currentColor;
   flex-shrink: 0;
   opacity: 0.9;
@@ -28,32 +30,33 @@
 /* ── Light tones ─────────────────────────────────────────── */
 
 .tone_amber {
-  color: var(--soft-amber-text);
-  background-color: var(--soft-amber-bg);
+  color: var(--warning-text);
+  background-color: var(--warning-bg);
 }
 .tone_blue {
-  color: var(--soft-info-text);
-  background-color: var(--soft-info-bg);
+  color: var(--info-text);
+  background-color: var(--info-bg);
 }
 .tone_green {
-  color: var(--soft-success-text);
-  background-color: var(--soft-success-bg);
+  color: var(--success-text);
+  background-color: var(--success-bg);
 }
 .tone_red {
-  color: var(--soft-error-text);
-  background-color: var(--soft-error-bg);
+  color: var(--error-text);
+  background-color: var(--error-bg);
 }
 .tone_accent {
-  color: var(--text-main);
-  background-color: var(--soft-pink);
+  color: var(--ink);
+  background-color: var(--pink-200);
 }
+/* muted 用 --text-secondary：--text-muted on --pink-100 实测仅 ~2.6:1，不达 4.5:1。 */
 .tone_muted {
-  color: var(--text-muted);
-  background-color: var(--hover-bg);
+  color: var(--text-secondary);
+  background-color: var(--pink-100);
 }
 .tone_neutral {
   color: var(--text-secondary);
-  background-color: var(--hover-bg);
+  background-color: var(--pink-100);
 }
 
 /* ── Pill (neutral marker) ───────────────────────────────── */
@@ -61,12 +64,14 @@
 .pill {
   display: inline-flex;
   align-items: center;
-  padding: 1px var(--sp-2);
-  border-radius: var(--radius-pill);
-  background-color: var(--hover-bg);
+  min-height: 24px;
+  padding: 0 var(--s-2);
+  border-radius: var(--r-xs);
+  background-color: var(--pink-100);
   color: var(--text-secondary);
-  font-size: var(--fs-micro);
-  font-weight: var(--fw-title);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  line-height: 1;
   white-space: nowrap;
   max-width: 100%;
   overflow: hidden;
@@ -75,6 +80,6 @@
 
 /* accent 是身份面，不只是换个字色——底色也要跟上，否则和普通 pill 只差字重。 */
 .pillAccent {
-  background-color: var(--soft-pink);
-  color: var(--text-main);
+  background-color: var(--pink-200);
+  color: var(--ink);
 }

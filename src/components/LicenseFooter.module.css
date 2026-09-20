@@ -1,35 +1,39 @@
 .footer {
   width: 100%;
-  border-top: 1px solid var(--divider-color);
-  background-color: var(--bg-color);
+  border-top: 1px solid var(--line);
+  background-color: var(--bg);
 }
 
+/* 横向内边距与顶栏/内容区共用 --page-x（§4），三者左缘对齐。
+   注：§3.1 允许在页脚顶部放通栏旗帜条纹，这里刻意不放——
+   顶栏当前项与首页特色卡已各占一处，再加会突破「每屏 ≤1」的纪律（§1.5）。 */
 .bar {
-  max-width: var(--width-content);
+  max-width: var(--w-content);
   margin: 0 auto;
-  padding: 0.6rem clamp(0.75rem, 0.3rem + 2.4vw, 3rem);
+  padding: var(--s-3) var(--page-x);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--sp-2) var(--sp-5);
+  gap: var(--s-2) var(--s-5);
   flex-wrap: wrap;
-  font-size: var(--fs-micro);
+  font-family: var(--font-tech);
+  font-size: var(--fs-xs);
   color: var(--text-muted);
-  line-height: 1.5;
+  line-height: var(--lh-caption);
 }
 
 .license {
   margin: 0;
   display: flex;
   align-items: center;
-  gap: var(--sp-2);
+  gap: var(--s-2);
   flex-wrap: wrap;
   min-width: 0;
 }
 
 .heading {
   color: var(--text-secondary);
-  font-weight: var(--fw-label);
+  font-weight: var(--fw-semibold);
   letter-spacing: 0.06em;
   flex-shrink: 0;
 }
@@ -46,6 +50,6 @@
 
 @media (max-width: 768px) {
   .bar {
-    font-size: var(--fs-micro);
+    font-size: var(--fs-xs);
   }
 }

@@ -4,18 +4,18 @@
 .section {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
-  border-top: 1px solid var(--divider-color);
+  border-top: 1px solid var(--line);
 }
 
 .subHeading {
   font-size: var(--fs-body);
-  font-weight: var(--fw-label);
-  margin: 0 0 var(--sp-2);
-  color: var(--text-main);
+  font-weight: var(--fw-semibold);
+  margin: 0 0 var(--s-2);
+  color: var(--ink);
 }
 
 .note {
-  margin: 0 0 var(--sp-3);
+  margin: 0 0 var(--s-3);
   font-size: var(--fs-sm);
   line-height: 1.6;
   color: var(--text-secondary);
@@ -31,23 +31,23 @@
 }
 
 .permGroupLabel {
-  margin: 0 0 var(--sp-2);
-  font-size: var(--fs-meta);
-  font-weight: var(--fw-label);
+  margin: 0 0 var(--s-2);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
   color: var(--text-secondary);
 }
 
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-2);
+  gap: var(--s-2);
 }
 
 /* Inline register row (passkey name + button) */
 .inlineRow {
   display: flex;
   align-items: flex-end;
-  gap: var(--sp-2);
+  gap: var(--s-2);
   flex-wrap: wrap;
 }
 
@@ -62,14 +62,14 @@
   width: 200px;
   height: 200px;
   margin: 1rem auto;
-  border-radius: var(--radius-sm);
+  border-radius: var(--r-sm);
 }
 
 .secretLine {
   font-size: var(--fs-sm);
   color: var(--text-muted);
   text-align: center;
-  margin: 0 0 var(--sp-4);
+  margin: 0 0 var(--s-4);
 }
 
 .secret {
@@ -87,7 +87,7 @@
 
 .codeInput {
   text-align: center;
-  font-size: var(--fs-subtitle);
+  font-size: var(--fs-lg);
   letter-spacing: 0.3em;
 }
 
@@ -98,10 +98,10 @@
 
 /* Recovery codes (inside the Modal) */
 .recoveryCodes {
-  background-color: var(--hover-bg);
-  border: 1px solid var(--divider-color);
-  padding: var(--sp-4);
-  border-radius: var(--radius-sm);
+  background-color: var(--pink-100);
+  border: 1px solid var(--line);
+  padding: var(--s-4);
+  border-radius: var(--r-sm);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: var(--fs-sm);
   line-height: 2;

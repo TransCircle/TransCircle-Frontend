@@ -4,30 +4,30 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--sp-4);
+  gap: var(--s-4);
   flex-wrap: wrap;
 }
 
 .texts {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1);
+  gap: var(--s-1);
   min-width: 0;
 }
 
 .title {
   margin: 0;
-  font-weight: var(--fw-title);
-  color: var(--text-main);
-  line-height: var(--lh-tight);
+  font-weight: var(--fw-semibold);
+  color: var(--ink);
+  line-height: var(--lh-heading);
 }
 
 .page .title {
-  font-size: var(--fs-title);
+  font-size: var(--fs-h3);
 }
 
 .section .title {
-  font-size: var(--fs-subtitle);
+  font-size: var(--fs-lg);
 }
 
 .desc {
@@ -41,9 +41,11 @@
   font-size: var(--fs-sm);
 }
 
+/* eyebrow 是 --font-tech 的指定用途之一（§2.6）。 */
 .eyebrow {
-  font-size: var(--fs-micro);
-  font-weight: var(--fw-label);
+  font-family: var(--font-tech);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--text-muted);
@@ -52,7 +54,7 @@
 .actions {
   display: flex;
   align-items: center;
-  gap: var(--sp-2);
+  gap: var(--s-2);
   flex-wrap: wrap;
   flex-shrink: 0;
 }
@@ -73,7 +75,7 @@
 
 @media (max-width: 640px) {
   .header {
-    gap: var(--sp-3);
+    gap: var(--s-3);
   }
   .actions {
     width: 100%;

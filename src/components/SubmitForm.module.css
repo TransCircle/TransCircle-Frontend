@@ -4,9 +4,9 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-6);
+  gap: var(--s-5);
   width: 100%;
-  max-width: var(--width-reading);
+  max-width: var(--w-reading);
   margin-inline: auto;
 }
 
@@ -15,46 +15,46 @@
 .loginHint {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-  padding: var(--sp-3) var(--sp-4);
-  background-color: var(--hover-bg);
-  border: 1px solid var(--divider-color);
-  border-radius: var(--radius-md);
+  padding: var(--s-3) var(--s-4);
+  background-color: var(--pink-100);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
   line-height: 1.6;
 }
 
 .loginActions {
   display: inline-flex;
   align-items: center;
-  gap: var(--sp-2);
+  gap: var(--s-2);
   flex-wrap: wrap;
 }
 
 .userBadge {
   display: inline-flex;
   align-items: center;
-  gap: var(--sp-2);
+  gap: var(--s-2);
   flex-wrap: wrap;
 }
 
 /* 「这是你」的标记 → 人的语义 → 粉。全表单唯一的粉色元素。 */
 .userProvider {
-  font-size: var(--fs-micro);
-  font-weight: var(--fw-label);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
   letter-spacing: 0.04em;
-  padding: 1px var(--sp-2);
-  border-radius: var(--radius-pill);
-  background-color: var(--soft-pink);
+  padding: 1px var(--s-2);
+  border-radius: var(--r-xs);
+  background-color: var(--pink-200);
   color: var(--text-secondary);
 }
 
 .userName {
-  font-weight: var(--fw-label);
-  color: var(--text-main);
+  font-weight: var(--fw-semibold);
+  color: var(--ink);
 }
 
 .userTag {
   color: var(--text-muted);
-  font-size: var(--fs-meta);
+  font-size: var(--fs-xs);
 }
 
 /* ── 提交成功 ────────────────────────────────────────────── */
@@ -62,23 +62,23 @@
 .successContent {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1);
+  gap: var(--s-1);
   width: 100%;
 }
 
 .successTitle {
-  font-weight: var(--fw-label);
+  font-weight: var(--fw-semibold);
 }
 
 .successId {
   word-break: break-all;
   font-family: var(--font-mono);
-  font-size: var(--fs-meta);
+  font-size: var(--fs-xs);
   font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 640px) {
   .form {
-    gap: var(--sp-5);
+    gap: var(--s-5);
   }
 }

@@ -1,14 +1,17 @@
+/* Step-up 对话框 —— §5.7。
+   高于 --z-modal：step-up 永远是最上面一层，常常开在理由/确认弹窗之上。 */
 .overlay {
   position: fixed;
   inset: 0;
-  /* 高于 Modal 的 1100：step-up 永远是最上面一层，常常开在理由/确认弹窗之上 */
-  z-index: 1200;
+  z-index: calc(var(--z-modal) + 1);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--sp-6);
-  background-color: var(--overlay-bg);
-  animation: suOverlay var(--dur-base) var(--ease-standard);
+  padding: var(--s-5);
+  background-color: var(--overlay);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  animation: suOverlay var(--dur-2) var(--ease-standard);
 }
 
 .panel {
@@ -17,23 +20,23 @@
   max-height: calc(100vh - 3rem);
   max-height: calc(100dvh - 3rem);
   overflow-y: auto;
-  background-color: var(--surface-card);
-  border: 1px solid var(--divider-color);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-dialog);
-  padding: var(--sp-6);
-  animation: suPanel var(--dur-base) var(--ease-emphasized);
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-3);
+  padding: var(--s-5);
+  animation: suPanel var(--dur-2) var(--ease-out);
 }
 
 .title {
   margin: 0;
-  font-size: var(--fs-subtitle);
-  font-weight: var(--fw-display);
-  color: var(--text-main);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--ink);
 }
 
 .desc {
-  margin: var(--sp-2) 0 var(--sp-4);
+  margin: var(--s-2) 0 var(--s-4);
   font-size: var(--fs-sm);
   line-height: 1.6;
   color: var(--text-secondary);
@@ -44,20 +47,20 @@
 .input {
   width: 100%;
   min-height: 38px;
-  padding: var(--sp-2) var(--sp-3);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-control);
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
   font-size: var(--fs-sm);
   font-family: inherit;
-  color: var(--text-main);
-  background-color: var(--surface-input);
+  color: var(--ink);
+  background-color: var(--surface-2);
   appearance: none;
   -webkit-appearance: none;
   outline: none;
   margin-bottom: 0.9rem;
   transition:
-    border-color var(--dur-fast) var(--ease-standard),
-    box-shadow var(--dur-fast) var(--ease-standard);
+    border-color var(--dur-1) var(--ease-standard),
+    box-shadow var(--dur-1) var(--ease-standard);
 }
 
 .input::placeholder {
@@ -65,10 +68,10 @@
 }
 
 .input:focus-visible {
-  border-color: var(--accent-pink);
-  background-color: var(--surface-card);
+  border-color: var(--pink-600);
+  background-color: var(--surface);
   outline: none;
-  box-shadow: 0 0 0 3px var(--focus-ring);
+  box-shadow: 0 0 0 3px var(--ring-pink);
 }
 
 .input:disabled {
@@ -85,7 +88,7 @@
 
 @supports (box-shadow: 0 0 0 3px color-mix(in srgb, red 18%, transparent)) {
   .input:focus-visible {
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-pink) 22%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--pink-600) 22%, transparent);
   }
 }
 
@@ -94,7 +97,7 @@
 .actions {
   display: flex;
   justify-content: flex-end;
-  gap: var(--sp-2);
+  gap: var(--s-2);
   margin-top: 1.2rem;
   flex-wrap: wrap;
 }
@@ -103,22 +106,22 @@
 .btnGhost,
 .btnPrimaryFull {
   font-family: inherit;
-  font-weight: var(--fw-title);
+  font-weight: var(--fw-semibold);
   font-size: var(--fs-sm);
-  border-radius: var(--radius-pill);
-  padding: var(--sp-2) var(--sp-5);
+  border-radius: var(--r-xs);
+  padding: var(--s-2) var(--s-5);
   cursor: pointer;
   border: 1px solid transparent;
   transition:
-    background-color var(--dur-fast) var(--ease-standard),
-    border-color var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard);
+    background-color var(--dur-1) var(--ease-standard),
+    border-color var(--dur-1) var(--ease-standard),
+    color var(--dur-1) var(--ease-standard);
 }
 
 .btnPrimary,
 .btnPrimaryFull {
-  background-color: var(--cta-bg);
-  color: var(--cta-color);
+  background-color: var(--pink-600);
+  color: var(--on-pink);
 }
 
 .btnPrimaryFull {
@@ -127,34 +130,34 @@
 
 .btnPrimary:hover:not(:disabled),
 .btnPrimaryFull:hover:not(:disabled) {
-  background-color: var(--cta-hover);
+  background-color: var(--pink-600-hover);
 }
 
 @supports (background-color: color-mix(in srgb, red 85%, black)) {
   .btnPrimary:hover:not(:disabled),
   .btnPrimaryFull:hover:not(:disabled) {
-    background-color: var(--cta-hover-mix);
+    background-color: var(--pink-600-hover);
   }
 }
 
 .btnGhost {
-  background-color: var(--surface-card);
-  color: var(--text-main);
+  background-color: var(--surface);
+  color: var(--ink);
   border-color: var(--text-muted);
 }
 
 .btnGhost:hover:not(:disabled) {
-  border-color: var(--accent-pink);
-  background-color: var(--hover-bg);
+  border-color: var(--pink-600);
+  background-color: var(--pink-100);
 }
 
 .btnGhost:active:not(:disabled) {
-  background-color: var(--hover-bg);
+  background-color: var(--pink-100);
 }
 
 .btnPrimary:active:not(:disabled),
 .btnPrimaryFull:active:not(:disabled) {
-  background-color: var(--cta-hover);
+  background-color: var(--pink-600-hover);
 }
 
 /* Comfortable touch targets on touch devices. */
@@ -174,15 +177,15 @@
 }
 
 .error {
-  color: var(--error-color);
+  color: var(--error-text);
   font-size: var(--fs-sm);
-  margin: var(--sp-2) 0 0;
+  margin: var(--s-2) 0 0;
 }
 
 /* ── IAM popup states ────────────────────────────────────── */
 
 .iamPrompt {
-  margin: 0 0 var(--sp-2);
+  margin: 0 0 var(--s-2);
   font-size: var(--fs-sm);
   line-height: 1.6;
   color: var(--text-secondary);
@@ -194,23 +197,23 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: var(--sp-3);
-  padding: var(--sp-3) 0 var(--sp-1);
+  gap: var(--s-3);
+  padding: var(--s-3) 0 var(--s-1);
 }
 
 .waitText,
 .successText {
   margin: 0;
   font-size: var(--fs-sm);
-  color: var(--text-main);
+  color: var(--ink);
 }
 
 .spinner {
   width: 36px;
   height: 36px;
-  border-radius: 50%;
-  border: 3px solid var(--divider-color);
-  border-top-color: var(--accent-pink);
+  border-radius: var(--r-pill);
+  border: 3px solid var(--line);
+  border-top-color: var(--pink-600);
   animation: suSpin 0.7s linear infinite;
 }
 
@@ -220,10 +223,10 @@
   justify-content: center;
   width: 48px;
   height: 48px;
-  border-radius: 50%;
-  background-color: var(--soft-success-bg);
-  color: var(--soft-success-text);
-  border: 1px solid var(--soft-success-border);
+  border-radius: var(--r-pill);
+  background-color: var(--success-bg);
+  color: var(--success-text);
+  border: 1px solid var(--success-border);
   animation: suPop 0.3s ease;
 }
 
@@ -234,9 +237,9 @@
 }
 
 [data-theme='dark'] .successCheck {
-  background-color: var(--soft-success-bg);
-  color: var(--soft-success-text);
-  border-color: var(--soft-success-border);
+  background-color: var(--success-bg);
+  color: var(--success-text);
+  border-color: var(--success-border);
 }
 
 /* ── Animations ──────────────────────────────────────────── */
@@ -247,10 +250,15 @@
   }
 }
 
+/* §5.7：入场 opacity 0→1 + scale(.96→1)。 */
 @keyframes suPanel {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.985);
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 

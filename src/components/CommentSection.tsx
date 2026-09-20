@@ -11,6 +11,15 @@ import styles from './CommentSection.module.css'
 
 const PAGE_SIZE = 20
 
+const DiscussionIcon = () => (
+  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+    <path d="M20 11.5a7.5 7.5 0 0 1-8 7.48 8.9 8.9 0 0 1-3.8-.92L4 19.5l1.08-3.24A7.5 7.5 0 1 1 20 11.5z" />
+    <path d="M8.5 11.5h.01" />
+    <path d="M12 11.5h.01" />
+    <path d="M15.5 11.5h.01" />
+  </svg>
+)
+
 interface CommentAuthor {
   displayName: string
   avatarUrl: string | null
@@ -295,13 +304,28 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
           )}
         </div>
         {replyTo === item.id && (
-          <div className={styles.replyComposer}>
+          <form
+            className={styles.replyComposer}
+            onSubmit={(e) => {
+              e.preventDefault()
+              const sent = replyContent
+              void submitComment(
+                item.id,
+                sent,
+                replyTurnstile,
+                () => setReplyContent((cur) => (cur === sent ? '' : cur)),
+                setReplyError,
+                setReplySubmitting,
+              )
+            }}
+          >
             <TextArea
               autoFocus
               value={replyContent}
               onChange={(e) => setReplyContent(e.target.value)}
               placeholder={t('comment.replyPlaceholder')}
               aria-label={t('comment.replyPlaceholder')}
+              aria-invalid={!!replyError}
               maxLength={2000}
             />
             {replyError && <Alert tone="error">{replyError}</Alert>}
@@ -319,6 +343,7 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
               <Button
                 variant="ghost"
                 size="sm"
+                type="button"
                 onClick={closeReply}
               >
                 {t('comment.replyCancel')}
@@ -326,23 +351,13 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
               <Button
                 variant="primary"
                 size="sm"
+                type="submit"
                 loading={replySubmitting}
-                onClick={() => {
-                  const sent = replyContent
-                  void submitComment(
-                    item.id,
-                    sent,
-                    replyTurnstile,
-                    () => setReplyContent((cur) => (cur === sent ? '' : cur)),
-                    setReplyError,
-                    setReplySubmitting,
-                  )
-                }}
               >
                 {t('comment.replySubmit')}
               </Button>
             </div>
-          </div>
+          </form>
         )}
         {item.replies?.length > 0 && (
           <ul className={styles.replies} role="list">
@@ -362,12 +377,28 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
       </h2>
 
       {user ? (
-        <div className={styles.composer}>
+        /* form 语义：Enter 提交、读屏可识别为表单；错误经 aria-describedby 关联到输入框。 */
+        <form
+          className={styles.composer}
+          onSubmit={(e) => {
+            e.preventDefault()
+            const sent = content
+            void submitComment(
+              null,
+              sent,
+              topTurnstile,
+              () => setContent((cur) => (cur === sent ? '' : cur)),
+              setSubmitError,
+              setSubmitting,
+            )
+          }}
+        >
           <TextArea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder={t('comment.placeholder')}
             aria-label={t('comment.placeholder')}
+            aria-invalid={!!submitError}
             maxLength={2000}
           />
           {submitError && <Alert tone="error">{submitError}</Alert>}
@@ -384,23 +415,13 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
           <div className={styles.composerActions}>
             <Button
               variant="primary"
+              type="submit"
               loading={submitting}
-              onClick={() => {
-                const sent = content
-                void submitComment(
-                  null,
-                  sent,
-                  topTurnstile,
-                  () => setContent((cur) => (cur === sent ? '' : cur)),
-                  setSubmitError,
-                  setSubmitting,
-                )
-              }}
             >
               {submitting ? t('comment.submitting') : t('comment.submit')}
             </Button>
           </div>
-        </div>
+        </form>
       ) : (
         <div className={styles.loginCta}>
           <p>{t('comment.loginRequired')}</p>
@@ -416,7 +437,18 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
       {loading && items.length === 0 ? (
         <Skeleton rows={3} />
       ) : !error && items.length === 0 ? (
-        <EmptyState title={t('comment.empty')} />
+        <EmptyState
+          title={t('comment.empty')}
+          description={t('comment.emptyDescription')}
+          icon={<DiscussionIcon />}
+          action={
+            user ? (
+              <Button variant="primary" onClick={() => document.querySelector<HTMLTextAreaElement>(`.${styles.composer} textarea`)?.focus()}>
+                {t('comment.submit')}
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
         <ul className={styles.list} role="list">
           {items.map((item) => (

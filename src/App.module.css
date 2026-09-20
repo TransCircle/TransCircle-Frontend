@@ -1,7 +1,7 @@
 .appContainer {
   width: 100%;
   min-height: 100vh;
-  background-color: var(--bg-color);
+  background-color: var(--bg);
   display: flex;
   flex-direction: column;
 }
@@ -20,13 +20,14 @@
   position: absolute;
   left: -9999px;
   top: 0;
-  z-index: 1300;
-  padding: var(--sp-2) var(--sp-4);
-  background: var(--accent-ink);
-  /* --on-accent 是给淡粉面用的墨色；这里底是墨，前景必须反过来。 */
-  color: var(--surface-card);
-  border-radius: 0 0 var(--radius-sm) 0;
+  z-index: var(--z-skip);
+  padding: var(--s-2) var(--s-4);
+  background: var(--ink);
+  /* 底是墨，前景必须反过来取表面色。 */
+  color: var(--surface);
+  border-radius: 0 0 var(--r-sm) 0;
   font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
   text-decoration: none;
 }
 
@@ -39,12 +40,11 @@
 .mainContent {
   flex: 1;
   width: 100%;
-  max-width: var(--width-content);
+  max-width: var(--w-content);
   margin: 0 auto;
-  /* Fluid padding scales with the viewport so content breathes on large
-     screens and stays compact on phones — no fixed-step breakpoints needed.
-     窄屏下限压到 0.75rem：手机上每一像素的横向留白都是从正文里扣的。 */
-  padding: clamp(1.25rem, 0.9rem + 1.4vw, 2.5rem) clamp(0.75rem, 0.3rem + 2.4vw, 3rem);
+  /* 横向内边距走 --page-x（§4）：顶栏与内容区共用同一表达式，
+     两者左缘才会严格对齐。纵向仍随视口流体缩放。 */
+  padding: clamp(1.25rem, 0.9rem + 1.4vw, 2.5rem) var(--page-x);
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -60,65 +60,119 @@
   overflow: hidden;
 }
 
-/* ── Toast notifications (rate-limit / query-param) ── */
+/* ── Toast notifications (rate-limit / query-param) ──
+   §5.7：右下堆叠、玻璃面板 + 语义色点（不靠纯色底传达状态，§7），
+   translateY + fade 入场。玻璃属于浮动层，符合 §1.4。 */
+
+.toastStack {
+  position: fixed;
+  right: var(--s-5);
+  bottom: var(--s-5);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s-2);
+  max-width: min(92vw, 32rem);
+}
 
 .toastError,
 .toastInfo {
-  position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  max-width: min(92vw, 32rem);
   box-sizing: border-box;
-  padding: var(--sp-3) var(--sp-5);
-  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-lg);
   font-size: var(--fs-sm);
-  line-height: 1.5;
-  z-index: 1250;
-  box-shadow: var(--shadow-card-hover);
+  line-height: var(--lh-caption);
+  box-shadow: var(--shadow-3);
+  color: var(--ink);
+  background-color: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  animation: toast-in var(--dur-2) var(--ease-out);
 }
 
-.toastError {
-  top: var(--sp-4);
-  background: var(--error-color);
-  color: var(--on-error);
-}
-
-/* role="alert" lives on the outer div (above); the button inside stays a
-   plain, natively-focusable button so its implicit role isn't overridden by
-   a role ARIA-in-HTML doesn't allow on <button> (e.g. "alert"). */
-.toastErrorBtn {
-  display: block;
-  width: 100%;
-  border: none;
-  font: inherit;
-  text-align: left;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  transition: opacity var(--dur-fast) var(--ease-standard);
-}
-
-.toastErrorBtn:hover,
-.toastErrorBtn:focus-visible {
-  opacity: 0.9;
-}
-
-/* The default accent-pink ring is too close in hue/lightness to
-   --error-color to read against this toast's own background — swap to
-   --on-error (white) so the ring stays visible here specifically. */
-.toastErrorBtn:focus-visible {
-  outline-color: var(--on-error);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .toastErrorBtn {
-    transition: none;
+/* 玻璃必须有实色回退，否则不支持 backdrop-filter 的浏览器会得到半透明糊面。 */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .toastError,
+  .toastInfo {
+    background-color: var(--surface);
+    border-color: var(--line);
   }
 }
 
-.toastInfo {
-  top: var(--sp-10);
-  background: var(--surface-card);
-  color: var(--text-main);
-  border: 1px solid var(--divider-color);
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 状态色点：状态不靠颜色单独传达，点 + 文字组合（§7）。 */
+.toastError::before,
+.toastInfo::before {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 0.45em;
+  border-radius: var(--r-pill);
+}
+
+.toastError::before {
+  background-color: var(--error-text);
+}
+
+.toastInfo::before {
+  background-color: var(--blue-500);
+}
+
+/* 关闭按钮：独立控件、带 aria-label，不再把整段提示文本当按钮名。 */
+.toastClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: var(--fs-lg);
+  line-height: 1;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  transition: color var(--dur-1) var(--ease-standard);
+}
+
+.toastClose:hover {
+  color: var(--ink);
+}
+
+/* 路由焦点落点（tabIndex=-1）不显示焦点框——skip-link 之后才由Tab产生真焦点环。 */
+.mainContent:focus {
+  outline: none;
+}
+
+/* 只供读屏的路由播报区。 */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

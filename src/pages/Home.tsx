@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, type CSSProperties } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { get } from '@/api/client'
@@ -6,12 +6,33 @@ import { useAuth } from '@/context/useAuth'
 import { usePagedList, toPagedResult } from '@/hooks/usePagedList'
 import { AdminButton, Alert, EmptyState, Pagination, SearchField, Skeleton } from '@/components/ui'
 import { useFormatTs } from '@/utils/datetime'
+import { useReveal } from '@/hooks/useReveal'
 import styles from './Story.module.css'
+
+/** 特色卡顶部的旗帜条纹（DESIGN §3.1）：三个等宽实色 span，不用渐变。
+ *  全站纪律是每屏至多一处整条条纹——首页这一处用在特色卡上，
+ *  页面其余部分不得再出现（顶栏当前项那条是 24px 迷你指示条，另计）。 */
+const FeaturedFlagStripe = () => (
+  <span className={styles.flagStripe} aria-hidden="true">
+    <span className={styles.flagPink} />
+    <span className={styles.flagWhite} />
+    <span className={styles.flagBlue} />
+  </span>
+)
 
 /** 即时搜索的防抖间隔：够短到跟手，够长到不会每敲一个字就发一次请求。 */
 const SEARCH_DEBOUNCE_MS = 300
 
 const PAGE_SIZE = 20
+
+const ArchiveIcon = () => (
+  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+    <path d="M4 5.5h16v14H4z" />
+    <path d="M7 5.5V3.75h10V5.5" />
+    <path d="M8 10h8" />
+    <path d="M8 14h5" />
+  </svg>
+)
 
 interface PublicContribution {
   id: string
@@ -133,10 +154,21 @@ export const Home = () => {
   }
 
   /* 置顶区与主信息流共用同一张卡片：结构只一份，置顶款在署名行前多一枚
-     「置顶」徽标。 */
-  const renderEntry = (item: PublicContribution, isPinned = false) => (
-    <li key={item.id} className={styles.entry}>
-      <Link to={`/contributions/${item.id}`} className={styles.entryLink}>
+     「置顶」徽标；featured 款额外套 --r-lg 与顶部旗帜条纹。
+     `index` 只用于 reveal 的交错序号（--i），不参与任何数据逻辑。 */
+  const renderEntry = (item: PublicContribution, isPinned = false, index = 0, featured = false) => (
+    <li
+      key={item.id}
+      className={`${styles.entry} ${featured ? styles.entryFeatured : ''} reveal`}
+      data-reveal=""
+      style={{ '--i': index } as CSSProperties}
+    >
+      <Link
+        to={`/contributions/${item.id}`}
+        aria-label={item.title}
+        className={`${styles.entryLink} ${featured ? styles.featuredLink : ''}`}
+      >
+        {featured && <FeaturedFlagStripe />}
         <span className={styles.byline}>
           {isPinned && <span className={styles.pinBadge}>{t('home.pinnedBadge')}</span>}
           {item.author.avatarUrl ? (
@@ -171,23 +203,47 @@ export const Home = () => {
           )}
         </span>
 
-        <span className={styles.entryTitle}>{item.title}</span>
+        <h3 className={`${styles.entryTitle} ${featured ? styles.featuredTitle : ''}`}>
+          {item.title}
+        </h3>
 
-        {item.summary && <span className={styles.entrySummary}>{item.summary}</span>}
+        {item.summary && (
+          <span className={`${styles.entrySummary} ${featured ? styles.featuredSummary : ''}`}>
+            {item.summary}
+          </span>
+        )}
       </Link>
     </li>
   )
 
-  return (
-    <div className={styles.page}>
-      {/* 视觉上不画页面标题：顶栏已表明站点，紧跟着的搜索框和列表已表明
-          这一页是什么，中间再插一行标题是纯粹的重复。但页面仍需要一个 h1
-          供屏幕阅读器与「按标题跳转」定位，所以保留但只对辅助技术可见。
-          文案取完整站名而非「故事」二字——读屏时它是这一页的名字，脱离
-          视觉上下文单念一个词无法说明落在哪个站点。 */}
-      <h1 className={styles.srOnly}>{t('home.title')}</h1>
+  /* 滚动 reveal（§6.4）。依赖列表里带上数据，翻页/搜索后新渲染的卡片
+     也要被重新收集观察，否则它们会永远停在 opacity:0。 */
+  const revealRef = useReveal<HTMLDivElement>([items, pinned, loading, error])
 
-      <div className={styles.toolbar}>
+  /* 首屏锚点：优先用第一条置顶稿，没有置顶时用默认信息流的头条。
+     搜索结果页与第二页往后不做特色卡——那里读者要的是并列比较，
+     而且旗帜条纹每屏只允许一处（§1.5）。 */
+  const showFeatured = !searchTerm && page === 1
+
+  return (
+    <div className={styles.page} ref={revealRef}>
+      <header className={styles.archiveHero}>
+        <p className={styles.archiveEyebrow}>{t('home.eyebrow')}</p>
+        <h1 className={styles.archiveTitle}>{t('home.heroTitle')}</h1>
+        <p className={styles.archiveLede}>{t('home.heroLede')}</p>
+      </header>
+
+      <section className={styles.exploreSection} aria-label={t('home.exploreLabel')}>
+        <div className={styles.exploreHead}>
+          <h2 className={styles.exploreTitle}>{t('home.exploreLabel')}</h2>
+          {/* 公共侧保留一个主行动；「我的投稿」归账户菜单，不在首页重复。 */}
+          <AdminButton
+            variant="primary"
+            onClick={() => navigate(user ? '/submit' : '/auth/login?redirect=%2Fsubmit')}
+          >
+            {user ? t('home.submitLink') : t('home.submitLoginLink')}
+          </AdminButton>
+        </div>
         <SearchField
           fieldClassName={styles.grow}
           value={searchInput}
@@ -198,27 +254,12 @@ export const Home = () => {
           searchAriaLabel={t('home.searchLabel')}
           clearAriaLabel={t('home.clearSearch')}
         />
-        {/* 动作并入搜索行右侧，省掉一整行只装两个按钮的报头 */}
-        {user && (
-          <div className={styles.toolbarActions}>
-            <AdminButton variant="primary" onClick={() => navigate('/submit')}>
-              {t('home.submitLink')}
-            </AdminButton>
-            <AdminButton variant="secondary" onClick={() => navigate('/me/contributions')}>
-              {t('home.myContributions')}
-            </AdminButton>
-          </div>
-        )}
-        {/* 不回显关键词——输入框就在旁边，重复一遍是冗余的 */}
         {searchTerm && !staleResults && (
           <span className={styles.searchNote} role="status" aria-live="polite">
-            {loading
-              ? t('home.searchExpanding')
-              : /* 总数由服务端 pagination.total 给出，不再是「当前这一页的条数」 */
-                t('home.searchResultCount', { count: total })}
+            {loading ? t('home.searchExpanding') : t('home.searchResultCount', { count: total })}
           </span>
         )}
-      </div>
+      </section>
 
       {/* 必须给一个重试入口：换关键词后首页请求失败时，游标已作废、分页条被置灰，
           而首页是即时搜索——再按一次回车会因为关键词没变而直接返回，用户会卡死在
@@ -239,14 +280,34 @@ export const Home = () => {
       {!searchTerm && page === 1 && pinned.length > 0 && (
         <section className={styles.pinnedSection} aria-label={t('home.pinnedSection')}>
           <h2 className={styles.srOnly}>{t('home.pinnedSection')}</h2>
-          <ul className={styles.feed}>{pinned.map((item) => renderEntry(item, true))}</ul>
+          <ul className={styles.feed}>
+            {pinned.map((item, i) => renderEntry(item, true, i, showFeatured && i === 0))}
+          </ul>
         </section>
       )}
 
       {loading && items.length === 0 ? (
         <Skeleton variant="feed" rows={5} />
       ) : staleResults ? null : items.length === 0 ? (
-        <EmptyState title={searchTerm ? t('home.noMatches') : t('home.empty')} />
+        <EmptyState
+          title={searchTerm ? t('home.noMatches') : t('home.empty')}
+          description={searchTerm ? t('home.noMatchesDescription') : t('home.emptyDescription')}
+          icon={<ArchiveIcon />}
+          action={
+            searchTerm ? (
+              <AdminButton variant="secondary" onClick={clearSearch}>
+                {t('home.clearSearchAction')}
+              </AdminButton>
+            ) : (
+              <AdminButton
+                variant="primary"
+                onClick={() => navigate(user ? '/submit' : '/auth/login?redirect=%2Fsubmit')}
+              >
+                {user ? t('home.submitLink') : t('home.submitLoginLink')}
+              </AdminButton>
+            )
+          }
+        />
       ) : (
         <>
           {/* 已有内容时刷新/搜索：保留旧列表，顶部显示轻量加载条，避免清空闪烁或旧数据被误读 */}
@@ -256,7 +317,10 @@ export const Home = () => {
             </div>
           )}
           <ul className={styles.feed}>
-            {items.map((item) => renderEntry(item))}
+            {items.map((item, i) =>
+              /* 没有置顶稿时，信息流头条顶上特色卡的位置。 */
+              renderEntry(item, false, i, showFeatured && pinned.length === 0 && i === 0),
+            )}
           </ul>
         </>
       )}

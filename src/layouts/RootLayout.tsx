@@ -14,6 +14,23 @@ const TOAST_MESSAGE_KEYS: Record<string, string> = {
   deletion_scheduled: 'common.toast.deletionScheduled',
 }
 
+/** 路由 → 页面标题 i18n key（WCAG 2.4.2 Page Titled + 路由播报）。 */
+function titleKeyForPathname(pathname: string): string {
+  if (pathname === '/') return 'pageTitles.home'
+  if (pathname === '/submit') return 'pageTitles.submit'
+  if (pathname === '/login' || pathname === '/auth/login') return 'pageTitles.login'
+  if (pathname === '/admin') return 'pageTitles.admin'
+  if (pathname.startsWith('/admin/edit-requests')) return 'pageTitles.editRequests'
+  if (pathname.startsWith('/admin/audit-logs')) return 'pageTitles.auditLogs'
+  if (pathname.startsWith('/admin/users')) return 'pageTitles.users'
+  if (pathname.startsWith('/admin/comments')) return 'pageTitles.comments'
+  if (pathname.startsWith('/settings')) return 'pageTitles.settings'
+  if (pathname.startsWith('/me/contributions')) return 'pageTitles.myContributions'
+  if (pathname.startsWith('/contributions/')) return 'pageTitles.contribution'
+  if (pathname.startsWith('/auth/error')) return 'pageTitles.error'
+  return 'pageTitles.notFound'
+}
+
 export const RootLayout = () => {
   const { t } = useTranslation()
   const [searchParams] = useSearchParams()
@@ -26,6 +43,18 @@ export const RootLayout = () => {
 
   const [rateLimitToast, setRateLimitToast] = useState<string | null>(null)
   const [dismissedToastKey, setDismissedToastKey] = useState<string | null>(null)
+
+  const pageTitle = t(titleKeyForPathname(location.pathname))
+
+  // SPA 换页：更新 document.title（2.4.2）+ 焦点移入 main（配合 tabIndex={-1}）
+  // + 读屏播报新页标题（简易 route announcer）。
+  useEffect(() => {
+    document.title = pageTitle
+    const main = document.querySelector<HTMLElement>('main')
+    if (main && !location.pathname.startsWith('/admin')) {
+      main.focus({ preventScroll: true })
+    }
+  }, [pageTitle, location.pathname])
 
   const toastKey = searchParams.get('toast')
   const toastMessage =
@@ -40,7 +69,7 @@ export const RootLayout = () => {
       const params = new URLSearchParams(searchParams.toString())
       params.delete('toast')
       navigate({ search: params.toString() }, { replace: true })
-    }, 5000)
+    }, 4000)
 
     return () => clearTimeout(timer)
   }, [searchParams, navigate, toastKey])
@@ -78,24 +107,47 @@ export const RootLayout = () => {
       <MainWrapper
         id={isAdminRoute ? undefined : 'main-content'}
         className={`${styles.mainContent} ${isAdminRoute ? styles.mainContentAdmin : ''}`}
+        tabIndex={-1}
       >
         <Outlet />
       </MainWrapper>
 
       <LicenseFooter />
 
-      {rateLimitToast && (
-        <div className={styles.toastError} role="alert">
-          <button type="button" className={styles.toastErrorBtn} onClick={() => setRateLimitToast(null)}>
-            {rateLimitToast}
-          </button>
-        </div>
-      )}
-      {toastMessage && (
-        <div className={styles.toastInfo} role="status" aria-live="polite">
-          {toastMessage}
-        </div>
-      )}
+      {/* 路由播报：读屏用户在 SPA 换页时听到新页标题。 */}
+      <div role="status" className={styles.srOnly}>
+        {pageTitle}
+      </div>
+
+      {/* 右下堆叠容器（§5.7）：多条 toast 自然纵向堆叠，不互相覆盖。 */}
+      <div className={styles.toastStack} aria-live="off">
+        {rateLimitToast && (
+          <div className={styles.toastError} role="alert">
+            <span>{rateLimitToast}</span>
+            <button
+              type="button"
+              className={styles.toastClose}
+              aria-label={t('common.close')}
+              onClick={() => setRateLimitToast(null)}
+            >
+              ×
+            </button>
+          </div>
+        )}
+        {toastMessage && (
+          <div className={styles.toastInfo} role="status">
+            <span>{toastMessage}</span>
+            <button
+              type="button"
+              className={styles.toastClose}
+              aria-label={t('common.close')}
+              onClick={() => setDismissedToastKey(toastKey)}
+            >
+              ×
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

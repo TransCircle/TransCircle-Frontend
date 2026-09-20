@@ -1042,6 +1042,7 @@ export const Admin = () => {
               {/* 提交期间冻结：请求带走的是点按钮那一刻的备注，此时还能改的话，
                   屏幕上显示的和实际发出去的就不是同一份。 */}
               <TextArea
+                label={t('admin.reviewNotesLabel')}
                 value={reviewNotes}
                 disabled={submitting}
                 onChange={(e) => setReviewNotes(e.target.value)}
@@ -1050,6 +1051,7 @@ export const Admin = () => {
               {/* 内部备注输入：与后端一致，需 contribution:internal-note:read 权限 */}
               {canInternalNote && (
                 <TextArea
+                  label={t('admin.internalNoteLabel')}
                   value={internalNote}
                   disabled={submitting}
                   onChange={(e) => setInternalNote(e.target.value)}
