@@ -1,324 +1,143 @@
-# TransCircle Web — Design System
+# TransCircle-Frontend — 设计落地说明
 
-The single source of truth for the visual language and component vocabulary of the
-TransCircle web app. Style: **modern minimalist, rounded, cool-toned**. The two brand
-colours are drawn from the trans flag and each carries a _semantic role_ rather than
-being decoration. Fully themed (light / dark; the `story/` microsite additionally
-ships a high-contrast theme).
+> **本文件不是设计规范源。**
+>
+> 唯一视觉规范源是仓库外的全局文档
+> **`TransCircle/docs/DESIGN.md` —— 「TransCircle 设计系统 v3.0 / Spectrum·光谱」**。
+>
+> 一切色值、圆角、字阶、间距、阴影、动效时长、层级都以该文档 §2 为准；
+> 要改值，先改那份文档，再同步三仓的 token 文件。本文件只记录**本仓特有的落地方式**。
 
-## 0. Direction (2026-08 redesign)
-
-### Pink is a surface colour, never a text colour
-
-The trans flag is a **pastel** flag: `#5BCEFA` and `#F5A9B8` both live at the light end
-of the lightness range. The trap is to reason "an accent must carry text, therefore it
-must be dark, therefore darken the flag" — that lands on `#9e3557`, a deep rose that
-makes the whole interface feel heavy, and on a navy that no longer reads as the flag's
-blue at all. Two earlier attempts failed exactly there.
-
-The way out is to stop asking pink to be text. Pink takes **surfaces and lines**:
-
-| Token           | Light     | Role                                                                                                                                                                                                                                                                                                                                            |
-| --------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--bg-color`    | `#fff9fb` | The page itself. The tint belongs on the largest surface, so the site reads as coloured without any control shouting.                                                                                                                                                                                                                           |
-| `--soft-pink`   | `#ffd2da` | The pale pink fill: avatar chips, accent badges, and selected fills (current page, active toolbar item). One step stronger than `--hover-bg` so "selected" outranks "hovered".                                                                                                                                                                  |
-| `--cta-bg`      | `#fec9d2` | Primary buttons — pale fill, ink label at 12.49:1.                                                                                                                                                                                                                                                                                              |
-| `--accent-pink` | `#c47687` | Lines: borders, focus rings, tab underlines, checked states. Clears the 3:1 non-text floor on every surface it actually sits on — 3.34 on a card, 3.21 on the page, 3.08 on an input fill, 3.02 on a hover fill. Hover swaps the background out from under the line, so picking the value against the page background alone lands a step short. |
-
-Because nothing pink carries text, nothing has to reach 4.5:1, so every pink can stay in
-the pastel range. Labels on pink surfaces are `--text-main` and clear 12:1 — better
-legibility than the deep-rose version it replaced.
-
-Blue stays the **information** colour: prose links, info alerts, the info icon. Its hue
-is taken straight from the flag (`226.5` in OKLCH, the hue of `#5BCEFA`) and only its
-lightness is lowered to `#026a89` so it can carry text at 6.13:1. That is why this blue
-has an answer to "why this blue" where the earlier `#1c5f86` — drifted 13° toward violet
-— did not.
-
-Ink (`--accent-ink`) is left with what it is good at: body copy, headings, secondary and
-ghost buttons, and neutral hover affordances in the admin tool.
-
-Dark mode already sits in the pastel range (`--cta-bg: #efa3b7` with an ink label at
-9.12:1), so it needed no rework. Its greys stay neutral on purpose: tinting a near-black
-toward pink reads as brown long before it reads as pink.
-
-**Pink marks a person through their avatar, never by tinting their name.** Coloured text
-in a UI reads as _state_ — a link, an error, a warning — and a person's name has no
-state; at the depth the light theme needs for contrast it simply read as red. Names take
-`--text-main` and separate from surrounding meta by weight alone.
-
-### Not Material Design 3
-
-The palette was rebuilt once already because it had drifted onto Google's system
-language. The tells, and what replaced each:
-
-| Material 3 pattern                                   | What it looked like here                                                                                    | Now                                                                                        |
-| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Tonal containers                                     | tags as `--soft-info-bg` fill + same-hue deep text — literally `primary-container` / `on-primary-container` | outlined chips: transparent fill, hairline border, blue text                               |
-| Fully-round buttons                                  | `--radius-pill: 999px` on every button and badge                                                            | `6px`, matching the control radius                                                         |
-| 12 / 16 / 28 radius ramp                             | cards at 14px                                                                                               | cards `10px`, controls `6px`                                                               |
-| A mid-tone, high-chroma primary filling every button | The range a Material seed generates: one saturated hue doing all the work                                   | Pale pink fills (`#fec9d2`) with ink labels; the saturated pink only ever draws a 1px line |
-
-Material 3 is a language for consumer product UI. This is a story archive; it should
-read as something you read, not something you operate. Filled tonal chips and pill
-buttons are the two patterns that most strongly say "app", so both are gone.
-
-**Light and dark are the same colour, not two colours.** Pink is hue 6.3 in light and
-2.2 in dark — 4° apart, so essentially only lightness flips between themes. The button
-label lands at 12.49:1 in light and 9.12:1 in dark, which is what keeps an element's
-visual weight roughly constant when a reader switches themes. Anything that sets its
-own `color` needs its own colour transition, because the theme switch is animated on
-`body` and an element with no transition snaps while the page around it fades.
-
-### Neutrals
-
-- **Light ground is a white carrying the brand** (`#fff9fb`) — not a grey, and not a
-  warm cream. Both of those are inherited template defaults. The tint runs through the
-  whole light ramp: hover `#fff0f3`, input fill `#fef3f5`, hairline `#f1e3e5`. Putting
-  it on the largest surface is what makes the site read as coloured without any single
-  control having to shout.
-- **Dark ground stays neutral** (`#0d0e12`). Tinting a near-black toward pink reads as
-  brown long before it reads as pink, so dark gets its colour from the accents alone —
-  the pale-pink button, the avatar chips, the focus ring.
-- Ink carries an indigo undertone (`--text-main: #14161c`), so even the neutral side of
-  the palette is a chosen colour rather than a default.
-- **No warm hues in the neutral ramp.** The light tint is pink (blue channel above
-  green), not beige. Amber survives only as a semantic warning colour.
-
-### Shape, type, motion
-
-- **Rounded:** cards `--radius-lg: 14px`, controls `--radius-control: 8px`, badges
-  `--radius-pill`. Hairline borders plus a single low-spread shadow — never a coloured
-  glow, never a multi-layer diffusion.
-- **Type:** system stacks only (external fonts are prohibited). Hierarchy comes from a
-  wide size ramp — meta `0.8rem` to body `1rem` to list title `1.5rem` to article title
-  `--fs-display` — not from decoration.
-- **Spacing:** strict 4px scale, `--sp-1` through `--sp-10`.
-- **Motion:** quiet. State changes only, 150/200ms, everything guarded by
-  `prefers-reduced-motion`. No entrance animations, no scroll-triggered reveals.
-
-### Anti-generic rules (binding — check every change against this list)
-
-1. **No gradients anywhere.** Not on backgrounds, buttons, avatar fallbacks, borders,
-   or progress bars. Avatar fallbacks are flat `--soft-pink` + `--accent-pink`.
-2. **No `rounded card + 4px coloured left border`** as a default card style — the
-   single most template-looking pattern in circulation. Reserve `border-left` for
-   genuine semantic emphasis (`Surface` `.accent`). Emphasis is otherwise carried by
-   size, weight, and whitespace.
-3. **No emoji as decoration or section markers.** Status is a coloured dot plus text,
-   which also satisfies "never signal by colour alone".
-4. **No inherited default neutrals** — not warm cream (`#f4f1ea` family), not slate
-   grey (`#f8fafc` family). See "Neutrals" above.
-5. **No hand-drawn SVG people, scenes, or concepts.** Use the existing line-icon set,
-   or an honest placeholder.
-6. **No coloured glows or multi-layer diffusion shadows.** Light separates with
-   hairlines, dark separates with surface lightness steps.
-7. **No special or novelty typefaces.** System stack only; hierarchy from scale.
-
-### Two voices, two vocabularies
-
-`src/pages/Story.module.css` (public reading) and `src/pages/Page.module.css` (admin
-tooling) are deliberately **separate**. They previously shared one file, which is why a
-place for personal stories looked like a ticket queue. Public surfaces are roomier with
-larger titles; admin surfaces are denser and more utilitarian.
-
-### Token contract
-
-Token _names_ are frozen (27+ CSS modules reference them); a redesign changes values
-and may add tokens, but never removes or repurposes one. The dark theme is declared
-twice (`prefers-color-scheme` fallback + `[data-theme='dark']`) — **always edit both
-blocks in the same change.**
-
-> If you are about to hardcode a colour, a radius, a shadow, a spacing value, a button,
-> an input, a select, a checkbox, a confirm dialog, or a status screen — stop. It
-> already exists here. Reach for a token or a primitive instead.
+本文件此前自称 single source of truth —— v3.0 之后该说法已不成立：
+三仓（TransCircle / TransCircle-Frontend / blog）共用一套规范，各自只维护 token 文件。
+旧版中与全局规范冲突的一切数值与组件描述均已作废，以全局文档为准。
 
 ---
 
-## 1. Tokens (`src/styles/index.css`)
+## 1. 本仓的规范锚点
 
-All color, elevation, radius, and layout values come from CSS custom properties.
-Never hardcode hex/rgba in component CSS — use a token so all three themes stay correct.
+| 项                               | 位置                         |
+| -------------------------------- | ---------------------------- |
+| token 文件（全局规范的本仓落地） | `src/styles/index.css`       |
+| 字体资产（latin 子集 woff2）     | `public/fonts/`              |
+| 字体 preload                     | `index.html` `<head>`        |
+| 公共阅读侧词表                   | `src/pages/Story.module.css` |
+| 后台工具侧词表                   | `src/pages/Page.module.css`  |
 
-### Color (per theme: `:root` light, `[data-theme=dark]`)
+暗色主题在 `src/styles/index.css` 里走**双通道**声明：
+`[data-theme='dark']`（JS 控制）+ `@media (prefers-color-scheme: dark)`（无 JS 回退）。
+**两处必须逐条同步**；漏改一处会造成「系统暗色下正常、手动切换后错乱」这类
+只在一条路径上复现的问题。
 
-- Surfaces: `--bg-color`, `--surface-card`, `--nav-bg`, `--divider-color`, `--overlay-bg`
-- Text: `--text-main`, `--text-secondary`, `--text-muted`, `--text-body`
-- Brand: `--accent-pink` (**lines** — borders, focus rings, tab underlines, checked
-  states; never text), `--soft-pink` (**identity surfaces** — avatar chips, accent
-  badges), `--accent-blue` (**information** — prose links, info alerts and icon),
-  `--accent-ink` (body copy, headings, secondary/ghost buttons, neutral hovers)
-- Interaction: `--hover-bg`, `--hover-bg-mix`, `--cta-bg`, `--cta-color`,
-  `--cta-hover`, `--cta-hover-mix`
-- Status: `--error-color`, `--error-border`, `--success-color`,
-  `--soft-success-bg` / `--soft-success-border` / `--soft-success-text`,
-  and the matching `--soft-error-*` / `--soft-info-*` / `--soft-amber-*` sets
-- Elevation source: `--shadow-color`, `--shadow-color-hover`
+全局规范指定了值但没给名字的几个量，本仓统一命名（见 `index.css` 的「落地补充」段）：
+`--on-pink`（粉面上的墨字 `#210A16`）、`--pink-600-hover`、`--ring-pink` / `--ring-error`
+（焦点环，含 `color-mix` 不可用时的硬编码回退）、`--btn-h` / `--control-h` / `--page-x`。
 
-### Scales (theme-invariant, `:root`)
-
-- Radius: `--radius-xs: 4px` (inline chips), `--radius-control` / `--radius-sm: 8px`
-  (inputs, select, small controls), `--radius-md: 10px` (rows, popovers, alerts),
-  `--radius-lg: 14px` (cards), `--radius-pill: 999px` (badges, toggles).
-- Spacing: `--sp-1: 4px` through `--sp-10: 64px`, a strict 4px scale. Do not write raw px.
-- Borders: `--divider-color` is a hairline for decorative separation only; form-control
-  outlines use `--border-strong`, tuned to clear the 3:1 non-text contrast floor
-  (WCAG 1.4.11).
-- Elevation: `--shadow-card`, `--shadow-card-hover`, `--shadow-pop` (resolved lazily
-  against the active theme's `--shadow-color`). **Never** write `rgba(0,0,0,…)` shadows.
-- Layout rails (fluid — pages fill the viewport up to these caps):
-  `--width-content: 1200px` is the `.mainContent` rail and the only horizontal cap the
-  story feed needs — the feed fills it rather than setting a narrower cap of its own.
-  `--width-reading: 48rem` (`.pageNarrow` and the article page — a comfortable measure
-  for long-form Chinese at roughly 48 characters per line). `--width-form: 26rem`
-  (focused auth/status card).
-- The feed is **always one entry per row**. A multi-column grid leaves an empty cell
-  whenever the item count is not a multiple of the column count, and with a handful of
-  stories that reads as a rendering bug rather than a layout.
-- A card fills the rail, but the text inside it does not: `.entryTitle` and
-  `.entrySummary` are capped at `--width-reading`. A 1100px line of Chinese cannot be
-  read — the eye loses the line on the return sweep — and the space this frees on the
-  right is where the tags sit, so the row uses its width without stretching prose
-  across it.
-- `.mainContent`, `Navbar .container` and `LicenseFooter .bar` share one `clamp()`
-  padding expression so their left edges line up. Its low end is `0.75rem`: on a phone
-  every pixel of horizontal padding is taken out of the text.
+中文不使用 webfont，标题使用 `--font-sans` 并保持自然字距；
+Nunito Brand 仅用于 TransCircle 品牌词，Space Grotesk 用于数字与 eyebrow 标签。
 
 ---
 
-## 2. Type scale
+## 2. 两套词表分治（本仓最重要的结构决定）
 
-Sizes come from tokens — never hardcode a `rem` value. The ramp is deliberately wide;
-hierarchy is carried by size, not by adding decoration.
+公共阅读侧与后台工具侧**刻意不共用样式**。此前两侧共用一套，
+结果是「讲人的故事的地方长得跟工单队列一模一样」。
 
-| Token           | Value                                  | Role                                |
-| --------------- | -------------------------------------- | ----------------------------------- |
-| `--fs-micro`    | `0.72rem`                              | tags, timestamps, fine print        |
-| `--fs-meta`     | `0.8rem`                               | bylines, meta rows, counts          |
-| `--fs-sm`       | `0.875rem`                             | UI controls, admin body             |
-| `--fs-body`     | `1rem`                                 | article + comment body              |
-| `--fs-subtitle` | `1.125rem`                             | deks, section titles, dialog titles |
-| `--fs-title`    | `1.5rem`                               | story titles in the feed            |
-| `--fs-display`  | `clamp(1.75rem, 1.3rem + 2vw, 2.5rem)` | article title                       |
+|          | 公共侧 `Story.module.css`                       | 后台侧 `Page.module.css`                          |
+| -------- | ----------------------------------------------- | ------------------------------------------------- |
+| 正文基准 | 16px（`--fs-body`），**不得下调**               | 允许 14px（`--fs-sm`）密度基准（全局 §5.8）       |
+| 卡片     | `--r-md` + hover 浮起 3px + 描边染 `--pink-300` | 行式列表，hover 铺 `--surface-2`                  |
+| 粉色含义 | 强调与身份                                      | **仅表示「选中/激活」**；只读面一律 `--surface-2` |
+| 诉求     | 可读、留白、有呼吸                              | 一屏看到尽量多条目                                |
 
-Weights: `--fw-body: 400`, `--fw-title: 600`, `--fw-label: 600`, `--fw-display: 700`.
-Line height: `--lh-body: 1.85` for running text, `--lh-tight: 1.2` for display.
-
-Use `<PageHeader>` for admin page/section headings. Motion tokens: `--dur-fast: 150ms`
-/ `--dur-base: 200ms`, `--ease-standard` / `--ease-emphasized` — reference these
-instead of hardcoded `0.15s ease` values.
+改动任一侧时不要顺手把类抽到另一侧复用——这两套词表的分歧是设计意图，不是重复。
 
 ---
 
-## 3. Component kit
+## 3. 故事流结构（公共侧）
 
-Import everything from **`@/components/ui`** (it re-exports the admin kit + adds the
-shared controls). Admin pages may keep importing from `@/components/admin`.
+首页 `Home.tsx` + `Story.module.css`：
 
-### Existing primitives (`src/components/admin/*`)
+- **卡片网格** `.feed` = `repeat(auto-fill, minmax(320px, 1fr))`；≤640px 回落单列
+  （320px 下限在小屏会溢出）。
+- **特色卡** `.entryFeatured` / `.featuredLink`：横跨整行，`--r-lg`，顶部一条 3px
+  旗帜条纹（`.flagStripe`，**三个实色 `<span>`，禁止渐变**，白段靠 inset 描边在亮底显形）。
+  只在「非搜索 + 第 1 页」出现；优先取第一条置顶稿，无置顶时取信息流头条。
+- **卡片三段结构**：元信息行（署名 + 时间 + 标签 chip）/ 标题（2 行截断）/ 摘要（2 行截断）。
+- **滚动 reveal**：`useReveal` hook + 全局 `.reveal` / `.is-visible`（定义在 `index.css`），
+  交错延迟由各元素的 `--i` 决定。
 
-- **AdminButton** (alias `Button`) — variants `primary | secondary | ghost | danger`,
-  sizes `sm | md`, `fullWidth`, `loading` (built-in spinner), `iconLeft`. Pill radius.
-- **TextField / TextArea / SearchField** — `label`, `hint`, `invalid`; 1.5px border,
-  `--radius-sm`, pink focus ring; spreads native props + forwards ref.
-- **Card / SectionLabel / Toolbar / DescriptionList / VoteProgress** — surfaces (Card =
-  `--radius-lg` + `--shadow-card`).
-- **Spinner / Alert (`error|success|info`) / EmptyState** — feedback.
-- **StatusBadge** (dot + label, `tone`) / **Pill** — status & lightweight markers.
-- **Tabs** — WAI-ARIA tablist (roving tabindex + Arrow/Home/End); pass `panelId` when one
-  panel is shared.
-- **Modal / ConfirmDialog / ReasonPromptDialog** — portal + focus trap + scroll lock +
-  Escape. `ConfirmDialog` replaces `window.confirm`.
+阅读页 `PublicContributionDetail.tsx` 复用同一词表的 `.reading` / `.article` / `.prose` 段，
+外加 `useReadingProgress` 驱动的顶部进度条（`.progressTrack` / `.progressBar`，
+固定在顶栏下方 2px，`scaleX` 随滚动，不走 React state）。
 
-### New custom controls (`src/components/ui/*`) — replace browser-native widgets
+### 旗帜条纹的配额
 
-- **Select** — custom listbox (`combobox` + `listbox` + `aria-activedescendant`,
-  keyboard + typeahead). Replaces native `<select>`.
-- **Checkbox** — drawn box over a hidden native input (keeps native keyboard).
-- **RadioGroup** — labeled radio rows (`radiogroup` + roving tabindex).
-- **TagInput** — controlled chip editor (Pill-style chips, accessible remove).
-- **ThemeToggle** — two-way light/dark segmented control; `variant='card'|'plain'`.
-  (No LanguageToggle: the app ships zh-CN only.)
-- **PageHeader** — unified title/description/actions/eyebrow header.
-- **CenteredCard** — vertically-centered Card shell (auth/status pages).
-- **StatusScreen** — shared loading/success/error/info result screen.
+全局 §1.5 规定旗帜条纹**每屏至多一处**。本仓当前的分配：
 
-### Date formatting
+1. 顶栏当前项的 24×3px 迷你指示条（`Navbar.module.css` `.flagStripe`）——全局 §3.1 单列的场景；
+2. 首页特色卡顶部的整条（`Story.module.css` `.flagStripe`）。
 
-Use `formatTs(ts, locale?)` / `useFormatTs()` from `@/utils/datetime` (locale-aware via
-`Intl.DateTimeFormat`). Never hardcode a locale or render raw UTC ISO strings.
+页脚顶部虽也是 §3.1 允许的位置，**本仓刻意不放**，否则首页同屏会出现三处。
+新增任何条纹前先数一遍这张表。
 
 ---
 
-## 4. Layout vocabulary — two separate files
+## 4. 页面 landmark 规则（不随视觉改版变动）
 
-**Public reading — `src/pages/Story.module.css`.** The story feed and the article page.
-Rounded cards, author avatar + byline in pink, `--fs-title` story titles, tags as soft
-blue chips. The article page drops the card shell entirely (an article is the subject of
-its page, not one item among many) and sandwiches the author between two hairlines.
+路由组件渲染 `.page` **`<div>`**（或 `<CenteredCard>`），**绝不自己渲染 `<main>`** ——
+`RootLayout`（公共侧）与 `AdminShell`（后台）各自持有唯一的 `<main>`。
 
-**Admin tooling — `src/pages/Page.module.css`.** Denser page-level classes: `.page`,
-`.stickyHead`, `.toolbar`, `.list` + `.rowBtn`/`.rowStatic` (+ `.rowMain`/`.rowTitle`/
-`.rowMeta`/`.rowRight`), `.contentBlock`, `.detailHead`/`.detailTitle`/`.metaRow`,
-`.stack`/`.stackSm`, `.actions`, `.history*`.
+_例外：_ 路由 `errorElement`（`ErrorBoundaryPage`）渲染在 RootLayout 之外，
+需自带 `<main>`（通过 `<CenteredCard as="main">`）。
 
-**Page landmark rule:** a route component renders a `.page` **`<div>`** (or a
-`<CenteredCard>`), **never its own `<main>`** — `RootLayout` (customer) and `AdminShell`
-(admin) own the single `<main>`. _Exception:_ the router `errorElement`
-(`ErrorBoundaryPage`) renders outside RootLayout and supplies its own `<main>`
-(via `<CenteredCard as="main">`).
-
-Auth, status, OAuth, and error pages use the **centered-card** treatment
-(`<CenteredCard>` / `<StatusScreen>`).
+认证、状态、OAuth、错误页统一用居中卡（`<CenteredCard>` / `<StatusScreen>`），
+v3.0 起该卡为玻璃面板 + `--r-lg`（属全局 §1.4 允许的「悬浮卡」场景，带实色回退）。
 
 ---
 
-## 5. Native-control policy
+## 5. 原生控件政策（本仓保留的硬约束）
 
-No browser-native interactive controls in app UI. Replace with the kit:
-`<select>` → **Select**; checkbox/radio → **Checkbox** / **RadioGroup**;
-`window.confirm`/`alert` → **ConfirmDialog**; native `required` validation bubbles →
-`noValidate` on the form + inline field errors / **Alert**; file input → hidden input
-behind an **AdminButton**; hand-rolled overlays → **Modal**; hand-rolled toasts → **Alert**.
+文本输入**必须**保持原生 `<input>` / `<textarea>`：中文依赖输入法组字（composition），
+只有原生表单元素才有完整 IME 支持；换成 `contenteditable` 自绘会破坏拼音候选、
+光标定位与移动端键盘。
 
-### Text fields stay native elements, but none of their native _appearance_ does
+做法是保留原生元素、把原生**外观**全部关掉，见 `Field.module.css`：
 
-`<input>` and `<textarea>` are kept as real form elements: Chinese input relies on IME
-composition, and only native elements give correct candidate popups, caret placement,
-and mobile keyboards. A `contenteditable` replacement would break Chinese entry. What
-gets removed is every piece of browser-supplied _chrome_, in `Field.module.css`:
+- `appearance: none`（去掉 iOS 圆角/内阴影与 Windows 凹陷边框）
+- `:-webkit-autofill` 用 100px `inset` 阴影盖掉——Chrome 自动填充自绘背景，忽略 `background-color`
+- `::-webkit-search-*` 装饰移除，清除按钮自绘
+- `::-webkit-{inner,outer}-spin-button` 移除
+- `::placeholder` 透明度重置（Firefox 默认压暗）
 
-- `appearance: none` (kills iOS rounding / inset shadow and Windows inset borders)
-- `:-webkit-autofill` overridden via a 100px inset box-shadow — Chrome's autofill
-  paints its own background and ignores `background-color`
-- `::-webkit-search-*` decorations removed; the clear button is ours
-- `::-webkit-{inner,outer}-spin-button` removed
-- `::placeholder` opacity reset (Firefox dims it by default)
+粗指针下输入字号抬到 16px —— iOS Safari 对更小的输入框会在聚焦时缩放整页。
 
-Visuals: a filled surface (`--surface-input`) plus a 1px `--border-strong` outline, so
-the field is identifiable from its fill rather than needing a heavy border. Focus swaps
-the fill to `--surface-card` and adds the blue ring. On coarse pointers the font size
-goes to `--fs-body` (16px) — iOS Safari zooms the whole page when focusing anything
-smaller.
+其余控件（Select / Checkbox / RadioGroup / TagInput）在 `src/components/ui/` 自绘；
+不要再造第二套，也不要退回原生 `<select>` 或 `window.confirm()`。
 
 ---
 
-## 6. Responsive & touch
+## 6. 动效与降级
 
-- Breakpoints: ≤1200px (site nav drawer), ≤1024px (admin drawer / tablet),
-  ≤768px (mobile compact), ≤640px (small / single-column).
-- No horizontal page scroll at any width; controls must wrap, never overlap. Flex rows
-  carrying actions use `flex-wrap: wrap` and gaps.
-- Touch targets ≥40px, enlarged via `@media (pointer: coarse)`.
+- 全局降级在 `index.css` 末尾，用 `!important` 压过一切组件声明；
+  组件内无需再写 `prefers-reduced-motion` 块。
+- `.reveal` 默认 `opacity: 0`，因此**每一条降级路径都必须把它恢复可见**：
+  减少动画偏好（CSS 侧）与无 `IntersectionObserver`（`useReveal` 内）两条都已覆盖。
+  新增基于 reveal 的效果时不要漏掉——漏掉的表现是整页空白。
+- 主题切换用 View Transition + `clip-path` 圆形扩散（`ThemeToggle.tsx`）；
+  过渡期间 `<html>` 挂 `.theme-switching`，使 `::view-transition-*` 覆盖只作用于本次切换，
+  不影响 `@view-transition` 的页面导航淡入。不支持该 API 或偏好减少动画时直接切换。
 
 ---
 
-## 7. Accessibility & theming contract
+## 7. 改动前的自查
 
-- Real `:focus-visible` rings (global default in `index.css`; primitives add their own).
-- Every animation/transition guarded by `@media (prefers-reduced-motion: reduce)`.
-- ARIA comes from the primitives (roles, `aria-*`, live regions). Status is never
-  conveyed by color alone (StatusBadge pairs a dot with text).
-- All user-facing text via `t()`; new keys are added to `zh-CN` only (the web
-  frontend ships zh-CN exclusively; contrast is guaranteed by the two light/dark
-  token sets, there is no `[data-theme=contrast]` variant).
+- [ ] 新值来自全局 v3.0 §2，没有自创色值/圆角/时长
+- [ ] 没有任何 `linear/radial/conic-gradient` 填充
+- [ ] 粉色做文字只用了 `--pink-700` 或 `--blue-600`
+- [ ] 玻璃只用在浮动层，且带 `@supports` 实色回退
+- [ ] 暗色双通道两处都改了
+- [ ] 触控目标 ≥44px，`focus-visible` 可见
+- [ ] 同屏旗帜条纹没有超过 §3 的配额
+- [ ] 状态不靠颜色单独传达（点/图标 + 文字）
+- [ ] 文案全部走 `t()`，未新增或改动 i18n 键
