@@ -38,3 +38,6 @@ export type { StatusScreenProps, StatusKind, StatusAction } from './StatusScreen
 
 export { TurnstileWidget } from './TurnstileWidget'
 export type { TurnstileWidgetProps } from './TurnstileWidget'
+
+export { BrandText } from './BrandText'
+export type { BrandTextProps } from './BrandText'
