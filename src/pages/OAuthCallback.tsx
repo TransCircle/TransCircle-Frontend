@@ -85,5 +85,5 @@ export const OAuthCallback = () => {
     void handle()
   }, [exchangeLoginCode, navigate, searchParams])
 
-  return <StatusScreen kind="loading" title={t('oauth.loading')} />
+  return <StatusScreen variant="stage" kind="loading" title={t('oauth.loading')} />
 }

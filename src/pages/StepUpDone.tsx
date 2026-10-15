@@ -86,14 +86,29 @@ export const StepUpDone = () => {
   }, [params, navigate])
 
   if (state === 'polling') {
-    return <StatusScreen kind="loading" title={t('stepUp.iamDoneTitle')} description={t('stepUp.iamPolling')} />
+    return (
+      <StatusScreen
+        variant="stage"
+        kind="loading"
+        title={t('stepUp.iamDoneTitle')}
+        description={t('stepUp.iamPolling')}
+      />
+    )
   }
   if (state === 'popup') {
-    return <StatusScreen kind="info" title={t('stepUp.iamDoneTitle')} description={t('stepUp.iamPopupClose')} />
+    return (
+      <StatusScreen
+        variant="stage"
+        kind="info"
+        title={t('stepUp.iamDoneTitle')}
+        description={t('stepUp.iamPopupClose')}
+      />
+    )
   }
   if (state === 'verified') {
     return (
       <StatusScreen
+        variant="stage"
         kind="success"
         title={t('stepUp.iamDoneTitle')}
         description={t('stepUp.iamVerifiedRedo')}
@@ -109,6 +124,7 @@ export const StepUpDone = () => {
   }
   return (
     <StatusScreen
+      variant="stage"
       kind="error"
       title={t('stepUp.iamDoneTitle')}
       description={t('stepUp.iamFailed')}

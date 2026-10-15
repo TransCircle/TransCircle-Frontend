@@ -1,7 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { lazy, Suspense, Component, type ReactNode, type ErrorInfo } from 'react'
 
-import i18n from '@/i18n/config'
 import { RootLayout } from '../layouts/RootLayout'
 import { ErrorBoundaryPage } from '../pages/ErrorBoundaryPage'
 import { AdminShell } from '../pages/AdminShell'
@@ -11,23 +10,13 @@ import { RequireReviewerOrAdminLayout } from '../pages/RequireReviewerOrAdminLay
 import { PERMISSIONS } from '@/api/permissions'
 import { LegacyLoginRedirect } from '../pages/LegacyLoginRedirect'
 import type { RouteHandle } from './handles'
+import { RouteLoadError, RouteLoading, type RouteFallbackLayout } from './RouteFallback'
 
 import { Home } from '../pages/Home'
 
-// 惰性加载错误边界：捕获 chunk 加载失败（网络断开/部署后 404等），显示重试提示
-const FALLBACK_STYLE: Record<string, string> = {
-  textAlign: 'center',
-  padding: '2rem',
-  color: 'var(--text-muted)',
-}
-const SPINNER_STYLE: Record<string, string> = {
-  textAlign: 'center',
-  padding: '2rem',
-  color: 'var(--text-muted)',
-}
-
-class LazyErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  constructor(props: { children: ReactNode }) {
+// 惰性加载错误边界：捕获 chunk 加载失败（网络断开 / 部署后 404 等），显示重试入口。
+class LazyErrorBoundary extends Component<{ children: ReactNode; layout: RouteFallbackLayout }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode; layout: RouteFallbackLayout }) {
     super(props)
     this.state = { hasError: false }
   }
@@ -38,38 +27,34 @@ class LazyErrorBoundary extends Component<{ children: ReactNode }, { hasError: b
     console.warn('[router] Lazy load error:', error.message)
     void _info
   }
+  /* 整页重新加载：React.lazy 会缓存失败的 import，只清错误边界状态会立刻再次渲染同一个
+     失败结果，「重试」点了等于没点。部署更新后旧 chunk 404 的情形也只有整页刷新才能拿到新清单。 */
   handleRetry = (): void => {
-    this.setState({ hasError: false })
+    window.location.reload()
   }
   override render(): ReactNode {
     if (this.state.hasError) {
-      return (
-        <div role="alert" style={FALLBACK_STYLE}>
-          <p>{i18n.t('common.chunkLoadError')}</p>
-          <button onClick={this.handleRetry} style={{ marginTop: '1rem', cursor: 'pointer' }}>
-            {i18n.t('common.retry')}
-          </button>
-        </div>
-      )
+      return <RouteLoadError layout={this.props.layout} onRetry={this.handleRetry} />
     }
     return this.props.children
   }
 }
 
-function lazyNamed(importFn: () => Promise<Record<string, unknown>>, name: string) {
+/** layout：占位与目标页根外壳保持一致（见 RouteFallback.tsx）。 */
+function lazyNamed(
+  importFn: () => Promise<Record<string, unknown>>,
+  name: string,
+  layout: RouteFallbackLayout = 'page',
+) {
   const LazyComponent = lazy(async () => {
     const mod = await importFn()
     return { default: mod[name] as React.ComponentType<unknown> }
   })
+  /* key：同一位置上的兄弟路由（如 /admin/users ↔ /admin/audit-logs）元素类型相同，
+     不加 key 会复用同一个边界，一页 chunk 失败后切到别的页仍显示失败。 */
   return (
-    <LazyErrorBoundary>
-      <Suspense
-        fallback={
-          <div role="status" aria-live="polite" aria-busy="true" style={SPINNER_STYLE}>
-            {i18n.t('common.loading')}
-          </div>
-        }
-      >
+    <LazyErrorBoundary key={name} layout={layout}>
+      <Suspense fallback={<RouteLoading layout={layout} />}>
         <LazyComponent />
       </Suspense>
     </LazyErrorBoundary>
@@ -96,7 +81,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'auth/login',
-        element: lazyNamed(() => import('../pages/Login'), 'Login'),
+        element: lazyNamed(() => import('../pages/Login'), 'Login', 'stage'),
       },
       {
         // 本地注册已迁移到 TransCircle Pass，故事站不再承载。
@@ -148,11 +133,11 @@ export const router = createBrowserRouter([
       },
       {
         path: 'auth/callback',
-        element: lazyNamed(() => import('../pages/OAuthCallback'), 'OAuthCallback'),
+        element: lazyNamed(() => import('../pages/OAuthCallback'), 'OAuthCallback', 'stage'),
       },
       {
         path: 'auth/error',
-        element: lazyNamed(() => import('../pages/AuthError'), 'AuthError'),
+        element: lazyNamed(() => import('../pages/AuthError'), 'AuthError', 'stage'),
       },
       {
         path: 'auth/oauth/continue',
@@ -164,7 +149,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'auth/step-up/done',
-        element: lazyNamed(() => import('../pages/StepUpDone'), 'StepUpDone'),
+        element: lazyNamed(() => import('../pages/StepUpDone'), 'StepUpDone', 'stage'),
       },
       {
         // 需要认证的普通用户页面：统一由 RequireAuthLayout 守卫（身份统一 Pass，无需特定权限）。
@@ -228,7 +213,7 @@ export const router = createBrowserRouter([
       },
       {
         path: '*',
-        element: lazyNamed(() => import('../pages/NotFound'), 'NotFound'),
+        element: lazyNamed(() => import('../pages/NotFound'), 'NotFound', 'card'),
         handle: { notFound: true } satisfies RouteHandle,
       },
     ],

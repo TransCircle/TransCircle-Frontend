@@ -39,4 +39,7 @@ export type { TurnstileWidgetProps } from './TurnstileWidget'
 export { BrandText } from './BrandText'
 export type { BrandTextProps } from './BrandText'
 
+export { AuthStage } from './AuthStage'
+export type { AuthStageProps } from './AuthStage'
+
 export { BackIcon, ChevronRightIcon } from './icons'

@@ -33,5 +33,5 @@ export const Login = () => {
     void loginWithPass(redirectAfter)
   }, [loading, location.pathname, location.search, loginWithPass, navigate, searchParams, user])
 
-  return <StatusScreen kind="loading" title={t('login.redirectingToPass')} />
+  return <StatusScreen variant="stage" kind="loading" title={t('login.redirectingToPass')} />
 }

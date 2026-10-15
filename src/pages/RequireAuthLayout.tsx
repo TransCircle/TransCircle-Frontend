@@ -1,8 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/useAuth'
-import { Spinner } from '@/components/ui'
-import shell from './Page.module.css'
+import { RouteLoading } from '@/router/RouteFallback'
 
 /**
  * 统一的「需要认证」路由守卫（普通用户 / 投稿 / 设置）。
@@ -19,13 +18,8 @@ export const RequireAuthLayout = () => {
   const { user, loading: authLoading } = useAuth()
   const location = useLocation()
 
-  if (authLoading) {
-    return (
-      <div className={shell.page}>
-        <Spinner size="lg" label={t('admin.verifying')} />
-      </div>
-    )
-  }
+  // 加载占位与账户侧页面首屏等高，不在鉴权落定前后让页脚跳动。
+  if (authLoading) return <RouteLoading layout="page" label={t('admin.verifying')} />
 
   if (!user) {
     return <Navigate to={`/auth/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />

@@ -48,6 +48,7 @@ export const AuthError = () => {
 
   return (
     <StatusScreen
+      variant="stage"
       kind="error"
       title={t('oauth.errorTitle')}
       description={t(messageKey)}
