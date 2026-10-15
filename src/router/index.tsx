@@ -7,10 +7,11 @@ import { AdminShell } from '../pages/AdminShell'
 import { RequireAuthLayout } from '../pages/RequireAuthLayout'
 import { RequirePermissionLayout } from '../pages/RequirePermissionLayout'
 import { RequireReviewerOrAdminLayout } from '../pages/RequireReviewerOrAdminLayout'
-import { PERMISSIONS } from '@/api/permissions'
+import { ADMIN_ENTRY_PERMISSIONS, PERMISSIONS } from '@/api/permissions'
 import { LegacyLoginRedirect } from '../pages/LegacyLoginRedirect'
 import type { RouteHandle } from './handles'
 import { RouteLoadError, RouteLoading, type RouteFallbackLayout } from './RouteFallback'
+import { KeyedById } from './KeyedById'
 
 import { Home } from '../pages/Home'
 
@@ -96,14 +97,79 @@ export const router = createBrowserRouter([
         path: 'admin',
         element: <AdminShell />,
         handle: { shell: 'admin' } satisfies RouteHandle,
+        /* /admin 本身没有页面：AdminShell 按权限把它落到首个可访问的分区（同 Pass 控制台）。
+           列表与其详情是两条独立路由——详情有自己的地址，刷新、后退、新标签打开、分享都成立。
+           详情路由按 :id 加 key：换一条就整页重挂，卸载会作废上一条的在途请求与写操作。 */
         children: [
+          {
+            // 概览：持有任一后台权限即可打开（至少能看到自己的角色与权限表），卡片再按各自的权限显示
+            path: 'overview',
+            handle: { titleKey: 'pageTitles.adminOverview', adminSection: 'overview' } satisfies RouteHandle,
+            element: (
+              <RequirePermissionLayout anyOf={ADMIN_ENTRY_PERMISSIONS}>
+                {lazyNamed(() => import('../pages/admin/AdminOverview'), 'AdminOverview', 'inline')}
+              </RequirePermissionLayout>
+            ),
+          },
           {
             element: <RequireReviewerOrAdminLayout />,
             children: [
-              { index: true, element: lazyNamed(() => import('../pages/Admin'), 'Admin') },
+              {
+                path: 'review',
+                handle: { titleKey: 'pageTitles.reviewQueue', adminSection: 'review' } satisfies RouteHandle,
+                element: lazyNamed(() => import('../pages/admin/AdminContributionList'), 'AdminReviewQueue', 'inline'),
+              },
+              {
+                path: 'contributions',
+                handle: {
+                  titleKey: 'pageTitles.adminContributions',
+                  adminSection: 'contributions',
+                } satisfies RouteHandle,
+                element: lazyNamed(
+                  () => import('../pages/admin/AdminContributionList'),
+                  'AdminContributions',
+                  'inline',
+                ),
+              },
+              {
+                path: 'contributions/:id',
+                handle: {
+                  titleKey: 'pageTitles.adminContribution',
+                  adminSection: 'contributions',
+                } satisfies RouteHandle,
+                element: (
+                  <KeyedById>
+                    {lazyNamed(
+                      () => import('../pages/admin/AdminContributionDetail'),
+                      'AdminContributionDetail',
+                      'inline',
+                    )}
+                  </KeyedById>
+                ),
+              },
+            ],
+          },
+          {
+            // 修改申请：接口要求 contribution:edit-request:vote（apidocs §10.4 / §10.5），与投稿读取权限分开守卫
+            element: <RequirePermissionLayout permission={PERMISSIONS.CONTRIBUTION_EDIT_REQUEST_VOTE} />,
+            children: [
               {
                 path: 'edit-requests',
-                element: lazyNamed(() => import('../pages/AdminEditRequests'), 'AdminEditRequests'),
+                handle: { titleKey: 'pageTitles.editRequests', adminSection: 'editRequests' } satisfies RouteHandle,
+                element: lazyNamed(() => import('../pages/AdminEditRequests'), 'AdminEditRequests', 'inline'),
+              },
+              {
+                path: 'edit-requests/:id',
+                handle: { titleKey: 'pageTitles.editRequest', adminSection: 'editRequests' } satisfies RouteHandle,
+                element: (
+                  <KeyedById>
+                    {lazyNamed(
+                      () => import('../pages/admin/AdminEditRequestDetail'),
+                      'AdminEditRequestDetail',
+                      'inline',
+                    )}
+                  </KeyedById>
+                ),
               },
             ],
           },
@@ -111,27 +177,50 @@ export const router = createBrowserRouter([
             // 用户管理 / 审计子路由：按具体权限精确守卫（IAM 权限快照驱动），
             // 不再用 OR 守卫 + 页面内二次判断（admin-page-guard-inconsistent）
             path: 'audit-logs',
+            handle: { titleKey: 'pageTitles.auditLogs', adminSection: 'auditLogs' } satisfies RouteHandle,
             element: (
               <RequirePermissionLayout permission={PERMISSIONS.AUDIT_READ}>
-                {lazyNamed(() => import('../pages/AdminAuditLogs'), 'AdminAuditLogs')}
+                {lazyNamed(() => import('../pages/AdminAuditLogs'), 'AdminAuditLogs', 'inline')}
               </RequirePermissionLayout>
             ),
           },
           {
-            path: 'users',
-            element: (
-              <RequirePermissionLayout permission={PERMISSIONS.USER_READ}>
-                {lazyNamed(() => import('../pages/AdminUsers'), 'AdminUsers')}
-              </RequirePermissionLayout>
-            ),
+            element: <RequirePermissionLayout permission={PERMISSIONS.USER_READ} />,
+            children: [
+              {
+                path: 'users',
+                handle: { titleKey: 'pageTitles.users', adminSection: 'users' } satisfies RouteHandle,
+                element: lazyNamed(() => import('../pages/AdminUsers'), 'AdminUsers', 'inline'),
+              },
+              {
+                path: 'users/:id',
+                handle: { titleKey: 'pageTitles.user', adminSection: 'users' } satisfies RouteHandle,
+                element: (
+                  <KeyedById>
+                    {lazyNamed(() => import('../pages/admin/AdminUserDetail'), 'AdminUserDetail', 'inline')}
+                  </KeyedById>
+                ),
+              },
+            ],
           },
           {
-            path: 'comments',
-            element: (
-              <RequirePermissionLayout permission={PERMISSIONS.COMMENT_MODERATE}>
-                {lazyNamed(() => import('../pages/AdminComments'), 'AdminComments')}
-              </RequirePermissionLayout>
-            ),
+            element: <RequirePermissionLayout permission={PERMISSIONS.COMMENT_MODERATE} />,
+            children: [
+              {
+                path: 'comments',
+                handle: { titleKey: 'pageTitles.comments', adminSection: 'comments' } satisfies RouteHandle,
+                element: lazyNamed(() => import('../pages/AdminComments'), 'AdminComments', 'inline'),
+              },
+              {
+                path: 'comments/:id',
+                handle: { titleKey: 'pageTitles.comment', adminSection: 'comments' } satisfies RouteHandle,
+                element: (
+                  <KeyedById>
+                    {lazyNamed(() => import('../pages/admin/AdminCommentDetail'), 'AdminCommentDetail', 'inline')}
+                  </KeyedById>
+                ),
+              },
+            ],
           },
         ],
       },

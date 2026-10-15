@@ -1,484 +1,317 @@
-/* 管理台外壳 —— DESIGN.md v3.0 §5.8 / §8。
-   后台信息密度允许 14px 基准（--fs-sm），公共侧不行。
-   --admin-sidebar-w 的默认值来自 styles/index.css，这里只声明折叠档。 */
+/* ══════════════════════════════════════════════════════════
+   管理控制台外壳 —— 与 Pass 门户控制台（src/pages/admin/Admin.module.css）同一结构。
+
+   两条自适应规则，刻意不同源：
+   - 左栏折叠按视口（≥1280 展开、否则 60px 图标条、≤768 顶部横条）；
+   - 工作区内容按容器宽度（container-name: work）——左栏折叠后工作区会骤增 172px，
+     按视口判断会出现「视口变窄、内容反而变宽」的反向跳变。
+   ══════════════════════════════════════════════════════════ */
 
 .shell {
   display: grid;
-  grid-template-columns: var(--admin-sidebar-w) minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr);
-  width: 100%;
+  grid-template-columns: var(--admin-rail-w) minmax(0, 1fr);
   flex: 1;
   min-height: 0;
-  overflow: hidden;
 }
 
-.shellCollapsed {
-  --admin-sidebar-w: 72px;
+.shell[data-rail='mini'] {
+  grid-template-columns: var(--admin-rail-mini-w) minmax(0, 1fr);
 }
 
-/* ── Bootstrap (auth loading) ────────────────────────────── */
-
-.bootstrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 50vh;
-  padding: var(--s-6);
-}
-
-/* ── Skip link ───────────────────────────────────────────── */
-
-.skipLink {
-  position: absolute;
-  left: -9999px;
-  top: 0;
-  z-index: var(--z-skip);
-  padding: var(--s-2) var(--s-4);
-  background: var(--ink);
-  /* 底是墨，前景必须反过来取表面色。 */
-  color: var(--surface);
-  border-radius: 0 0 var(--r-sm) 0;
-  font-size: var(--fs-sm);
-  text-decoration: none;
-}
-
-.skipLink:focus {
-  left: 0;
-}
-
-/* ── Sidebar ─────────────────────────────────────────────── */
-
-.sidebar {
-  grid-column: 1;
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background-color: var(--surface);
-  border-right: 1px solid var(--line);
-  overflow-y: auto;
-  overflow-x: hidden;
-  z-index: var(--z-sticky);
-}
-
-.sidebarHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-2);
-  padding: var(--s-4) var(--s-4) var(--s-2);
-  min-height: 56px;
-}
-
-.brand {
-  display: inline-flex;
-  align-items: center;
-  min-width: 0;
-}
-
-/* 正式横版字标：固定宽度避免加载前抖动；折叠为 mini 侧栏时由 .shellCollapsed 隐藏。 */
-.brandLogo {
-  display: block;
-  width: 128px;
-  height: auto;
-  flex-shrink: 0;
-}
-
-.brandLogoDark {
-  display: none;
-}
-
-[data-theme='dark'] .brandLogoLight {
-  display: none;
-}
-
-[data-theme='dark'] .brandLogoDark {
-  display: block;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) .brandLogoLight {
-    display: none;
-  }
-
-  :root:not([data-theme]) .brandLogoDark {
-    display: block;
-  }
-}
-
-.collapseBtn {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
-  background: var(--bg);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition:
-    background-color var(--dur-1) var(--ease-standard),
-    color var(--dur-1) var(--ease-standard);
-}
-
-.collapseBtn:hover {
-  background-color: var(--pink-100);
-  color: var(--ink);
-}
-
-/* DESIGN §6.1.10：粗指针下折叠按钮命中区扩到 44px（视觉仍 30px，用居中 ::after） */
-@media (any-pointer: coarse) {
-  .collapseBtn {
-    position: relative;
-  }
-  .collapseBtn::after {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: var(--tap-min);
-    height: var(--tap-min);
-    transform: translate(-50%, -50%);
-  }
-}
-
-.collapseIcon {
-  display: inline-flex;
-  transition: transform var(--dur-2) var(--ease-out);
-}
-
-.collapseIconFlipped {
-  transform: rotate(180deg);
-}
-
-/* ── Nav ─────────────────────────────────────────────────── */
-
-.nav {
+/* ── 左栏：只放分区导航（品牌与身份由全站顶栏承担）────────── */
+.rail {
   display: flex;
   flex-direction: column;
   gap: var(--s-1);
-  padding: var(--s-2) var(--s-3) var(--s-4);
+  padding: var(--s-5) var(--s-3) var(--s-3);
+  border-right: 1px solid var(--line);
+  position: sticky;
+  top: var(--nav-h);
+  /* max-height 而非 height：固定高度会把网格行撑到一屏，短内容的管理页摸不到页脚。 */
+  max-height: calc(100dvh - var(--nav-h));
+  align-self: start;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* 一组分区：组与组之间留出呼吸，组标签说明这一组管什么。 */
+.navSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.navSection + .navSection {
+  margin-top: var(--s-4);
+}
+
+.navGroup {
+  margin: 0;
+  padding: var(--s-1) var(--s-2) var(--s-2);
+  font-family: var(--font-tech);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .navItem {
   display: flex;
   align-items: center;
   gap: var(--s-3);
-  padding: var(--s-2) var(--s-3);
+  width: 100%;
+  min-height: var(--btn-h);
+  padding: var(--s-2);
   border-radius: var(--r-sm);
   color: var(--text-secondary);
-  text-decoration: none;
   font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
   white-space: nowrap;
+  text-decoration: none;
   transition:
     background-color var(--dur-1) var(--ease-standard),
     color var(--dur-1) var(--ease-standard);
 }
 
-.navItem:hover {
-  background-color: var(--pink-100);
-  color: var(--ink);
+/* 只在真能悬停的设备上给 hover 底色：触屏上 :hover 会粘在刚点过的那一项。 */
+@media (hover: hover) {
+  .navItem:hover {
+    background-color: var(--pink-100);
+    color: var(--ink);
+  }
 }
 
-/* 当前项除了底色与字重，还要有一条粉色左侧标记——只靠字重区分太弱，
-   而且颜色不能是唯一信号。 */
+.navItem:active {
+  background-color: var(--pink-100);
+}
+
+/* 当前项：淡粉面 + 字重，不使用模板化的彩色左条（§1.6）。 */
 .navItemActive,
 .navItemActive:hover {
   background-color: var(--pink-100);
-  color: var(--ink);
+  color: var(--pink-700);
   font-weight: var(--fw-semibold);
-  box-shadow: inset 3px 0 0 var(--pink-600);
 }
 
-@supports (background-color: color-mix(in srgb, red 15%, white)) {
-  .navItem:hover {
-    background-color: var(--pink-100);
+:global([data-theme='dark']) .navItemActive,
+:global([data-theme='dark']) .navItemActive:hover {
+  color: var(--ink);
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme])) .navItemActive,
+  :global(:root:not([data-theme])) .navItemActive:hover {
+    color: var(--ink);
   }
 }
 
 .navIcon {
   display: inline-flex;
-  flex-shrink: 0;
+  flex: none;
 }
 
-.navLabel {
-  overflow: hidden;
-  text-overflow: ellipsis;
+.shell[data-rail='mini'] .navGroup,
+.shell[data-rail='mini'] .navLabel {
+  display: none;
 }
 
-/* DESIGN §6.2.4：粗指针下侧栏导航项 min-height 抬到 44px，保证触控命中区 */
-@media (any-pointer: coarse) {
-  .navItem {
-    min-height: var(--tap-min);
+/* 图标条没有地方放组标签：组与组之间改用一条发丝线分隔。 */
+.shell[data-rail='mini'] .navSection + .navSection {
+  margin-top: var(--s-2);
+  padding-top: var(--s-2);
+  border-top: 1px solid var(--line);
+}
+
+.shell[data-rail='mini'] .navItem {
+  justify-content: center;
+}
+
+/* 图标条只有 60px：左右内边距收到 4px，导航项实际命中宽度 ≥44px（60 − 8 − 1 边框 = 51）。
+   只作用于竖向图标条；≤768 的顶部横条沿用 --page-x。 */
+@media not all and (max-width: 768px) {
+  .shell[data-rail='mini'] .rail {
+    padding-inline: var(--s-1);
   }
 }
 
-/* ── Collapsed rail (desktop only) ───────────────────────── */
-
-/* 折叠态：整个品牌区退出，只留折叠按钮。
-   一个孤零零的图标挤在 72px 窄栏里既不好看，也没有信息价值——
-   站点身份已经由顶栏的 logo 承担，这里重复一次没有意义。 */
-.shellCollapsed .brand {
-  display: none;
-}
-
-.shellCollapsed .sidebarHead {
-  justify-content: center;
-  padding-left: 0;
-  padding-right: 0;
-}
-
-.shellCollapsed .navItem {
-  justify-content: center;
-  padding-left: 0;
-  padding-right: 0;
-}
-
-.shellCollapsed .navLabel {
-  display: none;
-}
-
-/* ── Content column ──────────────────────────────────────── */
-
-.contentCol {
-  grid-column: 2;
+/* ── 工作区：容器查询的锚点 ───────────────────────────────── */
+.work {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  min-height: 0;
-  height: 100%;
-  overflow: hidden;
+  background-color: var(--surface);
+  container-type: inline-size;
+  container-name: work;
 }
 
-/* 顶栏是浮动层，可用玻璃（§1.4）。回退为实色 --bg。 */
+/* 工作区标题栏：浮动层 → 玻璃（§1.4），吸顶后列表滚动时仍看得到当前页标题。
+   高度固定为 --admin-topbar-h：页内的粘性工具栏以「顶栏 + 本栏」为偏移基准。 */
 .topbar {
-  flex-shrink: 0;
+  position: sticky;
+  top: var(--nav-h);
   z-index: var(--z-sticky);
   display: flex;
   align-items: center;
-  gap: var(--s-4);
-  padding: var(--s-3) var(--s-5);
-  min-height: var(--nav-h);
-  background-color: var(--bg);
+  gap: var(--s-3);
+  height: var(--admin-topbar-h);
+  /* 超宽屏下内容区封顶 1440px 居中，标题跟着内容的左缘走，而不是贴在工作区边上。 */
+  padding: 0 max(var(--s-6), calc((100% - 1440px) / 2 + var(--s-6)));
   border-bottom: 1px solid var(--line);
+  background-color: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
 }
 
-@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .topbar {
-    background-color: var(--glass-bg);
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    backdrop-filter: blur(var(--glass-blur));
+    background-color: var(--surface);
   }
 }
 
-.hamburger {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
-  background: var(--surface);
-  color: var(--ink);
-  cursor: pointer;
-  flex-shrink: 0;
-  /* ::after 命中区扩大的定位祖先（DESIGN §6.1.10） */
-  position: relative;
-  transition:
-    background-color var(--dur-1) var(--ease-standard),
-    border-color var(--dur-1) var(--ease-standard);
-}
-
-.hamburger:hover {
-  background-color: var(--pink-100);
-  border-color: var(--pink-600);
-}
-
-.hamburger:active {
-  background-color: var(--pink-100);
-}
-
-/* DESIGN §6.1.10：顶栏图标控件触屏命中区扩到 44px（视觉 38px，用居中 ::after） */
-@media (any-pointer: coarse) {
-  .hamburger::after {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: var(--tap-min);
-    height: var(--tap-min);
-    transform: translate(-50%, -50%);
-  }
-}
-
-.pageTitle {
+.title {
   margin: 0;
-  font-size: var(--fs-lg);
+  min-width: 0;
+  flex: 0 1 auto;
+  font-size: var(--fs-h3);
   font-weight: var(--fw-bold);
   color: var(--ink);
-  letter-spacing: 0;
-  white-space: nowrap;
   overflow: hidden;
+  white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-.identity {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  min-width: 0;
+/* 详情页的返回入口：抵消 ghost 按钮的左内边距，图标与内容左缘对齐。 */
+.back {
+  flex: none;
+  margin-left: calc(var(--s-2) * -1);
 }
 
-.identityText {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.25;
-  min-width: 0;
+.crumbSep {
+  flex: none;
+  width: 1px;
+  height: 20px;
+  background-color: var(--line);
 }
 
-.identityName {
+/* 标题后的一句说明：只占剩下的空间，放不下就截断；窄工作区里整句隐藏。 */
+.subtitle {
+  margin: 0;
+  min-width: 0;
+  flex: 1 1 0;
   font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
-  color: var(--ink);
-  white-space: nowrap;
+  color: var(--text-muted);
   overflow: hidden;
+  white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-.identityRole {
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
+@container work (max-width: 720px) {
+  .subtitle {
+    display: none;
+  }
+}
+
+/* 窄工作区：返回入口只留箭头（可访问名由 aria-label 给出），把宽度让给标题。 */
+@container work (max-width: 560px) {
+  .backLabel {
+    display: none;
+  }
 }
 
 .content {
   flex: 1;
-  min-height: 0;
   width: 100%;
-  overflow-y: auto;
-  /* 顶部留白移交给 .page / .stickyHead，使 sticky 头部能贴顶覆盖、避免滚动行从透明带透出 */
-  padding: 0 var(--s-5) var(--s-6);
-  box-sizing: border-box;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding: var(--s-5) var(--s-6) var(--s-7);
+  min-width: 0;
 }
 
-/* ── Drawer overlay (hidden on desktop) ──────────────────── */
-
-.overlay {
-  display: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
+.content:focus {
+  outline: none;
 }
 
-/* ── Responsive: drawer ≤1024px ──────────────────────────── */
-
-@media (max-width: 1024px) {
-  .shell {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100vh;
-    height: 100dvh;
-    /* 窄屏兜底：与站点导航抽屉同规格（DESIGN §6.1.9），避免 320px 屏上几乎铺满 */
-    width: min(270px, 84vw);
-    transform: translateX(-100%);
-    transition: transform var(--dur-2) var(--ease-out);
-    box-shadow: var(--shadow-3);
-    z-index: var(--z-drawer);
-  }
-
-  .drawerOpen .sidebar {
-    transform: translateX(0);
-  }
-
-  /* In the drawer, always show full labels even if "collapsed" was set */
-  /* 抽屉态下侧栏总是完整展开，品牌区回归 */
-  .shellCollapsed .brand {
-    display: flex;
-  }
-  .shellCollapsed .navItem {
-    justify-content: flex-start;
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
-  }
-  .shellCollapsed .navLabel {
-    display: block;
-  }
-  .shellCollapsed .sidebarHead {
-    justify-content: space-between;
-    padding-left: 1.1rem;
-    padding-right: 1.1rem;
-  }
-
-  .collapseBtn {
-    display: none;
-  }
-
-  .contentCol {
-    grid-column: 1;
-  }
-
-  /* AGENTS.md §8.3：1024px 断点语义即「后台主内容回收内边距」（1.8rem → 1.25rem），
-     768px 再收到 1rem。此前仅做侧栏→抽屉切换，漏了内边距回收。 */
-  .content {
-    padding: 0 var(--s-5) var(--s-6);
-  }
-
-  .hamburger {
-    display: inline-flex;
-  }
-
-  .overlay {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: var(--z-overlay);
-    background-color: var(--overlay);
-    -webkit-backdrop-filter: blur(4px);
-    backdrop-filter: blur(4px);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity var(--dur-2) var(--ease-standard);
-  }
-
-  .drawerOpen .overlay {
-    opacity: 1;
-    pointer-events: auto;
-  }
+/* 鉴权中 / 未登录过渡：居中加载态，占住一屏高度，页脚不在落地前后跳动。 */
+.bootstrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  min-height: 60dvh;
+  padding: var(--s-6) var(--page-x);
 }
 
-/* ── Responsive: compact ≤768px ──────────────────────────── */
+.bootstrap:focus {
+  outline: none;
+}
 
+/* ── 视口级：窄屏把左栏放到顶部横条 ────────────────────────
+   横条只有分区导航，恢复文字标签（纯图标在手机上无从辨认）。 */
 @media (max-width: 768px) {
-  .topbar {
-    padding: var(--s-3) var(--s-4);
-    gap: var(--s-3);
+  /* 行轨显式给出：外壳被撑满时两条隐式 auto 行会平分富余高度，
+     内容区还在加载时分区条被拉高一截，数据一到又缩回去。 */
+  .shell,
+  .shell[data-rail='mini'] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
   }
 
-  .content {
-    padding: 0 var(--s-4) var(--s-5);
+  .rail {
+    position: static;
+    max-height: none;
+    flex-direction: row;
+    overflow-x: auto;
+    /* 单写 overflow-x 会让纵向也可滚，横条被上下拖动。 */
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    padding: var(--s-2) var(--page-x);
   }
 
-  .identityText {
+  .navGroup,
+  .shell[data-rail='mini'] .navGroup {
     display: none;
+  }
+
+  /* 横条里分组退化为同一行：组之间只留一点间距，不画竖线。 */
+  .navSection,
+  .shell[data-rail='mini'] .navSection {
+    flex-direction: row;
+    flex: none;
+  }
+
+  .navSection + .navSection,
+  .shell[data-rail='mini'] .navSection + .navSection {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+    margin-left: var(--s-2);
+  }
+
+  .shell[data-rail='mini'] .navLabel {
+    display: inline;
+  }
+
+  .navItem,
+  .shell[data-rail='mini'] .navItem {
+    width: auto;
+    flex: none;
+    gap: var(--s-2);
+    padding: var(--s-2) var(--s-3);
+    justify-content: flex-start;
+  }
+
+  .topbar,
+  .content {
+    padding-left: var(--page-x);
+    padding-right: var(--page-x);
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .sidebar,
-  .overlay,
-  .collapseIcon,
-  .collapseBtn,
-  .hamburger,
+@media (any-pointer: coarse) {
   .navItem {
-    transition: none;
+    min-height: var(--tap-min);
   }
 }
