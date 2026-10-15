@@ -542,15 +542,11 @@
   },
   "adminAuditLogs": {
     "title": "审计日志",
-    "accessDenied": "访问被拒绝",
-    "accessDeniedDetail": "需要管理员权限才能访问此页面。",
     "loading": "加载中...",
     "empty": "暂无审计日志",
-    "loadError": "加载失败",
     "filterAction": "按操作类型过滤（如 auth.login.success）",
-    "filterResource": "按资源类型过滤（如 contribution）",
+    "filterResource": "按对象类型筛选",
     "search": "搜索",
-    "actorUser": "操作者 {{id}}",
     "actorSystem": "系统",
     "actions": {
       "auth_register": "用户注册",
@@ -584,8 +580,28 @@
       "role_revoke": "撤销角色",
       "user_ban": "封禁用户",
       "user_unban": "解封用户",
-      "image_upload": "上传图片"
-    }
+      "image_upload": "上传图片",
+      "comment_create": "发表评论",
+      "comment_delete": "删除自己的评论",
+      "comment_hide": "隐藏评论",
+      "comment_restore": "恢复评论",
+      "comment_report": "举报评论",
+      "contribution_pin": "置顶投稿",
+      "contribution_unpin": "取消置顶",
+      "contribution_reopen": "重新打开审核",
+      "contribution_update": "作者编辑投稿",
+      "contribution_withdraw": "作者撤回投稿"
+    },
+    "subtitle": "后台与账户操作的留痕记录",
+    "actorLabel": "操作者",
+    "resourceLabel": "对象",
+    "typeAll": "全部对象类型",
+    "typeContribution": "投稿",
+    "typeUser": "用户",
+    "typeComment": "评论",
+    "typeSession": "会话",
+    "typeImage": "图片",
+    "deleted": "（已删除）"
   },
   "adminEditRequests": {
     "title": "修改申请",
