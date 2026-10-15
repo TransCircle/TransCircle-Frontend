@@ -58,9 +58,29 @@ export interface UsePagedListOptions<T> {
   autoLoad?: boolean
   /** 初始是否处于加载中（避免首帧空态闪屏 FOUC，默认 true） */
   initialLoading?: boolean
+  /**
+   * 受控页码（页码写在 URL 里的列表用）。给了它：
+   * - 首载 / deps 变化时从这一页开始，而不是第 1 页——刷新、从详情返回都回到原来那一页；
+   * - 它单独变化（用户翻页写回 URL）时就地换页，不算换查询（不置 stale）。
+   * 不给时行为与以前完全相同。
+   */
+  page?: number
+  /**
+   * 服务端回显的页码与请求页不同（越界回落到末页）时调用，受控页码的列表据此把 URL 改成实际页。
+   * 只在**这一次请求**成功时触发：不能靠下一轮渲染比较 hook 的页码与 URL——用户刚翻页的那次提交里，
+   * hook 还是旧页码、loading 也还是 false，比较会把 URL 改回旧页。
+   */
+  onPageMismatch?: (actualPage: number) => void
 }
 
-export function usePagedList<T>({ fetchPage, deps, autoLoad = true, initialLoading = true }: UsePagedListOptions<T>) {
+export function usePagedList<T>({
+  fetchPage,
+  deps,
+  autoLoad = true,
+  initialLoading = true,
+  page: controlledPage,
+  onPageMismatch,
+}: UsePagedListOptions<T>) {
   const [items, setItems] = useState<T[]>([])
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
@@ -74,7 +94,17 @@ export function usePagedList<T>({ fetchPage, deps, autoLoad = true, initialLoadi
   /* 屏幕上的数据是否已经不属于当前查询。切筛选/搜索后新查询的第一页失败时会是
      true：旧列表还留在屏幕上，它的 total/totalPages 描述的却是上一份数据。
      暴露给分页条置灰——否则用户点「第 2 页」，看到的页码区间对不上内容。 */
-  const [stale, setStale] = useState(false)
+  const [stale, setStaleState] = useState(false)
+  /* stale 的同步镜像：失败分支要知道「此刻屏幕上的数据是否已不属于当前查询」。 */
+  const staleRef = useRef(false)
+  const setStale = useCallback((value: boolean) => {
+    staleRef.current = value
+    setStaleState(value)
+  }, [])
+  /* 受控模式下「已确认失配」：某次加载失败时屏幕上的旧数据不属于当前 URL。
+     与 stale 的区别：stale 在正常切换期间也为真（此时保留旧列表 + 加载条），
+     mismatch 只在失败之后为真——重试在途时也要继续藏住这些旧行，直到某次加载成功。 */
+  const [mismatch, setMismatch] = useState(false)
 
   const fetchSeq = useRef(0)
   /* 「用户最后一次要求看的页」。在 load() 入口即写入，而不是等成功——
@@ -91,8 +121,16 @@ export function usePagedList<T>({ fetchPage, deps, autoLoad = true, initialLoadi
      请求，而它又持有最新的 fetchSeq，结果新 tab 底下显示的是旧 tab 的数据。
      读 ref 就永远用当前筛选，同时也让 load / reload / refresh 保持稳定引用。 */
   const fetchPageRef = useRef(fetchPage)
+  /* 受控页码同样走 ref：deps effect 读它作为起始页，又不该因为页码变化而被当成「换查询」。
+     这个同步 effect 声明在加载 effect 之前，同一次提交里先执行，加载时读到的是本次渲染的值。 */
+  const startPageRef = useRef(controlledPage ?? 1)
+  const onPageMismatchRef = useRef(onPageMismatch)
+  const isControlledRef = useRef(controlledPage !== undefined)
   useEffect(() => {
     fetchPageRef.current = fetchPage
+    startPageRef.current = controlledPage ?? 1
+    onPageMismatchRef.current = onPageMismatch
+    isControlledRef.current = controlledPage !== undefined
   })
   /* 组件是否仍挂载。卸载后 setState 在 React 19 里虽是空操作，但在途请求
      仍会跑完整个成功/失败分支；用它把后续写状态一并挡掉，语义上更干净。 */
@@ -108,42 +146,57 @@ export function usePagedList<T>({ fetchPage, deps, autoLoad = true, initialLoadi
        合上，列表会永远停在骨架屏。mountedRef 已经足够挡住卸载后的 setState。 */
   }, [])
 
-  const load = useCallback(async (target: number, opts?: { reset?: boolean }) => {
-    /* 组件已经卸载：调用方持有的 reload/refresh 是稳定引用，写操作的回调
+  const load = useCallback(
+    async (target: number, opts?: { reset?: boolean }) => {
+      /* 组件已经卸载：调用方持有的 reload/refresh 是稳定引用，写操作的回调
        完全可能在卸载之后才跑到「刷新列表」这一步。不在入口拦住的话，会白发
        一次列表请求，并对已卸载的组件调 setLoading/setStale。 */
-    if (!mountedRef.current) return
-    /* 显式 reset（切筛选、点搜索）意味着「屏幕上这批已经不属于当前查询」，
+      if (!mountedRef.current) return
+      /* 显式 reset（切筛选、点搜索）意味着「屏幕上这批已经不属于当前查询」，
        在请求成功之前它一直是 stale —— 新查询的第一页若失败，旧列表还留着，
        此时的 total/totalPages 描述的是上一份数据，分页条必须置灰。 */
-    if (opts?.reset) setStale(true)
-    targetPageRef.current = target
-    const seq = ++fetchSeq.current
-    setLoading(true)
-    setError('')
-    try {
-      const result = await fetchPageRef.current(target)
-      if (seq !== fetchSeq.current || !mountedRef.current) return // 过期响应或已卸载，丢弃
-      setStale(false)
-      setLoadFailed(false)
-      setItems(result.data)
-      // 服务端可能把越界页回落到末页，一律以回显的页码为准
-      setPage(result.page)
-      targetPageRef.current = result.page
-      lastGoodPageRef.current = result.page
-      setTotal(result.total)
-      setTotalPages(result.totalPages)
-    } catch (err) {
-      if (seq === fetchSeq.current && mountedRef.current) {
-        setLoadFailed(true)
-        setError(err instanceof Error ? err.message : String(err))
-        // 这一页没能显示出来，回滚意图页，后续 refresh 才会刷新当前可见页
-        targetPageRef.current = lastGoodPageRef.current
+      if (opts?.reset) setStale(true)
+      targetPageRef.current = target
+      const seq = ++fetchSeq.current
+      setLoading(true)
+      setError('')
+      try {
+        const result = await fetchPageRef.current(target)
+        if (seq !== fetchSeq.current || !mountedRef.current) return // 过期响应或已卸载，丢弃
+        setStale(false)
+        setMismatch(false)
+        setLoadFailed(false)
+        setItems(result.data)
+        // 服务端可能把越界页回落到末页，一律以回显的页码为准
+        setPage(result.page)
+        if (result.page !== target) onPageMismatchRef.current?.(result.page)
+        targetPageRef.current = result.page
+        lastGoodPageRef.current = result.page
+        setTotal(result.total)
+        setTotalPages(result.totalPages)
+      } catch (err) {
+        if (seq === fetchSeq.current && mountedRef.current) {
+          setLoadFailed(true)
+          setError(err instanceof Error ? err.message : String(err))
+          if (isControlledRef.current) {
+            /* 受控模式（页码在 URL 里）：URL 已经是用户要的那页。不回滚意图页——
+             否则用户随后把 URL 改回上一页时，页码 effect 会以为「已经在那页」而不重新加载，
+             列表就一直锁在错误态。屏幕上留着的旧数据不属于当前 URL：标成失配，
+             调用方不再摆出可点的旧行（重试在途时也不），只留错误与重试。 */
+            if (target !== lastGoodPageRef.current) setStale(true)
+            if (staleRef.current) setMismatch(true)
+          } else {
+            // 这一页没能显示出来，回滚意图页，后续 refresh 才会刷新当前可见页
+            targetPageRef.current = lastGoodPageRef.current
+          }
+        }
+      } finally {
+        if (seq === fetchSeq.current && mountedRef.current) setLoading(false)
       }
-    } finally {
-      if (seq === fetchSeq.current && mountedRef.current) setLoading(false)
-    }
-  }, [])
+      // setStale 是稳定引用（useCallback 空依赖），列进依赖不会让 load 变化
+    },
+    [setStale],
+  )
 
   /** 跳到指定页（页码从 1 开始）。 */
   const goToPage = useCallback(
@@ -167,7 +220,13 @@ export function usePagedList<T>({ fetchPage, deps, autoLoad = true, initialLoadi
    * refresh()，期间用户可能已经翻页（甚至那一页还在路上），读 state 会拿到
    * 过时的页码，既把人拽回去、又取消了他正在等的那一页。
    */
-  const refresh = useCallback(() => load(targetPageRef.current), [load])
+  /* 受控模式（页码在 URL 里）重取的是 URL 上的那一页：URL 才是这个列表的状态源。
+     不受控模式的失败回滚（targetPageRef 退回上一成功页）是为了让 refresh 重取屏幕上真正显示的那页；
+     受控模式下 URL 已经写成了用户要的那页，回到旧页会让内容与 URL 对不上。 */
+  const refresh = useCallback(
+    () => load(isControlledRef.current ? startPageRef.current : targetPageRef.current),
+    [load],
+  )
 
   /** 重新从第 1 页开始（切筛选/搜索/手动刷新）。 */
   const reload = useCallback(() => load(1, { reset: true }), [load])
@@ -175,15 +234,24 @@ export function usePagedList<T>({ fetchPage, deps, autoLoad = true, initialLoadi
   useEffect(() => {
     if (!autoLoad) return
     // 拉取数据是 effect 对外部数据源的订阅；load 首行的 setLoading(true) 属该模式的同步 setState。
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load(1, { reset: true })
+    void load(startPageRef.current, { reset: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps)
+
+  /* 受控页码单独变化：就地换页。筛选与页码在同一次提交里一起变（换筛选时 URL 清掉 page）
+     时，上面的 deps effect 已经从新页码发起了加载，targetPageRef 等于它，这里自然跳过；
+     服务端把越界页回落后，调用方把回落页写回 URL，同样命中这条短路，不会再发一次。 */
+  useEffect(() => {
+    if (controlledPage === undefined || !autoLoad) return
+    if (controlledPage === targetPageRef.current) return
+    void load(controlledPage)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controlledPage])
 
   /* 屏幕上这批条目已经不属于当前查询了——换了筛选/搜索词，而新查询的第一页
      又失败了，旧结果还留在那儿。调用页据此停止把它们当作当前条件的结果渲染。
      loading 期间不算：那是正常的切换过程，保留旧列表 + 加载条好过清空闪烁。 */
-  const staleResults = stale && !loading
+  const staleResults = stale && (!loading || mismatch)
 
   return {
     items,

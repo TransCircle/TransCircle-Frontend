@@ -1,45 +1,46 @@
 /* ═══════════════════════════════════════════════════════════════
-   后台工具侧词表 —— 审核队列、用户管理、审计日志、编辑申请。
+   后台工具侧词表 —— 审核队列、修改申请、用户管理、审计日志、评论管理。
 
-   与 src/pages/Story.module.css（公共阅读侧）刻意分开。这一侧是工具：
-   密度更高、字号更小、数字等宽、状态靠徽章而非留白。审核员一屏要看到
-   尽量多的条目，与「读故事」是相反的诉求。
+   三套词表分治（见 docs/DESIGN.md）：Story = 公共阅读侧；Account = 账户侧；
+   本文件 = 后台工具侧。这一侧是工具：密度更高、字号更小（§5.8 允许 14px）、
+   数字等宽、状态靠徽章而非留白——审核员一屏要看到尽量多的条目。
+   粉色在这里只表示「选中 / 激活」，只读面一律 --surface-2。
 
-   颜色上后台几乎全蓝——控制台里说话的都是系统；粉色只在标识某个具体的
-   人时出现（见 docs/DESIGN.md §0）。
+   外壳（左栏 + 粘性标题栏 + 工作区）见 AdminShell.module.css。
    ═══════════════════════════════════════════════════════════════ */
 
 .page {
+  /* 列表骨架与本词表的连体列表同构：单一描边容器 + 发丝线分隔的 56px 行。 */
+  --skeleton-list-gap: 0;
+  --skeleton-list-border: 1px solid var(--line);
+  --skeleton-list-r: var(--r-md);
+  /* 真实行：上下内边距 24 + 标题 14×1.75 + 间距 2 + 元信息 12×1.75 ≈ 72px。 */
+  --skeleton-row-h: 72px;
+  --skeleton-row-r: 0;
+  --skeleton-row-sep: 1px solid var(--line);
+
   display: flex;
   flex-direction: column;
   gap: var(--s-5);
-  /* 顶部留白由页面自身提供（详情页直接生效；列表页由 .stickyHead 负边距抵消并自带） */
-  padding-top: var(--s-5);
+  min-width: 0;
 }
 
-/* 阅读 / 表单页：收在可读行宽内，长文与单列表单不在大屏上摊开。 */
-.pageNarrow {
-  width: 100%;
-  max-width: var(--w-reading);
-  margin-inline: auto;
-}
-
-/* 列表页头部（标签/搜索栏）：随内容区滚动时固定在顶部，不跟列表一起滑走。
-   负上边距抵消 .page 的 padding-top，并把该留白纳入 sticky 头部自身，
-   使其贴住滚动容器顶端、完整覆盖滚动经过的内容。 */
+/* 列表页头部（选项卡 / 搜索栏）：吸附在「站点顶栏 + 工作区标题栏」下方，
+   不跟列表一起滑走。负上边距吃掉工作区的顶部留白并把它纳入自身，
+   贴住时能完整盖住从下方滚过的内容。 */
 .stickyHead {
   position: sticky;
-  top: 0;
+  top: calc(var(--nav-h) + var(--admin-topbar-h));
   z-index: var(--z-sticky);
   margin-top: calc(var(--s-5) * -1);
-  background-color: var(--bg);
+  padding: var(--s-5) 0 var(--s-3);
   display: flex;
   flex-direction: column;
   gap: var(--s-3);
-  padding: var(--s-5) 0 var(--s-3);
+  background-color: var(--surface);
 }
 
-/* §5.8：sticky 头部用玻璃底，滚动内容从下面透过时不糊成一块实色。 */
+/* §5.8：粘性头部用玻璃底，滚动内容从下面透过时不糊成一块实色。 */
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .stickyHead {
     background-color: var(--glass-bg);
@@ -48,7 +49,8 @@
   }
 }
 
-@media (max-width: 640px), (max-height: 500px) {
+/* 窄屏 / 矮屏：两层粘性栏已经吃掉太多可视高度，头部回到文档流。 */
+@media (max-width: 640px), (max-height: 600px) {
   .stickyHead {
     position: static;
     margin-top: 0;
@@ -56,12 +58,78 @@
   }
 }
 
-/* 非 sticky 的页头分组，供走文档流滚动的公共页使用——后台页在内部容器里
-   滚动，所以保留 .stickyHead。 */
-.head {
+/* 列表头部左侧的一句规则（审核队列、评论管理）：说明这个列表按什么规则运转。 */
+.headNote {
+  flex: 1 1 16rem;
+  min-width: 0;
+  margin: 0 0 var(--s-2);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-caption);
+  color: var(--text-secondary);
+}
+
+/* 规则说明列表：操作卡里「点了之后会怎样」——取自后端实现，按当前状态给出。
+   小字、灰阶、发丝线隔开，不和操作按钮抢视觉权重。 */
+.ruleList {
+  margin: 0;
+  padding: var(--s-3) 0 0 var(--s-4);
+  border-top: 1px solid var(--line);
   display: flex;
   flex-direction: column;
+  gap: var(--s-1);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-caption);
+  color: var(--text-muted);
+}
+
+/* 概览的处理流程：有序步骤。 */
+.flowList {
+  margin: var(--s-2) 0 0;
+  padding-left: var(--s-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-caption);
+  color: var(--text-body);
+}
+
+/* 选项卡 + 右侧的单个控件（审核队列的排序）同一行；窄时控件换到下一行。 */
+.headRow {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s-3) var(--s-4);
+  flex-wrap: wrap;
+}
+
+.headSort {
+  flex: 0 0 12rem;
+  margin-bottom: var(--s-1);
+}
+
+/* 标题行右侧并排的多个下拉（如评论管理的状态 + 排序）；窄工作区时占满一行、两个平分 */
+.headFilters {
+  flex: 0 0 auto;
+  display: flex;
   gap: var(--s-3);
+  margin-bottom: var(--s-1);
+  min-width: 0;
+}
+
+/* 宽屏不让说明文字把下拉挤窄（选项文字会被截成「举报…」） */
+.headFilter {
+  flex: 0 0 10rem;
+  min-width: 0;
+}
+
+@container work (max-width: 640px) {
+  .headFilters {
+    flex: 1 1 100%;
+  }
+
+  .headFilter {
+    flex: 1 1 0;
+  }
 }
 
 .toolbar {
@@ -72,11 +140,18 @@
 }
 
 .toolbar .grow {
-  flex: 1;
-  min-width: 220px;
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+/* 单个筛选下拉：不铺满整行，宽度够放下最长选项即可。 */
+.toolbar .filter {
+  flex: 0 1 16rem;
+  min-width: 0;
 }
 
 .count {
+  font-family: var(--font-tech);
   font-size: var(--fs-xs);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
@@ -89,7 +164,7 @@
   outline: none;
 }
 
-/* ── 数据列表 ─────────────────────────────────────────────── */
+/* ── 数据列表：一张描边容器 + 发丝线分隔的行（§5.8，同 Pass 控制台表格）── */
 
 .list {
   list-style: none;
@@ -97,7 +172,14 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--s-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background-color: var(--surface);
+  overflow: hidden;
+}
+
+.list > li + li {
+  border-top: 1px solid var(--line);
 }
 
 .rowBtn {
@@ -105,40 +187,36 @@
   display: flex;
   align-items: center;
   gap: var(--s-4);
-  text-align: left;
+  min-height: 56px;
   padding: var(--s-3) var(--s-4);
-  background-color: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
-  cursor: pointer;
+  text-align: left;
   color: inherit;
   font: inherit;
-  text-decoration: none;
-  transition:
-    border-color var(--dur-1) var(--ease-standard),
-    background-color var(--dur-1) var(--ease-standard);
+  background-color: transparent;
+  border: none;
 }
 
-/* §5.8：行 hover 铺 --surface-2（不用斑马纹，也不铺粉——
-   粉留给「选中/激活」，划过只是经过）。描边同时染粉给出方向感。 */
-.rowBtn:hover {
-  border-color: var(--pink-300);
-  background-color: var(--surface-2);
+.rowBtn {
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color var(--dur-1) var(--ease-standard);
+}
+
+/* §5.8：行 hover 铺 --surface-2（不用斑马纹，也不铺粉——粉留给「选中」）。
+   只在真能悬停的设备上给：触屏上 hover 会粘在刚点过的那一行。 */
+@media (hover: hover) {
+  .rowBtn:hover {
+    background-color: var(--surface-2);
+  }
 }
 
 .rowBtn:active {
-  background-color: var(--surface);
+  background-color: var(--surface-2);
 }
 
-/* 静态行（无下钻，如审计日志） */
-.rowStatic {
-  display: flex;
-  align-items: center;
-  gap: var(--s-4);
-  padding: var(--s-3) var(--s-4);
-  background-color: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
+/* 键盘焦点画在行内侧：外侧描边会被容器的 overflow:hidden 裁掉。 */
+.rowBtn:focus-visible {
+  outline-offset: -2px;
 }
 
 .rowMain {
@@ -165,12 +243,12 @@
   gap: var(--s-1);
   flex-wrap: wrap;
   align-items: center;
-  word-break: break-word;
+  overflow-wrap: anywhere;
   font-variant-numeric: tabular-nums;
 }
 
 .rowMetaSep {
-  opacity: 0.45;
+  color: var(--line-strong);
 }
 
 /* 行内代码 §5.13：--pink-100 底 + --pink-700 字 + --r-xs。 */
@@ -187,8 +265,11 @@
 .rowRight {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--s-2);
   flex-shrink: 0;
+  max-width: 50%;
+  min-width: 0;
 }
 
 .chevron {
@@ -199,53 +280,29 @@
 
 /* ── 详情视图 ─────────────────────────────────────────────── */
 
-.detailHead {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--s-4);
-  flex-wrap: wrap;
-}
-
-/* 后台详情标题封顶在 --fs-h3：控制台里待审正文和审核动作要先于标题
-   进入视野，不能像阅读页那样给到展示级字号。 */
-.detailTitle {
-  margin: 0;
-  font-size: var(--fs-h3);
-  font-weight: var(--fw-semibold);
-  color: var(--ink);
-  line-height: 1.35;
-}
-
-.metaRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-1) var(--s-5);
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.metaItem {
-  display: inline-flex;
-  align-items: center;
-}
-
-.stack {
+.stackSm {
   display: flex;
   flex-direction: column;
-  gap: var(--s-5);
+  gap: var(--s-3);
 }
 
-.stackSm {
+/* 「标签 + 值」字段组：标签单独一行，替代「标签：」式的行内拼接。 */
+.field {
   display: flex;
   flex-direction: column;
   gap: var(--s-2);
 }
 
-/* 只读内容面：与可交互的表面行区分开——填充面代表「引用/只读」。
-   用 --surface-2（凹陷面）而不是 --pink-100：粉色面在后台读作「选中」。 */
+.fieldLabel {
+  margin: 0;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+}
+
+/* 只读的普通文本块（修改理由等）：凹陷面代表「引用 / 只读」，与可交互的行区分开。 */
 .contentBlock {
+  margin: 0;
   padding: var(--s-4);
   background-color: var(--surface-2);
   border: 1px solid var(--line);
@@ -254,7 +311,139 @@
   font-size: var(--fs-sm);
   color: var(--text-body);
   white-space: pre-wrap;
-  overflow-x: auto;
+  overflow-wrap: anywhere;
+}
+
+/* 修改申请的「当前 → 改为」对照：当前值弱化（虚线描边、次要文字），改为的值用常规只读块。 */
+.diffOld {
+  margin: 0;
+  padding: var(--s-3) var(--s-4);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.diffTag {
+  display: block;
+  margin-bottom: var(--s-1);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+}
+
+/* ── 按行对照（DiffView）：删除行错误色 + 删除线，新增行成功色；行首 −/+ 标记，不只靠颜色。 ── */
+.diff {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.diffStats {
+  margin: 0;
+  font-family: var(--font-tech);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.diffBody {
+  max-height: min(72vh, 48rem);
+  overflow: auto;
+  padding: var(--s-2) 0;
+  background-color: var(--code-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+  color: var(--text-body);
+}
+
+.diffLine {
+  display: block;
+  padding: 0 var(--s-4) 0 var(--s-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.diffAdd {
+  background-color: var(--success-bg);
+  color: var(--success-text);
+}
+
+.diffDel {
+  background-color: var(--error-bg);
+  color: var(--error-text);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+}
+
+.diffMark {
+  display: inline-block;
+  width: 1.5em;
+  text-align: center;
+  user-select: none;
+}
+
+.diffGap {
+  padding: var(--s-1) var(--s-4);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  background-color: var(--surface-2);
+}
+
+/* 版本对照（主栏）：与正文同宽，描边面板，头部一行标题 + 关闭。 */
+.versionCompare {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background-color: var(--surface);
+}
+
+.versionCompareHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+
+/* 版本历史里每条的「与当前对照」：左对齐贴着文字，抵消 ghost 按钮的左内边距 */
+.versionCompareButton {
+  align-self: flex-start;
+  margin-left: calc(var(--s-2) * -1);
+}
+
+/* 整段对照（行太多算不动时）里的「当前」：弱化 */
+.rawSourceOld {
+  color: var(--text-secondary);
+  border-style: dashed;
+}
+
+/* 原文面板：待审 Markdown 原样展示——等宽、保留换行、限高可滚。 */
+.rawSource {
+  margin: 0;
+  max-height: min(60vh, 32rem);
+  overflow: auto;
+  padding: var(--s-4);
+  background-color: var(--code-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+  color: var(--text-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .actions {
@@ -264,7 +453,303 @@
   align-items: center;
 }
 
-/* 列表刷新/切 tab 时保留旧内容的轻量加载指示条（避免整列表清空闪烁，
+/* 错误提示里的「重试」：文字与按钮同行，窄时换行。 */
+.errorRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2) var(--s-3);
+  flex-wrap: wrap;
+}
+
+/* 行内文字链接（作者 → 用户详情、审计资源 → 详情等跨页联动）：§5.2 正文链接色。
+   后台是密集工具面，不做下划线长入动画，hover 只加粗下划线。 */
+.textLink {
+  color: var(--blue-600);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  border-radius: var(--r-xs);
+}
+
+@media (hover: hover) {
+  .textLink:hover {
+    text-decoration-thickness: 2px;
+  }
+}
+
+/* 可移除的筛选条件（如「作者：某某 ×」）：中性面，粉色只留给选中态。 */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  min-height: var(--btn-h-sm);
+  max-width: 100%;
+  padding: 0 var(--s-1) 0 var(--s-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background-color: var(--surface-2);
+  font-size: var(--fs-sm);
+  color: var(--text-body);
+}
+
+.chipText {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 条件名（如「作者」）弱化，值正常色 */
+.chipKey {
+  margin-right: var(--s-2);
+  color: var(--text-muted);
+}
+
+/* 已生效的筛选条件行 */
+.activeFilters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.activeFiltersLabel {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.chipRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .chipRemove:hover {
+    background-color: var(--surface);
+    color: var(--ink);
+  }
+}
+
+/* 触屏：移除按钮放大到可点的尺寸（视觉上仍是小 ×） */
+@media (pointer: coarse) {
+  .chip {
+    min-height: 40px;
+  }
+
+  .chipRemove {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+/* 视觉隐藏、读屏可读。 */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── 详情页：主栏 + 侧栏 ─────────────────────────────────────
+   DOM 顺序即窄屏顺序：信息 → 正文 → 操作 / 历史。宽工作区里信息与操作排到右侧栏，
+   正文独占左栏（跨三行，最后一行 1fr 吃掉多余高度，侧栏卡片之间不会被拉开）。 */
+.detailGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s-4);
+  align-items: start;
+}
+
+.detailMain,
+.detailSide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  min-width: 0;
+}
+
+.detailInfo {
+  min-width: 0;
+}
+
+/* 侧栏卡片的小标题：与 SectionLabel 同级的视觉分量，但在文档大纲里是 h2。 */
+.sideHeading {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--ink);
+}
+
+.continuous {
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--line);
+}
+
+@container work (min-width: 880px) {
+  .detailGrid {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+    grid-template-rows: auto auto 1fr;
+    column-gap: var(--s-6);
+  }
+
+  .detailMain {
+    grid-column: 1;
+    grid-row: 1 / -1;
+  }
+
+  .detailInfo {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .detailSide {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  /* 宽屏下原文面板可以更高：审核时正文是主角，侧栏的操作仍在首屏内。 */
+  .detailMain .rawSource {
+    max-height: min(72vh, 48rem);
+  }
+}
+
+/* ── 概览：数字块 + 状态分布（同 Pass 控制台，不画图表）── */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--s-3);
+}
+
+/* 手机：数字卡两列并排（一列一张的话首屏只看得到两三张） */
+@container work (max-width: 480px) {
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s-2);
+  }
+
+  .kpi {
+    padding: var(--s-3);
+  }
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  min-width: 0;
+  padding: var(--s-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background-color: var(--surface);
+  color: inherit;
+  text-decoration: none;
+}
+
+.kpiLink {
+  transition:
+    border-color var(--dur-1) var(--ease-standard),
+    background-color var(--dur-1) var(--ease-standard);
+}
+
+@media (hover: hover) {
+  .kpiLink:hover {
+    border-color: var(--line-strong);
+    background-color: var(--surface-2);
+  }
+}
+
+.kpiLabel {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+}
+
+.kpiValue {
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-bold);
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.kpiUnit {
+  margin-left: var(--s-1);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+
+.kpiSub {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 状态分布：多列网格，宽屏上徽标和数字不会隔着整行相望；每格底部一条发丝线。 */
+.breakdown {
+  list-style: none;
+  margin: var(--s-2) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  column-gap: var(--s-6);
+}
+
+.breakdown > li {
+  border-bottom: 1px solid var(--line);
+}
+
+.breakdownRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  min-height: 44px;
+  padding: var(--s-2) var(--s-2);
+  color: inherit;
+  text-decoration: none;
+}
+
+.breakdownLink {
+  border-radius: var(--r-sm);
+  transition: background-color var(--dur-1) var(--ease-standard);
+}
+
+@media (hover: hover) {
+  .breakdownLink:hover {
+    background-color: var(--surface-2);
+  }
+}
+
+.breakdownLink:focus-visible {
+  outline-offset: -2px;
+}
+
+.breakdownNum {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-body);
+  color: var(--ink);
+}
+
+/* 列表刷新 / 切 tab 时保留旧内容的轻量加载指示（避免整列表清空闪烁，
    也避免「残留旧数据却无任何提示」被误读为新结果）。 */
 .loadingBar {
   display: flex;
@@ -273,6 +758,7 @@
   gap: var(--s-2);
   padding: var(--s-1) 0;
   color: var(--text-muted);
+  font-family: var(--font-tech);
   font-size: var(--fs-xs);
 }
 
@@ -305,6 +791,7 @@
 }
 
 .historyTime {
+  font-family: var(--font-tech);
   font-size: var(--fs-xs);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
@@ -313,35 +800,22 @@
 .noteText {
   margin: 0;
   font-size: var(--fs-sm);
-  line-height: 1.6;
+  line-height: var(--lh-caption);
   color: var(--text-body);
 }
 
 .subtleNote {
   margin: 0;
   font-size: var(--fs-xs);
-  line-height: 1.6;
+  line-height: var(--lh-caption);
   color: var(--text-muted);
 }
 
 .subtleNoteSpaced {
   margin: var(--s-2) 0 0;
   font-size: var(--fs-xs);
-  line-height: 1.6;
+  line-height: var(--lh-caption);
   color: var(--text-muted);
-}
-
-/* 文章导语/摘要：比正文小一档但比元信息重，用于「作者写的引路句」。 */
-.summary {
-  margin: 0;
-  font-size: var(--fs-sm);
-  line-height: 1.7;
-  color: var(--text-secondary);
-}
-
-.detailTitleSub {
-  color: var(--text-muted);
-  font-weight: var(--fw-regular);
 }
 
 .inlineMeta {
@@ -351,16 +825,42 @@
   flex-wrap: wrap;
 }
 
-@media (max-width: 640px) {
-  .rowBtn,
-  .rowStatic {
+/* 工作区按容器宽度收紧（左栏折叠与否都按真实可用宽度判断）。 */
+@container work (max-width: 640px) {
+  /* 骨架跟随两排行：内边距 24 + 标题 24.5 + 间距 2 + 元信息 21 + 排间距 8 ≈ 80px，再加第二排的 24px 徽章。 */
+  .page {
+    --skeleton-row-h: calc(80px + 24px);
+  }
+
+  .rowBtn {
     align-items: flex-start;
-    gap: var(--s-3);
+    flex-wrap: wrap;
+    gap: var(--s-2) var(--s-3);
     padding: var(--s-3);
   }
 
-  .detailHead {
-    gap: var(--s-2);
+  /* 主信息独占第一行；右侧徽章组换到第二行、靠左，长标题不再被挤成一两个字。 */
+  .rowMain {
+    flex-basis: 100%;
+  }
+
+  .rowRight {
+    flex: 1 1 100%;
+    max-width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  /* 换行后行尾箭头会孤零零挂在徽章后面；整行本身就是按钮，窄时省掉它。 */
+  .chevron {
+    display: none;
+  }
+
+  /* 搜索框在窄屏下仍和它的「搜索」按钮同排（按钮不会单独掉到下一行）；
+     排序、类型这类下拉放不下时自然换到第二行，再由 flex-grow 铺满。 */
+  .toolbar .grow {
+    flex-basis: 10rem;
   }
 
   .actions {
@@ -368,8 +868,347 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .rowBtn {
-    transition: none;
+/* ── 审计日志行：动作标题 + 「操作者 / 对象」两个带标签的字段；右侧时间与原始操作代码 ── */
+.auditRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-4);
+  padding: var(--s-3) var(--s-4);
+}
+
+.auditMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+/* 列表行里的带标签字段（审计日志、评论管理共用）：并排、宽度不够时换行；字段之间用间距分隔，不用圆点 */
+.metaFields {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--s-6);
+  row-gap: var(--s-1);
+  font-size: var(--fs-xs);
+}
+
+.metaField {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* 审计日志：操作者一栏给个最小宽度，各行的「对象」能竖着对齐，扫读时不跳 */
+.auditRow .metaField:first-child {
+  min-width: 11em;
+}
+
+.metaField > dt {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.metaField > dd {
+  margin: 0;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  color: var(--text-body);
+}
+
+/* 对象名称（投稿标题、评论摘要）可能很长：单行截断，完整内容在详情里 */
+.auditLabel {
+  display: inline-block;
+  max-width: 28em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+/* 没有名称时的短 ID：等宽、弱化，一眼看出它不是名字 */
+.auditId {
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.auditMuted {
+  color: var(--text-muted);
+}
+
+.auditSide {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.auditCode {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.auditTypeSelect {
+  flex: 0 0 12rem;
+}
+
+@container work (max-width: 640px) {
+  .auditRow {
+    flex-direction: column;
+    gap: var(--s-2);
   }
+
+  .auditSide {
+    flex-direction: row;
+    align-items: baseline;
+    gap: var(--s-3);
+  }
+
+  .auditTypeSelect {
+    flex: 1 1 100%;
+  }
+}
+
+/* ── 概览：我的角色 / 我的权限 ── */
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-top: var(--s-2);
+}
+
+.permTable {
+  width: 100%;
+  margin-top: var(--s-2);
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.permTable th,
+.permTable td {
+  padding: var(--s-3) var(--s-2);
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.permTable thead th {
+  padding-top: 0;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+}
+
+.permTable tbody tr:last-child > * {
+  border-bottom: none;
+}
+
+.permName {
+  width: 9em;
+  font-weight: var(--fw-semibold);
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.permScope {
+  color: var(--text-body);
+  line-height: var(--lh-caption);
+}
+
+/* 能做什么的说明 + 「需二次验证」标记 + 缺依赖提示，按行内顺序排 */
+.permScope > * + *:not(.permWarn) {
+  margin-left: var(--s-2);
+}
+
+.permWarn {
+  display: block;
+  margin-top: var(--s-1);
+  font-size: var(--fs-xs);
+  color: var(--warning-text);
+}
+
+.permKey {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.permKey code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+/* 已迁移不用 / 本站没用到的权限：整行弱化 */
+.permRowMuted .permName,
+.permRowMuted .permScope {
+  color: var(--text-muted);
+}
+
+/* 窄工作区：三列表格改成每项一块（名称、说明、标识上下排） */
+@container work (max-width: 640px) {
+  .permTable thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .permTable tr {
+    display: block;
+    padding: var(--s-3) 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .permTable tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  .permTable th,
+  .permTable td {
+    display: block;
+    width: auto;
+    padding: 0;
+    border-bottom: none;
+  }
+
+  .permTable td + td,
+  .permTable th + td {
+    margin-top: var(--s-1);
+  }
+
+  .permName {
+    white-space: normal;
+  }
+}
+
+/* ── 修改申请：投票记录（紧跟进度条，谁投了、赞成还是反对、理由）。
+   条目样式（.record*）通用：评论详情的举报、回复、处理记录同样是「谁 · 状态 · 时间 + 一段话」。── */
+.voteRecords {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--line);
+}
+
+.voteRecordsHeading {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--ink);
+}
+
+.recordList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.recordItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  padding: var(--s-2) 0;
+}
+
+.recordItem + .recordItem {
+  border-top: 1px solid var(--line);
+}
+
+.recordHead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.recordName {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.recordTime {
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.recordNote {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-caption);
+  color: var(--text-body);
+  overflow-wrap: anywhere;
+}
+
+.recordNoteEmpty {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+/* 摘要式的一段话（回复、父评论）：最多三行，全文在它自己的详情里。换行折成空格，三行里多放些内容 */
+.recordNoteClamp {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-caption);
+  color: var(--text-body);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+
+.recordLink {
+  align-self: flex-start;
+  font-size: var(--fs-xs);
+}
+
+/* ── 评论：正文全文（纯文本，保留作者的换行）与列表里的两行摘要 ── */
+.commentBody {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+
+/* 评论列表的行标题就是评论本身：用正文字重、两行截断（不是单行粗体标题） */
+.rowExcerpt {
+  font-size: var(--fs-sm);
+  line-height: var(--lh-caption);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.rowExcerptMuted {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
 }
