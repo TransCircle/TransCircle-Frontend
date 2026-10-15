@@ -52,7 +52,7 @@ export function restoreFocus(el: HTMLElement | null): void {
   focusFallback()
 }
 
-/** 供 useDetailFocus 复用：聚焦某一行并盯着它别被随后的列表刷新删掉。 */
+/** 供后台列表复用（详情返回后聚焦原行）：聚焦某一行并盯着它别被随后的列表刷新删掉。 */
 export function focusRowAndWatch(el: HTMLElement): void {
   focusAndWatch(el)
 }

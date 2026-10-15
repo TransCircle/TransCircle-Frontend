@@ -8,8 +8,9 @@
  * 数据到达时反而会造成更明显的跳变：
  *   list    后台数据行（Page.module.css .rowBtn）
  *   card    通用详情卡片
- *   feed    公共故事流卡片（Story.module.css .entryLink）
+ *   feed    公共故事流卡片网格（Story.module.css .feed / .card；列数取页面上的 --feed-cols）
  *   article 公共阅读页（标题 + 作者区 + 正文）
+ *   comment 评论卡片（CommentSection .listItem：头像署名行 + 两行正文）
  *
  * 无障碍：容器带 role="status" + aria-busy，辅助技术可感知加载中；
  * 动画尊重 prefers-reduced-motion（由样式模块内 media 关闭）。
@@ -18,10 +19,10 @@ import type { ReactNode } from 'react'
 import { cx } from './cx'
 import styles from './Skeleton.module.css'
 
-export type SkeletonVariant = 'list' | 'card' | 'feed' | 'article'
+export type SkeletonVariant = 'list' | 'card' | 'feed' | 'article' | 'comment'
 
 export interface SkeletonProps {
-  /** 行数（list / feed 变体） */
+  /** 行数（list / feed / comment 变体） */
   rows?: number
   variant?: SkeletonVariant
   /** 附加 className（如控制 max-width） */
@@ -36,17 +37,39 @@ const VARIANT_CLASS: Record<SkeletonVariant, string | undefined> = {
   card: styles.card,
   feed: styles.feed,
   article: styles.article,
+  comment: styles.comment,
 }
 
-/** 故事流卡片占位：头像 + 署名行 / 标题 / 摘要，与 .entryLink 同构。 */
+/** 故事流卡片占位，与 Story.module.css .card 同构：标题两行 / 摘要 /
+ *  贴底的标签行 + 署名行。多列时与真实卡片共用最小高度，同排等高；
+ *  单列（≤768）不设最小高度，按常见形态校准——摘要、标签可选，个别卡片落地会更短。 */
 const FeedCard = () => (
   <div className={styles.feedCard}>
+    <span className={styles.lineTitle} />
+    <span className={styles.lineTitleShort} />
+    <span className={styles.lineWide} />
+    <div className={styles.metaBlock}>
+      <span className={styles.chipRow}>
+        <span className={styles.chip} />
+        <span className={styles.chip} />
+      </span>
+      <span className={styles.metaRow}>
+        <span className={styles.avatar} />
+        <span className={styles.lineShort} />
+      </span>
+    </div>
+  </div>
+)
+
+/** 评论卡片占位：头像 + 署名 / 两行正文，与 CommentSection .listItem 同构。 */
+const CommentCard = () => (
+  <div className={styles.commentCard}>
     <div className={styles.metaRow}>
       <span className={styles.avatar} />
       <span className={styles.lineShort} />
     </div>
-    <span className={styles.lineTitle} />
     <span className={styles.lineWide} />
+    <span className={styles.lineMid} />
   </div>
 )
 
@@ -80,6 +103,8 @@ export const Skeleton = ({ rows = 5, variant = 'list', className, children }: Sk
       )
     } else if (variant === 'article') {
       body = <ArticleBody />
+    } else if (variant === 'comment') {
+      body = Array.from({ length: rows }, (_, i) => <CommentCard key={i} />)
     } else if (variant === 'feed') {
       body = Array.from({ length: rows }, (_, i) => <FeedCard key={i} />)
     } else {

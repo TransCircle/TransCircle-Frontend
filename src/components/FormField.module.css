@@ -1,10 +1,12 @@
 .fieldWrapper {
   display: flex;
   flex-direction: column;
-  gap: var(--s-1);
+  gap: var(--s-2);
 }
 
 .label {
+  /* 组合控件分支渲染为 <p>，清掉段落默认外边距，间距只由外层 gap 决定。 */
+  margin: 0;
   font-size: var(--fs-sm);
   font-weight: var(--fw-semibold);
   color: var(--ink);
@@ -14,7 +16,7 @@
    用错误色：「这项你必须填」本来就是该语义，且是通用约定。 */
 .required {
   color: var(--error-text);
-  margin-left: 2px;
+  margin-left: var(--s-1);
 }
 
 .error {

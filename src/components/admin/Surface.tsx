@@ -101,8 +101,11 @@ export function VoteProgress({
         aria-valuetext={`${approve} / ${total}`}
         aria-label={approveLabel}
       >
-        <span className={styles.voteApprove} style={{ width: `${approvePct}%` }} />
-        <span className={styles.voteReject} style={{ width: `${rejectPct}%` }} />
+        {/* 填充层单独裁成胶囊；阈值刻度画在轨道外层，不被圆角裁掉。 */}
+        <span className={styles.voteFill}>
+          <span className={styles.voteApprove} style={{ width: `${approvePct}%` }} />
+          <span className={styles.voteReject} style={{ width: `${rejectPct}%` }} />
+        </span>
         {required > 0 && (
           <span className={styles.voteThreshold} style={{ left: `${thresholdPct}%` }} aria-hidden="true" />
         )}

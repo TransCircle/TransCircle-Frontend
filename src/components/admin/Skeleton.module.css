@@ -12,6 +12,7 @@
 .avatarLg,
 .lineDisplay,
 .lineTitle,
+.lineTitleShort,
 .lineWide,
 .lineMid,
 .lineNarrow,
@@ -22,6 +23,7 @@
 
 .lineDisplay,
 .lineTitle,
+.lineTitleShort,
 .lineWide,
 .lineMid,
 .lineNarrow,
@@ -36,14 +38,23 @@
   flex-shrink: 0;
 }
 
-/* ── list：后台数据行（.rowBtn 约 60px 高） ── */
+/* ── list：数据行。尺寸由所在词表给出（后台 .rowBtn / 账户侧 .rowBtn 高度不同），
+   默认值对应后台行。 ── */
 .list {
-  gap: var(--s-2);
+  gap: var(--skeleton-list-gap, var(--s-2));
+  border: var(--skeleton-list-border, none);
+  border-radius: var(--skeleton-list-r, 0);
+  overflow: hidden;
 }
 
 .row {
-  height: 60px;
-  border-radius: var(--r-sm);
+  height: var(--skeleton-row-h, 60px);
+  border-radius: var(--skeleton-row-r, var(--r-sm));
+}
+
+/* 连体列表（后台）：行之间画发丝线；独立行（账户侧）不画。 */
+.row + .row {
+  border-top: var(--skeleton-row-sep, none);
 }
 
 /* ── card：通用详情卡片 ── */
@@ -62,20 +73,32 @@
   gap: var(--s-3);
 }
 
-/* ── feed：公共故事流卡片（对应 Story.module.css .entryLink） ── */
+/* ── feed：公共故事流卡片网格（对应 Story.module.css .feed / .card）──
+   列数取页面容器上的 --feed-cols（Home 的 .page 按断点设置），与真实网格同源。 */
 .feed {
-  gap: var(--s-3);
+  display: grid;
+  grid-template-columns: repeat(var(--feed-cols, 1), minmax(0, 1fr));
+  gap: var(--s-4);
 }
 
 .feedCard {
   display: flex;
   flex-direction: column;
   gap: var(--s-2);
-  padding: var(--s-4);
+  min-height: var(--feed-card-min-h, 13rem);
+  padding: var(--s-5);
   background-color: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   box-shadow: var(--shadow-2);
+}
+
+.metaBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin-top: auto;
+  padding-top: var(--s-3);
 }
 
 .metaRow {
@@ -84,9 +107,37 @@
   gap: var(--s-2);
 }
 
+.chipRow {
+  display: flex;
+  gap: var(--s-1);
+}
+
+.chip {
+  width: 3rem;
+  height: 24px;
+  border-radius: var(--r-xs);
+  background: var(--pink-100);
+  animation: skeletonPulse 1.6s ease-in-out infinite;
+}
+
 .avatar {
   width: 24px;
   height: 24px;
+}
+
+/* ── comment：评论卡片（对应 CommentSection .listItem）── */
+.comment {
+  gap: var(--s-3);
+}
+
+.commentCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-4) var(--s-5);
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
 }
 
 /* ── article：公共阅读页 ── */
@@ -122,7 +173,12 @@
 
 .lineTitle {
   height: 1.25rem;
-  width: 62%;
+  width: 82%;
+}
+
+.lineTitleShort {
+  height: 1.25rem;
+  width: 48%;
 }
 
 .lineWide {
@@ -156,8 +212,12 @@
 }
 
 @media (max-width: 640px) {
+  .feed {
+    gap: var(--s-3);
+  }
+
   .feedCard {
-    padding: var(--s-3) var(--s-4);
+    padding: var(--s-4);
   }
 }
 
@@ -167,10 +227,12 @@
   .avatarLg,
   .lineDisplay,
   .lineTitle,
+  .lineTitleShort,
   .lineWide,
   .lineMid,
   .lineNarrow,
-  .lineShort {
+  .lineShort,
+  .chip {
     animation: none;
   }
 }

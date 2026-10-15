@@ -12,8 +12,9 @@
   box-shadow: var(--shadow-2);
 }
 
+/* 只读 / 引用面：凹陷色，不铺粉——后台里粉色读作「选中」。 */
 .subtle {
-  background-color: var(--pink-100);
+  background-color: var(--surface-2);
   box-shadow: none;
 }
 
@@ -34,10 +35,9 @@
 /* ── SectionLabel ────────────────────────────────────────── */
 
 .sectionLabel {
+  font-family: var(--font-tech);
   font-size: var(--fs-xs);
   font-weight: var(--fw-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
   color: var(--text-muted);
   margin: 0 0 var(--s-3) 0;
 }
@@ -52,8 +52,12 @@
 }
 
 .dlTwoCol {
-  grid-template-columns: 1fr 1fr;
-  column-gap: var(--s-6);
+  --dl-gap: var(--s-6);
+  /* 最多两列（每列最小宽度取「半行」）；半行不足 7rem 时自动退成单列。按卡片自身宽度判断，
+     不加视口断点：这里的值多是短的（标签、语言、版本、时间），手机竖屏两列放得下，
+     过早退成单列会让一张信息卡占满一整屏 */
+  grid-template-columns: repeat(auto-fit, minmax(max(7rem, calc((100% - var(--dl-gap)) / 2)), 1fr));
+  column-gap: var(--dl-gap);
 }
 
 .dlRow {
@@ -68,14 +72,12 @@
 .dt {
   font-size: var(--fs-xs);
   font-weight: var(--fw-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
   color: var(--text-muted);
 }
 
 .dd {
   margin: 0;
-  font-size: var(--fs-sm);
+  font-size: var(--ui-fs);
   color: var(--text-body);
   word-break: break-word;
   font-variant-numeric: tabular-nums;
@@ -83,7 +85,7 @@
 
 @media (max-width: 640px) {
   .dlTwoCol {
-    grid-template-columns: 1fr;
+    --dl-gap: var(--s-4);
   }
 }
 
@@ -95,33 +97,41 @@
   gap: var(--s-2);
 }
 
+/* §5.10：轨道 6px、--r-pill、--surface-2；填充 --pink-600（正方）/ --blue-500（反方）分段，
+   宽度过渡 --dur-3。颜色之外另有图例文字与数字，方向不靠颜色单独传达（§7）。 */
 .voteTrack {
   position: relative;
+  height: 6px;
+}
+
+.voteFill {
   display: flex;
-  height: 8px;
-  border-radius: var(--r-xs);
-  background-color: var(--pink-100);
+  height: 100%;
+  border-radius: var(--r-pill);
+  background-color: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--line);
   overflow: hidden;
-  border: 1px solid var(--line);
 }
 
 .voteApprove {
   height: 100%;
-  background-color: var(--vote-approve);
-  transition: width var(--dur-2) var(--ease-standard);
+  background-color: var(--pink-600);
+  transition: width var(--dur-3) var(--ease-out);
 }
 
 .voteReject {
   height: 100%;
-  background-color: var(--vote-reject);
-  transition: width var(--dur-2) var(--ease-standard);
+  background-color: var(--blue-500);
+  transition: width var(--dur-3) var(--ease-out);
 }
 
 .voteThreshold {
   position: absolute;
-  top: -3px;
-  bottom: -3px;
+  top: calc(var(--s-1) * -1);
+  bottom: calc(var(--s-1) * -1);
   width: 2px;
+  margin-left: -1px;
+  border-radius: var(--r-pill);
   background-color: var(--ink);
   opacity: 0.55;
 }
@@ -150,11 +160,11 @@
 }
 
 .voteDotApprove {
-  background-color: var(--vote-approve);
+  background-color: var(--pink-600);
 }
 
 .voteDotReject {
-  background-color: var(--vote-reject);
+  background-color: var(--blue-500);
 }
 
 .voteThresholdLabel {

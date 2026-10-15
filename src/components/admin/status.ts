@@ -22,10 +22,13 @@ export const USER_STATUS_TONE: Record<string, BadgeTone> = {
 /** 编辑申请状态 → 徽标配色。 */
 export const EDIT_REQUEST_STATUS_TONE: Record<string, BadgeTone> = {
   pending: 'amber',
+  // 存量数据里的 in_review 与 pending 同属「进行中」（后端都可投票）
+  in_review: 'amber',
   approved: 'green',
   rejected: 'red',
   applied: 'accent',
   superseded: 'muted',
+  withdrawn: 'muted',
 }
 
 /** 用户状态 → i18n 文案 key（徽标文字需本地化，避免直接展示后端英文枚举）。 */
@@ -40,8 +43,10 @@ export const USER_STATUS_LABEL_KEYS: Record<string, string> = {
 /** 编辑申请状态 → i18n 文案 key。 */
 export const EDIT_REQUEST_STATUS_LABEL_KEYS: Record<string, string> = {
   pending: 'adminEditRequests.statusPending',
+  in_review: 'adminEditRequests.statusPending',
   approved: 'adminEditRequests.statusApproved',
   rejected: 'adminEditRequests.statusRejected',
   applied: 'adminEditRequests.statusApplied',
   superseded: 'adminEditRequests.statusSuperseded',
+  withdrawn: 'adminEditRequests.statusWithdrawn',
 }
