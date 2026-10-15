@@ -15,3 +15,9 @@ export function limitByUnicode(str: string, max: number): string {
   }
   return [...str].slice(0, max).join('')
 }
+
+/** 按字符数截断，只有真的截掉了内容才补省略号（避免短串也被误标为「未完」）。 */
+export function ellipsize(str: string, max: number): string {
+  const cut = limitByUnicode(str, max)
+  return cut.length < str.length ? `${cut}…` : cut
+}

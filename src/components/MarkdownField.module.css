@@ -10,79 +10,109 @@
 .editorWrapper:focus-within {
   border-color: var(--pink-600);
   outline: none;
-  box-shadow: 0 0 0 3px var(--ring-pink);
+  box-shadow: 0 0 0 3px var(--focus-halo);
 }
 
-@supports (box-shadow: 0 0 0 3px color-mix(in srgb, red 18%, transparent)) {
-  .editorWrapper:focus-within {
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--pink-600) 22%, transparent);
-  }
-}
-
+/* 编辑区高度随视口高度连续收放：大屏写长文有空间，矮屏不必滚过一整块编辑器才看到下一项。 */
 .editorWrapper :global(.md-editor) {
   border: none;
-  height: 400px;
+  height: clamp(260px, 50vh, 480px);
 }
 
-.editorWrapper :global(.md-editor .md-editor-stn .md-editor-toolbar-item) {
+/* 编辑器配色映射到 Spectrum 令牌（库自带的亮/暗皮肤是纯黑灰与蓝绿链接，与站内不成体系）。
+   选择器比库的 .md-editor / .md-editor-dark / .md-editor .md-editor-preview 多一层，稳定覆盖。 */
+.editorWrapper :global(.md-editor) {
+  --md-bk-color: var(--surface);
+  --md-bk-color-outstand: var(--surface-2);
+  --md-bk-hover-color: var(--pink-100);
+  --md-color: var(--text-body);
+  --md-hover-color: var(--ink);
+  --md-border-color: var(--line);
+  --md-border-hover-color: var(--line-strong);
+  --md-border-active-color: var(--pink-600);
+  --md-scrollbar-thumb-color: var(--pink-200);
+  --md-scrollbar-thumb-hover-color: var(--pink-300);
+  --md-scrollbar-thumb-active-color: var(--pink-300);
+  --md-scrollbar-bg-color: var(--surface);
+}
+
+.editorWrapper :global(.md-editor .md-editor-preview) {
+  --md-theme-color: var(--text-body);
+  --md-theme-heading-color: var(--ink);
+  --md-theme-link-color: var(--blue-600);
+  --md-theme-link-hover-color: var(--blue-600);
+  --md-theme-code-inline-color: var(--pink-700);
+  --md-theme-code-inline-bg-color: var(--pink-100);
+  --md-theme-code-block-color: var(--text-body);
+  --md-theme-code-block-bg-color: var(--code-bg);
+  --md-theme-code-inline-radius: var(--r-xs);
+  --md-theme-code-block-radius: var(--r-sm);
+  /* 引用与表格按 §5.13：2px --blue-400 左边条 + --surface-2 底；表格发丝线、无斑马纹、行 hover --surface-2。
+     只写默认预览主题真正读取的变量（库默认是 5px 绿条与 #eee 系边框）。 */
+  --md-theme-quote-color: var(--text-secondary);
+  --md-theme-quote-border: 2px solid var(--blue-400);
+  --md-theme-quote-bg-color: var(--surface-2);
+  --md-theme-table-td-border-color: var(--line);
+  --md-theme-table-stripe-color: transparent;
+  --md-theme-color-hover: var(--surface-2);
+  /* 引用内的表格（底已是 --surface-2）：边框加深一档，hover 回到 --surface。 */
+  --md-theme-border-color-inset: var(--line-strong);
+  --md-theme-color-hover-inset: var(--surface);
+}
+
+/* 编辑区正文跟随所在容器的密度（账户侧 16px）；库默认写死 14px。 */
+.editorWrapper :global(.md-editor .cm-editor) {
+  font-size: var(--ui-fs);
+}
+
+/* 工具栏图标按钮：与站内 ghost 按钮同一反馈（hover 铺 --pink-100、激活 --pink-200）。 */
+.editorWrapper :global(.md-editor .md-editor-toolbar-item) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
   color: var(--text-secondary);
-  background: var(--surface);
-  padding: var(--s-1) var(--s-2);
-  border-radius: var(--r-xs);
-  font-size: var(--fs-xs);
-  font-family: inherit;
-  cursor: pointer;
   transition:
-    border-color var(--dur-1) var(--ease-standard),
     color var(--dur-1) var(--ease-standard),
     background-color var(--dur-1) var(--ease-standard);
-  white-space: nowrap;
 }
 
-.editorWrapper :global(.md-editor .md-editor-stn .md-editor-toolbar-item):hover {
-  border-color: var(--pink-600);
+.editorWrapper :global(.md-editor .md-editor-toolbar-item):hover {
   color: var(--ink);
   background-color: var(--pink-100);
 }
 
-.editorWrapper :global(.md-editor .md-editor-stn .md-editor-toolbar-item):active {
-  background-color: var(--pink-100);
-}
-
-.editorWrapper :global(.md-editor .md-editor-stn .md-editor-toolbar-active) {
+.editorWrapper :global(.md-editor .md-editor-toolbar-active) {
+  color: var(--ink);
   background-color: var(--pink-200);
-  color: var(--ink);
-  border-color: var(--pink-600);
 }
 
-/* Comfortable touch targets on touch devices. */
+/* 触屏：工具栏按钮命中区扩到 44px（§4）。 */
 @media (any-pointer: coarse) {
-  .editorWrapper :global(.md-editor .md-editor-stn .md-editor-toolbar-item) {
+  .editorWrapper :global(.md-editor .md-editor-toolbar-item) {
     min-width: var(--tap-min);
     min-height: var(--tap-min);
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .editorWrapper,
-  .editorWrapper :global(.md-editor .md-editor-stn .md-editor-toolbar-item) {
-    transition: none;
+/* 窄屏：工具栏换行显示全部按钮。库默认单行横向滚动，手机上只露出前八九个、没有任何可滑动的
+   提示，右侧的预览等按钮完全找不到。 */
+@media (max-width: 640px) {
+  .editorWrapper :global(.md-editor .md-editor-toolbar-wrapper) {
+    height: auto;
+    overflow: visible;
   }
-}
 
-@media (max-width: 768px) {
-  .editorWrapper :global(.md-editor) {
-    height: 300px;
+  .editorWrapper :global(.md-editor .md-editor-toolbar) {
+    flex-wrap: wrap;
+    height: auto;
+    row-gap: 2px;
+    padding-block: 2px;
   }
-}
 
-@media (max-width: 480px) {
-  .editorWrapper :global(.md-editor) {
-    height: 250px;
+  .editorWrapper :global(.md-editor .md-editor-toolbar-left),
+  .editorWrapper :global(.md-editor .md-editor-toolbar-right) {
+    flex-wrap: wrap;
   }
 }
 
@@ -91,7 +121,6 @@
   align-items: center;
   flex-wrap: wrap;
   gap: var(--s-2) var(--s-3);
-  margin-top: 0.6rem;
 }
 
 .imageHint {

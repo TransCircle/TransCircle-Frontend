@@ -5,9 +5,20 @@ import { post, isRetryableFailure } from '@/api/client'
 import { useIntentKey } from '@/hooks/useIntentKey'
 import { ERRORS } from '@/api/errors'
 import { limitByUnicode } from '@/utils/string'
-import { AdminButton, Alert, Card, PageHeader, StatusScreen, TagInput, TextArea, TextField } from '@/components/ui'
+import {
+  AdminButton,
+  Alert,
+  BackIcon,
+  Card,
+  Checkbox,
+  PageHeader,
+  StatusScreen,
+  TagInput,
+  TextArea,
+  TextField,
+} from '@/components/ui'
 import { MarkdownField } from '@/components/MarkdownField'
-import shell from './Page.module.css'
+import shell from './Account.module.css'
 
 export const EditRequestForm = () => {
   const { id } = useParams<{ id: string }>()
@@ -18,6 +29,9 @@ export const EditRequestForm = () => {
   const [proposedTitle, setProposedTitle] = useState('')
   const [proposedContent, setProposedContent] = useState('')
   const [proposedSummary, setProposedSummary] = useState('')
+  /* 申请删除现有摘要：后端约定空串 = 清空、不传 = 不改（apidocs §10.4）。
+     输入框留空只表示「不改」，要清空必须明确勾选。 */
+  const [clearSummary, setClearSummary] = useState(false)
   const [proposedTags, setProposedTags] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const intent = useIntentKey()
@@ -47,8 +61,8 @@ export const EditRequestForm = () => {
     const trimmedTitle = proposedTitle.trim()
     const hasTitle = trimmedTitle
     const hasContent = proposedContent
-    const trimmedSummary = proposedSummary.trim()
-    const hasSummary = trimmedSummary
+    const trimmedSummary = clearSummary ? '' : proposedSummary.trim()
+    const hasSummary = clearSummary || !!trimmedSummary
     const hasTags = proposedTags.length > 0
     if (!hasTitle && !hasContent && !hasSummary && !hasTags) {
       setError(t('editRequest.atLeastOne'))
@@ -71,7 +85,7 @@ export const EditRequestForm = () => {
         proposedTitle: proposedTitle.trim() || undefined,
         proposedContent: proposedContent || undefined,
         proposedContentFormat: proposedContent ? 'markdown' : undefined,
-        proposedSummary: proposedSummary.trim() || undefined,
+        proposedSummary: clearSummary ? '' : trimmedSummary || undefined,
         proposedTags: proposedTags.length > 0 ? proposedTags : undefined,
       }
       // 内容原样重试时复用同一个幂等键，避免网络抖动后再点一次多出一份申请
@@ -89,7 +103,9 @@ export const EditRequestForm = () => {
             if (['reason', 'proposedTitle', 'proposedContent', 'proposedSummary', 'proposedTags'].includes(d.field)) {
               newFieldErrors[d.field] = d.reason
             } else {
-              genericMsg += (genericMsg ? '；' : '') + `${d.field}: ${d.reason}`
+              genericMsg +=
+                (genericMsg ? t('common.listSeparator') : '') +
+                t('common.fieldErrorItem', { field: d.field, reason: d.reason })
             }
           }
           setFieldErrors(newFieldErrors)
@@ -127,10 +143,11 @@ export const EditRequestForm = () => {
 
   return (
     <div className={`${shell.page} ${shell.pageNarrow}`}>
-      <div>
+      <div className={shell.backRow}>
         <AdminButton
           variant="ghost"
           size="sm"
+          iconLeft={<BackIcon />}
           onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
         >
           {t('editRequest.back')}
@@ -174,7 +191,8 @@ export const EditRequestForm = () => {
           />
           <TextField
             label={t('editRequest.proposedSummary')}
-            value={proposedSummary}
+            value={clearSummary ? '' : proposedSummary}
+            disabled={clearSummary}
             onChange={(e) => {
               setProposedSummary(limitByUnicode(e.target.value, 300))
               clearFieldError('proposedSummary')
@@ -182,6 +200,15 @@ export const EditRequestForm = () => {
             maxLength={300}
             invalid={!!fieldErrors.proposedSummary}
             hint={fieldErrors.proposedSummary || undefined}
+          />
+          <Checkbox
+            label={t('editRequest.clearSummary')}
+            hint={t('editRequest.clearSummaryHint')}
+            checked={clearSummary}
+            onChange={(e) => {
+              setClearSummary(e.target.checked)
+              clearFieldError('proposedSummary')
+            }}
           />
           <TagInput
             label={t('editRequest.proposedTags')}

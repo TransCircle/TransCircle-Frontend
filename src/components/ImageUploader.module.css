@@ -1,0 +1,16 @@
+/* 图片上传：按钮在上、错误提示紧随其下（与按钮拉开一档间距）。 */
+.uploader {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-2);
+}
+
+/* 原生文件选择框只作为程序触发的载体，视觉与无障碍树中都不出现（由按钮代理）。 */
+.fileInput {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}

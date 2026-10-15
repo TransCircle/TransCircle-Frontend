@@ -1,53 +1,45 @@
 /* 投稿表单：写下自己的故事是件需要勇气的事，版面尽量安静——
-   字段之间给足呼吸，次要说明压低，不用任何强调色去催促。 */
+   字段之间给足呼吸，次要说明压低，不用任何强调色去催促。外层卡片由 Submit 页提供。 */
 
 .form {
   display: flex;
   flex-direction: column;
   gap: var(--s-5);
   width: 100%;
-  max-width: var(--w-reading);
-  margin-inline: auto;
 }
 
-/* ── 身份提示条 ──────────────────────────────────────────── */
+/* ── 身份提示条：中性信息条（系统在说明「以谁的身份投稿」）── */
 
 .loginHint {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
   padding: var(--s-3) var(--s-4);
-  background-color: var(--pink-100);
+  background-color: var(--surface-2);
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
-  line-height: 1.6;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-caption);
+  color: var(--text-secondary);
 }
 
 .loginActions {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: var(--s-2);
+  justify-content: space-between;
+  gap: var(--s-2) var(--s-3);
   flex-wrap: wrap;
 }
 
 .userBadge {
   display: inline-flex;
-  align-items: center;
+  align-items: baseline;
   gap: var(--s-2);
   flex-wrap: wrap;
+  max-width: 100%;
 }
 
-/* 「这是你」的标记 → 人的语义 → 粉。全表单唯一的粉色元素。 */
-.userProvider {
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-semibold);
-  letter-spacing: 0.04em;
-  padding: 1px var(--s-2);
-  border-radius: var(--r-xs);
-  background-color: var(--pink-200);
-  color: var(--text-secondary);
-}
-
+/* 显示名最长 50 字、可能是不含空格的连续字符：允许任意处断行，不把卡片撑出横向滚动。 */
 .userName {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-weight: var(--fw-semibold);
   color: var(--ink);
 }
@@ -71,14 +63,8 @@
 }
 
 .successId {
-  word-break: break-all;
+  overflow-wrap: anywhere;
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
   font-variant-numeric: tabular-nums;
-}
-
-@media (max-width: 640px) {
-  .form {
-    gap: var(--s-5);
-  }
 }
