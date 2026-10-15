@@ -72,6 +72,10 @@ export const router = createBrowserRouter([
         element: <Home />,
       },
       {
+        path: 'search',
+        element: lazyNamed(() => import('../pages/Search'), 'Search'),
+      },
+      {
         path: 'submit',
         element: lazyNamed(() => import('../pages/Submit'), 'Submit'),
       },
