@@ -1,34 +1,37 @@
-/* 评论区：全是「人在说话」，因此署名与头像用粉色身份语义；
-   操作按钮、登录引导等系统元素维持蓝色。见 docs/DESIGN.md §0。 */
+/* 评论区 —— 公共阅读侧词表（正文 16px，卡片 --r-md）。
+   全是「人在说话」：身份由头像承担，署名用墨色；系统元素（登录引导、操作按钮）走中性面。 */
 
 .section {
   display: flex;
   flex-direction: column;
   gap: var(--s-4);
-  padding-top: var(--s-5);
+  padding-top: var(--s-6);
   border-top: 1px solid var(--line);
 }
 
+/* 与首页分区标题同一语言：小号 eyebrow，不和文章标题抢层级。 */
 .title {
   margin: 0;
-  font-size: var(--fs-lg);
+  font-family: var(--font-tech);
+  font-size: var(--fs-xs);
   font-weight: var(--fw-semibold);
-  color: var(--ink);
+  color: var(--text-muted);
 }
 
 .composer {
   display: flex;
   flex-direction: column;
-  gap: var(--s-2);
+  gap: var(--s-3);
 }
 
 .composerActions {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: var(--s-2);
 }
 
-/* 人机验证：验证组件 + 就近的失败提示排成一列，左对齐跟随表单流 */
+/* 人机验证：验证组件 + 就近的失败提示排成一列，左对齐跟随表单流。 */
 .captcha {
   display: flex;
   flex-direction: column;
@@ -36,18 +39,24 @@
   align-items: flex-start;
 }
 
+/* 未登录引导：中性信息条（系统在说话，不用粉色身份面）。 */
 .loginCta {
   display: flex;
-  flex-direction: column;
-  gap: var(--s-3);
-  align-items: flex-start;
-  padding: var(--s-4);
-  background-color: var(--pink-100);
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--s-3) var(--s-4);
+  padding: var(--s-4) var(--s-5);
+  background-color: var(--surface-2);
   border: 1px solid var(--line);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   color: var(--text-secondary);
-  font-size: var(--fs-sm);
-  line-height: 1.6;
+  font-size: var(--fs-body);
+  line-height: var(--lh-caption);
+}
+
+.loginCta p {
+  margin: 0;
 }
 
 .list {
@@ -56,14 +65,14 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--s-2);
+  gap: var(--s-3);
 }
 
 .listItem {
   background-color: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--r-sm);
-  padding: var(--s-4);
+  border-radius: var(--r-md);
+  padding: var(--s-4) var(--s-5);
 }
 
 .comment,
@@ -73,9 +82,8 @@
   gap: var(--s-2);
 }
 
-/* 回复：靠一条左轨和缩进表示从属，不再嵌套第二层卡片 */
+/* 回复：靠一条左轨和缩进表示从属，不再嵌套第二层卡片。 */
 .reply {
-  margin-left: var(--s-3);
   padding-left: var(--s-4);
   border-left: 2px solid var(--line);
 }
@@ -89,14 +97,14 @@
   color: var(--text-muted);
 }
 
-/* 身份由头像承担；署名用墨色，与故事流一致。 */
+/* 头像 §5.11：与故事流同档（24px，--pink-100 底 + 墨色首字）。 */
 .avatar,
 .avatarFallback {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: var(--r-pill);
   flex-shrink: 0;
-  background-color: var(--pink-200);
+  background-color: var(--pink-100);
 }
 
 .avatar {
@@ -120,18 +128,19 @@
 }
 
 .time {
+  font-family: var(--font-tech);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 
+/* 公共侧正文下限 16px（§2.7）。 */
 .content {
   margin: 0;
-  font-size: var(--fs-sm);
-  line-height: 1.75;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   color: var(--text-body);
   white-space: pre-wrap;
-  overflow-wrap: break-word;
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .deleted {
@@ -141,16 +150,18 @@
   font-style: italic;
 }
 
+/* 操作行：按钮自带 ghost 底色反馈，左缘对齐正文（抵消按钮自身内边距）。 */
 .actions {
   display: flex;
   gap: var(--s-1);
   align-items: center;
   flex-wrap: wrap;
+  margin-left: calc(var(--s-3) * -1);
 }
 
 .replies {
   list-style: none;
-  margin: var(--s-1) 0 0;
+  margin: var(--s-2) 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -160,17 +171,16 @@
 .replyComposer {
   display: flex;
   flex-direction: column;
-  gap: var(--s-2);
+  gap: var(--s-3);
   margin-top: var(--s-1);
 }
 
 @media (max-width: 640px) {
   .listItem {
-    padding: var(--s-3);
+    padding: var(--s-4);
   }
 
   .reply {
-    margin-left: 0;
     padding-left: var(--s-3);
   }
 }

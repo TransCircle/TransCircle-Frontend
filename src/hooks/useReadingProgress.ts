@@ -1,20 +1,20 @@
-import { useEffect, useRef } from 'react'
+import { useCallback } from 'react'
 
 /**
  * 阅读进度条（DESIGN.md v3.0 §5.10）。
  *
- * 返回挂在进度条填充元素上的 ref；滚动时直接写它的 `transform: scaleX()`。
+ * 返回挂在进度条填充元素上的**回调 ref**；滚动时直接写它的 `transform: scaleX()`。
  * 刻意不走 React state：进度每帧都在变，走 state 会让整棵子树每帧重渲染。
  * scaleX 在合成层上跑，不触发布局。
  *
- * 减少动画偏好下仍然更新——进度条传达的是位置信息，不是装饰动画；
- * 它本身没有过渡，不构成「动效」。
+ * 用回调 ref 而不是 useEffect + useRef：阅读页先渲染加载骨架、数据到达后才挂出进度条，
+ * 空依赖的 effect 只在首帧跑一次，那时元素还不存在，监听永远挂不上（进度条恒为 0）。
+ * 回调 ref 随元素挂载 / 卸载执行（React 19 支持返回清理函数），时机天然正确。
+ *
+ * 减少动画偏好下仍然更新——进度条传达的是位置信息，不是装饰动画；它本身没有过渡。
  */
-export const useReadingProgress = <T extends HTMLElement = HTMLElement>() => {
-  const barRef = useRef<T | null>(null)
-
-  useEffect(() => {
-    const bar = barRef.current
+export const useReadingProgress = <T extends HTMLElement = HTMLElement>() =>
+  useCallback((bar: T | null) => {
     if (!bar) return
 
     let frame = 0
@@ -44,6 +44,3 @@ export const useReadingProgress = <T extends HTMLElement = HTMLElement>() => {
       window.removeEventListener('resize', onScroll)
     }
   }, [])
-
-  return barRef
-}

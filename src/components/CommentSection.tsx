@@ -4,7 +4,18 @@ import { get, post, del, isRetryableFailure } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import { usePagedList, toPagedResult } from '@/hooks/usePagedList'
 import { useIntentKey } from '@/hooks/useIntentKey'
-import { Button, Alert, ConfirmDialog, EmptyState, Pagination, ReasonPromptDialog, Skeleton, TextArea, TurnstileWidget } from '@/components/ui'
+import {
+  Button,
+  Alert,
+  BrandText,
+  ConfirmDialog,
+  EmptyState,
+  Pagination,
+  ReasonPromptDialog,
+  Skeleton,
+  TextArea,
+  TurnstileWidget,
+} from '@/components/ui'
 import { TURNSTILE_SITE_KEY } from '@/config'
 import { useFormatTs } from '@/utils/datetime'
 import styles from './CommentSection.module.css'
@@ -83,6 +94,8 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
   const reportTurnstile = useTurnstile()
 
   const [content, setContent] = useState('')
+  /** 顶层输入框：空态 CTA 用它聚焦，不再按类名查询 DOM。 */
+  const composerRef = useRef<HTMLTextAreaElement>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const [replyTo, setReplyTo] = useState<string | null>(null)
@@ -394,6 +407,7 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
           }}
         >
           <TextArea
+            ref={composerRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder={t('comment.placeholder')}
@@ -426,7 +440,7 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
         <div className={styles.loginCta}>
           <p>{t('comment.loginRequired')}</p>
           <Button variant="primary" onClick={() => void loginWithPass(window.location.pathname)}>
-            {t('comment.loginCta')}
+            <BrandText text={t('comment.loginCta')} />
           </Button>
         </div>
       )}
@@ -435,15 +449,16 @@ export function CommentSection({ contributionId }: { contributionId: string }) {
       {notice && <Alert tone="success">{notice}</Alert>}
 
       {loading && items.length === 0 ? (
-        <Skeleton rows={3} />
+        <Skeleton variant="comment" rows={3} />
       ) : !error && items.length === 0 ? (
         <EmptyState
           title={t('comment.empty')}
           description={t('comment.emptyDescription')}
           icon={<DiscussionIcon />}
+          headingLevel="h3"
           action={
             user ? (
-              <Button variant="primary" onClick={() => document.querySelector<HTMLTextAreaElement>(`.${styles.composer} textarea`)?.focus()}>
+              <Button variant="primary" onClick={() => composerRef.current?.focus()}>
                 {t('comment.submit')}
               </Button>
             ) : undefined

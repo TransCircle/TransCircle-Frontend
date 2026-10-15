@@ -564,8 +564,7 @@
   },
   "publicContributionDetail": {
     "notFound": "投稿不存在或未发布",
-    "loading": "加载中...",
-    "backToHome": "← 返回首页",
+    "backToHome": "返回首页",
     "author": "作者",
     "submitEditRequest": "提交修改申请"
   },
@@ -735,7 +734,6 @@
   },
   "comment": {
     "title": "评论",
-    "loading": "评论加载中…",
     "empty": "还没有评论，来发表第一条吧",
     "emptyDescription": "每一条认真回应，都能让故事继续往下走",
     "loginRequired": "登录后即可参与讨论",
