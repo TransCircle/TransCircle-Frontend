@@ -10,6 +10,7 @@ import { RequirePermissionLayout } from '../pages/RequirePermissionLayout'
 import { RequireReviewerOrAdminLayout } from '../pages/RequireReviewerOrAdminLayout'
 import { PERMISSIONS } from '@/api/permissions'
 import { LegacyLoginRedirect } from '../pages/LegacyLoginRedirect'
+import type { RouteHandle } from './handles'
 
 import { Home } from '../pages/Home'
 
@@ -105,6 +106,7 @@ export const router = createBrowserRouter([
       {
         path: 'admin',
         element: <AdminShell />,
+        handle: { shell: 'admin' } satisfies RouteHandle,
         children: [
           {
             element: <RequireReviewerOrAdminLayout />,
@@ -227,6 +229,7 @@ export const router = createBrowserRouter([
       {
         path: '*',
         element: lazyNamed(() => import('../pages/NotFound'), 'NotFound'),
+        handle: { notFound: true } satisfies RouteHandle,
       },
     ],
   },

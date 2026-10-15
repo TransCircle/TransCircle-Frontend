@@ -1,63 +1,89 @@
-.appContainer {
-  width: 100%;
+/* 全站外壳（与 Pass 门户 RootLayout 同一结构）：flex column + main flex:1，
+   页脚在文档流里被推到底部；不用 fixed 页脚，正文无需预留底部空间。 */
+.app {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh;
   background-color: var(--bg);
+}
+
+/* §1.5：整条旗帜条纹同一视口只允许一处。页面自带签名条纹（认证舞台）时，
+   页脚通栏条纹让位。:has() 不支持时最坏是两处并存，属可接受的渐进降级。
+   导航当前项的 24×3px 迷你条纹是 §3.1 单列的场景，不参与判定。 */
+.app:has([data-flag-stripe='page']) [data-flag-stripe='footer'] {
+  display: none;
+}
+
+.main {
+  flex: 1;
+  width: 100%;
   display: flex;
   flex-direction: column;
 }
 
-/* 后台：固定视口高度的应用外壳，页面整体不滚动（侧栏/顶栏/页脚固定，仅内容区内部滚动） */
-.appContainer.appContainerAdmin {
-  height: 100vh;
-  height: 100dvh;
-  min-height: 0;
-  overflow: hidden;
+/* 路由焦点落点（tabIndex=-1）不显示焦点框；skip-link 之后由 Tab 产生真焦点环。 */
+.main:focus {
+  outline: none;
 }
 
-/* ── Skip link ───────────────────────────────── */
+/* 页面容器：按顶级路由段重挂载，每次进入播放淡入上滑。
+   填充模式必须是 backwards 而不是 both：终态若保留 transform（哪怕 translateY(0)），
+   包装层会成为 position:fixed 后代的包含块——阅读进度条就不再贴着视口。 */
+.pageWrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  animation: pageIn 280ms var(--ease-standard) backwards;
+}
 
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* ── 视口锁定：一屏内的短页面（认证舞台 / 状态屏 / 404）────────────
+   这类外壳（AuthStage / CenteredCard）自报 data-viewport-fit。宽屏（且视口够高）
+   把外壳钉成整一屏：main 自己滚，页脚常驻屏底，后到的内容只在 main 里消化。
+   窄屏刻意不锁——手机上一条常驻页脚要吃掉近 1/5 可视高度，让它回到文档流末尾。
+   只认路由页自己的根节点（.pageWrap 的直接子元素），嵌在长页里的居中卡不触发。 */
+@media (min-width: 901px) and (min-height: 600px) {
+  .app:has(.pageWrap > [data-viewport-fit]) {
+    height: 100dvh;
+  }
+
+  .app:has(.pageWrap > [data-viewport-fit]) .main {
+    /* flex 项默认 min-height:auto，不加这条 main 不会收缩，滚动条又会落回整页。 */
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+}
+
+/* ── 跳到主内容：键盘焦点前隐藏，聚焦时滑入左上角 ───────────── */
 .skipLink {
-  position: absolute;
-  left: -9999px;
-  top: 0;
+  position: fixed;
+  top: var(--s-2);
+  left: var(--s-2);
   z-index: var(--z-skip);
   padding: var(--s-2) var(--s-4);
-  background: var(--ink);
-  /* 底是墨，前景必须反过来取表面色。 */
-  color: var(--surface);
-  border-radius: 0 0 var(--r-sm) 0;
+  background-color: var(--pink-600);
+  color: var(--on-pink);
+  border-radius: var(--r-sm);
   font-size: var(--fs-sm);
   font-weight: var(--fw-semibold);
   text-decoration: none;
+  transform: translateY(calc(-100% - var(--s-5)));
+  transition: transform var(--dur-1) var(--ease-out);
 }
 
+/* 阴影只在显形时挂上：藏起来时投影会从视口顶边漏出一截。 */
 .skipLink:focus {
-  left: 0;
-}
-
-/* ── Main content ─────────────────────────────── */
-
-.mainContent {
-  flex: 1;
-  width: 100%;
-  max-width: var(--w-content);
-  margin: 0 auto;
-  /* 横向内边距走 --page-x（§4）：顶栏与内容区共用同一表达式，
-     两者左缘才会严格对齐。纵向仍随视口流体缩放。 */
-  padding: clamp(1.25rem, 0.9rem + 1.4vw, 2.5rem) var(--page-x);
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
-/* 后台路由：占满宽度，内部由 AdminShell 自管栅格与留白（仅作用于 /admin）。
-   复合选择器（0,2,0）确保覆盖文件后段 .mainContent 的响应式 padding（0,1,0）。 */
-.mainContent.mainContentAdmin {
-  max-width: none;
-  width: 100%;
-  padding: 0;
-  min-height: 0;
-  overflow: hidden;
+  transform: none;
+  box-shadow: var(--shadow-3);
 }
 
 /* ── Toast notifications (rate-limit / query-param) ──
@@ -140,27 +166,38 @@
   align-items: center;
   justify-content: center;
   flex: none;
-  min-width: var(--tap-min);
-  min-height: var(--tap-min);
+  width: var(--btn-h-sm);
+  height: var(--btn-h-sm);
+  margin: calc(var(--s-1) * -1) calc(var(--s-2) * -1) calc(var(--s-1) * -1) 0;
   border: none;
   padding: 0;
   font: inherit;
-  font-size: var(--fs-lg);
   line-height: 1;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
   border-radius: var(--r-sm);
-  transition: color var(--dur-1) var(--ease-standard);
+  transition:
+    color var(--dur-1) var(--ease-standard),
+    background-color var(--dur-1) var(--ease-standard);
 }
 
 .toastClose:hover {
   color: var(--ink);
+  background-color: var(--pink-100);
 }
 
-/* 路由焦点落点（tabIndex=-1）不显示焦点框——skip-link 之后才由Tab产生真焦点环。 */
-.mainContent:focus {
-  outline: none;
+/* 视觉 32px，粗指针下用透明伪元素把命中区扩到 44px，不撑高 toast。 */
+@media (any-pointer: coarse) {
+  .toastClose {
+    position: relative;
+  }
+
+  .toastClose::after {
+    content: '';
+    position: absolute;
+    inset: calc((var(--tap-min) - var(--btn-h-sm)) / -2);
+  }
 }
 
 /* 只供读屏的路由播报区。 */

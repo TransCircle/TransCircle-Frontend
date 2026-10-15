@@ -1,22 +1,21 @@
+/* 文档流静态页脚：由外壳（flex column + main flex:1）推到底部。
+   顶部分界由旗帜条纹承担，不再额外描边。 */
 .footer {
   width: 100%;
-  border-top: 1px solid var(--line);
   background-color: var(--bg);
 }
 
-/* 横向内边距与顶栏/内容区共用 --page-x（§4），三者左缘对齐。
-   注：§3.1 允许在页脚顶部放通栏旗帜条纹，这里刻意不放——
-   顶栏当前项与首页特色卡已各占一处，再加会突破「每屏 ≤1」的纪律（§1.5）。 */
+/* 横向内边距与顶栏/内容区共用 --page-x（§4），三者左缘对齐。 */
 .bar {
   max-width: var(--w-content);
   margin: 0 auto;
-  padding: var(--s-3) var(--page-x);
+  padding: var(--s-4) var(--page-x);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--s-2) var(--s-5);
   flex-wrap: wrap;
-  font-family: var(--font-tech);
+  /* 辅助信息下限 12px（§2.7）；中文正文走系统栈，只有 LICENSE 标签用 --font-tech。 */
   font-size: var(--fs-xs);
   color: var(--text-muted);
   line-height: var(--lh-caption);
@@ -32,14 +31,15 @@
 }
 
 .heading {
-  color: var(--text-secondary);
+  color: var(--pink-700);
+  font-family: var(--font-tech);
   font-weight: var(--fw-semibold);
   letter-spacing: 0.06em;
   flex-shrink: 0;
 }
 
 .sep {
-  opacity: 0.5;
+  color: var(--line-strong);
 }
 
 .copyright {
@@ -48,8 +48,17 @@
   flex-shrink: 0;
 }
 
-@media (max-width: 768px) {
+/* 窄屏：页脚回到文档流末尾（外壳只在宽屏锁视口），同时收紧体量——
+   手机上这条要是胖起来，能吃掉近 1/5 的可视高度。 */
+@media (max-width: 640px) {
   .bar {
-    font-size: var(--fs-xs);
+    padding: var(--s-3) var(--page-x);
+    gap: var(--s-1) var(--s-3);
+  }
+
+  /* 预告句与它前面的分隔点一起收起，只留「许可证 + 版权」两件事。 */
+  .sep,
+  .note {
+    display: none;
   }
 }

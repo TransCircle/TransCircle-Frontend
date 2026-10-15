@@ -1,11 +1,13 @@
 {
   "nav": {
     "ariaLabel": "主导航",
-    "logo": "TransCircle",
+    "logo": "TransCircle 故事分享",
+    "siteName": "故事分享",
     "home": "首页",
-    "submit": "故事投稿",
-    "archive": "归档计划",
-    "community": "社群互助 · 论坛",
+    "search": "搜索",
+    "submit": "投稿",
+    "archive": "人物归档",
+    "community": "社区论坛",
     "openMenu": "打开菜单",
     "closeMenu": "关闭菜单",
     "menuLabel": "站点导航菜单",
@@ -15,19 +17,18 @@
     "securitySettings": "安全设置",
     "adminDashboard": "管理后台",
     "logout": "退出登录",
-    "logoutShort": "退出",
     "login": "登录",
     "loggingIn": "登录中…",
-    "links": "链接",
-    "submitView": "投稿展示",
-    "externalLinks": "外部链接",
     "blog": "博客",
-    "explore": "搜索",
-    "mainSite": "导航站"
+    "mainSite": "跨环主站",
+    "more": "更多",
+    "contentSearch": "内容搜索",
+    "externalTag": "外部",
+    "inDevelopment": "开发中",
+    "accountLabel": "{{name}} 的账户菜单",
+    "accountLabelWithRole": "{{name}}（{{role}}）的账户菜单"
   },
   "theme": {
-    "light": "亮色模式",
-    "dark": "深色模式",
     "switchToLight": "切换至亮色模式",
     "switchToDark": "切换至深色模式"
   },
@@ -407,7 +408,9 @@
     "myContributions": "我的投稿 | TransCircle·跨环",
     "contribution": "故事 | TransCircle·跨环",
     "notFound": "页面未找到 | TransCircle·跨环",
-    "error": "页面出错 | TransCircle·跨环"
+    "error": "页面出错 | TransCircle·跨环",
+    "authCallback": "正在登录 | TransCircle·跨环",
+    "stepUp": "身份验证 | TransCircle·跨环"
   },
   "pagination": {
     "label": "分页导航",

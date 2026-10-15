@@ -1,45 +1,231 @@
-/* 顶栏 —— DESIGN.md v3.0 §5.3
-   玻璃浮动层（§1.4 允许：顶栏/下拉/抽屉），当前项用迷你旗帜条纹标记（§3.1）。
-   旗帜条纹每屏 ≤1 处：顶栏这一处用掉配额，页面内不得再出现第二处。 */
+/* 全站顶栏 — DESIGN.md §5.3（与 Pass 门户 AppNav 同一结构与取值） */
 
-.navbar {
-  width: 100%;
+.nav {
   position: sticky;
   top: 0;
   z-index: var(--z-nav);
   border-bottom: 1px solid var(--line);
-  /* 玻璃回退：不支持 backdrop-filter 时退成实色表面（§2.5） */
-  background-color: var(--surface);
 }
 
-@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .navbar {
-    background-color: var(--glass-bg);
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    backdrop-filter: blur(var(--glass-blur));
+/* 玻璃画在伪元素上，不直接给 .nav 加 backdrop-filter：带 backdrop-filter 的元素会成为
+   后代的「背景根」，下拉菜单（也是玻璃）伸出顶栏的那一截就模糊不到页面内容，
+   正文直接透进菜单文字里。挪到 ::before 后菜单的玻璃能正常模糊整页。 */
+.nav::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-color: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  pointer-events: none;
+}
+
+/* §2.5：玻璃必须带实色回退。 */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .nav::before {
+    background-color: var(--surface);
   }
 }
 
-.container {
+.inner {
   display: flex;
   align-items: center;
   gap: var(--s-4);
-  /* 与 .mainContent 共用 --page-x（§4），保证 logo 与页面标题左缘对齐。 */
-  padding: 0 var(--page-x);
+  width: 100%;
   height: var(--nav-h);
   max-width: var(--w-content);
   margin-inline: auto;
+  padding-inline: var(--page-x);
 }
 
-.leftSection {
+/* 左右两组都 flex:1，中间的链接组因此始终居中。 */
+.left {
   display: flex;
   align-items: center;
   gap: var(--s-2);
   flex: 1;
+  min-width: 0;
 }
 
-.rightSection {
+.brand {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: var(--btn-h);
+  border-radius: var(--r-sm);
+  text-decoration: none;
+}
+
+/* §9：正式横版 SVG，显示宽 132px、高自适应；按主题二选一。 */
+.brandLogo {
+  display: block;
+  width: 132px;
+  height: auto;
+}
+
+.brandLogoDark {
+  display: none;
+}
+
+.brandFull {
+  display: inline-flex;
+  align-items: center;
+}
+
+.brandIcon {
+  display: none;
+  width: 32px;
+  height: 32px;
+}
+
+/* 子站站名（§5.3）：logo 右侧 1px 分隔线 + 站名。logo 资产不改动，分隔线两侧的间距
+   满足 logo 四周留白（≥ 圆环直径 1/4）。站名用墨色系的次级文字色，读作 logo 的一部分而不是导航项。 */
+.brandDivider {
+  flex-shrink: 0;
+  width: 1px;
+  height: 20px;
+  margin-inline: var(--s-3);
+  background-color: var(--line-strong);
+}
+
+.brandSite {
+  flex-shrink: 0;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* 手机：横版 logo（132px）+ 站名会压到右侧的主题切换与头像，换成圆环图标 + 站名。 */
+@media (max-width: 480px) {
+  .brandFull {
+    display: none;
+  }
+
+  .brandIcon {
+    display: block;
+  }
+
+  .brandDivider {
+    margin-inline: var(--s-2);
+  }
+}
+
+:global([data-theme='dark']) .brandLogoLight {
+  display: none;
+}
+
+:global([data-theme='dark']) .brandLogoDark {
+  display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme])) .brandLogoLight {
+    display: none;
+  }
+
+  :global(:root:not([data-theme])) .brandLogoDark {
+    display: block;
+  }
+}
+
+/* ── 横排链接 ─────────────────────────────────────────────── */
+.links {
+  position: relative; /* 滑动条纹的定位参照 */
+  display: flex;
+  align-items: center;
+  gap: var(--s-1);
+}
+
+.linksDivider {
+  flex-shrink: 0;
+  width: 1px;
+  height: 16px;
+  margin-inline: var(--s-2);
+  background-color: var(--line);
+}
+
+.link {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  height: var(--btn-h);
+  padding: 0 var(--s-3);
+  border: none;
+  background: none;
+  border-radius: var(--r-sm);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-1) var(--ease-standard),
+    color var(--dur-1) var(--ease-standard);
+}
+
+/* §5.3：hover 文字转 --pink-700（暗色 --pink-400）。 */
+.link:hover {
+  color: var(--pink-700);
+  background-color: var(--pink-100);
+}
+
+:global([data-theme='dark']) .link:hover {
+  color: var(--pink-400);
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme])) .link:hover {
+    color: var(--pink-400);
+  }
+}
+
+/* 全局 tap 高亮已关：触屏按下到响应之间的反馈靠 :active 底色。 */
+.link:active,
+.menuItem:active,
+.drawerLink:active {
+  background-color: var(--pink-100);
+}
+
+.linkActive {
+  color: var(--ink);
+}
+
+/* 「更多」打开期间触发器保持高亮，chevron 翻转。 */
+.link[aria-expanded='true'] {
+  color: var(--ink);
+  background-color: var(--pink-100);
+}
+
+.chevron {
+  transition: transform var(--dur-1) var(--ease-standard);
+}
+
+.link[aria-expanded='true'] .chevron {
+  transform: rotate(180deg);
+}
+
+/* 当前项指示：挂在 .links 上，以 --stripe-x（当前项中心）定位，切换时横向滑过去。 */
+.activeStripe {
+  position: absolute;
+  left: 0;
+  bottom: 2px;
+  transform: translateX(calc(var(--stripe-x, 0px) - 50%));
+  pointer-events: none;
+}
+
+.activeStripeAnimated {
+  transition: transform var(--dur-2) var(--ease-standard);
+}
+
+.right {
+  position: relative; /* 退出失败提示的定位参照 */
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -47,6 +233,273 @@
   flex: 1;
 }
 
+/* ── 下拉菜单（玻璃浮动层，§5.3 / §1.4）──────────────────── */
+.dropdown {
+  position: relative;
+}
+
+.menu {
+  position: absolute;
+  /* 顶部间隙 6px：悬停打开时指针从触发器跨到菜单几乎无空档，配合 140ms 延时关闭不闪。 */
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 12rem;
+  margin: 0;
+  padding: var(--s-1);
+  list-style: none;
+  background-color: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-3);
+  z-index: var(--z-nav);
+  transform-origin: top left;
+  animation: menuIn var(--dur-2) var(--ease-out);
+}
+
+.menuRight {
+  left: auto;
+  right: 0;
+  transform-origin: top right;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .menu {
+    background-color: var(--surface);
+  }
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  width: 100%;
+  min-height: var(--btn-h);
+  padding: var(--s-2) var(--s-3);
+  border: none;
+  background: none;
+  border-radius: var(--r-sm);
+  font: inherit;
+  font-size: var(--fs-sm);
+  color: var(--text-body);
+  text-decoration: none;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-1) var(--ease-standard),
+    color var(--dur-1) var(--ease-standard);
+}
+
+.menuItem:hover {
+  background-color: var(--pink-100);
+  color: var(--pink-700);
+}
+
+.menuItem:disabled {
+  opacity: var(--disabled-opacity);
+  cursor: not-allowed;
+}
+
+.menuLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+/* 外链箭头：辅助提示，弱化。 */
+.extIcon {
+  flex: none;
+  opacity: 0.6;
+}
+
+/* 「外部」标签：中性描边小签（与 Pass 项目卡同款），不用粉色以免读成强调。 */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 var(--s-1);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-xs);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  line-height: 1;
+  color: var(--text-secondary);
+}
+
+/* 「开发中」：色点 + 文字，状态不靠颜色单独传达（§7）。 */
+.pending {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.pending::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background-color: var(--warning-text);
+}
+
+/* 账户菜单的身份抬头：非交互，只说明「当前是谁 / 什么角色」。 */
+.menuHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 16rem;
+  padding: var(--s-2) var(--s-3);
+  line-height: var(--lh-heading);
+}
+
+.menuHeaderName,
+.menuHeaderMeta {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.menuHeaderName {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--ink);
+}
+
+.menuHeaderMeta {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.menuSeparator {
+  height: 1px;
+  margin: var(--s-1) var(--s-2);
+  background-color: var(--line);
+}
+
+/* ── 账户触发器（裸圆形头像）──────────────────────────────── */
+.acctBtn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--btn-h);
+  height: var(--btn-h);
+  padding: 0;
+  border: none;
+  background: none;
+  border-radius: var(--r-pill); /* §2.8：pill 仅头像 */
+  cursor: pointer;
+  color: var(--ink);
+  transition:
+    box-shadow var(--dur-1) var(--ease-standard),
+    transform var(--dur-1) var(--ease-spring);
+}
+
+.acctBtn:hover {
+  box-shadow: 0 0 0 2px var(--pink-200);
+}
+
+:global([data-theme='dark']) .acctBtn:hover {
+  box-shadow: 0 0 0 2px var(--pink-500);
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme])) .acctBtn:hover {
+    box-shadow: 0 0 0 2px var(--pink-500);
+  }
+}
+
+.acctBtn[aria-expanded='true'] {
+  box-shadow: 0 0 0 2px var(--pink-600);
+}
+
+.acctBtn:active {
+  transform: scale(0.97);
+}
+
+/* 头像本身不吃指针事件：点击 / 悬停判定始终落在按钮上。 */
+.acctBtn > * {
+  pointer-events: none;
+}
+
+.avatar,
+.avatarFallback {
+  display: block;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-pill);
+}
+
+.avatar {
+  object-fit: cover;
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.avatarFallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 身份面：纯色，不使用渐变（§1.1）。 */
+  background-color: var(--pink-100);
+  color: var(--ink);
+  font-family: var(--font-tech);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  user-select: none;
+}
+
+/* ── 登录：§5.1 Primary，禁止 pill ──────────────────────────── */
+.loginBtn {
+  display: inline-flex;
+  align-items: center;
+  height: var(--btn-h);
+  padding: 0 20px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background-color: var(--pink-600);
+  color: var(--on-pink);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-1) var(--ease-standard),
+    transform var(--dur-1) var(--ease-spring),
+    box-shadow var(--dur-1) var(--ease-standard);
+}
+
+.loginBtn:not(:disabled):hover {
+  background-color: var(--pink-600-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--glow-pink);
+}
+
+.loginBtn:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+.loginBtn:disabled {
+  opacity: var(--disabled-opacity);
+  cursor: progress;
+}
+
+:global([data-theme='dark']) .loginBtn:not(:disabled):hover {
+  box-shadow: var(--glow-pink-dark);
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme])) .loginBtn:not(:disabled):hover {
+    box-shadow: var(--glow-pink-dark);
+  }
+}
+
+/* 退出失败：挂在右侧组下方的轻提示，语义色 + role=alert。 */
 .logoutError {
   position: absolute;
   top: calc(100% + var(--s-2));
@@ -63,126 +516,24 @@
   white-space: nowrap;
 }
 
-.toggles {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-}
-
-/* ── 旗帜条纹（§3.1）：三个实色 span，禁止渐变。
-   白段在亮底上需要 1px --line 描边才看得见。 ── */
-.flagStripe {
-  display: flex;
-  width: 24px;
-  height: 3px;
-  overflow: hidden;
-  border-radius: 1px;
-}
-
-.flagStripe > span {
-  display: block;
-  flex: 1;
-  height: 100%;
-}
-
-.flagPink {
-  background-color: var(--flag-pink);
-}
-
-.flagWhite {
-  background-color: var(--flag-white);
-  box-shadow: inset 0 0 0 1px var(--line);
-}
-
-.flagBlue {
-  background-color: var(--flag-blue);
-}
-
-/* ── 登录按钮（§5.1 Primary）──
-   墨字 on --pink-600；--r-sm，不做 pill。 */
-.loginBtn {
-  appearance: none;
-  border: 0;
-  font-family: inherit;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  height: var(--btn-h);
-  padding: 0 20px;
-  border-radius: var(--r-sm);
-  background-color: var(--pink-600);
-  color: var(--on-pink);
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
-  text-decoration: none;
-  white-space: nowrap;
-  transition:
-    background-color var(--dur-1) var(--ease-standard),
-    box-shadow var(--dur-1) var(--ease-standard),
-    transform var(--dur-1) var(--ease-spring);
-}
-
-.loginBtn:hover {
-  background-color: var(--pink-600-hover);
-  transform: translateY(-1px);
-}
-
-.loginBtn:active {
-  transform: scale(0.97);
-}
-
-/* 暗色下主行动色带霓虹光（§3.2）。同一视野 glow ≤3 处。 */
-[data-theme='dark'] .loginBtn:hover {
-  box-shadow: var(--glow-pink-dark);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) .loginBtn:hover {
-    box-shadow: var(--glow-pink-dark);
-  }
-}
-
-/* 触屏下按钮抬到 44px（§4） */
-@media (any-pointer: coarse) {
-  .loginBtn {
-    min-height: var(--tap-min);
-  }
-}
-
-/* ── 汉堡 ────────────────────────────────────── */
+/* ── 汉堡 + 左抽屉（≤1024px）──────────────────────────────── */
 .hamburger {
   display: none;
+  position: relative;
   flex-direction: column;
   justify-content: center;
   gap: 4px;
   width: var(--btn-h);
   height: var(--btn-h);
-  padding: 8px;
-  box-sizing: border-box;
-  border-radius: var(--r-sm);
-  background: transparent;
+  padding: var(--s-2);
   border: none;
+  background: none;
   cursor: pointer;
-  position: relative;
-  z-index: calc(var(--z-drawer) + 1);
-  transition: background-color var(--dur-1) var(--ease-standard);
+  border-radius: var(--r-sm);
 }
 
 .hamburger:hover {
   background-color: var(--pink-100);
-}
-
-/* 触屏命中区扩到 44px（视觉仍 40px，用居中 ::after），不撑高顶栏。 */
-@media (any-pointer: coarse) {
-  .hamburger::after {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: var(--tap-min);
-    height: var(--tap-min);
-    transform: translate(-50%, -50%);
-  }
 }
 
 .bar {
@@ -190,376 +541,25 @@
   height: 2px;
   width: 100%;
   background-color: var(--ink);
-  border-radius: 2px;
-  transition:
-    transform var(--dur-2) var(--ease-out),
-    opacity var(--dur-1) var(--ease-standard);
-  transform-origin: center center;
+  border-radius: var(--r-xs);
 }
 
-.hamburgerOpen .barTop {
-  transform: translateY(6px) rotate(45deg);
-}
-
-.hamburgerOpen .barMid {
-  opacity: 0;
-}
-
-.hamburgerOpen .barBot {
-  transform: translateY(-6px) rotate(-45deg);
-}
-
-.externalIcon {
-  margin-left: 0.15rem;
-  opacity: 0.7;
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.logo a {
-  display: inline-flex;
-  align-items: center;
-  height: 40px;
-  text-decoration: none;
-}
-
-.logoImage {
-  display: block;
-  width: 132px;
-  height: auto;
-}
-
-.logoImageDark {
-  display: none;
-}
-
-:global([data-theme='dark']) .logoImageLight {
-  display: none;
-}
-
-:global([data-theme='dark']) .logoImageDark {
-  display: block;
-}
-
-@media (prefers-color-scheme: dark) {
-  :global(:root:not([data-theme])) .logoImageLight {
-    display: none;
-  }
-
-  :global(:root:not([data-theme])) .logoImageDark {
-    display: block;
-  }
-}
-
-/* ── 桌面导航链接 ──────────────────────────── */
-.navLinks {
-  list-style: none;
-  display: flex;
-  gap: var(--s-1);
-  margin: 0;
-  padding: 0;
-  flex-wrap: nowrap;
-}
-
-.navLinks li a,
-.dropdownTrigger {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-1);
-  border: none;
-  background: none;
-  font: inherit;
-  cursor: pointer;
-  text-decoration: none;
-  color: var(--text-secondary);
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
-  transition: color var(--dur-1) var(--ease-standard);
-  padding: var(--s-2) var(--s-3);
-  border-radius: var(--r-sm);
-  box-sizing: border-box;
-  white-space: nowrap;
-}
-
-/* 导航 hover 是「色转移」，不铺底色（§5.3 / §6.2）。暗色下转 --pink-400（§5.1 文字档）。 */
-.navLinks li a:hover,
-.dropdown:hover .dropdownTrigger,
-.dropdownOpen .dropdownTrigger {
-  color: var(--pink-700);
-}
-
-[data-theme='dark'] .navLinks li a:hover,
-[data-theme='dark'] .dropdown:hover .dropdownTrigger,
-[data-theme='dark'] .dropdownOpen .dropdownTrigger {
-  color: var(--pink-400);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) .navLinks li a:hover,
-  :root:not([data-theme]) .dropdown:hover .dropdownTrigger,
-  :root:not([data-theme]) .dropdownOpen .dropdownTrigger {
-    color: var(--pink-400);
-  }
-}
-
-/* 当前项：底部挂 24×3px 迷你旗帜条纹（§5.3），不用下划线。 */
-.navCurrent {
-  color: var(--ink) !important;
-}
-
-.navCurrentStripe {
-  position: absolute;
-  left: 50%;
-  bottom: 2px;
-  transform: translateX(-50%);
-}
-
-.navLinks li .disabled {
-  display: inline-flex;
-  align-items: center;
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
-  padding: var(--s-2) var(--s-3);
-  border-radius: var(--r-sm);
-  box-sizing: border-box;
-  white-space: nowrap;
-  color: var(--text-muted);
-  cursor: default;
-}
-
-.dropdown {
-  position: relative;
-}
-
-.dropdownTrigger {
-  appearance: none;
-  -webkit-appearance: none;
-  font-family: inherit;
-  margin: 0;
-  user-select: none;
-}
-
-.chevron {
-  transition: transform var(--dur-1) var(--ease-out);
-}
-
-.dropdownOpen .chevron,
-.dropdownTrigger[aria-expanded='true'] .chevron {
-  transform: rotate(180deg);
-}
-
-/* ── 下拉面板：玻璃 + --shadow-3 + scale(.96→1) 入场（§5.3 / §6.8）── */
-.dropdownMenu,
-.acctMenu {
-  position: absolute;
-  top: calc(100% + var(--s-2));
-  list-style: none;
-  margin: 0;
-  padding: var(--s-1);
-  border-radius: var(--r-lg);
-  min-width: 11rem;
-  box-shadow: var(--shadow-3);
-  z-index: var(--z-nav);
-  background-color: var(--surface);
-  border: 1px solid var(--line);
-}
-
-@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .dropdownMenu,
-  .acctMenu {
-    background-color: var(--glass-bg);
-    border-color: var(--glass-border);
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    backdrop-filter: blur(var(--glass-blur));
-  }
-}
-
-.dropdownMenu {
-  left: 0;
-  opacity: 0;
-  visibility: hidden;
-  transform: scale(0.96);
-  transform-origin: top left;
-  /* visibility 是离散属性：关闭时延后到过渡结束再隐藏，打开时立即可见。
-     若写成 visibility var(--dur-2)，会在 50% 处翻转，打开前一半时间菜单不可见。 */
-  transition:
-    opacity var(--dur-2) var(--ease-out),
-    transform var(--dur-2) var(--ease-out),
-    visibility 0s linear var(--dur-2);
-}
-
-.dropdownOpen .dropdownMenu {
-  opacity: 1;
-  visibility: visible;
-  transform: scale(1);
-  transition:
-    opacity var(--dur-2) var(--ease-out),
-    transform var(--dur-2) var(--ease-out),
-    visibility 0s;
-}
-
-.acctMenu {
-  right: 0;
-  transform-origin: top right;
-  animation: menuIn var(--dur-2) var(--ease-out);
-}
-
-@keyframes menuIn {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.dropdownMenu li a,
-.acctMenu li a,
-.acctMenu li button {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-2);
-  width: 100%;
-  padding: var(--s-2) var(--s-3);
-  border-radius: var(--r-sm);
-  font-size: var(--fs-sm);
-  color: var(--text-body);
-  white-space: nowrap;
-  text-decoration: none;
-  text-align: left;
-  cursor: pointer;
-  background: none;
-  border: none;
-  font-family: inherit;
-  box-sizing: border-box;
-  transition:
-    background-color var(--dur-1) var(--ease-standard),
-    color var(--dur-1) var(--ease-standard);
-}
-
-.dropdownMenu li a:hover,
-.acctMenu li a:hover,
-.acctMenu li button:hover {
-  background-color: var(--pink-100);
-  color: var(--ink);
-}
-
-/* ── 头像 / 账户（§5.11）──
-   头像 --r-pill，--pink-100 底 + --ink 首字母。 */
-.acctDropdown {
-  position: relative;
-}
-
-.acctBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--btn-h);
-  height: var(--btn-h);
-  border: none;
-  background: none;
-  border-radius: var(--r-pill);
-  cursor: pointer;
-  padding: 0;
-  overflow: hidden;
-  position: relative;
-  transition:
-    box-shadow var(--dur-1) var(--ease-standard),
-    transform var(--dur-1) var(--ease-spring);
-}
-
-@media (any-pointer: coarse) {
-  .acctBtn::after {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: var(--tap-min);
-    height: var(--tap-min);
-    transform: translate(-50%, -50%);
-  }
-
-  /* 桌面导航链接（>1200px 触屏设备上仍可见）命中区补足 44px。 */
-  .navLinks li a {
-    min-height: var(--tap-min);
-  }
-}
-
-.acctBtn:hover,
-.acctBtn[aria-expanded='true'] {
-  box-shadow: 0 0 0 2px var(--pink-600);
-}
-
-.acctBtn:active {
-  transform: scale(0.97);
-}
-
-.acctAvatar {
-  display: block;
-  width: var(--btn-h);
-  height: var(--btn-h);
-  border-radius: var(--r-pill);
-  object-fit: cover;
-}
-
-.acctAvatarFallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--btn-h);
-  height: var(--btn-h);
-  border-radius: var(--r-pill);
-  /* 身份面：纯色，不使用渐变（§1.1）。 */
-  background-color: var(--pink-100);
-  color: var(--ink);
-  font-family: var(--font-tech);
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
-  user-select: none;
-}
-
-/* ── ≤1200px：导航折叠为抽屉（§4）── */
-@media (max-width: 1200px) {
-  .container {
-    padding: 0 var(--page-x);
-  }
-
-  .loginBtn {
-    padding: 0 var(--s-3);
-    font-size: var(--fs-xs);
-  }
-
-  .hamburger {
-    display: flex;
-  }
-
-  .navLinks {
-    display: none;
-  }
-}
-
-/* ── 抽屉：右侧滑入（§5.3）──────────────────── */
+/* 抽屉从左侧盖住汉堡所在区域，关闭入口由抽屉头部的关闭键与 Esc / 遮罩承担，汉堡不做 X 形变。 */
+/* 抽屉自左侧滑入：汉堡在顶栏左侧，面板从同一侧出来，点击位置与动效方向一致。 */
 .drawer {
   position: fixed;
   top: 0;
-  right: 0;
+  left: 0;
   bottom: 0;
   width: min(320px, 88vw);
   z-index: var(--z-drawer);
   background-color: var(--surface);
-  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
   box-shadow: var(--shadow-3);
-  transform: translateX(100%);
+  transform: translateX(-100%);
   transition: transform var(--dur-2) var(--ease-out);
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .drawerOpen {
@@ -582,7 +582,7 @@
 .drawerBrand {
   display: inline-flex;
   align-items: center;
-  height: 40px;
+  height: var(--btn-h);
 }
 
 .drawerClose {
@@ -596,11 +596,9 @@
   border-radius: var(--r-sm);
   background: transparent;
   color: var(--ink);
-  font: inherit;
-  font-size: var(--fs-h2);
-  line-height: 1;
   cursor: pointer;
-  transition: background-color var(--dur-1) var(--ease-standard),
+  transition:
+    background-color var(--dur-1) var(--ease-standard),
     color var(--dur-1) var(--ease-standard);
 }
 
@@ -619,8 +617,10 @@
 .drawerLink {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--s-2);
-  padding: var(--s-3);
+  min-height: var(--tap-min);
+  padding: var(--s-2) var(--s-3);
   border: none;
   background: none;
   border-radius: var(--r-sm);
@@ -637,78 +637,74 @@
 
 .drawerLink:hover {
   background-color: var(--pink-100);
+  color: var(--pink-700);
+}
+
+.drawerLink:disabled {
+  opacity: var(--disabled-opacity);
+  cursor: progress;
+}
+
+.drawerLink[aria-current='page'] {
+  background-color: var(--pink-100);
   color: var(--ink);
+  font-weight: var(--fw-semibold);
 }
 
-.drawerLink.disabled {
-  cursor: default;
-}
-
-/* 抽屉链接逐个 40ms 交错上浮入场（§5.3）。
-   backwards 让元素在延迟期间就保持起始态，否则会先闪一下终态。 */
-@media (prefers-reduced-motion: no-preference) {
-  .drawerOpen .drawerLink {
-    animation: drawer-link-in var(--dur-2) var(--ease-out) backwards;
-    animation-delay: calc(var(--n, 0) * 40ms);
-  }
-
-  .drawerOpen .drawerLink:nth-child(1) {
-    --n: 0;
-  }
-  .drawerOpen .drawerLink:nth-child(2) {
-    --n: 1;
-  }
-  .drawerOpen .drawerLink:nth-child(3) {
-    --n: 2;
-  }
-  .drawerOpen .drawerLink:nth-child(4) {
-    --n: 3;
-  }
-  .drawerOpen .drawerLink:nth-child(5) {
-    --n: 4;
-  }
-  .drawerOpen .drawerLink:nth-child(6) {
-    --n: 5;
-  }
-  .drawerOpen .drawerLink:nth-child(7) {
-    --n: 6;
-  }
-  .drawerOpen .drawerLink:nth-child(8) {
-    --n: 7;
-  }
-  .drawerOpen .drawerLink:nth-child(9) {
-    --n: 8;
-  }
-  .drawerOpen .drawerLink:nth-child(n + 10) {
-    --n: 9;
-  }
-}
-
-@keyframes drawer-link-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* 触屏下抽屉链接抬到 44px（§4） */
-@media (any-pointer: coarse) {
-  .drawerLink {
-    min-height: var(--tap-min);
-  }
+/* 抽屉分组小标题（「更多」）：eyebrow 标签，--font-tech。 */
+.drawerGroup {
+  margin: var(--s-3) 0 0;
+  padding: 0 var(--s-3);
+  font-family: var(--font-tech);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
 }
 
 .drawerDivider {
-  height: 1px;
-  background-color: var(--line);
   margin: var(--s-2) 0;
+  border: none;
+  border-top: 1px solid var(--line);
 }
 
-/* ── 遮罩：--overlay + blur(4px)（§5.3）── */
+/* §5.3：抽屉条目逐个 40ms 交错上浮入场。 */
+@media (prefers-reduced-motion: no-preference) {
+  .drawerOpen .drawerInner > * {
+    animation: drawerLinkIn var(--dur-2) var(--ease-out) backwards;
+  }
+  .drawerOpen .drawerInner > *:nth-child(1) {
+    animation-delay: 40ms;
+  }
+  .drawerOpen .drawerInner > *:nth-child(2) {
+    animation-delay: 80ms;
+  }
+  .drawerOpen .drawerInner > *:nth-child(3) {
+    animation-delay: 120ms;
+  }
+  .drawerOpen .drawerInner > *:nth-child(4) {
+    animation-delay: 160ms;
+  }
+  .drawerOpen .drawerInner > *:nth-child(5) {
+    animation-delay: 200ms;
+  }
+  .drawerOpen .drawerInner > *:nth-child(6) {
+    animation-delay: 240ms;
+  }
+  .drawerOpen .drawerInner > *:nth-child(7) {
+    animation-delay: 280ms;
+  }
+  .drawerOpen .drawerInner > *:nth-child(8) {
+    animation-delay: 320ms;
+  }
+  .drawerOpen .drawerInner > *:nth-child(9) {
+    animation-delay: 360ms;
+  }
+  .drawerOpen .drawerInner > *:nth-child(n + 10) {
+    animation-delay: 400ms;
+  }
+}
+
+/* §5.3：遮罩 --overlay + blur(4px)。 */
 .overlay {
   position: fixed;
   inset: 0;
@@ -725,4 +721,93 @@
 .overlayOn {
   opacity: 1;
   pointer-events: auto;
+}
+
+/* §5.7：下拉入场 scale(.96→1)。 */
+@keyframes menuIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes drawerLinkIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* 粗指针（含触屏笔记本）：行类直接给足 44px；顶栏图标控件视觉保持 --btn-h，
+   用居中透明 ::after 把命中区扩到 44px，既达标又不撑高顶栏。 */
+@media (any-pointer: coarse) {
+  .link,
+  .menuItem {
+    min-height: var(--tap-min);
+  }
+
+  .hamburger::after,
+  .acctBtn::after,
+  .loginBtn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--tap-min);
+    height: var(--tap-min);
+    transform: translate(-50%, -50%);
+  }
+
+  .loginBtn {
+    position: relative;
+  }
+}
+
+/* 1025–1200px：横排仍在，收紧间距给左右两组留足空间。 */
+@media (max-width: 1200px) {
+  .inner {
+    gap: var(--s-3);
+  }
+
+  .link {
+    padding-inline: var(--s-2);
+  }
+}
+
+/* ≤1024px：横排收进汉堡抽屉（与 Navbar.tsx 的 MOBILE_BREAKPOINT 互指）。 */
+@media (max-width: 1024px) {
+  .hamburger {
+    display: flex;
+    flex-shrink: 0;
+  }
+
+  .links {
+    display: none;
+  }
+
+  /* 链接收起后不再需要左右等分来让中间居中：右组只占自身宽度，品牌组拿到其余空间，
+     汉堡按钮不会被站名挤窄。 */
+  .right {
+    flex: 0 0 auto;
+  }
+
+  .loginBtn {
+    padding: 0 var(--s-4);
+  }
+}
+
+/* 预告项：灰字、无悬停反馈，看上去就不像能点。放在文件末尾——同特异性下靠源顺序
+   压过 .menuItem / .drawerLink 的 hover 与 active 规则。 */
+.menuItemMuted,
+.drawerLinkMuted {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.menuItemMuted:hover,
+.drawerLinkMuted:hover,
+.menuItemMuted:active,
+.drawerLinkMuted:active {
+  background-color: transparent;
+  color: var(--text-muted);
 }
