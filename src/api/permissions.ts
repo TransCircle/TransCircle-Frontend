@@ -103,13 +103,131 @@ export function hasPermission(permissions: string[], permission: string): boolea
   return permissions.includes(WILDCARD) || permissions.includes(permission)
 }
 
+/** 是否持有通配权限 '*'。 */
+export function hasWildcard(permissions: string[]): boolean {
+  return permissions.includes(WILDCARD)
+}
+
+/** 执行时需要二次验证的情况：always = 每次都要；config = 取决于站点配置（发布）；partial = 部分操作要（评论只有隐藏要）。 */
+export type StepUpRule = 'always' | 'config' | 'partial'
+
+export interface AdminPermissionInfo {
+  key: string
+  /** 权限名称（i18n key，沿用设置页的 settings.perm.*） */
+  labelKey: string
+  /** 这个权限在本站能做什么（i18n key），取自后端各接口的 requirePermission */
+  scopeKey: string
+  stepUp?: StepUpRule
+  /** 要在后台用上它，还得同时拥有的权限（比如审核、发布都要先能打开投稿详情） */
+  requires?: string
+  /** 已迁移到统一身份（IAM）管理、本站不再使用 */
+  legacy?: boolean
+}
+
 /**
- * 登录/注册后的落地页：按权限选「确实有权访问」的首个管理页，否则投稿页。
- * 用于权限驱动跳转，避免把 editor / IAM 细粒度授权用户错误送到 /submit 或被守卫拒绝。
+ * 后台权限目录：与后端 routes/admin.ts、routes/comments.ts 的 requirePermission 一一对应。
+ * 概览页的权限表、后台入口判断都用这一份；后端加了权限，这里要同步。
+ */
+export const ADMIN_PERMISSION_CATALOG: readonly AdminPermissionInfo[] = [
+  {
+    key: PERMISSIONS.CONTRIBUTION_READ,
+    labelKey: 'settings.perm.contributionRead',
+    scopeKey: 'adminPermissions.scope.contributionRead',
+  },
+  {
+    key: PERMISSIONS.CONTRIBUTION_REVIEW,
+    labelKey: 'settings.perm.contributionReview',
+    scopeKey: 'adminPermissions.scope.contributionReview',
+    requires: PERMISSIONS.CONTRIBUTION_READ,
+  },
+  {
+    key: PERMISSIONS.CONTRIBUTION_PUBLISH,
+    labelKey: 'settings.perm.contributionPublish',
+    scopeKey: 'adminPermissions.scope.contributionPublish',
+    stepUp: 'config',
+    requires: PERMISSIONS.CONTRIBUTION_READ,
+  },
+  {
+    key: PERMISSIONS.CONTRIBUTION_HIDE,
+    labelKey: 'settings.perm.contributionHide',
+    scopeKey: 'adminPermissions.scope.contributionHide',
+    stepUp: 'always',
+    requires: PERMISSIONS.CONTRIBUTION_READ,
+  },
+  {
+    key: PERMISSIONS.CONTRIBUTION_RESTORE,
+    labelKey: 'settings.perm.contributionRestore',
+    scopeKey: 'adminPermissions.scope.contributionRestore',
+    requires: PERMISSIONS.CONTRIBUTION_READ,
+  },
+  {
+    key: PERMISSIONS.CONTRIBUTION_DELETE,
+    labelKey: 'settings.perm.contributionDelete',
+    scopeKey: 'adminPermissions.scope.contributionDelete',
+    stepUp: 'always',
+    requires: PERMISSIONS.CONTRIBUTION_READ,
+  },
+  {
+    key: PERMISSIONS.CONTRIBUTION_INTERNAL_NOTE_READ,
+    labelKey: 'settings.perm.contributionInternalNoteRead',
+    scopeKey: 'adminPermissions.scope.contributionInternalNoteRead',
+    requires: PERMISSIONS.CONTRIBUTION_READ,
+  },
+  {
+    key: PERMISSIONS.CONTRIBUTION_AUDIT_READ,
+    labelKey: 'settings.perm.contributionAuditRead',
+    scopeKey: 'adminPermissions.scope.contributionAuditRead',
+    requires: PERMISSIONS.CONTRIBUTION_READ,
+  },
+  {
+    key: PERMISSIONS.CONTRIBUTION_EDIT_REQUEST_VOTE,
+    labelKey: 'settings.perm.contributionEditRequestVote',
+    scopeKey: 'adminPermissions.scope.contributionEditRequestVote',
+  },
+  {
+    key: PERMISSIONS.COMMENT_MODERATE,
+    labelKey: 'settings.perm.commentModerate',
+    scopeKey: 'adminPermissions.scope.commentModerate',
+    stepUp: 'partial',
+  },
+  { key: PERMISSIONS.USER_READ, labelKey: 'settings.perm.userRead', scopeKey: 'adminPermissions.scope.userRead' },
+  {
+    key: PERMISSIONS.USER_BAN,
+    labelKey: 'settings.perm.userBan',
+    scopeKey: 'adminPermissions.scope.userBan',
+    stepUp: 'always',
+    requires: PERMISSIONS.USER_READ,
+  },
+  { key: PERMISSIONS.AUDIT_READ, labelKey: 'settings.perm.auditRead', scopeKey: 'adminPermissions.scope.auditRead' },
+  {
+    key: PERMISSIONS.ROLE_GRANT,
+    labelKey: 'settings.perm.roleGrant',
+    scopeKey: 'adminPermissions.scope.legacyRole',
+    legacy: true,
+  },
+  {
+    key: PERMISSIONS.ROLE_REVOKE,
+    labelKey: 'settings.perm.roleRevoke',
+    scopeKey: 'adminPermissions.scope.legacyRole',
+    legacy: true,
+  },
+]
+
+/**
+ * 能进入审核后台的权限：持有**任一**后台权限即可进入（概览页向所有能进后台的人开放，
+ * 至少能看到自己的角色与权限表）；进去之后每个分区、每张卡片、每个按钮再按各自的权限显示。
+ * 全站的后台入口（Navbar、登录落点）与后台自己的分流共用这一份。
+ */
+export const ADMIN_ENTRY_PERMISSIONS: readonly string[] = ADMIN_PERMISSION_CATALOG.map((p) => p.key)
+
+/** 是否持有任一后台权限。 */
+export function canEnterAdmin(permissions: string[]): boolean {
+  return ADMIN_ENTRY_PERMISSIONS.some((p) => hasPermission(permissions, p))
+}
+
+/**
+ * 登录/注册后的落地页：有任一后台权限就去 /admin（后台外壳按权限落到首个可访问的分区），否则投稿页。
  */
 export function landingPath(permissions: string[]): string {
-  if (hasPermission(permissions, PERMISSIONS.CONTRIBUTION_READ)) return '/admin'
-  if (hasPermission(permissions, PERMISSIONS.USER_READ)) return '/admin/users'
-  if (hasPermission(permissions, PERMISSIONS.AUDIT_READ)) return '/admin/audit-logs'
-  return '/submit'
+  return canEnterAdmin(permissions) ? '/admin' : '/submit'
 }

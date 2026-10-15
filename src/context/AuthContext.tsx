@@ -1,6 +1,6 @@
 import { createContext, useEffect, useState, useCallback, useMemo, type ReactNode } from 'react'
 import { get, post, setAccessToken as setClientToken, clearAuth, tryRefreshToken } from '@/api/client'
-import { computePermissions } from '@/api/permissions'
+import { canEnterAdmin, computePermissions } from '@/api/permissions'
 import { isValidRedirect } from '@/utils/redirect'
 import { isPublicPath } from '@/utils/public-route'
 
@@ -85,14 +85,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   )
   // 管理入口改为权限驱动（不再纯角色判断），以支持 editor 与 IAM 细粒度授权：
   // 拥有任一管理权限即可进入审核后台；具体页面/动作仍按各自所需权限进一步门控。
-  const isAdmin = useMemo(
-    () =>
-      permissions.includes('*') ||
-      permissions.includes('contribution:read') ||
-      permissions.includes('user:read') ||
-      permissions.includes('audit:read'),
-    [permissions],
-  )
+  // 口径与后台分区一致（api/permissions.ts ADMIN_ENTRY_PERMISSIONS），含评论处置与修改申请投票等细粒度授权
+  const isAdmin = useMemo(() => canEnterAdmin(permissions), [permissions])
   const updateAccessToken = useCallback((token: string | null) => {
     setAccessToken(token)
   }, [])
@@ -184,11 +178,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoginProvider(provider)
     const currentPath = window.location.pathname + window.location.search
     const isAuthPage = /^\/(?:login|register|auth)\b/.test(window.location.pathname)
-    const redirectAfter = isValidRedirect(requestedRedirect ?? '')
-      ? requestedRedirect!
-      : isAuthPage
-        ? ''
-        : currentPath
+    const redirectAfter = isValidRedirect(requestedRedirect ?? '') ? requestedRedirect! : isAuthPage ? '' : currentPath
     const result = await get<{ authorizationUrl: string }>(
       `/auth/oauth/${provider}/start?redirectAfter=${encodeURIComponent(redirectAfter)}`,
     )
