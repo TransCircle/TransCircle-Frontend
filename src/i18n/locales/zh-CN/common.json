@@ -164,7 +164,7 @@
     "reviewer": "（审核人：{{reviewer}}）",
     "reviewTextareaPlaceholder": "审核意见（选填）...",
     "reviewNotesLabel": "审核意见",
-    "internalNoteLabel": "内部备注（仅管理员可见）",
+    "internalNoteLabel": "内部备注（仅有内部备注权限的后台人员可见）",
     "approve": "通过",
     "reject": "拒绝",
     "errorLoad": "加载投稿列表失败",
@@ -188,13 +188,13 @@
     "usersLink": "用户管理",
     "auditLogsLink": "审计日志",
     "editRequestsLink": "编辑申请",
-    "internalNotePlaceholder": "内部备注（仅管理员可见，可选）",
+    "internalNotePlaceholder": "内部备注（作者看不到，可选）",
     "hideReasonLabel": "隐藏/删除原因",
     "reviewEventsLoading": "加载审核历史...",
     "reviewEventsError": "加载审核历史失败，请重试",
     "reviewEventsTitle": "审核历史",
-    "reviewerPrefix": "审核员: ",
-    "notePrefix": "备注: ",
+    "reviewerPrefix": "审核员：",
+    "notePrefix": "备注：",
     "publishButton": "发布",
     "pinButton": "置顶",
     "unpinButton": "取消置顶",
@@ -210,7 +210,13 @@
     "ui": {
       "charCount": "{{n}}/{{max}}",
       "clear": "清除"
-    }
+    },
+    "statusTransition": "{{from}} → {{to}}",
+    "continuousReview": "连续审稿",
+    "continuousReviewHint": "处理完自动打开同一列表中的下一条",
+    "pinnedBadge": "置顶",
+    "approveAndPublish": "通过并发布",
+    "approveOnly": "仅通过"
   },
   "adminShell": {
     "brand": "管理后台",
@@ -296,11 +302,15 @@
       "bindProviderTaken": "该 OAuth 账号已绑定到其他用户",
       "bindSuccess": "绑定成功",
       "mergeSuccess": "合并成功",
-      "deletionScheduled": "账户注销已受理"
+      "deletionScheduled": "账户注销已受理",
+      "reviewNext": "已处理，已打开下一条",
+      "reviewDone": "没有更多待处理的投稿了",
+      "reviewNextFailed": "没能取到下一条，已返回列表"
     },
     "versionShort": "v{{version}}",
     "listSeparator": "；",
     "fieldErrorItem": "{{field}}: {{reason}}",
+    "enumSeparator": "、",
     "rawSourceLabel": "投稿原文（Markdown）"
   },
   "pageTitles": {
@@ -669,5 +679,166 @@
     "restoreError": "恢复失败，请稍后重试",
     "reasonRequired": "隐藏原因不能为空",
     "reasonTooLong": "隐藏原因不能超过 200 字"
+  },
+  "adminQueue": {
+    "title": "审核队列",
+    "subtitle": "等待审核的投稿，按提交时间先进先出",
+    "empty": "没有{{status}}的投稿",
+    "emptyDescription": "队列已清空，新投稿会出现在这里。",
+    "waitMinutes": "等待 {{count}} 分钟",
+    "waitHours": "等待 {{count}} 小时",
+    "waitDays": "等待 {{count}} 天",
+    "backTo": "审核队列",
+    "rule": "按提交时间先进先出：被拒后重新提交的稿件按重新提交的时间排队。一位审核员的决定即生效；通过后还要发布才会公开。"
+  },
+  "adminContributions": {
+    "title": "投稿管理",
+    "subtitle": "按状态、关键词或作者查找投稿，发布、置顶、隐藏或删除",
+    "tabsAriaLabel": "按状态筛选",
+    "statusAll": "全部",
+    "searchPlaceholder": "搜索标题或摘要",
+    "sortLabel": "排序",
+    "sortOldest": "最早创建",
+    "sortNewest": "最新创建",
+    "sortUpdated": "最近更新",
+    "authorChipRemove": "移除作者筛选（{{name}}）",
+    "activeFilters": "当前筛选",
+    "empty": "没有{{status}}的投稿",
+    "emptyFiltered": "没有符合筛选条件的投稿",
+    "clearFilters": "清除筛选",
+    "backTo": "投稿管理",
+    "detailTitle": "投稿详情",
+    "loadErrorDescription": "它可能已被删除，或网络暂时不可用。",
+    "author": "作者",
+    "tags": "标签",
+    "language": "语言",
+    "version": "版本",
+    "submittedAt": "提交时间",
+    "publishedAt": "发布时间",
+    "pinnedAt": "置顶时间",
+    "summary": "摘要",
+    "source": "原文",
+    "actionsHeading": "处理",
+    "resubmittedTitle": "重新提交的稿件",
+    "resubmitted": "上一轮于 {{rejectedAt}} 被拒绝，作者于 {{submittedAt}} 重新提交。",
+    "resubmittedByReviewer": "上一轮由 {{reviewer}} 于 {{rejectedAt}} 拒绝，作者于 {{submittedAt}} 重新提交。",
+    "resubmittedReason": "上次的拒绝理由：{{note}}",
+    "previousInternalNote": "上一轮的内部备注（仅有内部备注权限的后台人员可见）",
+    "sortSubmittedOldest": "最早提交",
+    "sortSubmittedNewest": "最新提交",
+    "titleLabel": "标题",
+    "reopenButton": "重新打开审核",
+    "reopenTitle": "重新打开审核",
+    "reopenPrompt": "把这个审核结论撤回到待审核。原因（必填，1–200 字，作者可以看到）：",
+    "reopenReasonRequired": "请填写原因（1–200 字）",
+    "reopenedTitle": "重新打开的审核",
+    "reopenedBody": "{{actor}} 于 {{time}} 把「{{from}}」撤回到了待审核。",
+    "reopenedReason": "原因：{{note}}",
+    "resubmittedUnchanged": "作者没有修改内容就重新提交了（与被拒时是同一版）。",
+    "compareRejected": "对照被拒时的版本（v{{version}}）"
+  },
+  "adminRules": {
+    "heading": "规则说明",
+    "pending": [
+      "审核由单人决定：一位审核员点「通过」或「拒绝」即生效，不需要多人投票。",
+      "通过后进入「已通过」，还要由有发布权限的人发布，才会公开。",
+      "拒绝后作者可以在「我的投稿」修改并重新提交。审核意见作者能看到；内部备注作者看不到，只有具备内部备注权限的后台人员能看到。"
+    ],
+    "approved": [
+      "发布后立即公开，出现在首页与搜索中；发布是否需要二次验证取决于站点配置。",
+      "如果是误判，有审核权限的人可以「重新打开审核」，把它撤回到待审核（原因作者可见）。",
+      "有删除权限的人也可以直接删除：需要二次验证，删除后无法在后台恢复。"
+    ],
+    "published": [
+      "置顶后排在首页最前，可随时取消。首页只展示最近置顶的 50 篇，更早的置顶稿不会回到普通列表。",
+      "隐藏需要二次验证；隐藏后公众看不到，可以随时恢复。",
+      "已发布的投稿不能直接删除，需要先隐藏。",
+      "账户正常且邮箱已验证的读者，可以对已发布的故事提交修改申请，由审核员投票决定。"
+    ],
+    "hidden": [
+      "恢复后重新公开，不需要二次验证。",
+      "有删除权限的人也可以直接删除：需要二次验证，删除后无法在后台恢复。"
+    ],
+    "draft": [
+      "这是作者还没提交的草稿，不在审核流程里。",
+      "有删除权限的人可以删除：需要二次验证，删除后无法在后台恢复。"
+    ],
+    "withdrawn": [
+      "作者已撤回这篇投稿，可以修改后重新提交，回到审核队列。",
+      "有删除权限的人可以删除：需要二次验证，删除后无法在后台恢复。"
+    ],
+    "rejected": [
+      "作者可以在「我的投稿」修改后重新提交，回到审核队列重新审核（审核历史与版本对照都看得到改了什么）。",
+      "如果是误判，有审核权限的人可以「重新打开审核」，把它撤回到待审核（原因作者可见）。",
+      "有删除权限的人也可以直接删除：需要二次验证，删除后无法在后台恢复。"
+    ],
+    "editRequest": [
+      "需要 {{required}} 位审核员投赞成票才会通过；通过后修改会立即自动写入原投稿，不需要再发布，也不改变投稿当前的展示状态（已隐藏的仍需另行恢复）。",
+      "{{required}} 票反对即拒绝。每人只能投一次，投出后不能更改。",
+      "申请人不能给自己的申请投票；投票结束前，申请人可以撤回申请。",
+      "原投稿被删除时，它名下进行中的申请会自动失效。"
+    ],
+    "editRequestNoCount": [
+      "赞成票达到门槛即通过，修改会立即自动写入原投稿，不需要再发布，也不改变投稿当前的展示状态；反对票达到门槛即拒绝。",
+      "每人只能投一次，投出后不能更改。",
+      "申请人不能给自己的申请投票；投票结束前，申请人可以撤回申请。",
+      "原投稿被删除时，它名下进行中的申请会自动失效。"
+    ],
+    "ban": [
+      "只作用于本站账户：该用户在本站的所有登录会话立即失效，之后无法登录本站、投稿、评论或提交修改申请；统一账户中心（Pass）的账户与凭据不受影响。",
+      "已发布的内容不受影响。",
+      "只能封禁状态正常、待验证或已暂停的账户；不能封禁自己，也不能封禁最后一名管理员。",
+      "封禁与解封都需要二次验证。"
+    ],
+    "unban": ["解封后本站账户恢复正常，用户可以重新通过统一身份登录。", "解封同样需要二次验证。"],
+    "approveAndPublish": "「通过并发布」一步完成：通过与发布在同一个事务里，要么都成、要么都不成；发布是否需要二次验证取决于站点配置。审核历史里会留下「审核」「发布」两条记录。"
+  },
+  "diff": {
+    "stats": "新增 {{added}} 行 · 删除 {{removed}} 行",
+    "unchanged": "…… 未改动 {{count}} 行",
+    "addedPrefix": "新增：",
+    "removedPrefix": "删除：",
+    "tooLarge": "改动范围太大，无法逐行对照，下面分别列出当前全文与改为后的全文。",
+    "beforeLabel": "{{label}}（当前）",
+    "afterLabel": "{{label}}（改为）"
+  },
+  "adminHistory": {
+    "review": "审核",
+    "publish": "发布",
+    "hide": "隐藏",
+    "restore": "恢复",
+    "delete": "删除",
+    "reopen": "重新打开审核",
+    "editRequestResolve": "修改申请通过并应用",
+    "submit": "作者提交",
+    "withdraw": "作者撤回",
+    "other": "其他操作",
+    "authorPrefix": "作者：",
+    "internalNotePrefix": "内部备注："
+  },
+  "adminVersions": {
+    "title": "版本历史",
+    "loadError": "加载版本历史失败",
+    "empty": "还没有版本记录",
+    "current": "当前内容",
+    "compare": "与当前对照",
+    "comparing": "正在对照",
+    "reasonCreated": "创建",
+    "reasonAuthorEdit": "作者修改",
+    "reasonEditRequest": "修改申请应用",
+    "reasonOther": "内容变更",
+    "changedByPrefix": "操作人：",
+    "compareTitle": "对照：v{{version}} → 当前内容",
+    "compareMeta": "（{{reason}} · {{time}}）",
+    "close": "关闭对照",
+    "noDifference": "这一版与当前内容相同。",
+    "thenValue": "v{{version}}",
+    "nowValue": "当前",
+    "contentDiffLabel": "正文：v{{version}} 与当前的逐行对照",
+    "contentFormat": "正文格式",
+    "formats": {
+      "markdown": "Markdown",
+      "plain_text": "纯文本"
+    }
   }
 }
