@@ -1,14 +1,14 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: var(--s-1);
+  gap: var(--s-2);
   width: 100%;
 }
 
 .label {
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   font-weight: var(--fw-semibold);
-  color: var(--text-secondary);
+  color: var(--ink);
 }
 
 .wrap {
@@ -27,7 +27,7 @@
   padding: var(--s-2) var(--s-3);
   border: 1.5px solid var(--line-strong);
   border-radius: var(--r-sm);
-  font-size: var(--fs-sm);
+  font-size: var(--ui-fs);
   font-family: inherit;
   line-height: 1.5;
   color: var(--ink);
@@ -52,7 +52,7 @@
   border-color: var(--pink-600);
   background-color: var(--surface);
   outline: none;
-  box-shadow: 0 0 0 3px var(--ring-pink);
+  box-shadow: 0 0 0 3px var(--focus-halo);
 }
 
 .trigger.invalid {
@@ -61,11 +61,11 @@
 
 .trigger.invalid:focus-visible {
   border-color: var(--error-text);
-  box-shadow: 0 0 0 3px var(--ring-error);
+  box-shadow: 0 0 0 3px var(--focus-halo-error);
 }
 
 .trigger:disabled {
-  opacity: 0.6;
+  opacity: var(--disabled-opacity);
   cursor: not-allowed;
 }
 
@@ -101,8 +101,11 @@
   margin: 0;
   padding: var(--s-1);
   list-style: none;
-  background-color: var(--surface);
-  border: 1px solid var(--line);
+  /* 下拉是浮动层 → 玻璃（§1.4），带实色回退。 */
+  background-color: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-3);
   max-height: 280px;
@@ -129,7 +132,7 @@
   gap: var(--s-2);
   padding: var(--s-2) var(--s-3);
   border-radius: var(--r-sm);
-  font-size: var(--fs-sm);
+  font-size: var(--ui-fs);
   color: var(--text-body);
   cursor: pointer;
   transition:
@@ -148,9 +151,10 @@
   color: var(--ink);
 }
 
-@supports (background-color: color-mix(in srgb, red 15%, white)) {
-  .option.active {
-    background-color: var(--pink-100);
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .listbox {
+    background-color: var(--surface);
+    border-color: var(--line);
   }
 }
 
@@ -160,7 +164,7 @@
 }
 
 .optionDisabled {
-  opacity: 0.45;
+  opacity: var(--disabled-opacity);
   cursor: not-allowed;
 }
 

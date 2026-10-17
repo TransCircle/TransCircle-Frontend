@@ -6,6 +6,7 @@ import { useAuth } from '@/context/useAuth'
 import { usePagedList, toPagedResult } from '@/hooks/usePagedList'
 import {
   Alert,
+  ButtonLink,
   CONTRIB_STATUS_TONE,
   EmptyState,
   PageHeader,
@@ -16,7 +17,7 @@ import {
   type TabItem,
 } from '@/components/ui'
 import { useFormatTs } from '@/utils/datetime'
-import shell from './Page.module.css'
+import shell from './Account.module.css'
 
 const PAGE_SIZE = 20
 
@@ -54,6 +55,26 @@ const FILTERS = [
   'hidden',
   'withdrawn',
 ] as const
+
+const DraftIcon = () => (
+  <svg
+    width="48"
+    height="48"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+    <path d="M14 3v6h6" />
+    <path d="M8 13h8" />
+    <path d="M8 17h5" />
+  </svg>
+)
 
 const ChevronIcon = () => (
   <svg
@@ -101,7 +122,7 @@ export const MyContributions = () => {
   return (
     <div className={shell.page}>
       <div className={shell.head}>
-        <PageHeader title={t('myContributions.title')} size="section" as="h1" />
+        <PageHeader title={t('myContributions.title')} />
         <Tabs
           items={tabs}
           value={filterStatus}
@@ -125,7 +146,15 @@ export const MyContributions = () => {
            不能再把它们摆出来——它们既不是当前条件的结果，行还是可点的，点进去会
            对一个不属于本视图的条目执行操作。此时只显示上面的错误提示。 */
         staleResults ? null : items.length === 0 ? (
-          <EmptyState title={t('myContributions.empty')} />
+          <EmptyState
+            title={t('myContributions.empty')}
+            icon={<DraftIcon />}
+            action={
+              <ButtonLink variant="primary" to="/submit">
+                {t('home.submitLink')}
+              </ButtonLink>
+            }
+          />
         ) : (
           <>
             {/* 已有内容时切 tab/刷新：保留旧列表，顶部显示轻量加载条，避免清空闪烁 */}
@@ -144,15 +173,9 @@ export const MyContributions = () => {
                   >
                     <span className={shell.rowMain}>
                       <span className={shell.rowTitle}>{item.title}</span>
-                      <span className={shell.rowMeta}>
-                        {formatTs(item.createdAt)}
-                        {item.review.publicNote && (
-                          <>
-                            <span className={shell.rowMetaSep}>·</span>
-                            {item.review.publicNote}
-                          </>
-                        )}
-                      </span>
+                      <span className={shell.rowMeta}>{formatTs(item.createdAt)}</span>
+                      {/* 审核备注单独一行、两行截断：它是说给作者的话，不该挤在时间后面撑长整行。 */}
+                      {item.review.publicNote && <span className={shell.rowNote}>{item.review.publicNote}</span>}
                     </span>
                     <span className={shell.rowRight}>
                       <StatusBadge
@@ -176,9 +199,9 @@ export const MyContributions = () => {
             控件本身在只有一页时会自行隐藏。 */}
         <Pagination
           page={page}
-        totalPages={totalPages}
-        total={total}
-        pageSize={PAGE_SIZE}
+          totalPages={totalPages}
+          total={total}
+          pageSize={PAGE_SIZE}
           disabled={loading || stale}
           onChange={goToPage}
         />

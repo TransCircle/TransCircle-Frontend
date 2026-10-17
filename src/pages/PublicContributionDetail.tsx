@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { get } from '@/api/client'
 import { sanitizeHtml } from '@/utils/sanitize'
-import { AdminButton, Alert, Skeleton } from '@/components/ui'
+import { AdminButton, Alert, BackIcon, Skeleton } from '@/components/ui'
 import { CommentSection } from '@/components/CommentSection'
 import { useFormatTs } from '@/utils/datetime'
 import { useReadingProgress } from '@/hooks/useReadingProgress'
@@ -27,23 +28,6 @@ interface PublicDetail {
 
 /** 头像回退：取显示名首字，无名时用间隔号占位（不留空圆）。 */
 const initialOf = (name: string) => (name ?? '').trim().charAt(0) || '·'
-
-const BackIcon = () => (
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-    focusable="false"
-  >
-    <path d="m15 18-6-6 6-6" />
-  </svg>
-)
 
 export const PublicContributionDetail = () => {
   const { t } = useTranslation()
@@ -85,19 +69,22 @@ export const PublicContributionDetail = () => {
   }, [id, t])
 
   /* 阅读进度条与 reveal。Hook 必须在早退分支之前无条件调用；
-     加载/错误分支里 ref 拿不到节点，hook 内部会直接跳过。 */
+     进度条用回调 ref，数据到达、进度条挂载时才开始监听滚动。 */
   const progressRef = useReadingProgress<HTMLDivElement>()
   const revealRef = useReveal<HTMLDivElement>([detail])
+
+  /* 返回入口在加载与出错时同样可用：慢网络或 404 时读者不该被困在这一页。 */
+  const backButton = (
+    <AdminButton variant="ghost" size="sm" iconLeft={<BackIcon />} onClick={() => navigate('/')}>
+      {t('publicContributionDetail.backToHome')}
+    </AdminButton>
+  )
 
   if (loading) {
     // 保留页面框架（返回按钮 + 容器），仅内容区骨架占位，避免整页替换为 Spinner 的布局跳变
     return (
       <div className={styles.reading}>
-        <div className={styles.topBar}>
-          <AdminButton variant="ghost" size="sm" iconLeft={<BackIcon />} disabled>
-            {t('publicContributionDetail.backToHome')}
-          </AdminButton>
-        </div>
+        <div className={styles.topBar}>{backButton}</div>
         <Skeleton variant="article" />
       </div>
     )
@@ -106,6 +93,7 @@ export const PublicContributionDetail = () => {
   if (error || !detail) {
     return (
       <div className={styles.reading}>
+        <div className={styles.topBar}>{backButton}</div>
         <Alert tone="error">{error || t('publicContributionDetail.notFound')}</Alert>
       </div>
     )
@@ -114,17 +102,20 @@ export const PublicContributionDetail = () => {
   return (
     <div className={styles.reading} ref={revealRef}>
       {/* 阅读进度条（§5.10）：固定在顶栏下方，scaleX 随滚动。
-          纯装饰性进度指示，对辅助技术隐藏——真正的位置信息由滚动条本身提供。 */}
-      <div className={styles.progressTrack} aria-hidden="true">
-        <div className={styles.progressBar} ref={progressRef} />
-      </div>
+          纯装饰性进度指示，对辅助技术隐藏——真正的位置信息由滚动条本身提供。
+          portal 到 body：页面包装层（.pageWrap）播放入场动画期间带 transform，
+          会成为 fixed 后代的包含块，进度条留在里面就会在那 280ms 里错位。 */}
+      {createPortal(
+        <div className={styles.progressTrack} aria-hidden="true">
+          <div className={styles.progressBar} ref={progressRef} />
+        </div>,
+        document.body,
+      )}
 
       {/* 顶部动作条：左侧返回（导航），右侧修改申请（本页唯一的次要动作）。
           放在正文之上而不是文末——读完再滚回顶部找入口是反直觉的。 */}
       <div className={styles.topBar}>
-        <AdminButton variant="ghost" size="sm" iconLeft={<BackIcon />} onClick={() => navigate('/')}>
-          {t('publicContributionDetail.backToHome')}
-        </AdminButton>
+        {backButton}
         <AdminButton
           variant="secondary"
           size="sm"

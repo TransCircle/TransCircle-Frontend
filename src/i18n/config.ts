@@ -24,8 +24,10 @@ i18n.use(initReactI18next).init({
   lng: 'zh-CN',
   fallbackLng: 'zh-CN',
   interpolation: {
-    // React 的 JSX 默认转义 HTML，escapeValue: true 提供双层防御。
-    escapeValue: true,
+    /* 由 React 负责转义：译文只作为 JSX 文本 / 属性渲染（从不进 innerHTML）。
+       i18next 再转义一次会把插值里的「/」「&」变成 &#x2F; &amp; 字面量直接显示给用户
+       （如「提交于 2026&#x2F;10&#x2F;08」）。 */
+    escapeValue: false,
   },
 })
 

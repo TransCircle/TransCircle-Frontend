@@ -108,7 +108,7 @@
 
 /* 窄屏：隐藏中间页码，只留上一页/当前/下一页，避免换行成两三排
    （省略号是 .numbers 的子元素，随之一并隐藏） */
-@media (max-width: 560px) {
+@media (max-width: 640px) {
   .nav {
     justify-content: center;
   }

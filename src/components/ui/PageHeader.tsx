@@ -7,19 +7,20 @@ export interface PageHeaderProps {
   description?: ReactNode
   /** right-aligned action slot (buttons). */
   actions?: ReactNode
-  /** small uppercase eyebrow above the title. */
+  /** small eyebrow label above the title. */
   eyebrow?: ReactNode
-  size?: 'page' | 'section'
-  /** heading level; defaults to h1 for page, h2 for section. */
+  /**
+   * page = 账户侧页面标题（--fs-h1）；card = 居中卡/认证舞台里的标题（收一档）；
+   * section = 分区标题（--fs-lg）。
+   */
+  size?: 'page' | 'card' | 'section'
+  /** heading level; defaults to h1 for page/card, h2 for section. */
   as?: 'h1' | 'h2'
   align?: 'start' | 'center'
   className?: string
 }
 
-/**
- * One unified header scale shared across customer + admin surfaces, replacing the
- * drifting 2rem / 1.8rem / 1.3rem ad-hoc headings.
- */
+/** 统一的标题尺度（与 Pass 门户 PageHeader 同值），供账户侧页面、状态屏共用。 */
 export function PageHeader({
   title,
   description,
@@ -30,7 +31,7 @@ export function PageHeader({
   align = 'start',
   className,
 }: PageHeaderProps) {
-  const Heading = as ?? (size === 'page' ? 'h1' : 'h2')
+  const Heading = as ?? (size === 'section' ? 'h2' : 'h1')
   return (
     <header className={cx(styles.header, styles[size], align === 'center' && styles.center, className)}>
       <div className={styles.texts}>

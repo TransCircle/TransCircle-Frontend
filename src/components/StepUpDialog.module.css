@@ -1,5 +1,6 @@
-/* Step-up 对话框 —— §5.7。
-   高于 --z-modal：step-up 永远是最上面一层，常常开在理由/确认弹窗之上。 */
+/* Step-up 对话框 —— §5.7，几何与 Modal（admin/Modal.module.css）一致；
+   按钮 / 转圈 / 提示统一用 AdminButton、Spinner、Alert 原语。
+   z-index 高于 --z-modal：step-up 永远是最上面一层，常常开在理由/确认弹窗之上。 */
 .overlay {
   position: fixed;
   inset: 0;
@@ -14,11 +15,19 @@
   animation: suOverlay var(--dur-2) var(--ease-standard);
 }
 
+/* 对话框容器（role=dialog、tabIndex=-1）是兜底焦点落点，不画焦点框。 */
+.overlay:focus {
+  outline: none;
+}
+
 .panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
   width: 100%;
   max-width: 420px;
-  max-height: calc(100vh - 3rem);
-  max-height: calc(100dvh - 3rem);
+  max-height: calc(100vh - var(--s-7));
+  max-height: calc(100dvh - var(--s-7));
   overflow-y: auto;
   background-color: var(--surface);
   border: 1px solid var(--line);
@@ -35,161 +44,23 @@
   color: var(--ink);
 }
 
-.desc {
-  margin: var(--s-2) 0 var(--s-4);
+.desc,
+.iamPrompt {
+  margin: 0;
   font-size: var(--fs-sm);
-  line-height: 1.6;
+  line-height: var(--lh-caption);
   color: var(--text-secondary);
 }
-
-/* ── Fields ──────────────────────────────────────────────── */
-
-.input {
-  width: 100%;
-  min-height: 38px;
-  padding: var(--s-2) var(--s-3);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-sm);
-  font-size: var(--fs-sm);
-  font-family: inherit;
-  color: var(--ink);
-  background-color: var(--surface-2);
-  appearance: none;
-  -webkit-appearance: none;
-  outline: none;
-  margin-bottom: 0.9rem;
-  transition:
-    border-color var(--dur-1) var(--ease-standard),
-    box-shadow var(--dur-1) var(--ease-standard);
-}
-
-.input::placeholder {
-  color: var(--text-muted);
-}
-
-.input:focus-visible {
-  border-color: var(--pink-600);
-  background-color: var(--surface);
-  outline: none;
-  box-shadow: 0 0 0 3px var(--ring-pink);
-}
-
-.input:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* Comfortable touch targets on touch devices. */
-@media (any-pointer: coarse) {
-  .input {
-    min-height: var(--tap-min);
-  }
-}
-
-@supports (box-shadow: 0 0 0 3px color-mix(in srgb, red 18%, transparent)) {
-  .input:focus-visible {
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--pink-600) 22%, transparent);
-  }
-}
-
-/* ── Buttons (自绘，不使用浏览器原生默认样式) ──────────────── */
 
 .actions {
   display: flex;
   justify-content: flex-end;
   gap: var(--s-2);
-  margin-top: 1.2rem;
+  margin-top: var(--s-3);
   flex-wrap: wrap;
 }
 
-.btnPrimary,
-.btnGhost,
-.btnPrimaryFull {
-  font-family: inherit;
-  font-weight: var(--fw-semibold);
-  font-size: var(--fs-sm);
-  border-radius: var(--r-xs);
-  padding: var(--s-2) var(--s-5);
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition:
-    background-color var(--dur-1) var(--ease-standard),
-    border-color var(--dur-1) var(--ease-standard),
-    color var(--dur-1) var(--ease-standard);
-}
-
-.btnPrimary,
-.btnPrimaryFull {
-  background-color: var(--pink-600);
-  color: var(--on-pink);
-}
-
-.btnPrimaryFull {
-  width: 100%;
-}
-
-.btnPrimary:hover:not(:disabled),
-.btnPrimaryFull:hover:not(:disabled) {
-  background-color: var(--pink-600-hover);
-}
-
-@supports (background-color: color-mix(in srgb, red 85%, black)) {
-  .btnPrimary:hover:not(:disabled),
-  .btnPrimaryFull:hover:not(:disabled) {
-    background-color: var(--pink-600-hover);
-  }
-}
-
-.btnGhost {
-  background-color: var(--surface);
-  color: var(--ink);
-  border-color: var(--text-muted);
-}
-
-.btnGhost:hover:not(:disabled) {
-  border-color: var(--pink-600);
-  background-color: var(--pink-100);
-}
-
-.btnGhost:active:not(:disabled) {
-  background-color: var(--pink-100);
-}
-
-.btnPrimary:active:not(:disabled),
-.btnPrimaryFull:active:not(:disabled) {
-  background-color: var(--pink-600-hover);
-}
-
-/* Comfortable touch targets on touch devices. */
-@media (any-pointer: coarse) {
-  .btnPrimary,
-  .btnGhost,
-  .btnPrimaryFull {
-    min-height: var(--tap-min);
-  }
-}
-
-.btnPrimary:disabled,
-.btnPrimaryFull:disabled,
-.btnGhost:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.error {
-  color: var(--error-text);
-  font-size: var(--fs-sm);
-  margin: var(--s-2) 0 0;
-}
-
-/* ── IAM popup states ────────────────────────────────────── */
-
-.iamPrompt {
-  margin: 0 0 var(--s-2);
-  font-size: var(--fs-sm);
-  line-height: 1.6;
-  color: var(--text-secondary);
-}
+/* ── IAM 子窗口各阶段 ─────────────────────────────────────── */
 
 .waitState,
 .successState {
@@ -201,6 +72,10 @@
   padding: var(--s-3) 0 var(--s-1);
 }
 
+.waitState .actions {
+  align-self: stretch;
+}
+
 .waitText,
 .successText {
   margin: 0;
@@ -208,41 +83,24 @@
   color: var(--ink);
 }
 
-.spinner {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--r-pill);
-  border: 3px solid var(--line);
-  border-top-color: var(--pink-600);
-  animation: suSpin 0.7s linear infinite;
-}
-
 .successCheck {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
+  width: var(--s-7);
+  height: var(--s-7);
   border-radius: var(--r-pill);
   background-color: var(--success-bg);
   color: var(--success-text);
   border: 1px solid var(--success-border);
-  animation: suPop 0.3s ease;
+  animation: suPop var(--dur-2) var(--ease-spring);
 }
 
 .successCheck svg path {
   stroke-dasharray: 26;
   stroke-dashoffset: 26;
-  animation: suDraw 0.4s ease 0.12s forwards;
+  animation: suDraw var(--dur-3) var(--ease-out) 120ms forwards;
 }
-
-[data-theme='dark'] .successCheck {
-  background-color: var(--success-bg);
-  color: var(--success-text);
-  border-color: var(--success-border);
-}
-
-/* ── Animations ──────────────────────────────────────────── */
 
 @keyframes suOverlay {
   from {
@@ -255,16 +113,6 @@
   from {
     opacity: 0;
     transform: scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes suSpin {
-  to {
-    transform: rotate(360deg);
   }
 }
 
@@ -281,17 +129,19 @@
   }
 }
 
+/* 全局降级会停掉所有动画；对勾的描边动画一停就停在「未画出」，这里必须直接画全。 */
 @media (prefers-reduced-motion: reduce) {
-  .overlay,
-  .panel,
-  .successCheck {
-    animation: none;
-  }
-  .spinner {
-    animation: none;
-  }
   .successCheck svg path {
-    animation: none;
     stroke-dashoffset: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .actions {
+    flex-direction: column-reverse;
+  }
+
+  .actions > * {
+    width: 100%;
   }
 }

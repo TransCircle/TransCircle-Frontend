@@ -80,10 +80,6 @@
   --info-border: #b9e3f9;
   --info-text: var(--blue-600);
 
-  /* 投票 / 对比语义（Frontend 专有，§2.4 末） */
-  --vote-approve: #1fa05c;
-  --vote-reject: #e5484d;
-
   /* ═══ 2.5 玻璃与发光 ═══════════════════════════════════════ */
   --glass-bg: rgba(255, 255, 255, 0.72);
   --glass-border: rgba(26, 18, 32, 0.09);
@@ -101,8 +97,12 @@
   --flag-pink: #f5a9b8;
   --flag-white: #ffffff;
   --flag-blue: #5bcefa;
-  --ring-pink: rgba(239, 168, 192, 0.5); /* §5.4 焦点环，色值回退；下方 @supports 换 color-mix */
-  --ring-error: rgba(179, 38, 30, 0.22);
+  /* §5.4 输入框聚焦环：这里是硬编码回退值，支持 color-mix 时由下方 @supports 覆盖。
+     （自定义属性不校验值，直接连写两条的话不支持的浏览器也会拿到无效的 color-mix。） */
+  --focus-halo: rgba(239, 168, 192, 0.5);
+  --focus-halo-error: rgba(179, 38, 30, 0.25);
+  /* §5.13 代码块底：亮色同 --surface-2，暗色取规范指定的 #141021。 */
+  --code-bg: var(--surface-2);
 
   /* ═══ 2.6 字体 ═════════════════════════════════════════════ */
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
@@ -182,8 +182,21 @@
 
   /* ── 控件节奏（落地补充）────────────────────────────────── */
   --btn-h: 40px; /* §5.1 按钮高，移动端抬到 --tap-min */
+  --btn-h-sm: 32px; /* 紧凑按钮（行内操作、工具栏） */
+  --disabled-opacity: 0.55; /* 全站禁用态统一透明度 */
   --control-h: 44px; /* §5.4 表单控件高 */
-  --admin-sidebar-w: 232px; /* 管理台侧栏 */
+  /* 控件 / 只读值的字号密度：后台默认 14px（§5.8 允许）；公共侧与账户侧容器
+     把它设回 --fs-body（正文下限 16px）。表单原语与描述列表统一读它。 */
+  --ui-fs: var(--fs-sm); /* 单元格级控件（列表行、横屏并排按钮）上限，与 Pass 一致 */
+
+  /* ── 管理台外壳（与 Pass 控制台同值）────────────────────── */
+  --admin-rail-w: 232px; /* 宽 rail */
+  --admin-rail-mini-w: 60px; /* <1280 图标 rail */
+  --admin-topbar-h: 56px; /* 工作区粘性标题栏；多层 sticky 的偏移基准 */
+
+  /* ── 认证舞台底（§8 Pass 落地：亮 --pink-100 / 暗 #1A1420）────
+     暗色值即亮色 --ink，暗色令牌里没有同值，故在此具名。 */
+  --stage-bg: var(--pink-100);
 }
 
 /* ═══ 暗色主题（系统偏好，无 JS 回退）═══════════════════════════
@@ -224,16 +237,15 @@
     --warning-text: #f2c572;
     --info-border: #1c4257;
 
-    --vote-approve: #34c77b;
-    --vote-reject: #ff6b6b;
-
     --glass-bg: rgba(23, 19, 31, 0.62);
     --glass-border: rgba(255, 255, 255, 0.1);
     --overlay: rgba(12, 10, 19, 0.62);
 
     --pink-600-hover: #eea4bc;
-    --ring-pink: rgba(245, 182, 201, 0.25);
-    --ring-error: rgba(255, 138, 128, 0.26);
+    --focus-halo: rgba(245, 182, 201, 0.25);
+    --focus-halo-error: rgba(255, 138, 128, 0.25);
+    --code-bg: #141021;
+    --stage-bg: #1a1420;
   }
 }
 
@@ -274,24 +286,23 @@
   --warning-text: #f2c572;
   --info-border: #1c4257;
 
-  --vote-approve: #34c77b;
-  --vote-reject: #ff6b6b;
-
   --glass-bg: rgba(23, 19, 31, 0.62);
   --glass-border: rgba(255, 255, 255, 0.1);
   --overlay: rgba(12, 10, 19, 0.62);
 
   --pink-600-hover: #eea4bc;
-  --ring-pink: rgba(245, 182, 201, 0.25);
-  --ring-error: rgba(255, 138, 128, 0.26);
+  --focus-halo: rgba(245, 182, 201, 0.25);
+  --focus-halo-error: rgba(255, 138, 128, 0.25);
+  --code-bg: #141021;
+  --stage-bg: #1a1420;
 }
 
-/* 焦点环首选 color-mix（§5.4）；上方 rgba 是不支持时的硬编码回退。
-   这里引用 var(--pink-600)，故一条声明同时覆盖亮暗两套主题。 */
+/* 焦点环首选 color-mix（§5.4）。引用 var(--pink-600) / var(--error-text)，
+   一条声明同时覆盖亮暗两套主题。 */
 @supports (color: color-mix(in srgb, red 25%, transparent)) {
   :root {
-    --ring-pink: color-mix(in srgb, var(--pink-600) 25%, transparent);
-    --ring-error: color-mix(in srgb, var(--error-text) 25%, transparent);
+    --focus-halo: color-mix(in srgb, var(--pink-600) 25%, transparent);
+    --focus-halo-error: color-mix(in srgb, var(--error-text) 25%, transparent);
   }
 }
 
@@ -314,6 +325,10 @@
 
 html {
   color-scheme: light;
+  /* 常驻滚动条槽位（同 Pass）：页面在「够不够一屏」之间切换时（路由切换、异步
+     内容落地、弹窗锁滚动）不再整页横向抖动。滚动锁据此跳过 padding 补偿，见
+     components/admin/scrollLock.ts。 */
+  scrollbar-gutter: stable;
 }
 
 [data-theme='dark'] {
@@ -358,31 +373,37 @@ h6 {
   color: var(--ink);
 }
 
-/* ── 焦点：全局可见（§7）。各组件的 outline 只是就近覆盖本条；
-   漏改这一条，没单独声明 outline 的控件就全失去可见焦点。 ── */
+/* ── 焦点：全局可见（§7）。取值与 Pass 一致；组件不再各自声明 outline，
+   只有「真实 input 被裁、焦点画在相邻元素」的自绘控件就近补规则。 ── */
 :focus-visible {
   outline: 2px solid var(--pink-700);
   outline-offset: 2px;
 }
 
+/* 移除移动端默认 tap 高亮，按压反馈由各组件 :active 提供。 */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* ── 滚动条 ─────────────────────────────────────────────────── */
+/* 与 Pass 同款：粉滑块、底色轨道（常驻槽位时轨道与页面底融为一体）。 */
 body {
-  scrollbar-color: var(--line-strong) transparent;
+  scrollbar-color: var(--pink-200) var(--bg);
   scrollbar-width: auto;
 }
 
 ::-webkit-scrollbar-track {
-  background-color: transparent;
+  background-color: var(--bg);
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: var(--line-strong);
-  border: 3px solid var(--bg);
+  background-color: var(--pink-200);
+  border: 1px solid var(--bg);
   border-radius: var(--r-pill);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: var(--pink-600);
+  background-color: var(--pink-300);
 }
 
 @media (pointer: fine) {
@@ -391,8 +412,8 @@ body {
   }
 
   ::-webkit-scrollbar {
-    width: 12px;
-    height: 12px;
+    width: 8px;
+    height: 8px;
   }
 }
 
@@ -403,8 +424,7 @@ body {
     scroll-behavior: smooth;
   }
 
-  body,
-  [data-theme-transition] {
+  body {
     transition:
       background-color var(--dur-3) var(--ease-standard),
       border-color var(--dur-3) var(--ease-standard),
@@ -448,49 +468,15 @@ html.theme-switching::view-transition-new(root) {
     opacity var(--dur-4) var(--ease-out),
     transform var(--dur-4) var(--ease-out);
   transition-delay: calc(var(--i, 0) * 60ms);
+}
+
+/* 只在入场前提示合成层；落位后释放，避免整页卡片常驻独立图层。 */
+.reveal:not(.is-visible) {
   will-change: opacity, transform;
 }
 
 .reveal.is-visible {
   opacity: 1;
-  transform: none;
-}
-
-/* ── 玻璃：仅浮动层（§1.4 / §2.5）。
-   必须带 @supports 回退为实色，否则不支持 backdrop-filter 的浏览器
-   会得到一层半透明糊面。 ── */
-.glass {
-  background-color: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid var(--glass-border);
-}
-
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .glass {
-    background-color: var(--surface);
-  }
-}
-
-/* ── 跳转链接 ──────────────────────────────────────────────── */
-.skip-link {
-  position: fixed;
-  top: var(--s-2);
-  left: var(--s-2);
-  z-index: var(--z-skip);
-  padding: var(--s-2) var(--s-4);
-  background-color: var(--surface);
-  color: var(--ink);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-sm);
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
-  text-decoration: none;
-  box-shadow: var(--shadow-3);
-  transform: translateY(calc(-100% - var(--s-4)));
-}
-
-.skip-link:focus-visible {
   transform: none;
 }
 

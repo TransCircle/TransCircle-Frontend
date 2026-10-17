@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { post, setAccessToken, getAccessToken } from '@/api/client'
+import { AdminButton, Alert, Spinner } from '@/components/admin'
 import styles from './StepUpDialog.module.css'
 import { pushModalLayer, popModalLayer, isTopModalLayer } from '@/components/admin/modalStack'
 import { lockScroll, unlockScroll } from '@/components/admin/scrollLock'
@@ -358,9 +359,9 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
       className={styles.overlay}
     >
       <div className={styles.panel}>
-        <h3 id="stepup-title" className={styles.title}>
+        <h2 id="stepup-title" className={styles.title}>
           {t('stepUp.title')}
-        </h3>
+        </h2>
         <p className={styles.desc}>{t('stepUp.description')}</p>
 
         {iamPhase === 'verified' ? (
@@ -374,44 +375,32 @@ export const StepUpDialog = ({ onSuccess, onCancel, accessToken }: StepUpDialogP
           </div>
         ) : iamPhase === 'waiting' || iamPhase === 'polling' ? (
           <div className={styles.waitState}>
-            <span className={styles.spinner} aria-hidden="true" />
+            <Spinner size="lg" inline />
             <p className={styles.waitText} role="status">
               {iamPhase === 'polling' ? t('stepUp.iamPolling') : t('stepUp.iamWaiting')}
             </p>
-            {error && (
-              <p className={styles.error} role="alert">
-                {error}
-              </p>
-            )}
+            {error && <Alert tone="error">{error}</Alert>}
             <div className={styles.actions}>
               {/* 回查阶段不能取消：后端很可能已经确认了这次二次验证，此时取消会清掉
                   待重放的操作——用户明明验证通过了，管理动作却不声不响地没执行。
                   与 Escape 的处理保持一致（那里同样屏蔽 polling / verified）。 */}
-              <button
-                type="button"
-                className={styles.btnGhost}
-                onClick={handleCancel}
-                disabled={iamPhase === 'polling'}
-              >
+              <AdminButton variant="secondary" onClick={handleCancel} disabled={iamPhase === 'polling'}>
                 {t('stepUp.cancel')}
-              </button>
+              </AdminButton>
             </div>
           </div>
         ) : (
           <>
             <p className={styles.iamPrompt}>{t('stepUp.iamPrompt')}</p>
-            {error && (
-              <p className={styles.error} role="alert">
-                {error}
-              </p>
-            )}
+            {error && <Alert tone="error">{error}</Alert>}
             <div className={styles.actions}>
-              <button type="button" className={styles.btnGhost} onClick={handleCancel} disabled={submitting}>
+              <AdminButton variant="secondary" onClick={handleCancel} disabled={submitting}>
                 {t('stepUp.cancel')}
-              </button>
-              <button type="button" className={styles.btnPrimary} onClick={handleIamStepUp} disabled={submitting}>
+              </AdminButton>
+              {/* 文案随状态切换而不是用 loading 转圈：按钮仍需说清「正在前往验证页」。 */}
+              <AdminButton variant="primary" onClick={handleIamStepUp} disabled={submitting}>
                 {submitting ? t('stepUp.iamRedirecting') : t('stepUp.iamStart')}
-              </button>
+              </AdminButton>
             </div>
           </>
         )}

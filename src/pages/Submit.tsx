@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { SubmitForm } from '@/components/SubmitForm'
-import { PageHeader } from '@/components/ui'
-import shell from './Page.module.css'
+import { Card, PageHeader } from '@/components/ui'
+import shell from './Account.module.css'
 
 export const Submit = () => {
   const { t } = useTranslation()
@@ -9,7 +9,9 @@ export const Submit = () => {
   return (
     <div className={`${shell.page} ${shell.pageNarrow}`}>
       <PageHeader title={t('submitPage.title')} description={t('submitPage.description')} />
-      <SubmitForm />
+      <Card>
+        <SubmitForm />
+      </Card>
     </div>
   )
 }

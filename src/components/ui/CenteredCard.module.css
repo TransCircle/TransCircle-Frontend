@@ -2,32 +2,36 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   width: 100%;
+  /* 吃满外壳给的高度，卡片真正居中在「导航与页脚之间」；
+     只给 60dvh 的话卡片会吊在偏上，下方留一大片空背景。 */
+  flex: 1;
+  /* dvh 随移动端工具栏伸缩取真实可视高度；vh 作旧浏览器兜底。 */
   min-height: 60vh;
-  padding: 1.5rem 0 2.5rem;
+  min-height: 60dvh;
+  padding: clamp(var(--s-5), 4vh, var(--s-6)) var(--page-x) clamp(var(--s-6), 5vh, var(--s-7));
 }
 
+/* 纵向用 auto 边距居中而非 justify-content: center——
+   卡片比可视区高时后者会把卡片顶部推出滚动区、永远滚不到；
+   auto 边距在剩余空间为负时按 0 处理，天然安全。 */
 .holder {
+  margin-block: auto;
   width: 100%;
   max-width: var(--w-form);
 }
 
-/* 认证 / 状态页的居中卡 —— DESIGN.md v3.0 §7 落地：玻璃化 + --r-lg。
-   这是 §1.4 允许的玻璃场景（悬浮卡）：它浮在页面底色之上，
-   不是内容流里的文章卡。 */
+/* 状态屏居中卡浮在页面底上，按 §1.4 允许玻璃；§2.5 要求 @supports 实色回退。 */
 .card {
   width: 100%;
+  border: 1px solid var(--glass-border);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-3);
   background-color: var(--glass-bg);
-  border-color: var(--glass-border);
   -webkit-backdrop-filter: blur(var(--glass-blur));
   backdrop-filter: blur(var(--glass-blur));
 }
 
-/* 玻璃必须有实色回退（§2.5），否则不支持 backdrop-filter 的浏览器
-   会看到一层直接压在页面底色上的半透明面。 */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .card {
     background-color: var(--surface);
@@ -38,12 +42,34 @@
 .body {
   display: flex;
   flex-direction: column;
-  gap: var(--s-4);
+  gap: var(--s-5);
 }
 
 @media (max-width: 640px) {
+  /* 窄屏退化为无边框平铺；状态页贴着内容往下排，不把短卡片垂直居中
+     （小屏上标题上方会留一大片空，反而失去落地感；窄屏也不锁视口）。 */
   .shell {
     min-height: 0;
-    padding: var(--s-2) 0 var(--s-5);
+    padding: var(--s-6) var(--page-x) var(--s-7);
+  }
+
+  .holder {
+    margin-block: 0;
+  }
+
+  .card {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    padding: 0;
+  }
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .card {
+      background-color: transparent;
+    }
   }
 }

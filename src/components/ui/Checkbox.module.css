@@ -10,13 +10,13 @@
   align-items: center;
   gap: var(--s-2);
   cursor: pointer;
-  font-size: var(--fs-sm);
+  font-size: var(--ui-fs);
   color: var(--text-body);
   line-height: 1.5;
 }
 
 .row.disabled {
-  opacity: 0.6;
+  opacity: var(--disabled-opacity);
   cursor: not-allowed;
 }
 
@@ -98,7 +98,7 @@
 .input:focus-visible + .box {
   border-color: var(--pink-600);
   outline: none;
-  box-shadow: 0 0 0 3px var(--ring-pink);
+  box-shadow: 0 0 0 3px var(--focus-halo);
 }
 
 .invalid .box {

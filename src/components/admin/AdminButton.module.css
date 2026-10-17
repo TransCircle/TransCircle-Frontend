@@ -14,17 +14,14 @@
   border: 1.5px solid transparent;
   white-space: nowrap;
   line-height: 1.2;
+  /* 链接形态（ButtonLink）与按钮同一外观：去掉下划线、继承字体。 */
+  text-decoration: none;
   transition:
     background-color var(--dur-1) var(--ease-standard),
     color var(--dur-1) var(--ease-standard),
     border-color var(--dur-1) var(--ease-standard),
     box-shadow var(--dur-1) var(--ease-standard),
     transform var(--dur-1) var(--ease-spring);
-}
-
-.btn:focus-visible {
-  outline: 2px solid var(--pink-600);
-  outline-offset: 2px;
 }
 
 .md {
@@ -34,7 +31,7 @@
 }
 
 .sm {
-  height: 32px;
+  height: var(--btn-h-sm);
   padding: 0 var(--s-3);
   font-size: var(--fs-xs);
 }
@@ -44,7 +41,7 @@
 }
 
 .btn:disabled {
-  opacity: 0.55;
+  opacity: var(--disabled-opacity);
   cursor: not-allowed;
 }
 

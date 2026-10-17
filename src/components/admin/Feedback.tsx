@@ -45,9 +45,12 @@ export interface EmptyStateProps {
   description?: string
   icon?: ReactNode
   action?: ReactNode
+  /** 标题层级：默认 h2；嵌在已有 h2 分区里时传 h3，保持标题大纲连续。 */
+  headingLevel?: 'h2' | 'h3'
 }
 
-export function EmptyState({ title, description, icon, action }: EmptyStateProps) {
+export function EmptyState({ title, description, icon, action, headingLevel = 'h2' }: EmptyStateProps) {
+  const Heading = headingLevel
   return (
     <div className={styles.empty}>
       {icon && (
@@ -55,7 +58,7 @@ export function EmptyState({ title, description, icon, action }: EmptyStateProps
           {icon}
         </span>
       )}
-      <h2 className={styles.emptyTitle}>{title}</h2>
+      <Heading className={styles.emptyTitle}>{title}</Heading>
       {description && <p className={styles.emptyDesc}>{description}</p>}
       {action && <div className={styles.emptyAction}>{action}</div>}
     </div>

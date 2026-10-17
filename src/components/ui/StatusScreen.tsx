@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
 import { cx } from '../admin/cx'
-import { AdminButton, Spinner, type AdminButtonVariant } from '../admin'
+import { AdminButton, ButtonLink, Spinner, type AdminButtonVariant } from '../admin'
+import { AuthStage } from './AuthStage'
+import { BrandText } from './BrandText'
 import { CenteredCard } from './CenteredCard'
 import { PageHeader } from './PageHeader'
 import styles from './StatusScreen.module.css'
@@ -29,6 +30,11 @@ export interface StatusScreenProps {
   maxWidth?: string
   /** use 'main' only when rendered outside RootLayout (router errorElement). */
   as?: 'div' | 'main'
+  /**
+   * card = 居中玻璃卡（404、错误边界等普通状态页）；
+   * stage = 认证舞台（登录中转、OAuth 回调、二次验证完成、认证报错），与 Pass 登录页同一版式。
+   */
+  variant?: 'card' | 'stage'
 }
 
 const SuccessIcon = () => (
@@ -92,9 +98,9 @@ const ICONS: Record<Exclude<StatusKind, 'loading'>, ReactNode> = {
 }
 
 /**
- * Shared centered result screen (loading / success / error / info) used by auth,
- * status, and OAuth pages. Composes Spinner + PageHeader + AdminButton inside a
- * CenteredCard, with the correct live-region role per kind.
+ * 共享的结果屏（loading / success / error / info）：Spinner + PageHeader + 动作按钮，
+ * 按 kind 给出正确的 live region 角色。外壳按 variant 取居中卡或认证舞台；
+ * 标题中的品牌词经 BrandText 走品牌字体。
  */
 export function StatusScreen({
   kind,
@@ -106,52 +112,47 @@ export function StatusScreen({
   showIcon = true,
   maxWidth,
   as = 'div',
+  variant = 'card',
 }: StatusScreenProps) {
-  return (
-    <CenteredCard maxWidth={maxWidth} as={as}>
-      <div
-        className={cx(styles.inner, styles[kind])}
-        role={kind === 'error' ? 'alert' : 'status'}
-        aria-live={kind === 'error' ? 'assertive' : 'polite'}
-      >
-        {showIcon && (
-          <span className={styles.icon} aria-hidden="true">
-            {icon ?? (kind === 'loading' ? <Spinner size="lg" inline /> : ICONS[kind])}
-          </span>
-        )}
-        <PageHeader
-          title={title}
-          description={description}
-          align="center"
-          size="page"
-          as="h1"
-          className={styles.header}
-        />
-        {detail && <p className={styles.detail}>{detail}</p>}
-        {actions && actions.length > 0 && (
-          <div className={styles.actions}>
-            {actions.map((a, i) => {
-              const variant = a.variant ?? (i === 0 ? 'primary' : 'secondary')
-              if (a.to) {
-                return (
-                  <Link
-                    key={i}
-                    to={a.to}
-                    className={cx(styles.linkBtn, variant === 'primary' ? styles.linkPrimary : styles.linkSecondary)}
-                  >
-                    {a.label}
-                  </Link>
-                )
-              }
+  const content = (
+    <div
+      className={cx(styles.inner, styles[kind])}
+      role={kind === 'error' ? 'alert' : 'status'}
+      aria-live={kind === 'error' ? 'assertive' : 'polite'}
+    >
+      {showIcon && (
+        <span className={styles.icon} aria-hidden="true">
+          {icon ?? (kind === 'loading' ? <Spinner size="lg" inline /> : ICONS[kind])}
+        </span>
+      )}
+      <PageHeader title={<BrandText text={title} />} description={description} align="center" size="card" as="h1" />
+      {detail && <p className={styles.detail}>{detail}</p>}
+      {actions && actions.length > 0 && (
+        <div className={styles.actions}>
+          {actions.map((a, i) => {
+            const buttonVariant = a.variant ?? (i === 0 ? 'primary' : 'secondary')
+            if (a.to) {
               return (
-                <AdminButton key={i} variant={variant} loading={a.loading} onClick={a.onClick}>
+                <ButtonLink key={i} to={a.to} variant={buttonVariant}>
                   {a.label}
-                </AdminButton>
+                </ButtonLink>
               )
-            })}
-          </div>
-        )}
-      </div>
+            }
+            return (
+              <AdminButton key={i} variant={buttonVariant} loading={a.loading} onClick={a.onClick}>
+                {a.label}
+              </AdminButton>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+  return variant === 'stage' ? (
+    <AuthStage as={as}>{content}</AuthStage>
+  ) : (
+    <CenteredCard maxWidth={maxWidth} as={as}>
+      {content}
     </CenteredCard>
   )
 }

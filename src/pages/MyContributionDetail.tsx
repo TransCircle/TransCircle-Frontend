@@ -8,18 +8,20 @@ import { limitByUnicode } from '@/utils/string'
 import {
   AdminButton,
   Alert,
+  BackIcon,
   Card,
   ConfirmDialog,
   Select,
   Skeleton,
   StatusBadge,
   TagInput,
+  TextArea,
   TextField,
   CONTRIB_STATUS_TONE,
 } from '@/components/ui'
 import { MarkdownField } from '@/components/MarkdownField'
 import { useFormatTs } from '@/utils/datetime'
-import shell from './Page.module.css'
+import shell from './Account.module.css'
 
 interface ContributionDetail {
   id: string
@@ -38,6 +40,8 @@ interface ContributionDetail {
   review: {
     reviewerDisplayName: string | null
     reviewedAt: number | null
+    /** 最近一条审核方事件的类型（后端 §4.2）：review / reopen / publish / hide …；reopen 时 publicNote 是重新打开的原因 */
+    action?: string | null
     decision: string | null
     publicNote: string | null
   }
@@ -176,7 +180,13 @@ export const MyContributionDetail = () => {
   const sameTags = (a: string[], b: string[]) => a.length === b.length && a.every((x, i) => x === b[i])
 
   /** 编辑器里现在的内容是否仍是这次提交出去的那一份。 */
-  const draftUnchanged = (sent: { title: string; content: string; summary: string; tags: string[]; language: string }) => {
+  const draftUnchanged = (sent: {
+    title: string
+    content: string
+    summary: string
+    tags: string[]
+    language: string
+  }) => {
     const cur = draftRef.current
     return (
       cur.title === sent.title &&
@@ -277,15 +287,20 @@ export const MyContributionDetail = () => {
     }
   }
 
+  /* 返回入口在加载与出错时同样可用：慢网络或 404 时不该把用户困在这一页。 */
+  const backRow = (
+    <div className={shell.backRow}>
+      <AdminButton variant="ghost" size="sm" iconLeft={<BackIcon />} onClick={() => navigate('/me/contributions')}>
+        {t('myContributionDetail.backToList')}
+      </AdminButton>
+    </div>
+  )
+
   if (loading) {
     // 保留页面框架（返回按钮 + 卡片容器），仅内容区骨架占位，避免整页替换为 Spinner 的布局跳变
     return (
       <div className={`${shell.page} ${shell.pageNarrow}`}>
-        <div>
-          <AdminButton variant="ghost" size="sm" disabled>
-            {t('myContributionDetail.backToList')}
-          </AdminButton>
-        </div>
+        {backRow}
         <Skeleton variant="card" />
       </div>
     )
@@ -294,6 +309,7 @@ export const MyContributionDetail = () => {
   if (error || !contrib) {
     return (
       <div className={`${shell.page} ${shell.pageNarrow}`}>
+        {backRow}
         <Alert tone="error">{error || t('myContributionDetail.notFound')}</Alert>
       </div>
     )
@@ -304,11 +320,7 @@ export const MyContributionDetail = () => {
 
   return (
     <div className={`${shell.page} ${shell.pageNarrow}`}>
-      <div>
-        <AdminButton variant="ghost" size="sm" onClick={() => navigate('/me/contributions')}>
-          {t('myContributionDetail.backToList')}
-        </AdminButton>
-      </div>
+      {backRow}
 
       <Card>
         {editMode ? (
@@ -325,11 +337,13 @@ export const MyContributionDetail = () => {
               value={content}
               onChange={setDraftContent}
             />
-            <TextField
+            {/* 摘要与投稿页一致用多行文本框（同为 300 字上限）。 */}
+            <TextArea
               label={t('myContributionDetail.fieldSummary')}
               value={summary}
               onChange={(e) => setDraftSummary(e.target.value)}
               maxLength={300}
+              rows={3}
             />
             <TagInput
               label={t('myContributionDetail.fieldTags')}
@@ -368,7 +382,7 @@ export const MyContributionDetail = () => {
               />
             </div>
             <div className={shell.metaRow}>
-              <span className={shell.metaItem}>v{contrib.version}</span>
+              <span className={shell.metaItem}>{t('common.versionShort', { version: contrib.version })}</span>
               <span className={shell.metaItem}>{formatTs(contrib.createdAt)}</span>
               {contrib.submittedAt && (
                 <span className={shell.metaItem}>
@@ -377,13 +391,40 @@ export const MyContributionDetail = () => {
               )}
             </div>
             {contrib.summary && <p className={shell.summary}>{contrib.summary}</p>}
-            <div className={shell.contentBlock}>{contrib.contentRaw}</div>
+            {/* 作者提交的 Markdown 原文：等宽、保留换行、限高可滚。 */}
+            {/* tabIndex：限高滚动区，纯键盘用户也要能聚焦后滚动阅读全文。 */}
+            <pre className={shell.rawSource} tabIndex={0} aria-label={t('common.rawSourceLabel')}>
+              {contrib.contentRaw}
+            </pre>
             {contrib.review.publicNote && (
               <div className={shell.contentBlock}>
-                <strong>{t('myContributionDetail.reviewNote')}：</strong>
+                {/* 审核方把结论撤回到待审核时，这条备注是重新打开的原因，不是审核意见 */}
+                <p className={shell.noteLabel}>
+                  {contrib.review.action === 'reopen'
+                    ? t('myContributionDetail.reopenNote')
+                    : t('myContributionDetail.reviewNote')}
+                </p>
                 {contrib.review.publicNote}
-                {contrib.review.reviewedAt && ` (${formatTs(contrib.review.reviewedAt)})`}
+                {contrib.review.reviewedAt && (
+                  <p className={shell.subtleNote}>
+                    {t(
+                      contrib.review.action === 'reopen'
+                        ? 'myContributionDetail.reopenedAt'
+                        : 'myContributionDetail.reviewedAt',
+                      { time: formatTs(contrib.review.reviewedAt) },
+                    )}
+                  </p>
+                )}
               </div>
+            )}
+            {/* 未通过 / 已撤回：说明「修改后重新提交会回到审核队列」——这是这两种状态唯一的出路，
+                不说的话作者只看到一个「编辑」按钮，不知道改完还要再提交、也不知道之后会怎样。 */}
+            {(contrib.status === 'rejected' || contrib.status === 'withdrawn') && (
+              <Alert tone="info">
+                {contrib.status === 'rejected'
+                  ? t('myContributionDetail.rejectedHint')
+                  : t('myContributionDetail.withdrawnHint')}
+              </Alert>
             )}
             {actionError && <Alert tone="error">{actionError}</Alert>}
             <div className={shell.actions}>
@@ -415,7 +456,9 @@ export const MyContributionDetail = () => {
         message={
           confirmAction === 'withdraw'
             ? t('myContributionDetail.confirmWithdraw')
-            : t('myContributionDetail.confirmSubmit')
+            : contrib.status === 'draft'
+              ? t('myContributionDetail.confirmSubmit')
+              : t('myContributionDetail.confirmResubmit')
         }
         confirmText={
           confirmAction === 'withdraw' ? t('myContributionDetail.withdraw') : t('myContributionDetail.submitReview')

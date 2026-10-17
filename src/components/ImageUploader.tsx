@@ -4,6 +4,7 @@ import { uploadFile } from '@/api/client'
 import { ERRORS } from '@/api/errors'
 import { IMAGE_BASE } from '@/config'
 import { AdminButton, Alert } from '@/components/ui'
+import styles from './ImageUploader.module.css'
 
 interface ImageUploaderProps {
   onUploaded: (url: string) => void
@@ -102,14 +103,14 @@ export const ImageUploader = ({ onUploaded }: ImageUploaderProps) => {
   }
 
   return (
-    <div>
+    <div className={styles.uploader}>
       <input
         ref={inputRef}
         type="file"
         accept="image/jpeg,image/png,image/gif,image/webp"
         aria-hidden="true"
         tabIndex={-1}
-        style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }}
+        className={styles.fileInput}
         onChange={(e) => {
           handleFile(e.target.files?.[0])
           e.target.value = ''

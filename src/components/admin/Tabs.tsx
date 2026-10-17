@@ -13,20 +13,30 @@ export interface TabsProps<K extends string = string> {
   value: K
   onChange: (key: K) => void
   ariaLabel: string
-  variant?: 'underline' | 'segmented'
   /** 当所有标签共用单个 tabpanel 时传入其 id，避免 aria-controls 指向不存在的元素。 */
   panelId?: string
 }
 
-/** WAI-ARIA tablist：roving tabindex + 方向键/Home/End 导航。 */
-export function Tabs<K extends string = string>({
-  items,
-  value,
-  onChange,
-  ariaLabel,
-  variant = 'underline',
-  panelId,
-}: TabsProps<K>) {
+/** 右缘淡出遮罩宽度，须与 Tabs.module.css 的 .moreToEnd 一致。 */
+const FADE_MASK_PX = 28
+
+/**
+ * 横向滚动容器里把某个子元素挪进可视范围：只动容器自己的 scrollLeft。
+ * 刻意不用 scrollIntoView——它会连带滚动所有祖先（包括文档本身），切个标签整页纵向跳一截。
+ */
+function revealInScroller(scroller: HTMLElement, el: HTMLElement) {
+  if (scroller.scrollWidth <= scroller.clientWidth) return
+  const box = scroller.getBoundingClientRect()
+  const item = el.getBoundingClientRect()
+  // 右侧还有内容时右缘挂着 28px 淡出遮罩：目标要停在遮罩之外才算完整可见。
+  const atEnd = el === scroller.lastElementChild
+  const rightInset = atEnd ? 0 : FADE_MASK_PX
+  if (item.left < box.left) scroller.scrollLeft -= box.left - item.left
+  else if (item.right > box.right - rightInset) scroller.scrollLeft += item.right - (box.right - rightInset)
+}
+
+/** WAI-ARIA tablist：roving tabindex + 方向键/Home/End 导航（DESIGN §5.9 下划线样式）。 */
+export function Tabs<K extends string = string>({ items, value, onChange, ariaLabel, panelId }: TabsProps<K>) {
   const refs = useRef<HTMLButtonElement[]>([])
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -37,15 +47,34 @@ export function Tabs<K extends string = string>({
 
   /* 滑动指示条（DESIGN §5.9）：2px 高的 --pink-600 条，用 transform 在标签间滑动。
      几何量必须实测——标签宽度取决于中文文案长度与字体加载时机，写不死。 */
-  const isUnderline = variant === 'underline'
   const [indicator, setIndicator] = useState<{ left: number; width: number } | null>(null)
+  /** 还有内容藏在右侧：只在这时给右缘挂淡出遮罩，滚到底就摘掉（否则最后一个标签永远发虚）。 */
+  const [moreToEnd, setMoreToEnd] = useState(false)
+  /* 调用方普遍在渲染时新建 items 数组：依赖只取「标签集合」的稳定签名，
+     否则每次重渲染都会重跑测量 → setState → 重渲染，形成死循环。 */
+  const itemsKey = JSON.stringify(items.map((it) => [it.key, it.label, it.badge ?? null]))
+
+  /** 几何没变就不更新状态：ResizeObserver 与字体回调会频繁触发同值测量。 */
+  const placeIndicator = (el: HTMLButtonElement | undefined) => {
+    if (!el) return
+    const next = { left: el.offsetLeft, width: el.offsetWidth }
+    setIndicator((prev) => (prev && prev.left === next.left && prev.width === next.width ? prev : next))
+  }
+
+  const syncOverflow = () => {
+    const list = listRef.current
+    if (!list) return
+    setMoreToEnd(list.scrollLeft + list.clientWidth < list.scrollWidth - 1)
+  }
 
   useLayoutEffect(() => {
-    if (!isUnderline) return
     const measure = () => {
+      placeIndicator(refs.current[rovingIndex])
+      // 容器变窄（缩窗、旋转）时当前标签可能被挤出可视范围，跟着重新显露。
+      const list = listRef.current
       const el = refs.current[rovingIndex]
-      if (!el) return
-      setIndicator({ left: el.offsetLeft, width: el.offsetWidth })
+      if (list && el) revealInScroller(list, el)
+      syncOverflow()
     }
     measure()
 
@@ -56,21 +85,27 @@ export function Tabs<K extends string = string>({
       if (el) ro.observe(el)
     }
     return () => ro.disconnect()
-  }, [isUnderline, rovingIndex, items])
+  }, [rovingIndex, itemsKey])
+
+  // 当前标签变化（点击、方向键、外部改值）时，把它滚进横向可视范围。
+  useLayoutEffect(() => {
+    const list = listRef.current
+    const el = refs.current[rovingIndex]
+    if (list && el) revealInScroller(list, el)
+  }, [rovingIndex, itemsKey])
 
   // 展示字体是异步加载的，落位后标签宽度会变，指示条需要重测一次。
   useEffect(() => {
-    if (!isUnderline || !('fonts' in document)) return
+    if (!('fonts' in document)) return
     let cancelled = false
     void document.fonts.ready.then(() => {
       if (cancelled) return
-      const el = refs.current[rovingIndex]
-      if (el) setIndicator({ left: el.offsetLeft, width: el.offsetWidth })
+      placeIndicator(refs.current[rovingIndex])
     })
     return () => {
       cancelled = true
     }
-  }, [isUnderline, rovingIndex])
+  }, [rovingIndex])
 
   const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
     let next: number
@@ -96,17 +131,19 @@ export function Tabs<K extends string = string>({
     const target = items[next]
     if (!target) return
     onChange(target.key)
-    refs.current[next]?.focus()
+    // preventScroll：可视范围交给 revealInScroller，只横向挪动标签条，不带动页面。
+    refs.current[next]?.focus({ preventScroll: true })
   }
 
   return (
     <div
       ref={listRef}
-      className={cx(styles.tabs, variant === 'segmented' ? styles.segmented : styles.underline)}
+      className={cx(styles.tabs, moreToEnd && styles.moreToEnd)}
       role="tablist"
       aria-label={ariaLabel}
+      onScroll={syncOverflow}
     >
-      {isUnderline && indicator && (
+      {indicator && (
         <span
           className={styles.indicator}
           aria-hidden="true"

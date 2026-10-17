@@ -1,8 +1,7 @@
-/* No bottom margin: spacing comes from the parent layout's flex `gap`
-   (.page, CenteredCard body, StatusScreen inner) for composability. */
+/* 无底边距：间距由父容器的 flex gap 决定（.page、卡片 body、状态屏 inner），便于组合。 */
 .header {
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
   gap: var(--s-4);
   flex-wrap: wrap;
@@ -11,44 +10,54 @@
 .texts {
   display: flex;
   flex-direction: column;
-  gap: var(--s-1);
+  gap: var(--s-2);
   min-width: 0;
 }
 
 .title {
   margin: 0;
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-bold);
   color: var(--ink);
   line-height: var(--lh-heading);
+  text-wrap: balance;
 }
 
+/* 页级标题：--fs-h1（clamp），移动端自动收敛。 */
 .page .title {
+  font-size: var(--fs-h1);
+}
+
+/* 窄卡片语境（状态屏/认证舞台）收一档，避免 2rem 在 26rem 卡片里过大。 */
+.card .title {
   font-size: var(--fs-h3);
 }
 
 .section .title {
   font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
 }
 
 .desc {
   margin: 0;
+  max-width: 40rem;
   font-size: var(--fs-body);
-  color: var(--text-muted);
-  line-height: 1.55;
+  color: var(--text-secondary);
+  line-height: var(--lh-caption);
+  /* 超长邮箱 / URI 等无空格长串可任意断行，防止撑破窄容器。 */
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
 }
 
 .section .desc {
   font-size: var(--fs-sm);
 }
 
-/* eyebrow 是 --font-tech 的指定用途之一（§2.6）。 */
+/* eyebrow 是 --font-tech 的指定用途之一（§2.6）。中文 eyebrow 不做大写与加宽字距。 */
 .eyebrow {
   font-family: var(--font-tech);
   font-size: var(--fs-xs);
   font-weight: var(--fw-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-muted);
+  color: var(--pink-700);
 }
 
 .actions {
@@ -77,6 +86,7 @@
   .header {
     gap: var(--s-3);
   }
+
   .actions {
     width: 100%;
   }

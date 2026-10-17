@@ -6,7 +6,7 @@ import { post, isRetryableFailure } from '@/api/client'
 import { useIntentKey } from '@/hooks/useIntentKey'
 import { ERRORS } from '@/api/errors'
 import { limitByUnicode } from '@/utils/string'
-import { AdminButton, Alert, Checkbox, Select, TagInput, TextArea, TextField } from '@/components/ui'
+import { AdminButton, Alert, BrandText, Checkbox, Select, TagInput, TextArea, TextField } from '@/components/ui'
 import { MarkdownField } from './MarkdownField'
 import styles from './SubmitForm.module.css'
 
@@ -203,7 +203,7 @@ export const SubmitForm = () => {
         <div className={styles.loginHint}>
           {user ? (
             <span className={styles.userBadge}>
-              <span className={styles.userName}>{user.username}</span>
+              <span className={styles.userName}>{user.displayName || user.username}</span>
               <span className={styles.userTag}>{t('submit.loggedInAs')}</span>
             </span>
           ) : (
@@ -219,7 +219,7 @@ export const SubmitForm = () => {
                   void loginWithPass('/submit')
                 }}
               >
-                {t('login.passLogin')}
+                <BrandText text={t('login.passLogin')} />
               </AdminButton>
             </span>
           )}
@@ -277,7 +277,7 @@ export const SubmitForm = () => {
       />
 
       <Checkbox
-        label={t('submit.agreement')}
+        label={<BrandText text={t('submit.agreement')} />}
         checked={form.agreement}
         onChange={(e) => set('agreement', e.target.checked)}
         invalid={!!errors.agreement}

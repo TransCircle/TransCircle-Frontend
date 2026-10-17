@@ -1,23 +1,30 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { get } from '@/api/client'
 import { useAuth } from '@/context/useAuth'
 import { hasPermission, PERMISSIONS } from '@/api/permissions'
 import { usePagedList, toPagedResult } from '@/hooks/usePagedList'
-import { limitByUnicode } from '@/utils/string'
+import { ellipsize } from '@/utils/string'
 import { useFormatTs } from '@/utils/datetime'
 import { AdminButton, Alert, EmptyState, Pill, SearchField, Skeleton } from '@/components/admin'
-import { Pagination } from '@/components/ui'
+import { Pagination, Select } from '@/components/ui'
 import shell from './Page.module.css'
+import { useAdminPageHeader } from './admin/header'
+import { useListParams } from './admin/listParams'
 
 const PAGE_SIZE = 50
 
 interface AuditLogEntry {
   id: string
   actorUserId: string | null
+  /** 操作者（后端 §8 解析好的显示名）；系统操作为 null */
+  actor?: { id: string; displayName: string | null } | null
   action: string
   resourceType: string
   resourceId: string | null
+  /** 操作对象；label 是可读名称，按读者权限下发（无权或已不存在时为 null） */
+  resource?: { type: string; id: string | null; label: string | null; deleted?: boolean }
   before: Record<string, unknown> | null
   after: Record<string, unknown> | null
   createdAt: number
@@ -25,152 +32,142 @@ interface AuditLogEntry {
   // 后端审计列表不返回 metadata / ipHash（api.md §8）；如未来返回再设为可选字段
 }
 
-const ACTOR_RETRY_LIMIT = 2
+/** 审计里出现的对象类型（后端 writeAuditLog 的 resourceType），与筛选下拉、类型标记共用 */
+const RESOURCE_TYPES = ['contribution', 'user', 'comment', 'session', 'image'] as const
+const RESOURCE_TYPE_KEYS: Record<string, string> = {
+  contribution: 'adminAuditLogs.typeContribution',
+  user: 'adminAuditLogs.typeUser',
+  comment: 'adminAuditLogs.typeComment',
+  session: 'adminAuditLogs.typeSession',
+  image: 'adminAuditLogs.typeImage',
+}
 
 export const AdminAuditLogs = () => {
   const { t } = useTranslation()
   const formatTs = useFormatTs()
   const { accessToken, loading: authLoading, permissions } = useAuth()
-  const loadedRef = useRef(false)
+  /* 已应用的筛选在 URL 里（?action=&resource=&page=）；输入框只是草稿，回车 / 点搜索才写进 URL。
+     输入框的值直接进请求的话，改了筛选但没点搜索就翻页，会查成「新筛选 + 旧页码」。 */
+  const { searchParams, patch, page: urlPage, setPage } = useListParams()
+  const appliedAction = (searchParams.get('action') ?? '').trim()
+  const appliedResource = (searchParams.get('resource') ?? '').trim()
+  const [actionFilter, setActionFilter] = useState(appliedAction)
+  const ready = !authLoading && !!accessToken && hasPermission(permissions, PERMISSIONS.AUDIT_READ)
 
-  const [actionFilter, setActionFilter] = useState('')
-  const [resourceFilter, setResourceFilter] = useState('')
-  /* 已应用的筛选条件快照，理由同 AdminUsers：输入框的值直接进 fetchPage 的话，
-     改了筛选但没点搜索就翻页会发出「新筛选 + 旧游标」的请求。 */
-  const appliedFiltersRef = useRef({ action: '', resource: '' })
-  const [actorNames, setActorNames] = useState<Record<string, string>>({})
-  /* 操作者名称查询的重试信号。失败时无条件递增，把 effect 再踢一遍。
-     不封顶是安全的：次数上限记在**每个 ID 自己**头上（actorAttemptsRef），
-     达到上限的 ID 会被过滤掉，ids 为空时 effect 直接返回，不会再 setState。
-     若把上限记在这个共享计数上，一批操作者失败耗尽额度后，之后翻页遇到的
-     新操作者就再也没有重试机会了。 */
-  const [actorRetry, setActorRetry] = useState(0)
-  /** 每个操作者 ID 各自的失败次数。 */
-  const actorAttemptsRef = useRef<Map<string, number>>(new Map())
-  /* 已经拿到名字的操作者 ID。只有成功才进这个集合——失败的要能被后续 effect 重试。 */
-  const actorResolvedRef = useRef<Set<string>>(new Set())
-  /* 本轮正在查的 ID。它和 resolved 分开记，是因为「正在查」必须在 effect cleanup 里
-     **同步**撤回：下一轮 effect 紧接着 cleanup 运行，若等异步 continuation 再撤回，
-     它早已跳过这些 ID，之后再没有人去查，操作者名称会永久停在截断的 ID 上。 */
-  const actorInFlightRef = useRef<Set<string>>(new Set())
-
+  /* 已应用的筛选被外部改了（后退、外链）而不是本页刚写的：回填输入框。
+     对象类型是下拉，直接读 URL，不需要草稿。 */
+  const lastAppliedRef = useRef({ action: appliedAction, resource: appliedResource })
+  useEffect(() => {
+    const last = lastAppliedRef.current
+    if (last.action === appliedAction && last.resource === appliedResource) return
+    lastAppliedRef.current = { action: appliedAction, resource: appliedResource }
+    setActionFilter(appliedAction)
+  }, [appliedAction, appliedResource])
   const actionLabel = (action: string): string => t(`adminAuditLogs.actions.${action.replace(/\./g, '_')}`, action)
 
   // 游标分页列表（统一模板）：筛选由 onSearch 显式触发 reload
-  const { items: logs, page, total, totalPages, stale, staleResults, loading, error, reload, goToPage } = usePagedList<AuditLogEntry>({
+  const {
+    items: logs,
+    page,
+    total,
+    totalPages,
+    stale,
+    staleResults,
+    loading,
+    error,
+    refresh,
+  } = usePagedList<AuditLogEntry>({
     fetchPage: async (targetPage) => {
       const params = new URLSearchParams({ limit: String(PAGE_SIZE), page: String(targetPage) })
-      const applied = appliedFiltersRef.current
-      if (applied.action) params.set('action', applied.action)
-      if (applied.resource) params.set('resourceType', applied.resource)
+      if (appliedAction) params.set('action', appliedAction)
+      if (appliedResource) params.set('resourceType', appliedResource)
       const result = await get<AuditLogEntry[]>(`/admin/audit-logs?${params}`, {
         /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
       })
       if (!result.ok) throw new Error(result.error.message)
       return toPagedResult(result.data, result.pagination)
     },
-    deps: [authLoading, accessToken],
-    autoLoad: false,
+    // 无 audit:read 时不发起（守卫已显示拒绝页），免发无谓 403
+    deps: [ready, appliedAction, appliedResource],
+    autoLoad: ready,
+    page: urlPage,
+    // 越界页被服务端回落时，把实际页码写回 URL
+    onPageMismatch: setPage,
   })
-
-  // 首载：auth 就绪且持有 audit:read 时加载一次；无权限不发起
-  useEffect(() => {
-    if (authLoading || !accessToken) return
-    if (!hasPermission(permissions, PERMISSIONS.AUDIT_READ)) return // 无 audit:read 直接拒绝页，免发无谓 403
-    if (loadedRef.current) return
-    loadedRef.current = true
-    void reload()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, accessToken])
+  useAdminPageHeader({ title: t('adminAuditLogs.title'), subtitle: t('adminAuditLogs.subtitle') })
+  const canOpenUsers = hasPermission(permissions, PERMISSIONS.USER_READ)
+  const canOpenContributions = hasPermission(permissions, PERMISSIONS.CONTRIBUTION_READ)
+  const canOpenComments = hasPermission(permissions, PERMISSIONS.COMMENT_MODERATE)
 
   const applyFilters = (action: string, resource: string) => {
-    appliedFiltersRef.current = { action, resource }
-    void reload()
+    // 条件没变（如加载失败后再点一次搜索）：URL 不会变，直接重取
+    if (action === appliedAction && resource === appliedResource) {
+      void refresh()
+      return
+    }
+    lastAppliedRef.current = { action, resource }
+    patch({ action: action || null, resource: resource || null })
   }
 
-  const searchLogs = () => applyFilters(actionFilter.trim(), resourceFilter.trim())
+  const searchLogs = () => applyFilters(actionFilter.trim(), appliedResource)
 
-  /* 清除按钮必须同步「已应用」的筛选并重载，理由同 AdminUsers。
-     另一个框取它**当前显示**的值，而不是上次已应用的值：用户可能已经把资源框
-     改成了 R2 但还没点搜索，此时清掉 action 若沿用旧的 R1，界面显示的是 R2、
-     实际查的却是 R1，之后翻页也一直用错的条件。 */
-  const clearAction = () => applyFilters('', resourceFilter.trim())
-  const clearResource = () => applyFilters(actionFilter.trim(), '')
+  /* 清除按钮必须同步「已应用」的筛选并重载，理由同 AdminUsers。 */
+  const clearAction = () => applyFilters('', appliedResource)
+  /* 对象类型是下拉：选了就生效；操作类型框里还没点搜索的草稿一并带上，免得界面显示的和实际查的不一致 */
+  const changeResource = (resource: string) => applyFilters(actionFilter.trim(), resource)
 
-  /* 操作者 ID → 显示名查表（需 user:read 权限）。
-     三个状态分得很清楚：
-       · resolvedRef —— 已经拿到名字，永不重查；只在名字**真的写进** actorNames
-         的那一刻才登记。若在写入前就登记，一轮被取消的查询会留下「已解决」的
-         假象，而名字从未落地，该操作者此后永远只显示截断 ID。
-       · inFlightRef —— 本轮正在查。必须在 cleanup 里**同步**撤回：下一轮 effect
-         紧接着 cleanup 运行，等异步 continuation 再撤回就晚了。
-       · attempts —— 每个 ID 各自的失败次数，达到上限就不再查它；配合
-         retry 信号，既能从网络抖动里恢复，又不会在持续故障时无限重试。 */
-  useEffect(() => {
-    if (!accessToken || !hasPermission(permissions, PERMISSIONS.USER_READ)) return
-    const ids = Array.from(new Set(logs.map((l) => l.actorUserId).filter((x): x is string => !!x))).filter(
-      (id) =>
-        !actorResolvedRef.current.has(id) &&
-        !actorInFlightRef.current.has(id) &&
-        (actorAttemptsRef.current.get(id) ?? 0) < ACTOR_RETRY_LIMIT,
+  /** 审计记录指向的资源在后台有详情页、且有权限打开时，对象名称变成链接。 */
+  const resourceHref = (type: string, id: string): string | null => {
+    if (type === 'contribution' && canOpenContributions) return `/admin/contributions/${encodeURIComponent(id)}`
+    if (type === 'user' && canOpenUsers) return `/admin/users/${encodeURIComponent(id)}`
+    if (type === 'comment' && canOpenComments) return `/admin/comments/${encodeURIComponent(id)}`
+    return null
+  }
+
+  /* 操作者：显示名（后端解析）；有 user:read 时可点去用户详情。旧后端没给名字时退回短 ID。 */
+  const renderActor = (log: AuditLogEntry): ReactNode => {
+    const id = log.actor?.id ?? log.actorUserId
+    if (!id) return <span className={shell.auditMuted}>{t('adminAuditLogs.actorSystem')}</span>
+    const name = log.actor?.displayName || null
+    const text = name ?? <span className={shell.auditId}>{ellipsize(id, 12)}</span>
+    return canOpenUsers ? (
+      <Link to={`/admin/users/${encodeURIComponent(id)}`} className={shell.textLink}>
+        {text}
+      </Link>
+    ) : (
+      text
     )
-    if (ids.length === 0) return
-    // 在 effect 内取出集合本身，cleanup 用这个局部变量（Set 的身份不变，只是内容变）
-    const inFlight = actorInFlightRef.current
-    const resolved = actorResolvedRef.current
-    const attempts = actorAttemptsRef.current
-    ids.forEach((id) => inFlight.add(id))
-    let cancelled = false
-    void (async () => {
-      // 限制并发数到 4，避免同时发起大量请求触发后端限流
-      const CONCURRENCY = 4
-      const entries: Array<[string, string] | null> = []
-      /* 失败的 ID 先攒着，等确认本轮没被取消再计入 attempts。
-         被取消的那一轮不该消耗任何人的重试额度：用户只是翻了个页，
-         接口恢复后这些名字还得能查回来。 */
-      const failedIds: string[] = []
-      try {
-        for (let i = 0; i < ids.length; i += CONCURRENCY) {
-          const batch = ids.slice(i, i + CONCURRENCY)
-          const batchResults = await Promise.all(
-            batch.map(async (id) => {
-              const r = await get<{ displayName?: string; username?: string }>(`/admin/users/${id}`, {
-                /* apiRequest 自动注入 Authorization 并处理 401 刷新 */
-              })
-              if (r.ok) return [id, r.data.displayName || r.data.username || id] as [string, string]
-              failedIds.push(id)
-              return null
-            }),
-          )
-          // 本轮被取消：in-flight 标记由 cleanup 同步撤回，这里直接收手，
-          // 且**不**把任何 ID 记为 resolved——它们的名字并没有写进界面。
-          if (cancelled) return
-          entries.push(...batchResults)
-        }
-        const map: Record<string, string> = {}
-        for (const e of entries) {
-          if (!e) continue
-          map[e[0]] = e[1]
-          resolved.add(e[0])
-        }
-        if (Object.keys(map).length) setActorNames((prev) => ({ ...prev, ...map }))
-        if (failedIds.length > 0) {
-          failedIds.forEach((id) => attempts.set(id, (attempts.get(id) ?? 0) + 1))
-          // 再踢一轮；是否真的重试由每个 ID 自己的 attempts 上限决定
-          setActorRetry((n) => n + 1)
-        }
-      } finally {
-        if (!cancelled) ids.forEach((id) => inFlight.delete(id))
-      }
-    })()
-    return () => {
-      cancelled = true
-      // 同步撤回，让紧接着运行的下一轮 effect 能重新查这些 ID
-      ids.forEach((id) => inFlight.delete(id))
-    }
-    /* 依赖里必须带上 accessToken/permissions：只有 audit:read 时首屏会因权限不足
-       直接返回，此后即使拿到 user:read，logs 没变就不会重跑，操作者名称永远缺失。 */
-  }, [logs, accessToken, permissions, actorRetry])
+  }
+
+  /* 操作对象：类型标记 + 可读名称（投稿标题 / 用户显示名 / 评论摘要）。没有名称时
+     （无权查看、对象已不存在、会话与图片这类本就没有名称的）只给类型和短 ID，不把长 ID 当名字摆出来。 */
+  const renderResource = (log: AuditLogEntry): ReactNode => {
+    const type = log.resource?.type ?? log.resourceType
+    const id = log.resource?.id ?? log.resourceId
+    const label = log.resource?.label || null
+    const deleted = !!log.resource?.deleted
+    // 已删除的投稿后台详情打不开（详情只查未删除的）：不给链接，标出已删除；评论详情能打开已删除的评论（看举报与处理记录）
+    const href = id && (!deleted || type === 'comment') ? resourceHref(type, id) : null
+    // 截断样式直接加在链接上（加在里层 inline-block 上会吃掉链接的下划线）
+    const text = label ?? (id ? ellipsize(id, 16) : null)
+    const textClass = label ? shell.auditLabel : shell.auditId
+    return (
+      <>
+        <Pill>{RESOURCE_TYPE_KEYS[type] ? t(RESOURCE_TYPE_KEYS[type]) : type}</Pill>
+        {text &&
+          (href ? (
+            <Link to={href} className={`${shell.textLink} ${textClass}`} title={label ?? id ?? undefined}>
+              {text}
+            </Link>
+          ) : (
+            <span className={textClass} title={label ?? id ?? undefined}>
+              {text}
+            </span>
+          ))}
+        {deleted && <span className={shell.auditMuted}>{t('adminAuditLogs.deleted')}</span>}
+      </>
+    )
+  }
 
   return (
     <div className={shell.page}>
@@ -186,30 +183,47 @@ export const AdminAuditLogs = () => {
             clearAriaLabel={t('admin.ui.clear')}
             fieldClassName={shell.grow}
           />
-          <SearchField
-            value={resourceFilter}
-            onValueChange={setResourceFilter}
-            onSearch={searchLogs}
-            onClear={clearResource}
-            placeholder={t('adminAuditLogs.filterResource')}
-            searchAriaLabel={t('adminAuditLogs.filterResource')}
-            clearAriaLabel={t('admin.ui.clear')}
-            fieldClassName={shell.grow}
-          />
+          {/* 按钮只提交左边的关键词（类型下拉一改就生效），所以紧挨着搜索框；窄屏时下拉换到第二行 */}
           <AdminButton variant="secondary" onClick={searchLogs}>
             {t('adminAuditLogs.search')}
           </AdminButton>
+          <Select<string>
+            value={appliedResource}
+            onChange={changeResource}
+            ariaLabel={t('adminAuditLogs.filterResource')}
+            fieldClassName={shell.auditTypeSelect}
+            options={[
+              { value: '', label: t('adminAuditLogs.typeAll') },
+              ...RESOURCE_TYPES.map((type) => ({ value: type, label: t(RESOURCE_TYPE_KEYS[type] ?? type) })),
+            ]}
+          />
         </div>
       </div>
 
-      {error && <Alert tone="error">{error}</Alert>}
+      {error && (
+        <Alert tone="error">
+          <span className={shell.errorRow}>
+            {error}
+            <AdminButton variant="secondary" size="sm" onClick={() => void refresh()} disabled={loading}>
+              {t('common.retry')}
+            </AdminButton>
+          </span>
+        </Alert>
+      )}
 
       {loading && logs.length === 0 ? (
         <Skeleton rows={8} />
       ) : /* staleResults：屏幕上这批已经不属于当前筛选了（切换后新查询失败，旧结果还留着）。
          不能再把它们摆出来——它们既不是当前条件的结果，行还是可点的，点进去会
          对一个不属于本视图的条目执行操作。此时只显示上面的错误提示。 */
-      staleResults ? null : logs.length === 0 ? (
+      staleResults ? (
+        // 已确认不属于当前条件的旧行不再摆出来；重试在途时只给加载提示
+        loading ? (
+          <div className={shell.loadingBar} role="status" aria-live="polite">
+            {t('adminAuditLogs.loading')}
+          </div>
+        ) : null
+      ) : logs.length === 0 ? (
         <EmptyState title={t('adminAuditLogs.empty')} />
       ) : (
         <>
@@ -220,30 +234,26 @@ export const AdminAuditLogs = () => {
           )}
           <ul className={shell.list}>
             {logs.map((log) => (
-              <li key={log.id} className={shell.rowStatic}>
-                <span className={shell.rowMain}>
+              <li key={log.id} className={shell.auditRow}>
+                <div className={shell.auditMain}>
                   <span className={shell.rowTitle}>{actionLabel(log.action)}</span>
-                  <span className={shell.rowMeta}>
-                    <code className={shell.code}>{log.action}</code>
-                    <span className={shell.rowMetaSep}>·</span>
-                    {log.actorUserId
-                      ? t('adminAuditLogs.actorUser', {
-                          id: actorNames[log.actorUserId] ?? `${limitByUnicode(log.actorUserId, 12)}…`,
-                        })
-                      : t('adminAuditLogs.actorSystem')}
-                    {log.resourceId && (
-                      <>
-                        <span className={shell.rowMetaSep}>·</span>
-                        {`${limitByUnicode(log.resourceId, 24)}…`}
-                      </>
-                    )}
-                    <span className={shell.rowMetaSep}>·</span>
-                    {formatTs(log.createdAt)}
-                  </span>
-                </span>
-                <span className={shell.rowRight}>
-                  <Pill>{log.resourceType}</Pill>
-                </span>
+                  {/* 操作者与操作对象是两个带标签的字段，不用圆点串成一行 */}
+                  <dl className={shell.metaFields}>
+                    <div className={shell.metaField}>
+                      <dt>{t('adminAuditLogs.actorLabel')}</dt>
+                      <dd>{renderActor(log)}</dd>
+                    </div>
+                    <div className={shell.metaField}>
+                      <dt>{t('adminAuditLogs.resourceLabel')}</dt>
+                      <dd>{renderResource(log)}</dd>
+                    </div>
+                  </dl>
+                </div>
+                <div className={shell.auditSide}>
+                  <time dateTime={new Date(log.createdAt).toISOString()}>{formatTs(log.createdAt)}</time>
+                  {/* 操作类型的原始代码：上面「操作类型」筛选按它查 */}
+                  <code className={shell.auditCode}>{log.action}</code>
+                </div>
               </li>
             ))}
           </ul>
@@ -259,7 +269,7 @@ export const AdminAuditLogs = () => {
         total={total}
         pageSize={PAGE_SIZE}
         disabled={loading || stale}
-        onChange={goToPage}
+        onChange={setPage}
       />
     </div>
   )

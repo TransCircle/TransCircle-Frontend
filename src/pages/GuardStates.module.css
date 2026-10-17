@@ -1,0 +1,6 @@
+/* 守卫拒绝页：在所处外壳里居中（后台工作区或账户侧内容轨）。 */
+.denied {
+  display: flex;
+  justify-content: center;
+  padding: var(--s-6) var(--page-x);
+}

@@ -1,0 +1,51 @@
+/* 普通长页面的加载占位：占住与页面首屏相当的高度，页脚不在 chunk 落地前后跳动。 */
+.page {
+  flex: 1;
+  display: flex;
+  min-height: 60vh;
+  min-height: 60dvh;
+  padding: var(--s-7) var(--page-x);
+}
+
+/* 后台工作区内：外壳已给内边距，只占一段高度把加载态放在视野中部。 */
+.inline {
+  display: flex;
+  min-height: 40vh;
+  min-height: 40dvh;
+}
+
+.loading {
+  margin: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: var(--s-9);
+  color: var(--pink-600);
+}
+
+.error {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-4);
+  text-align: center;
+}
+
+.errorText {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

@@ -91,12 +91,17 @@ export const ThemeToggle = ({ className = '' }: ThemeToggleProps) => {
       flushSync(() => setTheme(nextTheme))
     })
 
+    // 时长与缓动取设计令牌（--dur-3 / --ease-out），与全站主题切换的配色过渡同步。
+    const tokens = getComputedStyle(doc.documentElement)
+    const duration = parseFloat(tokens.getPropertyValue('--dur-3')) || 400
+    const easing = tokens.getPropertyValue('--ease-out').trim() || 'ease-out'
+
     void transition.ready.then(() => {
       doc.documentElement.animate(
         { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${endRadius}px at ${x}px ${y}px)`] },
         {
-          duration: 400,
-          easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+          duration,
+          easing,
           pseudoElement: '::view-transition-new(root)',
         },
       )

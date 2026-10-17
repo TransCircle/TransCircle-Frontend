@@ -1,5 +1,5 @@
-/* Tabs —— DESIGN.md v3.0 §5.9
-   容器底部 1px --line；指示条 = 2px 高 --pink-600 滑动条；
+/* Tabs —— DESIGN.md v3.0 §5.9（同 Pass 控制台的修正）
+   基线 1px --line；指示条 = 2px 高 --pink-600 滑动条；
    激活标签 --ink --fw-semibold，其余 --text-secondary。 */
 
 .tabs {
@@ -7,25 +7,39 @@
   display: flex;
   align-items: center;
   gap: var(--s-1);
+  /* 只许横向滚：单写 overflow-x 会让纵向也变成可滚，标签条能被上下拖动。 */
   overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
   scrollbar-width: none;
+  /* 基线画成内阴影而不是 border：滚动容器里 border + 负偏移的指示条会被裁掉一半。 */
+  box-shadow: inset 0 -1px 0 var(--line);
 }
 
 .tabs::-webkit-scrollbar {
   display: none;
 }
 
+/* 还有标签藏在右侧时，右缘淡出提示「可以继续滑」（§1.1 允许遮罩用途的渐变）。 */
+.moreToEnd {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+}
+
 .tab {
   display: inline-flex;
   align-items: center;
   gap: var(--s-2);
+  flex: none;
+  min-height: var(--btn-h);
   padding: var(--s-2) var(--s-4);
   font-family: inherit;
   font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   color: var(--text-secondary);
   background: none;
   border: none;
+  border-radius: var(--r-sm) var(--r-sm) 0 0;
   cursor: pointer;
   white-space: nowrap;
   /* 指示条是 .tabs 的绝对定位子元素，标签要压在它上面 */
@@ -36,14 +50,20 @@
     background-color var(--dur-1) var(--ease-standard);
 }
 
-.tab:hover {
-  color: var(--pink-700);
+@media (hover: hover) {
+  .tab:hover {
+    color: var(--pink-700);
+  }
 }
 
-/* 横向滚动容器会裁剪向外偏移的焦点环；改用内描边（负偏移）避免被裁剪 */
+/* 横向滚动容器会裁剪向外偏移的焦点环；改用内描边（负偏移）避免被裁剪。 */
 .tab:focus-visible {
   outline-offset: -2px;
-  border-radius: var(--r-sm);
+}
+
+.tab.active {
+  color: var(--ink);
+  font-weight: var(--fw-semibold);
 }
 
 .tabLabel {
@@ -54,37 +74,28 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.2rem;
-  height: 1.2rem;
+  min-width: 1.25rem;
+  height: 1.25rem;
   padding: 0 var(--s-1);
   border-radius: var(--r-xs);
-  background-color: var(--pink-100);
-  color: var(--pink-700);
+  background-color: var(--surface-2);
+  color: var(--text-secondary);
   font-family: var(--font-tech);
   font-size: var(--fs-xs);
   font-weight: var(--fw-semibold);
 }
 
-/* ── Underline variant ───────────────────────────────────── */
-
-.underline {
-  border-bottom: 1px solid var(--line);
-}
-
-.underline .tab {
-  border-radius: var(--r-sm) var(--r-sm) 0 0;
-}
-
-.underline .tab.active {
-  color: var(--ink);
+.tab.active .badge {
+  background-color: var(--pink-600);
+  color: var(--on-pink);
 }
 
 /* 2px 滑动指示条：位置与宽度由 Tabs.tsx 实测后写成内联 transform/width。
-   用 transform 而非 left，走合成层，滑动不触发布局。 */
+   贴在容器内底边（压住内阴影基线），用 transform 而非 left，走合成层不触发布局。 */
 .indicator {
   position: absolute;
   left: 0;
-  bottom: -1px;
+  bottom: 0;
   height: 2px;
   background-color: var(--pink-600);
   border-radius: 1px;
@@ -94,46 +105,8 @@
     width var(--dur-2) var(--ease-out);
 }
 
-.underline .tab.active .badge {
-  background-color: var(--pink-600);
-  color: var(--on-pink);
-}
-
-/* ── Segmented variant ───────────────────────────────────── */
-
-.segmented {
-  gap: var(--s-1);
-  padding: var(--s-1);
-  background-color: var(--pink-100);
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
-  width: fit-content;
-  max-width: 100%;
-}
-
-.segmented .tab {
-  padding: var(--s-2) var(--s-3);
-  border-radius: var(--r-sm);
-}
-
-/* 选中标记交给粉色内描边：underline 变体靠下划线，这里靠一圈内线，
-   两者都不用染文字。 */
-.segmented .tab.active {
-  color: var(--ink);
-  background-color: var(--surface);
-  box-shadow:
-    var(--shadow-2),
-    inset 0 0 0 1px var(--pink-600);
-}
-
 @media (any-pointer: coarse) {
   .tab {
     min-height: var(--tap-min);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tab {
-    transition: none;
   }
 }

@@ -19,9 +19,9 @@
 }
 
 .label {
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   font-weight: var(--fw-semibold);
-  color: var(--text-secondary);
+  color: var(--ink);
 }
 
 /* 必填星号：见 FormField.module.css 同名说明——墨色会与 label 同色而失效。 */
@@ -37,7 +37,7 @@
   padding: var(--s-2) var(--s-3);
   border: 1.5px solid var(--line-strong);
   border-radius: var(--r-sm);
-  font-size: var(--fs-sm);
+  font-size: var(--ui-fs);
   font-family: inherit;
   line-height: 1.5;
   color: var(--ink);
@@ -66,11 +66,11 @@
   border-color: var(--pink-600);
   background-color: var(--surface);
   outline: none;
-  box-shadow: 0 0 0 3px var(--ring-pink);
+  box-shadow: 0 0 0 3px var(--focus-halo);
 }
 
 .input:disabled {
-  opacity: 0.55;
+  opacity: var(--disabled-opacity);
   cursor: not-allowed;
 }
 
@@ -89,7 +89,7 @@
 .input:focus:-webkit-autofill {
   -webkit-box-shadow:
     0 0 0 100px var(--surface) inset,
-    0 0 0 3px var(--ring-pink);
+    0 0 0 3px var(--focus-halo);
 }
 
 /* 数字输入的原生步进器 */
@@ -107,7 +107,7 @@
 .invalid:focus {
   border-color: var(--error-text);
   outline: none;
-  box-shadow: 0 0 0 3px var(--ring-error);
+  box-shadow: 0 0 0 3px var(--focus-halo-error);
 }
 
 .textarea {
@@ -138,15 +138,15 @@
 
 .searchIcon {
   position: absolute;
-  left: 0.7rem;
+  left: var(--s-3);
   display: inline-flex;
   color: var(--text-muted);
   pointer-events: none;
 }
 
 .searchInput {
-  padding-left: 2.25rem;
-  padding-right: 2.25rem;
+  padding-left: calc(var(--s-3) + 16px + var(--s-2));
+  padding-right: calc(var(--s-6) + var(--s-2));
 }
 
 /* 移除浏览器原生搜索框装饰，统一自绘清除按钮 */
@@ -161,12 +161,13 @@
 
 .clearBtn {
   position: absolute;
-  right: 0.4rem;
+  /* 32px 方块收在 44px 输入框里，上下右各留 6px（与 Pass 密码显示键同一几何）。 */
+  right: calc((var(--control-h) - var(--s-6)) / 2);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: var(--s-6);
+  height: var(--s-6);
   padding: 0;
   border: none;
   border-radius: var(--r-sm);

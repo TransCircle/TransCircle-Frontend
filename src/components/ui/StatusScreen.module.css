@@ -8,7 +8,7 @@
 
 .icon {
   display: inline-flex;
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--s-2);
 }
 
 .success .icon {
@@ -23,21 +23,13 @@
   color: var(--blue-600);
 }
 
-[data-theme='dark'] .error .icon {
-  color: var(--error-text);
-}
-
-/* Cancel PageHeader's bottom margin inside the stacked screen. */
-.header {
-  margin-bottom: 0;
-}
-
+/* 错误码等细节：等宽小字，长串可断行。 */
 .detail {
   margin: var(--s-1) 0 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--fs-xs);
   color: var(--text-muted);
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .actions {
@@ -45,90 +37,5 @@
   flex-wrap: wrap;
   justify-content: center;
   gap: var(--s-2);
-  margin-top: 1.1rem;
-}
-
-/* Link-as-button for navigation actions — mirrors AdminButton geometry so the
-   anchor keeps its semantics (open-in-new-tab, etc.) while matching the kit. */
-/* 几何与 AdminButton 完全对齐（§5.1）：高 --btn-h、padding 0 20px、--r-sm。 */
-.linkBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--s-2);
-  height: var(--btn-h);
-  padding: 0 20px;
-  border-radius: var(--r-sm);
-  border: 1.5px solid transparent;
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
-  line-height: 1.2;
-  text-decoration: none;
-  white-space: nowrap;
-  cursor: pointer;
-  transition:
-    background-color var(--dur-1) var(--ease-standard),
-    color var(--dur-1) var(--ease-standard),
-    border-color var(--dur-1) var(--ease-standard),
-    box-shadow var(--dur-1) var(--ease-standard),
-    transform var(--dur-1) var(--ease-spring);
-}
-
-.linkPrimary {
-  background-color: var(--pink-600);
-  color: var(--on-pink);
-}
-
-.linkPrimary:hover {
-  background-color: var(--pink-600-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--glow-pink);
-}
-
-.linkPrimary:active {
-  transform: scale(0.97);
-}
-
-[data-theme='dark'] .linkPrimary:hover {
-  box-shadow: var(--glow-pink-dark);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) .linkPrimary:hover {
-    box-shadow: var(--glow-pink-dark);
-  }
-}
-
-.linkSecondary {
-  background-color: transparent;
-  color: var(--ink);
-  /* 发丝线（--line）在白底上约 1.15:1，做按钮边界达不到 1.4.11 的 3:1；
-     --line-strong 正是为「需要 3:1 的控件描边」准备的。 */
-  border-color: var(--line-strong);
-}
-
-.linkSecondary:hover {
-  border-color: var(--pink-600);
-  color: var(--pink-700);
-}
-
-.linkSecondary:active {
-  transform: scale(0.97);
-}
-
-/* Mirrors AdminButton's coarse-pointer touch target. */
-@media (any-pointer: coarse) {
-  .linkBtn {
-    min-height: var(--tap-min);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .linkBtn {
-    transition: none;
-  }
-  .linkPrimary:hover,
-  .linkPrimary:active {
-    transform: none;
-  }
+  margin-top: var(--s-4);
 }

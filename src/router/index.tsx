@@ -1,32 +1,23 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { lazy, Suspense, Component, type ReactNode, type ErrorInfo } from 'react'
 
-import i18n from '@/i18n/config'
 import { RootLayout } from '../layouts/RootLayout'
 import { ErrorBoundaryPage } from '../pages/ErrorBoundaryPage'
 import { AdminShell } from '../pages/AdminShell'
 import { RequireAuthLayout } from '../pages/RequireAuthLayout'
 import { RequirePermissionLayout } from '../pages/RequirePermissionLayout'
 import { RequireReviewerOrAdminLayout } from '../pages/RequireReviewerOrAdminLayout'
-import { PERMISSIONS } from '@/api/permissions'
+import { ADMIN_ENTRY_PERMISSIONS, PERMISSIONS } from '@/api/permissions'
 import { LegacyLoginRedirect } from '../pages/LegacyLoginRedirect'
+import type { RouteHandle } from './handles'
+import { RouteLoadError, RouteLoading, type RouteFallbackLayout } from './RouteFallback'
+import { KeyedById } from './KeyedById'
 
 import { Home } from '../pages/Home'
 
-// 惰性加载错误边界：捕获 chunk 加载失败（网络断开/部署后 404等），显示重试提示
-const FALLBACK_STYLE: Record<string, string> = {
-  textAlign: 'center',
-  padding: '2rem',
-  color: 'var(--text-muted)',
-}
-const SPINNER_STYLE: Record<string, string> = {
-  textAlign: 'center',
-  padding: '2rem',
-  color: 'var(--text-muted)',
-}
-
-class LazyErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  constructor(props: { children: ReactNode }) {
+// 惰性加载错误边界：捕获 chunk 加载失败（网络断开 / 部署后 404 等），显示重试入口。
+class LazyErrorBoundary extends Component<{ children: ReactNode; layout: RouteFallbackLayout }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode; layout: RouteFallbackLayout }) {
     super(props)
     this.state = { hasError: false }
   }
@@ -37,38 +28,34 @@ class LazyErrorBoundary extends Component<{ children: ReactNode }, { hasError: b
     console.warn('[router] Lazy load error:', error.message)
     void _info
   }
+  /* 整页重新加载：React.lazy 会缓存失败的 import，只清错误边界状态会立刻再次渲染同一个
+     失败结果，「重试」点了等于没点。部署更新后旧 chunk 404 的情形也只有整页刷新才能拿到新清单。 */
   handleRetry = (): void => {
-    this.setState({ hasError: false })
+    window.location.reload()
   }
   override render(): ReactNode {
     if (this.state.hasError) {
-      return (
-        <div role="alert" style={FALLBACK_STYLE}>
-          <p>{i18n.t('common.chunkLoadError')}</p>
-          <button onClick={this.handleRetry} style={{ marginTop: '1rem', cursor: 'pointer' }}>
-            {i18n.t('common.retry')}
-          </button>
-        </div>
-      )
+      return <RouteLoadError layout={this.props.layout} onRetry={this.handleRetry} />
     }
     return this.props.children
   }
 }
 
-function lazyNamed(importFn: () => Promise<Record<string, unknown>>, name: string) {
+/** layout：占位与目标页根外壳保持一致（见 RouteFallback.tsx）。 */
+function lazyNamed(
+  importFn: () => Promise<Record<string, unknown>>,
+  name: string,
+  layout: RouteFallbackLayout = 'page',
+) {
   const LazyComponent = lazy(async () => {
     const mod = await importFn()
     return { default: mod[name] as React.ComponentType<unknown> }
   })
+  /* key：同一位置上的兄弟路由（如 /admin/users ↔ /admin/audit-logs）元素类型相同，
+     不加 key 会复用同一个边界，一页 chunk 失败后切到别的页仍显示失败。 */
   return (
-    <LazyErrorBoundary>
-      <Suspense
-        fallback={
-          <div role="status" aria-live="polite" aria-busy="true" style={SPINNER_STYLE}>
-            {i18n.t('common.loading')}
-          </div>
-        }
-      >
+    <LazyErrorBoundary key={name} layout={layout}>
+      <Suspense fallback={<RouteLoading layout={layout} />}>
         <LazyComponent />
       </Suspense>
     </LazyErrorBoundary>
@@ -86,6 +73,10 @@ export const router = createBrowserRouter([
         element: <Home />,
       },
       {
+        path: 'search',
+        element: lazyNamed(() => import('../pages/Search'), 'Search'),
+      },
+      {
         path: 'submit',
         element: lazyNamed(() => import('../pages/Submit'), 'Submit'),
       },
@@ -95,7 +86,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'auth/login',
-        element: lazyNamed(() => import('../pages/Login'), 'Login'),
+        element: lazyNamed(() => import('../pages/Login'), 'Login', 'stage'),
       },
       {
         // 本地注册已迁移到 TransCircle Pass，故事站不再承载。
@@ -105,14 +96,80 @@ export const router = createBrowserRouter([
       {
         path: 'admin',
         element: <AdminShell />,
+        handle: { shell: 'admin' } satisfies RouteHandle,
+        /* /admin 本身没有页面：AdminShell 按权限把它落到首个可访问的分区（同 Pass 控制台）。
+           列表与其详情是两条独立路由——详情有自己的地址，刷新、后退、新标签打开、分享都成立。
+           详情路由按 :id 加 key：换一条就整页重挂，卸载会作废上一条的在途请求与写操作。 */
         children: [
+          {
+            // 概览：持有任一后台权限即可打开（至少能看到自己的角色与权限表），卡片再按各自的权限显示
+            path: 'overview',
+            handle: { titleKey: 'pageTitles.adminOverview', adminSection: 'overview' } satisfies RouteHandle,
+            element: (
+              <RequirePermissionLayout anyOf={ADMIN_ENTRY_PERMISSIONS}>
+                {lazyNamed(() => import('../pages/admin/AdminOverview'), 'AdminOverview', 'inline')}
+              </RequirePermissionLayout>
+            ),
+          },
           {
             element: <RequireReviewerOrAdminLayout />,
             children: [
-              { index: true, element: lazyNamed(() => import('../pages/Admin'), 'Admin') },
+              {
+                path: 'review',
+                handle: { titleKey: 'pageTitles.reviewQueue', adminSection: 'review' } satisfies RouteHandle,
+                element: lazyNamed(() => import('../pages/admin/AdminContributionList'), 'AdminReviewQueue', 'inline'),
+              },
+              {
+                path: 'contributions',
+                handle: {
+                  titleKey: 'pageTitles.adminContributions',
+                  adminSection: 'contributions',
+                } satisfies RouteHandle,
+                element: lazyNamed(
+                  () => import('../pages/admin/AdminContributionList'),
+                  'AdminContributions',
+                  'inline',
+                ),
+              },
+              {
+                path: 'contributions/:id',
+                handle: {
+                  titleKey: 'pageTitles.adminContribution',
+                  adminSection: 'contributions',
+                } satisfies RouteHandle,
+                element: (
+                  <KeyedById>
+                    {lazyNamed(
+                      () => import('../pages/admin/AdminContributionDetail'),
+                      'AdminContributionDetail',
+                      'inline',
+                    )}
+                  </KeyedById>
+                ),
+              },
+            ],
+          },
+          {
+            // 修改申请：接口要求 contribution:edit-request:vote（apidocs §10.4 / §10.5），与投稿读取权限分开守卫
+            element: <RequirePermissionLayout permission={PERMISSIONS.CONTRIBUTION_EDIT_REQUEST_VOTE} />,
+            children: [
               {
                 path: 'edit-requests',
-                element: lazyNamed(() => import('../pages/AdminEditRequests'), 'AdminEditRequests'),
+                handle: { titleKey: 'pageTitles.editRequests', adminSection: 'editRequests' } satisfies RouteHandle,
+                element: lazyNamed(() => import('../pages/AdminEditRequests'), 'AdminEditRequests', 'inline'),
+              },
+              {
+                path: 'edit-requests/:id',
+                handle: { titleKey: 'pageTitles.editRequest', adminSection: 'editRequests' } satisfies RouteHandle,
+                element: (
+                  <KeyedById>
+                    {lazyNamed(
+                      () => import('../pages/admin/AdminEditRequestDetail'),
+                      'AdminEditRequestDetail',
+                      'inline',
+                    )}
+                  </KeyedById>
+                ),
               },
             ],
           },
@@ -120,37 +177,60 @@ export const router = createBrowserRouter([
             // 用户管理 / 审计子路由：按具体权限精确守卫（IAM 权限快照驱动），
             // 不再用 OR 守卫 + 页面内二次判断（admin-page-guard-inconsistent）
             path: 'audit-logs',
+            handle: { titleKey: 'pageTitles.auditLogs', adminSection: 'auditLogs' } satisfies RouteHandle,
             element: (
               <RequirePermissionLayout permission={PERMISSIONS.AUDIT_READ}>
-                {lazyNamed(() => import('../pages/AdminAuditLogs'), 'AdminAuditLogs')}
+                {lazyNamed(() => import('../pages/AdminAuditLogs'), 'AdminAuditLogs', 'inline')}
               </RequirePermissionLayout>
             ),
           },
           {
-            path: 'users',
-            element: (
-              <RequirePermissionLayout permission={PERMISSIONS.USER_READ}>
-                {lazyNamed(() => import('../pages/AdminUsers'), 'AdminUsers')}
-              </RequirePermissionLayout>
-            ),
+            element: <RequirePermissionLayout permission={PERMISSIONS.USER_READ} />,
+            children: [
+              {
+                path: 'users',
+                handle: { titleKey: 'pageTitles.users', adminSection: 'users' } satisfies RouteHandle,
+                element: lazyNamed(() => import('../pages/AdminUsers'), 'AdminUsers', 'inline'),
+              },
+              {
+                path: 'users/:id',
+                handle: { titleKey: 'pageTitles.user', adminSection: 'users' } satisfies RouteHandle,
+                element: (
+                  <KeyedById>
+                    {lazyNamed(() => import('../pages/admin/AdminUserDetail'), 'AdminUserDetail', 'inline')}
+                  </KeyedById>
+                ),
+              },
+            ],
           },
           {
-            path: 'comments',
-            element: (
-              <RequirePermissionLayout permission={PERMISSIONS.COMMENT_MODERATE}>
-                {lazyNamed(() => import('../pages/AdminComments'), 'AdminComments')}
-              </RequirePermissionLayout>
-            ),
+            element: <RequirePermissionLayout permission={PERMISSIONS.COMMENT_MODERATE} />,
+            children: [
+              {
+                path: 'comments',
+                handle: { titleKey: 'pageTitles.comments', adminSection: 'comments' } satisfies RouteHandle,
+                element: lazyNamed(() => import('../pages/AdminComments'), 'AdminComments', 'inline'),
+              },
+              {
+                path: 'comments/:id',
+                handle: { titleKey: 'pageTitles.comment', adminSection: 'comments' } satisfies RouteHandle,
+                element: (
+                  <KeyedById>
+                    {lazyNamed(() => import('../pages/admin/AdminCommentDetail'), 'AdminCommentDetail', 'inline')}
+                  </KeyedById>
+                ),
+              },
+            ],
           },
         ],
       },
       {
         path: 'auth/callback',
-        element: lazyNamed(() => import('../pages/OAuthCallback'), 'OAuthCallback'),
+        element: lazyNamed(() => import('../pages/OAuthCallback'), 'OAuthCallback', 'stage'),
       },
       {
         path: 'auth/error',
-        element: lazyNamed(() => import('../pages/AuthError'), 'AuthError'),
+        element: lazyNamed(() => import('../pages/AuthError'), 'AuthError', 'stage'),
       },
       {
         path: 'auth/oauth/continue',
@@ -162,7 +242,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'auth/step-up/done',
-        element: lazyNamed(() => import('../pages/StepUpDone'), 'StepUpDone'),
+        element: lazyNamed(() => import('../pages/StepUpDone'), 'StepUpDone', 'stage'),
       },
       {
         // 需要认证的普通用户页面：统一由 RequireAuthLayout 守卫（身份统一 Pass，无需特定权限）。
@@ -226,7 +306,8 @@ export const router = createBrowserRouter([
       },
       {
         path: '*',
-        element: lazyNamed(() => import('../pages/NotFound'), 'NotFound'),
+        element: lazyNamed(() => import('../pages/NotFound'), 'NotFound', 'card'),
+        handle: { notFound: true } satisfies RouteHandle,
       },
     ],
   },

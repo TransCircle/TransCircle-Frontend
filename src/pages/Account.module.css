@@ -1,0 +1,393 @@
+/* ═══════════════════════════════════════════════════════════════
+   账户侧词表 —— 投稿、我的投稿、投稿详情、修改申请、安全设置。
+
+   三套词表分治（见 docs/DESIGN.md）：
+   · Story.module.css  公共阅读侧（讲故事：留白、16px 正文、卡片浮起）
+   · Account.module.css 账户侧（本文件：用户管理自己的东西——正常标题层级、
+     16px 正文与控件、分组卡；比阅读侧紧凑，比后台舒展）
+   · Page.module.css   后台工具侧（14px 密度、行式列表）
+   ═══════════════════════════════════════════════════════════════ */
+
+/* 内容轨：与顶栏共用 --w-content / --page-x，左缘对齐。
+   --ui-fs 设回 --fs-body：账户侧的输入框、描述列表与正文一样走 16px。 */
+.page {
+  --ui-fs: var(--fs-body);
+  /* 列表骨架与本词表的 .rowBtn 同高同圆角（见 Skeleton.module.css）。 */
+  /* 真实行：上下内边距 32 + 标题 16×1.75 + 间距 4 + 时间 12×1.75 ≈ 85px（无备注时）。 */
+  --skeleton-row-h: 5.25rem;
+  --skeleton-row-r: var(--r-md);
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+  width: 100%;
+  max-width: var(--w-content);
+  margin: 0 auto;
+  padding: var(--s-6) var(--page-x) var(--s-8);
+}
+
+/* 表单 / 详情页：收在阅读行宽内，单列表单与长文不在大屏上摊开。 */
+.pageNarrow {
+  max-width: calc(var(--w-reading) + 2 * var(--page-x));
+}
+
+/* 页头分组（标题 + 选项卡等）。 */
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+/* 返回行：抵消 ghost 按钮自身的内边距，让图标与内容左缘对齐。 */
+.backRow {
+  display: flex;
+  align-items: center;
+  margin-bottom: calc(var(--s-2) * -1);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+}
+
+.tabpanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  outline: none;
+}
+
+/* ── 我的投稿列表：可点行（账户侧：16px 标题、两行备注）────────── */
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.rowBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  text-align: left;
+  padding: var(--s-4) var(--s-5);
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-decoration: none;
+  transition:
+    border-color var(--dur-1) var(--ease-standard),
+    background-color var(--dur-1) var(--ease-standard),
+    box-shadow var(--dur-1) var(--ease-standard);
+}
+
+@media (hover: hover) {
+  .rowBtn:hover {
+    border-color: var(--pink-300);
+    box-shadow: var(--shadow-2);
+  }
+}
+
+.rowBtn:active {
+  background-color: var(--surface-2);
+}
+
+.rowMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.rowTitle {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  color: var(--ink);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.rowMeta {
+  font-family: var(--font-tech);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 审核备注：说给作者听的话，用正文色、两行截断，详情页看全文。 */
+.rowNote {
+  font-size: var(--fs-sm);
+  line-height: var(--lh-caption);
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rowRight {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  flex-shrink: 0;
+}
+
+.chevron {
+  display: inline-flex;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.loadingBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s-1) 0;
+  color: var(--text-muted);
+  font-family: var(--font-tech);
+  font-size: var(--fs-xs);
+}
+
+/* ── 详情 ─────────────────────────────────────────────────── */
+.detailHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-3) var(--s-4);
+  flex-wrap: wrap;
+}
+
+.detailTitle {
+  margin: 0;
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-heading);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+/* 卡片内的分组标题（个人资料、权限……）。 */
+.cardTitle {
+  margin: 0;
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-heading);
+  color: var(--ink);
+}
+
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1) var(--s-5);
+  font-family: var(--font-tech);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.metaItem {
+  display: inline-flex;
+  align-items: center;
+}
+
+.summary {
+  margin: 0;
+  font-size: var(--fs-lg);
+  line-height: var(--lh-body);
+  color: var(--text-secondary);
+}
+
+/* 原文面板：作者提交的 Markdown 原样展示——等宽、保留换行、限高可滚。 */
+.rawSource {
+  margin: 0;
+  max-height: min(60vh, 32rem);
+  overflow: auto;
+  padding: var(--s-4);
+  background-color: var(--code-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+  color: var(--text-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* 只读的普通文本块（审核意见等）。 */
+.contentBlock {
+  margin: 0;
+  padding: var(--s-4);
+  background-color: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-body);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.noteLabel {
+  margin: 0 0 var(--s-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--ink);
+}
+
+.actions {
+  display: flex;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ── 安全设置：≥1024 左侧粘性分组导航 + 右侧分组卡（同 Pass 账户中心）── */
+.settingsLayout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+}
+
+.sideNav {
+  display: none;
+}
+
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+  min-width: 0;
+}
+
+.sectionCard {
+  scroll-margin-top: calc(var(--nav-h) + var(--s-5));
+}
+
+@media (min-width: 1024px) {
+  .settingsLayout {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: var(--s-7);
+  }
+
+  .sideNav {
+    display: block;
+    position: sticky;
+    top: calc(var(--nav-h) + var(--s-5));
+    flex: 0 0 13rem;
+  }
+
+  .sections {
+    flex: 1 1 auto;
+    max-width: var(--w-reading);
+  }
+}
+
+.sideNavList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.sideNavLink {
+  display: flex;
+  align-items: center;
+  min-height: var(--btn-h);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition:
+    background-color var(--dur-1) var(--ease-standard),
+    color var(--dur-1) var(--ease-standard);
+}
+
+@media (hover: hover) {
+  .sideNavLink:hover {
+    background-color: var(--pink-100);
+    color: var(--ink);
+  }
+}
+
+/* 当前分区：淡粉面 + 字重，不用彩色左条（§1.6）。 */
+.sideNavLink[aria-current='location'] {
+  background-color: var(--pink-100);
+  color: var(--pink-700);
+  font-weight: var(--fw-semibold);
+}
+
+:global([data-theme='dark']) .sideNavLink[aria-current='location'] {
+  color: var(--ink);
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme])) .sideNavLink[aria-current='location'] {
+    color: var(--ink);
+  }
+}
+
+/* 卡片内的子分区（如「导出数据」）：发丝线分隔，不再叠加外边距。 */
+.subSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding-top: var(--s-5);
+  border-top: 1px solid var(--line);
+}
+
+.subHeading {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  color: var(--ink);
+}
+
+.subtleNote {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-caption);
+  color: var(--text-muted);
+}
+
+@media (max-width: 640px) {
+  .page {
+    gap: var(--s-4);
+    padding-top: var(--s-4);
+    padding-bottom: var(--s-7);
+  }
+
+  .rowBtn {
+    align-items: flex-start;
+    gap: var(--s-3);
+    padding: var(--s-3) var(--s-4);
+  }
+
+  .detailTitle {
+    font-size: var(--fs-h3);
+  }
+
+  .actions {
+    width: 100%;
+  }
+}
+
+@media (any-pointer: coarse) {
+  .sideNavLink {
+    min-height: var(--tap-min);
+  }
+}
