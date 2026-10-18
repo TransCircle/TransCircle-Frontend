@@ -61,7 +61,7 @@ pnpm dev
 
 ### 故事站 Backend
 
-`TransCircle-Backend/config.example.toml` 中：
+`TransCircle-Story-Backend/config.example.toml` 中：
 
 - `[FRONTEND].FRONTEND_URL` 指向故事站公开 origin。
 - `[PASS].ISSUER`：生产为 `https://api.transcircle.org/pass`，本地通常为 `http://localhost:1146`。
