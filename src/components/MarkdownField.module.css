@@ -1,4 +1,9 @@
 .editorWrapper {
+  /* 工具栏图标间距紧凑系数（1 = 库默认，实测于 /submit）。
+     单个图标盒 24px = svg 16px + padding 4px（content-box）；item 自身 padding-inline 2px
+     把 item 撑到 28px，相邻图标之间的空隙只有两侧 margin-inline 2px 相加 = 4px。
+     0.5 = 空隙收紧 50%（4px → 2px，item 两侧各 1px）。 */
+  --md-toolbar-gap-scale: 0.5;
   border: 1px solid var(--line-strong);
   border-radius: var(--r-sm);
   overflow: hidden;
@@ -72,6 +77,9 @@
   justify-content: center;
   border-radius: var(--r-sm);
   color: var(--text-secondary);
+  /* 图标之间的空隙 = 相邻 item 的 margin-inline 相加，只缩这个，点击热区不缩
+     （padding-inline 保持库默认 2px）。0.5 → 两侧 1px，空隙 4px → 2px。 */
+  margin-inline: calc(2px * var(--md-toolbar-gap-scale));
   transition:
     color var(--dur-1) var(--ease-standard),
     background-color var(--dur-1) var(--ease-standard);
