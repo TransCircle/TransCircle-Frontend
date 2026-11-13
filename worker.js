@@ -82,17 +82,23 @@ function makeRequestId() {
 }
 
 /**
- * 请求是否可能带请求体。
+ * 请求是否真的带请求体。
  *
  * 只看 Cookie 决定要不要短路，会把经请求体传 refreshToken 的调用方（api.md §1.11.2
- * 的原生通道）一并吞掉。这里保守判断：只要可能带体，就照常转发给后端裁决。
+ * 的原生通道）一并吞掉；但反过来只看 `request.body` 又会**永远为真** —— Cloudflare
+ * 会给每个带方法语义的请求挂一个 body stream，即便 content-length 是 0。那样短路就
+ * 永不触发，等于把原本省掉的那次后端往返又加回来。
+ *
+ * 因此以 content-length / transfer-encoding 为准，两者都缺失时才退回看 body 是否为空流。
  * @param {Request} request
  */
 function hasRequestBody(request) {
-  if (request.body) return true;
   const declared = request.headers.get('content-length');
-  if (declared && declared !== '0') return true;
-  return Boolean(request.headers.get('transfer-encoding'));
+  if (declared !== null) return declared !== '0';
+  if (request.headers.get('transfer-encoding')) return true;
+  // 既没有 content-length 也没有 transfer-encoding：GET/HEAD 一定无体，
+  // 其余方法保守按「可能有体」处理，交给后端裁决（宁可多一次转发，不可吞掉数据）。
+  return request.method !== 'GET' && request.method !== 'HEAD';
 }
 
 /** @param {string} code @param {string} message */
