@@ -20,12 +20,20 @@ export default {
       const backend = env.API_BACKEND_URL?.replace(/\/+$/, '');
       if (!backend) {
         // 与后端信封保持一致：SPA 统一按 {error:{code,message}} 解析，纯文本会渲染成无意义响应
-        return jsonError('UPSTREAM_UNCONFIGURED', 'API_BACKEND_URL not configured', 'req_skipped');
+        return jsonError('UPSTREAM_UNCONFIGURED', 'API_BACKEND_URL not configured');
       }
 
       // 用户没有 refresh_token cookie 时跳过向后端转发 /auth/refresh，
       // 直接返回 200（accessToken: null），避免产生 400/401 响应。
-      if (url.pathname === '/v1/auth/refresh' && request.method === 'POST') {
+      //
+      // 只在**确认请求体为空**时才短路：后端同样支持经请求体传 refreshToken
+      // （api.md §1.11.2 的「原生 / 移动端」通道）。只看 Cookie 会把那条通道上的
+      // 请求一并吞成 accessToken:null，且后端日志里什么都看不到。
+      if (
+        url.pathname === '/v1/auth/refresh' &&
+        request.method === 'POST' &&
+        !hasRequestBody(request)
+      ) {
         const cookies = request.headers.get('cookie') || '';
         const hasRefreshToken = cookies.split(';').some((c) => {
           const pair = c.trim();
@@ -35,11 +43,11 @@ export default {
           return new Response(
             JSON.stringify({
               data: { accessToken: null, tokenType: 'Bearer', expiresIn: 0 },
-              requestId: `req_skipped`,
+              requestId: makeRequestId(),
             }),
             {
               status: 200,
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
             },
           );
         }
@@ -58,7 +66,7 @@ export default {
       } catch {
         // 上游不可达时 fetch 抛异常，Workers 会返回 1101 内部错误页（HTML）——
         // SPA 的 apiFetch 解析 JSON 会直接崩。统一成 502 信封，前端按 code 显示网络不可用。
-        return jsonError('UPSTREAM_UNREACHABLE', 'Backend is unreachable', makeRequestId());
+        return jsonError('UPSTREAM_UNREACHABLE', 'Backend is unreachable');
       }
     }
 
@@ -73,10 +81,28 @@ function makeRequestId() {
   return 'req_' + crypto.randomUUID();
 }
 
-/** @param {string} code @param {string} message @param {string} requestId */
-function jsonError(code, message, requestId) {
-  return new Response(JSON.stringify({ error: { code, message }, requestId }), {
-    status: 502,
-    headers: { 'Content-Type': 'application/json' },
-  });
+/**
+ * 请求是否可能带请求体。
+ *
+ * 只看 Cookie 决定要不要短路，会把经请求体传 refreshToken 的调用方（api.md §1.11.2
+ * 的原生通道）一并吞掉。这里保守判断：只要可能带体，就照常转发给后端裁决。
+ * @param {Request} request
+ */
+function hasRequestBody(request) {
+  if (request.body) return true;
+  const declared = request.headers.get('content-length');
+  if (declared && declared !== '0') return true;
+  return Boolean(request.headers.get('transfer-encoding'));
+}
+
+/** @param {string} code @param {string} message */
+function jsonError(code, message) {
+  return new Response(
+    JSON.stringify({ error: { code, message }, requestId: makeRequestId() }),
+    {
+      status: 502,
+      // 502 不该被中间层缓存；带上 no-store 与后端信封语义一致。
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+    },
+  );
 }
